@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prologue Visual Direction</title>
+  <style>
+    :root { color-scheme: dark; --bg:#060717; --panel:#101426; --line:rgba(125,230,255,.28); --text:#edf7ff; --muted:#9fb2c9; --cyan:#06b6d4; --gold:#fbbf24; --violet:#8b5cf6; }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:32px; font-family:ui-sans-serif,system-ui,sans-serif; background:radial-gradient(circle at 20% 0%,rgba(139,92,246,.22),transparent 28%),radial-gradient(circle at 80% 18%,rgba(6,182,212,.14),transparent 26%),var(--bg); color:var(--text); }
+    h1 { margin:0 0 8px; font-size:34px; letter-spacing:-.03em; }
+    .subtitle { margin:0 0 28px; color:var(--muted); max-width:900px; line-height:1.5; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+    .card { background:rgba(16,20,38,.86); border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 24px 80px rgba(0,0,0,.32); }
+    .preview { height:260px; position:relative; overflow:hidden; background:#070719; border-bottom:1px solid var(--line); }
+    .body { padding:18px; }
+    .body h2 { margin:0 0 8px; font-size:18px; }
+    .body p { margin:0; color:var(--muted); line-height:1.45; font-size:14px; }
+    .pick { display:inline-flex; margin-top:14px; padding:7px 10px; border-radius:999px; color:#031018; background:var(--cyan); font-weight:800; font-size:12px; }
+    .bg { position:absolute; inset:0; background:radial-gradient(circle at 20% 20%,rgba(139,92,246,.25),transparent 22%),radial-gradient(circle at 80% 70%,rgba(6,182,212,.18),transparent 24%); }
+    .stars { position:absolute; left:80px; top:60px; width:3px; height:3px; background:white; box-shadow:180px 50px 0 white,330px -20px 0 #8defff,600px 80px 0 white,800px 15px 0 #8defff,1040px 90px 0 white; }
+    .platform { position:absolute; background:#252944; border:3px solid #79d6ff; border-radius:18px; box-shadow:0 10px 0 #101525; }
+    .path { position:absolute; background:#303857; border-top:3px solid #89e3ff; border-bottom:7px solid #11182c; }
+    .npc { position:absolute; width:34px; height:46px; background:#eef2ff; border-radius:14px 14px 8px 8px; box-shadow:0 0 0 4px #2b3555; }
+    .portal { position:absolute; background:#2b254a; border:3px solid var(--gold); border-radius:28px; box-shadow:0 0 32px rgba(251,191,36,.25); }
+    .route .p1 { left:22px; top:112px; width:118px; height:74px; }
+    .route .r1 { left:128px; top:140px; width:178px; height:34px; }
+    .route .p2 { left:292px; top:82px; width:188px; height:128px; border-radius:26px; }
+    .route .n1 { left:366px; top:113px; }
+    .route .r2 { left:476px; top:120px; width:118px; height:36px; }
+    .route .g1 { left:586px; top:90px; width:104px; height:110px; }
+    .campus .preview { background:#080a1d; }
+    .campus .bg { background:linear-gradient(160deg,rgba(6,182,212,.10),transparent),radial-gradient(circle at 50% 50%,rgba(139,92,246,.24),transparent 36%); }
+    .campus .p2 { left:185px; top:58px; width:260px; height:178px; border-radius:44px; }
+    .campus .p1 { left:40px; top:92px; width:112px; height:92px; border-radius:28px; }
+    .campus .p3 { left:478px; top:52px; width:120px; height:96px; background:#12394a; border-color:#06b6d4; }
+    .campus .p4 { left:488px; top:166px; width:128px; height:82px; background:#2f2545; border-color:#8b5cf6; }
+    .campus .n1 { left:286px; top:126px; }
+    .dungeon .preview { background:#050612; }
+    .dungeon .bg { background:radial-gradient(circle at 80% 20%,rgba(251,191,36,.14),transparent 22%),radial-gradient(circle at 30% 70%,rgba(139,92,246,.28),transparent 30%); }
+    .dungeon .platform { border-color:#6ee7ff; border-radius:20px; }
+    .dungeon .p1 { left:34px; top:146px; width:104px; height:74px; }
+    .dungeon .p2 { left:166px; top:104px; width:90px; height:58px; background:#2d314e; }
+    .dungeon .p3 { left:286px; top:145px; width:108px; height:80px; background:#2d314e; }
+    .dungeon .p4 { left:430px; top:70px; width:104px; height:78px; background:#153647; }
+    .dungeon .g1 { left:572px; top:142px; width:110px; height:78px; border-color:#8b5cf6; box-shadow:none; }
+    .dungeon .portal { left:702px; top:82px; width:112px; height:122px; }
+    @media (max-width:1000px) { .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <h1>Cosmic Chamber, Pokemon-Like Readability</h1>
+  <p class="subtitle">Pick the direction for the full prologue rework. All options ignore the old asset set and follow the Pokemon-inspired script. Reply in the terminal with A, B, or C.</p>
+  <main class="grid">
+    <section class="card route"><div class="preview"><div class="bg"></div><div class="stars"></div><div class="platform p1"></div><div class="path r1"></div><div class="platform p2"></div><div class="npc n1"></div><div class="path r2"></div><div class="portal g1"></div></div><div class="body"><h2>A. Route In The Void</h2><p>Recommended. A readable left-to-right Pokemon route: spawn island, central hub, two puzzle branches, boss gate, then portal. Strong route clarity while staying cosmic.</p><span class="pick">Recommended</span></div></section>
+    <section class="card campus"><div class="preview"><div class="bg"></div><div class="platform p2"></div><div class="platform p1"></div><div class="platform p3"></div><div class="platform p4"></div><div class="npc n1"></div></div><div class="body"><h2>B. Floating Campus</h2><p>More town-like: one large central platform with lesson stations around it. Easier navigation, but less like a route and more like a tutorial lobby.</p></div></section>
+    <section class="card dungeon"><div class="preview"><div class="bg"></div><div class="platform p1"></div><div class="platform p2"></div><div class="platform p3"></div><div class="platform p4"></div><div class="platform g1"></div><div class="portal"></div></div><div class="body"><h2>C. Mystery Dungeon Chain</h2><p>Most dramatic: disconnected islands with angled stepping paths and stronger void danger. Atmospheric, but risks feeling less like early Pokemon and more like a dungeon.</p></div></section>
+  </main>
+</body>
+</html>

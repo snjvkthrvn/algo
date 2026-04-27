@@ -1,0 +1,300 @@
+{
+  "grid": {
+    "tileset": {
+      "source": "tileset.png",
+      "cols": 6,
+      "rows": 4,
+      "frameWidth": 469,
+      "frameHeight": 384,
+      "frameCount": 24,
+      "sheet": "tileset/sheet.png"
+    },
+    "mc": {
+      "source": "mc.png",
+      "cols": 6,
+      "rows": 3,
+      "frameWidth": 469,
+      "frameHeight": 512,
+      "frameCount": 18,
+      "sheet": "mc/sheet.png"
+    },
+    "mcmore": {
+      "source": "mcmore.png",
+      "cols": 6,
+      "rows": 3,
+      "frameWidth": 469,
+      "frameHeight": 512,
+      "frameCount": 18,
+      "sheet": "mcmore/sheet.png"
+    },
+    "node": {
+      "source": "profnode.png",
+      "cols": 8,
+      "rows": 4,
+      "frameWidth": 352,
+      "frameHeight": 384,
+      "frameCount": 32,
+      "sheet": "node/sheet.png"
+    },
+    "rune-keeper": {
+      "source": "p01-npc.png",
+      "cols": 4,
+      "rows": 2,
+      "frameWidth": 704,
+      "frameHeight": 768,
+      "frameCount": 8,
+      "sheet": "rune-keeper/sheet.png"
+    },
+    "console-keeper": {
+      "source": "p02-npc.png",
+      "cols": 4,
+      "rows": 2,
+      "frameWidth": 704,
+      "frameHeight": 768,
+      "frameCount": 8,
+      "sheet": "console-keeper/sheet.png"
+    },
+    "gates": {
+      "source": "gates.png",
+      "cols": 4,
+      "rows": 2,
+      "frameWidth": 704,
+      "frameHeight": 768,
+      "frameCount": 8,
+      "sheet": "gates/sheet.png"
+    },
+    "p01-tiles": {
+      "source": "p01tiles.png",
+      "cols": 4,
+      "rows": 3,
+      "frameWidth": 704,
+      "frameHeight": 512,
+      "frameCount": 12,
+      "sheet": "p01-tiles/sheet.png"
+    },
+    "atmosphere": {
+      "source": "atmosphere.png",
+      "cols": 9,
+      "rows": 4,
+      "frameWidth": 312,
+      "frameHeight": 384,
+      "frameCount": 36,
+      "sheet": "atmosphere/sheet.png"
+    }
+  },
+  "composite": {
+    "moretiles": {
+      "source": "moretiles.png",
+      "frames": [
+        {
+          "name": "bridge_straight_h",
+          "path": "moretiles/bridge_straight_h.png"
+        },
+        {
+          "name": "bridge_straight_v",
+          "path": "moretiles/bridge_straight_v.png"
+        },
+        {
+          "name": "bridge_corner_ne",
+          "path": "moretiles/bridge_corner_ne.png"
+        },
+        {
+          "name": "bridge_corner_nw",
+          "path": "moretiles/bridge_corner_nw.png"
+        },
+        {
+          "name": "bridge_tee",
+          "path": "moretiles/bridge_tee.png"
+        },
+        {
+          "name": "arena_hub",
+          "path": "moretiles/arena_hub.png"
+        },
+        {
+          "name": "crystal_small",
+          "path": "moretiles/crystal_small.png"
+        },
+        {
+          "name": "crystal_large",
+          "path": "moretiles/crystal_large.png"
+        }
+      ]
+    },
+    "portal": {
+      "source": "portal.png",
+      "frames": [
+        {
+          "name": "locked",
+          "path": "portal/locked.png"
+        },
+        {
+          "name": "active_0",
+          "path": "portal/active_0.png"
+        },
+        {
+          "name": "swirl_0",
+          "path": "portal/swirl_0.png"
+        },
+        {
+          "name": "swirl_1",
+          "path": "portal/swirl_1.png"
+        },
+        {
+          "name": "swirl_2",
+          "path": "portal/swirl_2.png"
+        },
+        {
+          "name": "swirl_3",
+          "path": "portal/swirl_3.png"
+        }
+      ]
+    },
+    "p02-tiles": {
+      "source": "p02-tiles.png",
+      "frames": [
+        {
+          "name": "shard_red_0",
+          "path": "p02-tiles/shard_red_0.png"
+        },
+        {
+          "name": "shard_red_1",
+          "path": "p02-tiles/shard_red_1.png"
+        },
+        {
+          "name": "shard_red_2",
+          "path": "p02-tiles/shard_red_2.png"
+        },
+        {
+          "name": "shard_red_3",
+          "path": "p02-tiles/shard_red_3.png"
+        },
+        {
+          "name": "shard_blue_0",
+          "path": "p02-tiles/shard_blue_0.png"
+        },
+        {
+          "name": "shard_blue_1",
+          "path": "p02-tiles/shard_blue_1.png"
+        },
+        {
+          "name": "shard_blue_2",
+          "path": "p02-tiles/shard_blue_2.png"
+        },
+        {
+          "name": "shard_blue_3",
+          "path": "p02-tiles/shard_blue_3.png"
+        },
+        {
+          "name": "shard_green_0",
+          "path": "p02-tiles/shard_green_0.png"
+        },
+        {
+          "name": "shard_green_1",
+          "path": "p02-tiles/shard_green_1.png"
+        },
+        {
+          "name": "shard_green_2",
+          "path": "p02-tiles/shard_green_2.png"
+        },
+        {
+          "name": "shard_green_3",
+          "path": "p02-tiles/shard_green_3.png"
+        },
+        {
+          "name": "console_red",
+          "path": "p02-tiles/console_red.png"
+        },
+        {
+          "name": "console_blue",
+          "path": "p02-tiles/console_blue.png"
+        },
+        {
+          "name": "console_green",
+          "path": "p02-tiles/console_green.png"
+        },
+        {
+          "name": "console_red_active",
+          "path": "p02-tiles/console_red_active.png"
+        },
+        {
+          "name": "console_blue_active",
+          "path": "p02-tiles/console_blue_active.png"
+        },
+        {
+          "name": "console_green_active",
+          "path": "p02-tiles/console_green_active.png"
+        }
+      ]
+    },
+    "prologue-boss": {
+      "source": "prologue-boss.png",
+      "frames": [
+        {
+          "name": "phase1_whole",
+          "path": "prologue-boss/phase1_whole.png"
+        },
+        {
+          "name": "phase2_shard_0",
+          "path": "prologue-boss/phase2_shard_0.png"
+        },
+        {
+          "name": "phase2_shard_1",
+          "path": "prologue-boss/phase2_shard_1.png"
+        },
+        {
+          "name": "phase2_shard_2",
+          "path": "prologue-boss/phase2_shard_2.png"
+        },
+        {
+          "name": "phase2_shard_3",
+          "path": "prologue-boss/phase2_shard_3.png"
+        },
+        {
+          "name": "phase2_shard_4",
+          "path": "prologue-boss/phase2_shard_4.png"
+        },
+        {
+          "name": "phase2_shard_5",
+          "path": "prologue-boss/phase2_shard_5.png"
+        },
+        {
+          "name": "phase3_frame_0",
+          "path": "prologue-boss/phase3_frame_0.png"
+        },
+        {
+          "name": "phase3_frame_1",
+          "path": "prologue-boss/phase3_frame_1.png"
+        },
+        {
+          "name": "phase3_frame_2",
+          "path": "prologue-boss/phase3_frame_2.png"
+        },
+        {
+          "name": "phase3_frame_3",
+          "path": "prologue-boss/phase3_frame_3.png"
+        }
+      ]
+    },
+    "ui": {
+      "source": "ui.png",
+      "frames": [
+        {
+          "name": "dialogue_box",
+          "path": "ui/dialogue_box.png"
+        },
+        {
+          "name": "portrait_inactive",
+          "path": "ui/portrait_inactive.png"
+        },
+        {
+          "name": "portrait_active",
+          "path": "ui/portrait_active.png"
+        },
+        {
+          "name": "prompt",
+          "path": "ui/prompt.png"
+        }
+      ]
+    }
+  }
+}
