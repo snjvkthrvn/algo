@@ -32,6 +32,15 @@ nul
 # Cursor IDE
 .cursor/
 
+# Claude Code / agent (local)
+.claude/
+
+# Agent planning / superpowers specs (local)
+docs/superpowers/
+
+# Playwright HTML report output
+playwright-report/
+
 # Local tool state
 .superpowers/
 .remember/
