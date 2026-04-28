@@ -28,6 +28,7 @@ import { audioManager } from '../../core/AudioManager';
 import { gameState } from '../../core/GameStateManager';
 import { eventBus, GameEvents } from '../../core/EventBus';
 import { BitMood } from '../../data/types';
+import { GLITCH_DIALOGUE, GLITCH_EXIT_LINES } from '../../data/dialogue/glitch_dialogue';
 import { PROLOGUE_NPCS } from '../../data/npcs/prologue_npcs';
 import { PROLOGUE_CONFIG, PROLOGUE_ROUTE_LANDMARKS } from '../../data/regions/prologue';
 import {
@@ -813,12 +814,24 @@ export class PrologueScene extends Phaser.Scene {
     if (this.storyBeatActive) return;
     this.storyBeatActive = true;
     this.player.freeze();
+
+    const dialogueLines = GLITCH_DIALOGUE[encounterNumber].map((l) => ({
+      speaker: 'Glitch',
+      text: l.text,
+      speakerColor: '#8b5cf6',
+    }));
+    const exitLine = GLITCH_EXIT_LINES[encounterNumber % GLITCH_EXIT_LINES.length];
+    const lines = [
+      ...dialogueLines,
+      { speaker: 'Glitch', text: exitLine, speakerColor: '#8b5cf6' },
+    ];
+
     const pos = this.player.getPosition();
     const spawn = this.pickGlitchSpawnPosition(pos);
-    this.glitch.spawnIn(spawn.x, spawn.y, () => {
-      const freezeMs = encounterNumber === 1 ? 8000 : 9000;
-      this.time.delayedCall(freezeMs, () => {
-        this.glitch.exit(() => {
+
+    this.time.delayedCall(300, () => {
+      this.glitch.spawnIn(spawn.x, spawn.y, () => {
+        this.playCinematicSequence(lines, () => {
           if (encounterNumber === 1) {
             gameState.setFlag('glitch_encounter_1_pending', false);
             gameState.setFlag('glitch_encounter_1_done', true);
@@ -827,9 +840,11 @@ export class PrologueScene extends Phaser.Scene {
             gameState.setFlag('glitch_encounter_2_pending', false);
             gameState.setFlag('glitch_encounter_2_done', true);
           }
-          this.storyBeatActive = false;
-          this.player.unfreeze();
-          this.handlePendingPrologueBeat();
+          this.glitch.exit(() => {
+            this.storyBeatActive = false;
+            this.player.unfreeze();
+            this.handlePendingPrologueBeat();
+          });
         });
       });
     });
