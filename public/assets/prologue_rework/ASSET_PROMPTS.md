@@ -243,6 +243,18 @@ Composition/framing: transparent background, three consoles grouped but separate
 Color palette: #06b6d4 cyan, #8b5cf6 violet, #f97316 orange, #fbbf24 core
 Constraints: transparent background, no text, no watermark, no checkerboard background
 
+## ui/puzzle_chamber_frame.png
+
+Use case: ui-mockup
+Asset type: project-bound raster UI backdrop for a Phaser browser game puzzle scene
+Primary request: full-screen no-text puzzle interface backdrop for the Algorithmia prologue region, Chamber of Flow
+Scene/backdrop: cosmic crystalline logic chamber UI, original monster-catching RPG readability with no franchise IP
+Subject: dark navy full-screen puzzle panel with a large empty central playfield, thin cyan-gold crystalline borders, subtle rune circuitry, small blank button frames in the top-left and top-right corners, and a calm bottom hint/status strip area left empty for live game text
+Style/medium: original pixel-art game UI asset rendered as a high-resolution raster image
+Composition/framing: landscape 16:9, designed to sit behind live Phaser text and puzzle pieces; center remains uncluttered and darker; decorative detail stays around edges
+Color palette: #0a0a1a void black, #1a1a2e deep chamber navy, #06b6d4 cyan logic glow, #8b5cf6 violet crystal shadow, #fbbf24 small gold highlights, #f97316 tiny warm accents
+Constraints: no letters, no numbers, no words, no logos, no watermark, no franchise characters, no checkerboard; enough empty central space for hex tiles, consoles, and boss arena
+
 ## ui/dialogue_box.png
 
 Use case: stylized-concept

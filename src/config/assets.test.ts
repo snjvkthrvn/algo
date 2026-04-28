@@ -35,6 +35,7 @@ describe('prologue rework asset manifest', () => {
       ARRAY_PORTAL_ACTIVE: 'prologue-rework-array-portal-active',
       RUNE_TILES: 'prologue-rework-rune-tiles',
       FLOW_CONSOLES: 'prologue-rework-flow-consoles',
+      PUZZLE_CHAMBER_FRAME: 'prologue-rework-puzzle-chamber-frame',
       DIALOGUE_BOX: 'prologue-rework-dialogue-box',
       PROMPT: 'prologue-rework-prompt',
     });

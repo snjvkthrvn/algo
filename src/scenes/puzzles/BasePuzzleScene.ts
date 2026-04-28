@@ -5,6 +5,7 @@
  */
 
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
+import { PROLOGUE_REWORK_KEYS } from '../../config/assets';
 import { adjustBrightness, colorToHex } from '../../utils/colors';
 import { createRetroButton, updateButtonText, disableButton } from '../../ui/RetroButton';
 import { showStarRating } from '../../ui/StarRating';
@@ -69,8 +70,16 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   protected createPuzzleUI(): void {
     const { width, height } = this.cameras.main;
 
-    // Dark overlay
-    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 0.95).setOrigin(0, 0);
+    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0, 0).setDepth(-30);
+
+    if (this.textures.exists(PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME)) {
+      this.add
+        .image(width / 2, height / 2, PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME)
+        .setDisplaySize(width, height)
+        .setDepth(-29);
+    }
+
+    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 0.18).setOrigin(0, 0).setDepth(-28);
 
     this.uiContainer = this.add.container(0, 0);
 
@@ -91,16 +100,16 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.puzzleFrame.fillStyle(0x000000, 0.5);
     this.puzzleFrame.fillRoundedRect(padding + 4, padding + 4, frameWidth, frameHeight, 8);
 
-    // Background
-    this.puzzleFrame.fillStyle(COLORS.FRAME_BG, 1);
+    // Translucent playfield over the imagegen Chamber backdrop.
+    this.puzzleFrame.fillStyle(COLORS.FRAME_BG, 0.58);
     this.puzzleFrame.fillRoundedRect(padding, padding, frameWidth, frameHeight, 8);
 
     // Outer border
-    this.puzzleFrame.lineStyle(4, COLORS.FRAME_BORDER_DARK, 1);
+    this.puzzleFrame.lineStyle(4, COLORS.FRAME_BORDER_DARK, 0.95);
     this.puzzleFrame.strokeRoundedRect(padding, padding, frameWidth, frameHeight, 8);
 
     // Inner border
-    this.puzzleFrame.lineStyle(2, COLORS.FRAME_BORDER_LIGHT, 1);
+    this.puzzleFrame.lineStyle(2, COLORS.FRAME_BORDER_LIGHT, 0.78);
     this.puzzleFrame.strokeRoundedRect(padding + 6, padding + 6, frameWidth - 12, frameHeight - 12, 6);
 
     // Decorative line

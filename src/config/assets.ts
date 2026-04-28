@@ -38,6 +38,7 @@ export const PROLOGUE_REWORK_KEYS = {
   ARRAY_PORTAL_ACTIVE: 'prologue-rework-array-portal-active',
   RUNE_TILES: 'prologue-rework-rune-tiles',
   FLOW_CONSOLES: 'prologue-rework-flow-consoles',
+  PUZZLE_CHAMBER_FRAME: 'prologue-rework-puzzle-chamber-frame',
   DIALOGUE_BOX: 'prologue-rework-dialogue-box',
   PROMPT: 'prologue-rework-prompt',
 } as const;
@@ -66,6 +67,7 @@ export const PROLOGUE_REWORK_IMAGE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_REWORK_KEYS.ARRAY_PORTAL_ACTIVE, path: `${REWORK_BASE}/objects/array_portal_active.png` },
   { key: PROLOGUE_REWORK_KEYS.RUNE_TILES, path: `${REWORK_BASE}/objects/rune_tiles.png` },
   { key: PROLOGUE_REWORK_KEYS.FLOW_CONSOLES, path: `${REWORK_BASE}/objects/flow_consoles.png` },
+  { key: PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME, path: `${REWORK_BASE}/ui/puzzle_chamber_frame.png` },
   { key: PROLOGUE_REWORK_KEYS.DIALOGUE_BOX, path: `${REWORK_BASE}/ui/dialogue_box.png` },
   { key: PROLOGUE_REWORK_KEYS.PROMPT, path: `${REWORK_BASE}/ui/prompt.png` },
 ];
