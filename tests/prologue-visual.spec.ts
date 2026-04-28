@@ -39,6 +39,7 @@ import { fileURLToPath } from 'url';
 type PhaserGame = {
   scene: {
     isActive(key: string): boolean;
+    getScene(key: string): unknown;
     start(key: string, data?: Record<string, unknown>): void;
     stop(key: string): void;
     scenes: Array<{ sys: { settings: { key: string }; isActive(): boolean } }>;
@@ -238,5 +239,18 @@ test.describe('Prologue region – visual audit', () => {
   test('08 – Array Plains – Continue from save', async ({ page }) => {
     await goToArrayPlainsViaContinue(page);
     await snap(page, '08-array-plains-continue.png');
+
+    const pos = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('ArrayPlainsScene') as Record<string, unknown> | null;
+      const player = scene?.['player'] as { getPosition?: () => { x: number; y: number } } | null;
+      return player?.getPosition?.() ?? null;
+    });
+    expect(pos).not.toBeNull();
+    // Allow ±32 px for grid-snap rounding.
+    expect(pos!.x).toBeGreaterThanOrEqual(368);
+    expect(pos!.x).toBeLessThanOrEqual(432);
+    expect(pos!.y).toBeGreaterThanOrEqual(416);
+    expect(pos!.y).toBeLessThanOrEqual(480);
   });
 });
