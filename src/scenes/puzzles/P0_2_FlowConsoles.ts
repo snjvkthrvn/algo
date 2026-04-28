@@ -84,9 +84,6 @@ export class P0_2_FlowConsoles extends BasePuzzleScene {
     this.bitHint = new BitHint(this, width / 2, height / 2 - 60);
 
     // Interaction
-    this.input.keyboard?.on('keydown-E', () => this.handlePickupPlace());
-    this.input.keyboard?.on('keydown-ENTER', () => this.handlePickupPlace());
-    this.input.keyboard?.on('keydown-SPACE', () => this.handlePickupPlace());
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       const commandIndex = numberKeyToIndex(event.key, this.shards.length);
       if (commandIndex !== null) this.handleNumberCommand(commandIndex);
@@ -137,7 +134,15 @@ export class P0_2_FlowConsoles extends BasePuzzleScene {
       }).setOrigin(0.5);
       container.add(label);
 
-      this.consoles.push({ def, container, x, y, filled: false });
+      const consoleSlot: ConsoleSlot = { def, container, x, y, filled: false };
+      this.consoles.push(consoleSlot);
+
+      base.setInteractive({ useHandCursor: true });
+      base.on('pointerdown', () => {
+        if (this.heldShard && !consoleSlot.filled) {
+          this.tryPlaceShard(this.heldShard, consoleSlot);
+        }
+      });
     }
   }
 
@@ -269,31 +274,7 @@ export class P0_2_FlowConsoles extends BasePuzzleScene {
     this.bitHint.moveTo(shard.container.x, shard.container.y - 50);
 
     // Visual indicator
-    this.showMessage('Shard picked up! Click a console to place.', COLORS.CYAN_GLOW);
-  }
-
-  private handlePickupPlace(): void {
-    if (this.heldShard) {
-      // Try to place in nearest console
-      let nearestConsole: ConsoleSlot | null = null;
-      let nearestDist = Infinity;
-
-      for (const console of this.consoles) {
-        if (console.filled) continue;
-        const dist = Math.sqrt(
-          (this.heldShard.container.x - console.x) ** 2 +
-          (this.heldShard.container.y - console.y) ** 2
-        );
-        if (dist < nearestDist) {
-          nearestDist = dist;
-          nearestConsole = console;
-        }
-      }
-
-      if (nearestConsole) {
-        this.tryPlaceShard(this.heldShard, nearestConsole);
-      }
-    }
+    this.showMessage('Shard picked up! Click console or press 1-3 to place.', COLORS.CYAN_GLOW);
   }
 
   private handleNumberCommand(index: number): void {
@@ -434,6 +415,8 @@ export class P0_2_FlowConsoles extends BasePuzzleScene {
   }
 
   private puzzleComplete(): void {
+    this.hintText?.destroy();
+    this.hintText = null;
     this.bitHint.celebrate();
 
     let stars = 1;
@@ -505,5 +488,13 @@ export class P0_2_FlowConsoles extends BasePuzzleScene {
 
   protected getConceptName(): string {
     return 'Key-Value Mapping';
+  }
+
+  destroy(): void {
+    for (const line of this.flowLines) {
+      if (line.active) line.destroy();
+    }
+    this.flowLines = [];
+    this.bitHint?.destroy();
   }
 }
