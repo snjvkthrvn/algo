@@ -54,6 +54,12 @@ export const SCENE_KEYS = {
   CODEX: 'CodexScene',
 } as const;
 
+/** Maps persisted `player.region` to Phaser scene key (Continue / routing). */
+export const SCENE_BY_REGION: Record<string, string> = {
+  [REGIONS.PROLOGUE]: SCENE_KEYS.PROLOGUE,
+  [REGIONS.ARRAY_PLAINS]: SCENE_KEYS.ARRAY_PLAINS,
+};
+
 export const FONTS = {
   RETRO: '"Press Start 2P", monospace',
   MONO: 'monospace',

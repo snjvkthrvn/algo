@@ -13,6 +13,7 @@ import {
   ARRAY_PLAINS_WORLD_HEIGHT,
   ARRAY_PLAINS_WORLD_WIDTH,
   isArrayPlainsStepWalkable,
+  isPointOnArrayPlainsRoute,
   type ArrayPlainsCollisionBlocker,
 } from '../data/regions/arrayPlains';
 import { HUDManager } from '../systems/HUDManager';
@@ -33,20 +34,35 @@ export class ArrayPlainsScene extends Phaser.Scene {
     super({ key: SCENE_KEYS.ARRAY_PLAINS });
   }
 
+  init(data: { spawnX?: number; spawnY?: number }): void {
+    if (data.spawnX !== undefined && data.spawnY !== undefined) {
+      gameState.setPlayerPosition(data.spawnX, data.spawnY);
+    }
+  }
+
   create(): void {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
     audioManager.setScene(this);
+
+    let px = gameState.getState().player.x;
+    let py = gameState.getState().player.y;
+    if (!isPointOnArrayPlainsRoute({ x: px, y: py }, 10)) {
+      px = ARRAY_PLAINS_CONFIG.spawnPoint.x;
+      py = ARRAY_PLAINS_CONFIG.spawnPoint.y;
+      gameState.setPlayerPosition(px, py);
+    }
+    gameState.setPlayerLocation(REGIONS.ARRAY_PLAINS, px, py);
+
     audioManager.playMusic(ARRAY_PLAINS_CONFIG.backgroundMusic);
-    gameState.setPlayerRegion(REGIONS.ARRAY_PLAINS);
 
     this.physics.world.setBounds(0, 0, ARRAY_PLAINS_WORLD_WIDTH, ARRAY_PLAINS_WORLD_HEIGHT);
     this.renderField();
     this.renderRoute();
 
-    this.player = new Player(this, ARRAY_PLAINS_CONFIG.spawnPoint.x, ARRAY_PLAINS_CONFIG.spawnPoint.y, {
+    this.player = new Player(this, px, py, {
       canMoveTo: (point) => this.isPlayerStepWalkable(point),
     });
-    this.bit = new BitCompanion(this, ARRAY_PLAINS_CONFIG.spawnPoint.x, ARRAY_PLAINS_CONFIG.spawnPoint.y);
+    this.bit = new BitCompanion(this, px, py);
 
     this.interactionSystem = new InteractionSystem(this, this.player);
     this.createInteractables();

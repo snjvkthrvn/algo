@@ -24,8 +24,8 @@ export class Player {
   state: PlayerState = PlayerState.IDLE;
   lastSafePosition: { x: number; y: number };
   private scene: Phaser.Scene;
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
+  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
+  private wasd?: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private facingDirection: FacingDirection = 'down';
   private movementTween: Phaser.Tweens.Tween | null = null;
   private canMoveTo: (position: { x: number; y: number }) => boolean;
@@ -216,6 +216,7 @@ export class Player {
   }
 
   private resolveMoveDirection(): FacingDirection | null {
+    if (!this.cursors || !this.wasd) return null;
     const candidates: Array<{ direction: FacingDirection; time: number | null }> = [
       { direction: 'left', time: this.getLatestDownKeyTime([this.cursors.left, this.wasd.A]) },
       { direction: 'right', time: this.getLatestDownKeyTime([this.cursors.right, this.wasd.D]) },

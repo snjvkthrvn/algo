@@ -15,19 +15,37 @@ interface InteractableEntry {
 }
 
 export class InteractionSystem {
+  private scene: Phaser.Scene;
   private player: Player;
   private interactables: InteractableEntry[] = [];
   private prompt: InteractionPrompt;
   private currentTarget: InteractableEntry | null = null;
   private interactionCallback: ((target: InteractableEntry) => void) | null = null;
 
+  private readonly onInteractKey = () => this.tryInteract();
+  private keyboardAttached = false;
+
   constructor(scene: Phaser.Scene, player: Player) {
+    this.scene = scene;
     this.player = player;
     this.prompt = new InteractionPrompt(scene);
 
-    // Listen for interaction key
-    scene.input.keyboard?.on('keydown-SPACE', () => this.tryInteract());
-    scene.input.keyboard?.on('keydown-ENTER', () => this.tryInteract());
+    const kbd = scene.input.keyboard;
+    if (kbd) {
+      kbd.on('keydown-SPACE', this.onInteractKey);
+      kbd.on('keydown-ENTER', this.onInteractKey);
+      this.keyboardAttached = true;
+    }
+
+    scene.events?.once(Phaser.Scenes.Events.SHUTDOWN, () => this.detachKeyboard());
+  }
+
+  private detachKeyboard(): void {
+    if (!this.keyboardAttached) return;
+    const kbd = this.scene.input.keyboard;
+    kbd?.off('keydown-SPACE', this.onInteractKey);
+    kbd?.off('keydown-ENTER', this.onInteractKey);
+    this.keyboardAttached = false;
   }
 
   addNPC(npc: NPC): void {
@@ -107,6 +125,7 @@ export class InteractionSystem {
   }
 
   destroy(): void {
+    this.detachKeyboard();
     this.prompt.destroy();
   }
 }

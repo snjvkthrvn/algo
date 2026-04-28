@@ -29,10 +29,13 @@ export class InteractableObject {
   private scene: Phaser.Scene;
   private glowGraphics: Phaser.GameObjects.Graphics;
   private idleTween: Phaser.Tweens.Tween | null = null;
+  /** Current visual state (unlocked / locked / …), kept in sync with setVisualState / setLocked. */
+  private displayState: string;
 
   constructor(scene: Phaser.Scene, config: InteractableConfig) {
     this.scene = scene;
     this.config = config;
+    this.displayState = config.initialState ?? (config.locked ? 'locked' : 'unlocked');
 
     this.sprite = this.createVisual(config);
     this.refreshIdleMotion();
@@ -166,6 +169,10 @@ export class InteractableObject {
     return -42;
   }
 
+  setPrompt(prompt: string): void {
+    this.config.prompt = prompt;
+  }
+
   setHighlighted(highlighted: boolean): void {
     this.scene.tweens.add({
       targets: this.glowGraphics,
@@ -176,6 +183,7 @@ export class InteractableObject {
 
   setLocked(locked: boolean): void {
     this.config.locked = locked;
+    this.displayState = locked ? 'locked' : 'unlocked';
     if (this.config.frameByState || this.config.imageByState) {
       this.setVisualState(locked ? 'locked' : 'unlocked');
       return;
@@ -190,6 +198,7 @@ export class InteractableObject {
   }
 
   setVisualState(state: string): void {
+    this.displayState = state;
     const frame = this.config.frameByState?.[state];
     if (frame !== undefined) {
       (this.sprite as Phaser.GameObjects.Sprite).setFrame(frame);
@@ -216,8 +225,7 @@ export class InteractableObject {
     this.idleTween?.stop();
     this.idleTween = null;
 
-    const state = this.config.initialState ?? (this.config.locked ? 'locked' : 'unlocked');
-    const isUnlocked = state === 'unlocked' || this.config.locked === false;
+    const isUnlocked = this.displayState === 'unlocked';
     if (!isUnlocked || this.prefersReducedMotion()) return;
 
     const baseScale = this.config.imageScale ?? this.config.spriteScale ?? 1;

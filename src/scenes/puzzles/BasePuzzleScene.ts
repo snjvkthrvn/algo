@@ -33,6 +33,10 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   protected maxHints: number = 3;
   protected returnScene: string = SCENE_KEYS.PROLOGUE;
 
+  private readonly onPuzzleEsc = () => this.exitPuzzle();
+  private readonly onPuzzleH = () => this.showHint();
+  private readonly onPuzzleR = () => this.restartPuzzle();
+
   constructor(config: { key: string }) {
     super(config);
   }
@@ -165,9 +169,15 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   protected setupKeyboardShortcuts(): void {
-    this.input.keyboard?.on('keydown-ESC', () => this.exitPuzzle());
-    this.input.keyboard?.on('keydown-H', () => this.showHint());
-    this.input.keyboard?.on('keydown-R', () => this.restartPuzzle());
+    const kbd = this.input.keyboard;
+    kbd?.on('keydown-ESC', this.onPuzzleEsc);
+    kbd?.on('keydown-H', this.onPuzzleH);
+    kbd?.on('keydown-R', this.onPuzzleR);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      kbd?.off('keydown-ESC', this.onPuzzleEsc);
+      kbd?.off('keydown-H', this.onPuzzleH);
+      kbd?.off('keydown-R', this.onPuzzleR);
+    });
   }
 
   protected showHint(): void {

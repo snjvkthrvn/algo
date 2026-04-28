@@ -76,7 +76,6 @@ const indexMarker = (id: string, x: number, y: number): Interactable => ({
   id,
   type: 'sign',
   position: { x, y },
-  spriteKey: 'array-marker',
   interaction: {
     prompt: '[SPACE] Inspect',
     action: 'inspect',
@@ -99,7 +98,8 @@ export const ARRAY_PLAINS_CONFIG: RegionConfig = {
   unlockRequirements: {
     regionsCompleted: [REGIONS.PROLOGUE],
   },
-  backgroundMusic: 'array-plains-bgm',
+  // Reuses prologue BGM until a dedicated Array Plains track is shipped (see AUDIO_ASSETS).
+  backgroundMusic: 'prologue-bgm',
   spawnPoint: { x: 192, y: 448 },
   exitPoints: [
     {

@@ -3,7 +3,7 @@
  */
 
 import Phaser from 'phaser';
-import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
+import { COLORS, FONTS, SCENE_BY_REGION, SCENE_KEYS } from '../config/constants';
 import { saveLoadManager } from '../core/SaveLoadManager';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
@@ -23,6 +23,13 @@ export class MenuScene extends Phaser.Scene {
   private menuTexts: Phaser.GameObjects.Text[] = [];
   private selectedMenuIndex = 0;
   private closeSettingsModal: (() => void) | null = null;
+
+  private readonly onMenuUp = () => this.moveSelectedMenuItem(-1);
+  private readonly onMenuW = () => this.moveSelectedMenuItem(-1);
+  private readonly onMenuDown = () => this.moveSelectedMenuItem(1);
+  private readonly onMenuS = () => this.moveSelectedMenuItem(1);
+  private readonly onMenuActivate = () => this.activateSelectedMenuItem();
+  private readonly onMenuEsc = () => this.closeSettingsModal?.();
 
   constructor() {
     super({ key: SCENE_KEYS.MENU });
@@ -107,6 +114,7 @@ export class MenuScene extends Phaser.Scene {
     });
     this.renderMenuSelection();
     this.registerKeyboardMenuControls();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.unregisterKeyboardMenuControls());
 
     // Version text — slightly higher contrast so it's legible without shouting.
     this.add.text(width - 24, height - 24, 'v1.0.0', {
@@ -149,13 +157,25 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private registerKeyboardMenuControls(): void {
-    this.input.keyboard?.on('keydown-UP', () => this.moveSelectedMenuItem(-1));
-    this.input.keyboard?.on('keydown-W', () => this.moveSelectedMenuItem(-1));
-    this.input.keyboard?.on('keydown-DOWN', () => this.moveSelectedMenuItem(1));
-    this.input.keyboard?.on('keydown-S', () => this.moveSelectedMenuItem(1));
-    this.input.keyboard?.on('keydown-ENTER', () => this.activateSelectedMenuItem());
-    this.input.keyboard?.on('keydown-SPACE', () => this.activateSelectedMenuItem());
-    this.input.keyboard?.on('keydown-ESC', () => this.closeSettingsModal?.());
+    const kbd = this.input.keyboard;
+    kbd?.on('keydown-UP', this.onMenuUp);
+    kbd?.on('keydown-W', this.onMenuW);
+    kbd?.on('keydown-DOWN', this.onMenuDown);
+    kbd?.on('keydown-S', this.onMenuS);
+    kbd?.on('keydown-ENTER', this.onMenuActivate);
+    kbd?.on('keydown-SPACE', this.onMenuActivate);
+    kbd?.on('keydown-ESC', this.onMenuEsc);
+  }
+
+  private unregisterKeyboardMenuControls(): void {
+    const kbd = this.input.keyboard;
+    kbd?.off('keydown-UP', this.onMenuUp);
+    kbd?.off('keydown-W', this.onMenuW);
+    kbd?.off('keydown-DOWN', this.onMenuDown);
+    kbd?.off('keydown-S', this.onMenuS);
+    kbd?.off('keydown-ENTER', this.onMenuActivate);
+    kbd?.off('keydown-SPACE', this.onMenuActivate);
+    kbd?.off('keydown-ESC', this.onMenuEsc);
   }
 
   private moveSelectedMenuItem(direction: -1 | 1): void {
@@ -200,8 +220,8 @@ export class MenuScene extends Phaser.Scene {
   private continueGame(): void {
     if (saveLoadManager.load()) {
       const state = gameState.getState();
-      // Determine which scene to load based on save state
-      TransitionManager.fade(this, SCENE_KEYS.PROLOGUE, {
+      const sceneKey = SCENE_BY_REGION[state.player.region] ?? SCENE_KEYS.PROLOGUE;
+      TransitionManager.fade(this, sceneKey, {
         spawnX: state.player.x,
         spawnY: state.player.y,
       });

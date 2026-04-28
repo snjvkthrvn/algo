@@ -311,7 +311,8 @@ export interface Interactable {
   id: string;
   type: 'door' | 'chest' | 'sign' | 'lever' | 'button' | 'portal';
   position: Position;
-  spriteKey: string;
+  /** Optional when the scene builds a procedural placeholder (e.g. Array Plains markers). */
+  spriteKey?: string;
   interaction: InteractionConfig;
 }
 

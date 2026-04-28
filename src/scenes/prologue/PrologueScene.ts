@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import {
   COLORS,
   FONTS,
+  REGIONS,
   SCENE_KEYS,
   VOID_RESPAWN_CHECK_INTERVAL,
   WORLD_HEIGHT,
@@ -180,6 +181,7 @@ export class PrologueScene extends Phaser.Scene {
       if (data.gateId === 'array_plains_gateway' && this.gateway) {
         this.gateway.setLocked(false);
         this.gateway.setVisualState('unlocked');
+        this.gateway.setPrompt('[SPACE] Enter Gateway');
         this.showGateOpenEffect(this.gateway);
       }
     });
@@ -218,7 +220,8 @@ export class PrologueScene extends Phaser.Scene {
 
     // === INTRO ===
     TransitionManager.fadeIn(this, 800);
-    gameState.setPlayerRegion('prologue');
+    const p = gameState.getState().player;
+    gameState.setPlayerLocation(REGIONS.PROLOGUE, p.x, p.y);
 
     const firstVisit = !gameState.getFlag('prologue_visited');
     const showRegionIntro = () => {
@@ -239,9 +242,6 @@ export class PrologueScene extends Phaser.Scene {
     } else {
       showRegionIntro();
     }
-
-    // === STORY BEAT HANDLING ===
-    this.handlePendingPrologueBeat();
   }
 
   update(): void {
@@ -837,12 +837,12 @@ export class PrologueScene extends Phaser.Scene {
     if (this.gateway) {
       this.gateway.setLocked(false);
       this.gateway.setVisualState('unlocked');
+      this.gateway.setPrompt('[SPACE] Enter Gateway');
       this.showGateOpenEffect(this.gateway);
     }
 
     this.playCinematicSequence(
       [
-        { speaker: 'System', text: '> Authentication: VALID' },
         { speaker: 'Professor Node', text: 'You did it. The Chamber of Flow is complete, and your Construct has grown from Spark to Byte.' },
         { speaker: 'Professor Node', text: 'The Array Plains gateway is open. The world is bigger now.' },
       ],

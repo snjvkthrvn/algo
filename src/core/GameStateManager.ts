@@ -49,6 +49,15 @@ class GameStateManagerClass {
     this.state.player.y = y;
   }
 
+  /** Atomically set region + position before emitting REGION_ENTER (avoids autosave with mismatched coords). */
+  setPlayerLocation(region: string, x: number, y: number): void {
+    this.state.player.region = region;
+    this.state.player.x = x;
+    this.state.player.y = y;
+    eventBus.emit(GameEvents.REGION_ENTER, { regionId: region });
+    eventBus.emit(GameEvents.STATE_CHANGED, { key: 'player', value: this.state.player });
+  }
+
   setPlayerRegion(region: string): void {
     this.state.player.region = region;
     eventBus.emit(GameEvents.REGION_ENTER, { regionId: region });

@@ -8,6 +8,7 @@
  * with scrollFactor 1 — so it stays on the main camera, dialogue 5000).
  *
  * Call once at the end of scene.create(), after every UI container is built.
+ * Safe to call again for the same scene: returns the existing UI camera.
  */
 
 import Phaser from 'phaser';
@@ -18,6 +19,11 @@ type ScrollFactorish = { scrollFactorX?: number };
 type Depthish = { depth?: number };
 
 export function setupUICamera(scene: Phaser.Scene): Phaser.Cameras.Scene2D.Camera {
+  const existing = scene.cameras.getCamera('ui');
+  if (existing) {
+    return existing;
+  }
+
   const main = scene.cameras.main;
   const ui = scene.cameras.add(0, 0, main.width, main.height, false, 'ui');
   ui.setZoom(1).setScroll(0, 0);
@@ -39,10 +45,14 @@ export function setupUICamera(scene: Phaser.Scene): Phaser.Cameras.Scene2D.Camer
 
   scene.children.list.forEach(split);
 
-  // depth/scrollFactor are typically set after construction (e.g. via chained
-  // .setDepth().setScrollFactor()), so reclassify on the next tick.
-  scene.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, (obj: Phaser.GameObjects.GameObject) => {
+  const addedHandler = (obj: Phaser.GameObjects.GameObject) => {
     scene.time.delayedCall(0, () => split(obj));
+  };
+
+  scene.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, addedHandler);
+
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, addedHandler);
   });
 
   return ui;

@@ -11,7 +11,7 @@ describe('ARRAY_PLAINS_CONFIG', () => {
     expect(ARRAY_PLAINS_CONFIG).toMatchObject({
       id: 'array_plains',
       displayName: 'Array Plains',
-      backgroundMusic: 'array-plains-bgm',
+      backgroundMusic: 'prologue-bgm',
       spawnPoint: { x: 192, y: 448 },
     });
 

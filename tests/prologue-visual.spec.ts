@@ -93,13 +93,33 @@ async function goToPrologue(page: Page) {
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await waitForScene(page, 'PrologueScene', 10_000);
+  // PrologueScene fade-in runs for 800 ms game-time; swirl + RAF throttle ~1.8×.
   await page.waitForTimeout(1_800);
-  return;
-  // PrologueScene fade-in runs for 800 ms game-time.
-  // Wait for the prologue to become active.  The swirl animation is ~1000 ms
-  // game-time; with ~1.8× RAF throttle that's ~1800 ms real time.
-  await waitForScene(page, 'PrologueScene', 10_000);
-  // TransitionManager.fadeIn runs for 800 ms game-time ≈ 1500 ms real time.
+}
+
+/** Seed a save in Array Plains and use Continue from the menu (tests SCENE_BY_REGION). */
+async function goToArrayPlainsViaContinue(page: Page) {
+  await page.evaluate(() => {
+    localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+      player: { x: 400, y: 448, region: 'array_plains' },
+      companion: { stage: 'spark', mood: 'neutral' },
+      rival: { encountered: false, encounterStage: 0 },
+      shardsCollected: [],
+      puzzleResults: {},
+      codexEntries: [],
+      npcStates: {},
+      flags: { opening_scene_done: true, prologue_visited: true },
+      settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+      saveVersion: 1,
+      playTime: 0,
+    }));
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForScene(page, 'MenuScene');
+  await page.waitForTimeout(1_000);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await waitForScene(page, 'ArrayPlainsScene', 10_000);
   await page.waitForTimeout(1_800);
 }
 
@@ -211,5 +231,12 @@ test.describe('Prologue region – visual audit', () => {
     await jumpToScene(page, 'P0_2_FlowConsoles', { returnScene: 'PrologueScene' });
     await page.waitForTimeout(500);
     await snap(page, '07-p0-2-layout.png');
+  });
+
+  // ── Array Plains ───────────────────────────────────────────────────────────
+
+  test('08 – Array Plains – Continue from save', async ({ page }) => {
+    await goToArrayPlainsViaContinue(page);
+    await snap(page, '08-array-plains-continue.png');
   });
 });

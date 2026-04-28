@@ -66,6 +66,10 @@ export class BootScene extends Phaser.Scene {
       loadingText.setText('Systems Online');
     });
 
+    this.load.on('loaderror', (file: Phaser.Loader.File) => {
+      console.warn('Failed to load asset:', file.key, file.url);
+    });
+
     // Load all registered assets
     for (const asset of SPRITE_ASSETS) {
       this.load.spritesheet(asset.key, asset.path, {

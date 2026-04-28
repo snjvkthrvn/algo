@@ -43,13 +43,21 @@ describe('GameStateManager', () => {
       expect(state.player.y).toBe(200);
     });
 
-    it('should update player region and emit event', () => {
-      const callback = vi.fn();
-      eventBus.on(GameEvents.REGION_ENTER, callback);
-      gameState.setPlayerRegion('array_plains');
+    it('should atomically set region + position and emit REGION_ENTER', () => {
+      const regionCb = vi.fn();
+      const stateCb = vi.fn();
+      eventBus.on(GameEvents.REGION_ENTER, regionCb);
+      eventBus.on(GameEvents.STATE_CHANGED, stateCb);
+      gameState.setPlayerLocation('array_plains', 500, 600);
 
-      expect(gameState.getState().player.region).toBe('array_plains');
-      expect(callback).toHaveBeenCalledWith({ regionId: 'array_plains' });
+      const s = gameState.getState();
+      expect(s.player.region).toBe('array_plains');
+      expect(s.player.x).toBe(500);
+      expect(s.player.y).toBe(600);
+      expect(regionCb).toHaveBeenCalledWith({ regionId: 'array_plains' });
+      expect(stateCb).toHaveBeenCalledWith(
+        expect.objectContaining({ key: 'player' }),
+      );
     });
   });
 
