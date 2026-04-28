@@ -115,3 +115,9 @@ describe('prologue route helpers', () => {
     expect(isNearPrologueRoute({ x: 2002, y: 31 })).toBe(false);
   });
 });
+
+describe('Array Plains return spawn', () => {
+  it('return point (1968, 395) is on the Prologue route', () => {
+    expect(isPointOnPrologueTileRoute({ x: 1968, y: 395 })).toBe(true);
+  });
+});

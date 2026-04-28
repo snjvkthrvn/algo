@@ -39,13 +39,20 @@ import { fileURLToPath } from 'url';
 type PhaserGame = {
   scene: {
     isActive(key: string): boolean;
+    getScene(key: string): unknown;
     start(key: string, data?: Record<string, unknown>): void;
     stop(key: string): void;
     scenes: Array<{ sys: { settings: { key: string }; isActive(): boolean } }>;
   };
 };
 
-type GameWindow = Window & { __PHASER_GAME__?: PhaserGame };
+type GameWindow = Window & {
+  __PHASER_GAME__?: PhaserGame;
+  __gameState__?: {
+    getFlag(flag: string): boolean;
+    getState(): { player: { x: number; y: number; region: string } };
+  };
+};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -58,6 +65,84 @@ async function waitForScene(page: Page, key: string, timeout = 15_000) {
     key,
     { timeout },
   );
+}
+
+/** Block until P0-1 enters PLAYER_TURN for any round. */
+async function waitForP01PlayerTurn(page: Page, timeout = 20_000) {
+  await page.waitForFunction(
+    () => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+      return scene?.['puzzleState'] === 'PLAYER_TURN';
+    },
+    { timeout },
+  );
+}
+
+/** Press a sequence of number keys with a small gap between each input. */
+async function pressSequence(page: Page, keys: string[], gapMs = 250) {
+  for (const key of keys) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(gapMs);
+  }
+}
+
+/** Stage a specific P0-1 round at player turn while keeping keyboard input real. */
+async function prepareP01Round(page: Page, roundIndex: number) {
+  await page.evaluate((round) => {
+    const game = (window as GameWindow).__PHASER_GAME__;
+    const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+    if (!scene) return;
+    const time = scene['time'] as { removeAllEvents?: () => void } | undefined;
+    time?.removeAllEvents?.();
+    scene['currentRound'] = round;
+    const startRound = scene['startRound'];
+    if (typeof startRound === 'function') {
+      (startRound as () => void).call(scene);
+    }
+    time?.removeAllEvents?.();
+    scene['playerInputIndex'] = 0;
+    scene['puzzleState'] = 'PLAYER_TURN';
+  }, roundIndex);
+
+  await waitForP01PlayerTurn(page, 5_000);
+}
+
+/** Advance all five Concept Bridge pages and wait for the Prologue return. */
+async function advanceConceptBridge(page: Page) {
+  for (let i = 0; i < 5; i++) {
+    await page.waitForTimeout(800);
+    await page.keyboard.press('Space');
+  }
+  await waitForScene(page, 'PrologueScene', 12_000);
+}
+
+/** Trigger onPuzzleComplete(3) on the active puzzle scene via JS injection. */
+async function completePuzzleViaInjection(page: Page, sceneKey: string) {
+  await page.evaluate((key) => {
+    const game = (window as GameWindow).__PHASER_GAME__;
+    const scene = game?.scene.getScene(key) as Record<string, unknown> | null;
+    const complete = scene?.['onPuzzleComplete'];
+    if (typeof complete === 'function') {
+      (complete as (stars: number) => void).call(scene, 3);
+    }
+  }, sceneKey);
+}
+
+async function getScenePlayerPosition(page: Page, sceneKey: string) {
+  return page.evaluate((key) => {
+    const game = (window as GameWindow).__PHASER_GAME__;
+    const scene = game?.scene.getScene(key) as Record<string, unknown> | null;
+    const player = scene?.['player'] as { getPosition?: () => { x: number; y: number } } | null;
+    return player?.getPosition?.() ?? null;
+  }, sceneKey);
+}
+
+async function walkStep(page: Page, key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown') {
+  await page.keyboard.down(key);
+  await page.waitForTimeout(220);
+  await page.keyboard.up(key);
+  await page.waitForTimeout(140);
 }
 
 /**
@@ -238,5 +323,228 @@ test.describe('Prologue region – visual audit', () => {
   test('08 – Array Plains – Continue from save', async ({ page }) => {
     await goToArrayPlainsViaContinue(page);
     await snap(page, '08-array-plains-continue.png');
+
+    const pos = await getScenePlayerPosition(page, 'ArrayPlainsScene');
+    expect(pos).not.toBeNull();
+    expect(pos!.x).toBeGreaterThanOrEqual(368);
+    expect(pos!.x).toBeLessThanOrEqual(432);
+    expect(pos!.y).toBeGreaterThanOrEqual(416);
+    expect(pos!.y).toBeLessThanOrEqual(480);
+  });
+
+  test('09 - Continue with unknown region falls back to Prologue', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 320, y: 400, region: 'unknown_future_region' },
+        companion: { stage: 'spark', mood: 'neutral' },
+        rival: { encountered: false, encounterStage: 0 },
+        shardsCollected: [],
+        puzzleResults: {},
+        codexEntries: [],
+        npcStates: {},
+        flags: { opening_scene_done: true },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }));
+    });
+
+    const warnings: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'warning') warnings.push(msg.text());
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+
+    await waitForScene(page, 'PrologueScene', 10_000);
+    expect(warnings.some((warning) => warning.includes('unknown_future_region'))).toBe(true);
+  });
+
+  test('10 - P0-1 Follow the Path - completes all 3 rounds', async ({ page }) => {
+    test.setTimeout(90_000);
+
+    await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
+
+    await prepareP01Round(page, 0);
+    await pressSequence(page, ['1', '2', '3']);
+
+    await prepareP01Round(page, 1);
+    await pressSequence(page, ['2', '4', '1', '5', '3']);
+
+    await prepareP01Round(page, 2);
+    await pressSequence(page, ['5', '1', '4', '2', '3', '6', '4']);
+
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+      const time = scene?.['time'] as { removeAllEvents?: () => void } | undefined;
+      time?.removeAllEvents?.();
+      const complete = scene?.['puzzleComplete'];
+      if (scene && typeof complete === 'function') {
+        (complete as () => void).call(scene);
+      }
+    });
+
+    await waitForScene(page, 'ConceptBridgeScene', 10_000);
+    await snap(page, '10-p0-1-complete.png');
+    await advanceConceptBridge(page);
+
+    const flagSet = await page.evaluate(() =>
+      !!(window as GameWindow).__gameState__?.getFlag('puzzle_p0_1_complete')
+    );
+    expect(flagSet).toBe(true);
+  });
+
+  test('11 - P0-2 Flow Consoles - completes all 3 shards', async ({ page }) => {
+    await jumpToScene(page, 'P0_2_FlowConsoles', { returnScene: 'PrologueScene' });
+    await page.waitForTimeout(1_000);
+
+    await page.keyboard.press('1');
+    await page.waitForTimeout(400);
+    await page.keyboard.press('1');
+    await page.waitForTimeout(600);
+
+    await page.keyboard.press('2');
+    await page.waitForTimeout(400);
+    await page.keyboard.press('2');
+    await page.waitForTimeout(600);
+
+    await page.keyboard.press('3');
+    await page.waitForTimeout(400);
+    await page.keyboard.press('3');
+
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_2_FlowConsoles') as Record<string, unknown> | null;
+      const time = scene?.['time'] as { removeAllEvents?: () => void } | undefined;
+      const complete = scene?.['puzzleComplete'];
+      if (scene?.['completedCount'] === 3 && typeof complete === 'function') {
+        time?.removeAllEvents?.();
+        (complete as () => void).call(scene);
+      }
+    });
+
+    await waitForScene(page, 'ConceptBridgeScene', 8_000);
+    await snap(page, '11-p0-2-complete.png');
+    await advanceConceptBridge(page);
+
+    const flagSet = await page.evaluate(() =>
+      !!(window as GameWindow).__gameState__?.getFlag('puzzle_p0_2_complete')
+    );
+    expect(flagSet).toBe(true);
+  });
+
+  test('12 - Boss Sentinel completes and Array Plains gateway unlocks', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 320, y: 400, region: 'prologue' },
+        companion: { stage: 'spark', mood: 'neutral' },
+        rival: { encountered: false, encounterStage: 0 },
+        shardsCollected: [],
+        puzzleResults: {
+          p0_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          p0_2: { stars: 3, time: 25, attempts: 0, hintsUsed: 0 },
+        },
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+          watcher_warning_done: true,
+          glitch_intro_done: true,
+          boss_gate_cutscene_done: true,
+          puzzle_p0_1_complete: true,
+          puzzle_p0_2_complete: true,
+          boss_gate_open: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }));
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await waitForScene(page, 'PrologueScene', 10_000);
+
+    await jumpToScene(page, 'Boss_Sentinel', { returnScene: 'PrologueScene' });
+    await page.waitForTimeout(1_000);
+    await completePuzzleViaInjection(page, 'Boss_Sentinel');
+
+    await waitForScene(page, 'PrologueScene', 10_000);
+    await page.waitForTimeout(2_000);
+    await snap(page, '12-gateway-unlocked.png');
+
+    const gatewayOpen = await page.evaluate(() =>
+      !!(window as GameWindow).__gameState__?.getFlag('gateway_open')
+    );
+    expect(gatewayOpen).toBe(true);
+  });
+
+  test('13 - Array Plains - walk route, inspect marker, return to Prologue', async ({ page }) => {
+    test.setTimeout(60_000);
+
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 560, y: 416, region: 'array_plains' },
+        companion: { stage: 'spark', mood: 'neutral' },
+        rival: { encountered: false, encounterStage: 0 },
+        shardsCollected: [],
+        puzzleResults: {},
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+          watcher_warning_done: true,
+          prologue_visited: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }));
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await waitForScene(page, 'ArrayPlainsScene', 10_000);
+    await page.waitForTimeout(1_800);
+
+    await walkStep(page, 'ArrowRight');
+    await walkStep(page, 'ArrowRight');
+
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(600);
+    await snap(page, '13-array-plains-marker-panel.png');
+
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(400);
+
+    for (let i = 0; i < 17; i++) {
+      await walkStep(page, 'ArrowLeft');
+    }
+
+    await page.keyboard.press('Space');
+
+    await waitForScene(page, 'PrologueScene', 12_000);
+    await page.waitForTimeout(1_500);
+    await snap(page, '13b-prologue-return.png');
+
+    const returnPos = await getScenePlayerPosition(page, 'PrologueScene');
+    expect(returnPos).not.toBeNull();
+    expect(returnPos!.x).toBeGreaterThanOrEqual(1904);
+    expect(returnPos!.x).toBeLessThanOrEqual(2032);
+    expect(returnPos!.y).toBeGreaterThanOrEqual(331);
+    expect(returnPos!.y).toBeLessThanOrEqual(459);
   });
 });
