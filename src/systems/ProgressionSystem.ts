@@ -17,13 +17,13 @@ class ProgressionSystemClass {
   private onPuzzleComplete(puzzleId: string): void {
     gameState.setFlag(`puzzle_${puzzleId}_complete`, true);
 
-    // Glitch appears after P0-1 — his first taunt
-    if (puzzleId === 'p0_1' && !gameState.getFlag('glitch_encounter_1_done')) {
-      gameState.setFlag('glitch_encounter_1_done', true);
-      // Small delay so the post-puzzle celebration plays first
-      setTimeout(() => {
-        eventBus.emit('progression:glitch-spawn', { encounterStage: 1 });
-      }, 2000);
+    // The overworld scene plays this beat after puzzle/bridge transitions.
+    if (
+      puzzleId === 'p0_1' &&
+      !gameState.getFlag('glitch_intro_done') &&
+      !gameState.getFlag('glitch_encounter_1_pending')
+    ) {
+      gameState.setFlag('glitch_encounter_1_pending', true);
     }
 
     this.checkGates();
@@ -43,18 +43,21 @@ class ProgressionSystemClass {
       gameState.setFlag('gateway_open', true);
       eventBus.emit('progression:gate-open', { gateId: 'array_plains_gateway' });
 
-      // Bit evolves: SPARK → BYTE after the prologue boss
       if (gameState.getBitStage() === BitStage.SPARK) {
         gameState.setBitStage(BitStage.BYTE);
         gameState.collectShard('prologue_logic_shard');
       }
 
-      // Glitch second encounter — grudging respect in Array Plains
-      if (!gameState.getFlag('glitch_encounter_2_done')) {
-        gameState.setFlag('glitch_encounter_2_done', true);
-        setTimeout(() => {
-          eventBus.emit('progression:glitch-spawn', { encounterStage: 2 });
-        }, 3000);
+      // The overworld scene owns the post-Sentinel return and Glitch beats.
+      if (!gameState.getFlag('boss_return_cutscene_done')) {
+        gameState.setFlag('boss_return_cutscene_pending', true);
+      }
+
+      if (
+        !gameState.getFlag('glitch_encounter_2_done') &&
+        !gameState.getFlag('glitch_encounter_2_pending')
+      ) {
+        gameState.setFlag('glitch_encounter_2_pending', true);
       }
     }
   }
@@ -76,5 +79,5 @@ class ProgressionSystemClass {
   }
 }
 
-/** Singleton — registers EventBus listeners once for the entire session. */
+/** Singleton: registers EventBus listeners once for the entire session. */
 export const progressionSystem = new ProgressionSystemClass();

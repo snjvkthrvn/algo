@@ -71,7 +71,6 @@ export class PrologueScene extends Phaser.Scene {
   private safePositionTimer!: Phaser.Time.TimerEvent;
   private onDialogueAction!: (...args: unknown[]) => void;
   private onGateOpen!: (...args: unknown[]) => void;
-  private onGlitchSpawn!: (...args: unknown[]) => void;
   private storyBeatActive = false;
 
   constructor() {
@@ -176,14 +175,6 @@ export class PrologueScene extends Phaser.Scene {
       }
     });
     eventBus.on('progression:gate-open', this.onGateOpen, this);
-
-    // Listen for Glitch encounter triggers from ProgressionSystem
-    this.onGlitchSpawn = (() => {
-      const pos = this.player.getPosition();
-      const spawn = this.pickGlitchSpawnPosition(pos);
-      this.glitch.triggerEncounter(spawn.x, spawn.y);
-    });
-    eventBus.on('progression:glitch-spawn', this.onGlitchSpawn, this);
 
     // === WATCHER SYSTEM ===
     this.scheduleWatcherFlyby(Phaser.Math.Between(25000, 45000));
@@ -824,27 +815,29 @@ export class PrologueScene extends Phaser.Scene {
     this.player.freeze();
     const pos = this.player.getPosition();
     const spawn = this.pickGlitchSpawnPosition(pos);
-    this.glitch.triggerEncounter(spawn.x, spawn.y);
-    const freezeMs = encounterNumber === 1 ? 8000 : 9000;
-    this.time.delayedCall(freezeMs, () => {
-      if (encounterNumber === 1) {
-        gameState.setFlag('glitch_encounter_1_pending', false);
-        gameState.setFlag('glitch_encounter_1_done', true);
-        gameState.setFlag('glitch_intro_done', true);
-      } else {
-        gameState.setFlag('glitch_encounter_2_pending', false);
-        gameState.setFlag('glitch_encounter_2_done', true);
-      }
-      this.storyBeatActive = false;
-      this.player.unfreeze();
-      this.handlePendingPrologueBeat();
+    this.glitch.spawnIn(spawn.x, spawn.y, () => {
+      const freezeMs = encounterNumber === 1 ? 8000 : 9000;
+      this.time.delayedCall(freezeMs, () => {
+        this.glitch.exit(() => {
+          if (encounterNumber === 1) {
+            gameState.setFlag('glitch_encounter_1_pending', false);
+            gameState.setFlag('glitch_encounter_1_done', true);
+            gameState.setFlag('glitch_intro_done', true);
+          } else {
+            gameState.setFlag('glitch_encounter_2_pending', false);
+            gameState.setFlag('glitch_encounter_2_done', true);
+          }
+          this.storyBeatActive = false;
+          this.player.unfreeze();
+          this.handlePendingPrologueBeat();
+        });
+      });
     });
   }
 
   shutdown(): void {
     eventBus.off('dialogue:action', this.onDialogueAction, this);
     eventBus.off('progression:gate-open', this.onGateOpen, this);
-    eventBus.off('progression:glitch-spawn', this.onGlitchSpawn, this);
     this.safePositionTimer?.destroy();
     this.moteEmitter?.destroy();
     this.dialogueSystem?.destroy();
