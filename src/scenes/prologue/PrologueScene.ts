@@ -12,7 +12,7 @@ import {
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from '../../config/constants';
-import { PROLOGUE_SHEET_KEYS } from '../../config/assets';
+import { PROLOGUE_REWORK_KEYS, PROLOGUE_SHEET_KEYS } from '../../config/assets';
 import { Player } from '../../entities/Player';
 import { BitCompanion } from '../../entities/BitCompanion';
 import { GlitchRival } from '../../entities/GlitchRival';
@@ -94,6 +94,10 @@ export class PrologueScene extends Phaser.Scene {
 
     // Set world bounds larger than camera for horizontal scrolling.
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.cameras.main.setBackgroundColor(COLORS.VOID_BLACK);
+    this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, COLORS.VOID_BLACK, 1)
+      .setOrigin(0)
+      .setDepth(-100);
 
     // === ATMOSPHERE ===
     this.createStarfield(WORLD_WIDTH, WORLD_HEIGHT);
@@ -311,7 +315,7 @@ export class PrologueScene extends Phaser.Scene {
 
     for (const object of [this.bossGate, this.gateway]) {
       if (!object) continue;
-      blockers.push({ ...object.getPosition(), radiusTiles: 1 });
+      blockers.push(object.getPosition());
     }
 
     return blockers;
@@ -379,12 +383,11 @@ export class PrologueScene extends Phaser.Scene {
       y: PROLOGUE_CONFIG.exitPoints[0].position.y,
       prompt: bossGateOpen ? '[SPACE] Enter' : 'Sealed',
       locked: !bossGateOpen,
-      spriteKey: PROLOGUE_SHEET_KEYS.OBJECTS,
-      frameByState: {
-        locked: 0,
-        unlocked: 2,
+      imageByState: {
+        locked: PROLOGUE_REWORK_KEYS.BOSS_GATE_LOCKED,
+        unlocked: PROLOGUE_REWORK_KEYS.BOSS_GATE_OPEN,
       },
-      spriteScale: 0.34,
+      imageScale: 0.13,
       initialState: bossGateOpen ? 'unlocked' : 'locked',
       onInteract: () => {
         if (progressionSystem.isBossGateOpen()) {
@@ -407,16 +410,15 @@ export class PrologueScene extends Phaser.Scene {
       y: PROLOGUE_CONFIG.exitPoints[1].position.y,
       prompt: gatewayOpen ? '[SPACE] Enter Gateway' : 'Sealed',
       locked: !gatewayOpen,
-      spriteKey: PROLOGUE_SHEET_KEYS.OBJECTS,
-      frameByState: {
-        locked: 4,
-        unlocked: 5,
+      imageByState: {
+        locked: PROLOGUE_REWORK_KEYS.ARRAY_PORTAL_LOCKED,
+        unlocked: PROLOGUE_REWORK_KEYS.ARRAY_PORTAL_ACTIVE,
       },
-      spriteScale: 0.34,
+      imageScale: 0.13,
       initialState: gatewayOpen ? 'unlocked' : 'locked',
       onInteract: () => {
         if (progressionSystem.isGatewayOpen()) {
-          this.showComingSoon();
+          TransitionManager.swirl(this, SCENE_KEYS.ARRAY_PLAINS);
         } else {
           this.showLockedMessage('Defeat the Sentinel to unlock the gateway.');
         }
@@ -586,40 +588,6 @@ export class PrologueScene extends Phaser.Scene {
     audioManager.playTone(440, 300, 'sine');
     this.time.delayedCall(200, () => audioManager.playTone(554, 300, 'sine'));
     this.time.delayedCall(400, () => audioManager.playTone(659, 400, 'sine'));
-  }
-
-  private showComingSoon(): void {
-    const { width, height } = this.cameras.main;
-
-    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.8)
-      .setOrigin(0).setScrollFactor(0).setDepth(8000);
-
-    const text = this.add.text(width / 2, height / 2 - 20, 'ARRAY PLAINS', {
-      fontSize: '24px',
-      fontFamily: '"Press Start 2P", monospace',
-      color: '#06b6d4',
-      stroke: '#000000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(8001);
-
-    const subtext = this.add.text(width / 2, height / 2 + 30, 'Coming Soon...', {
-      fontSize: '14px',
-      fontFamily: '"Press Start 2P", monospace',
-      color: '#9ca3af',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(8001);
-
-    const back = this.add.text(width / 2, height / 2 + 80, '[SPACE] Return', {
-      fontSize: '10px',
-      fontFamily: '"Press Start 2P", monospace',
-      color: '#fbbf24',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(8001);
-
-    this.input.keyboard?.once('keydown-SPACE', () => {
-      overlay.destroy();
-      text.destroy();
-      subtext.destroy();
-      back.destroy();
-    });
   }
 
   private playCinematicSequence(

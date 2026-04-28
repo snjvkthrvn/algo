@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   IMAGE_ASSETS,
+  ARRAY_PLAINS_IMAGE_ASSETS,
+  ARRAY_PLAINS_KEYS,
   PROLOGUE_SHEET_KEYS,
   PROLOGUE_SHEET_SPRITE_ASSETS,
   PROLOGUE_REWORK_IMAGE_ASSETS,
@@ -112,5 +114,28 @@ describe('prologue spritesheet manifest', () => {
 describe('prologue tile terrain assets', () => {
   it('does not register an external TMJ background map for the restored terrain route', () => {
     expect(TILEMAP_ASSETS).toEqual([]);
+  });
+});
+
+describe('array plains asset manifest', () => {
+  it('registers the starter field background image', () => {
+    expect(ARRAY_PLAINS_KEYS).toEqual({
+      FIELD_BACKGROUND: 'array-plains-field-background',
+    });
+
+    expect(ARRAY_PLAINS_IMAGE_ASSETS).toEqual([
+      {
+        key: ARRAY_PLAINS_KEYS.FIELD_BACKGROUND,
+        path: 'assets/array_plains/environment/array_plains_field.png',
+      },
+    ]);
+  });
+
+  it('includes Array Plains images in the global preload list', () => {
+    const loadedKeys = new Set(IMAGE_ASSETS.map((asset) => asset.key));
+
+    for (const key of Object.values(ARRAY_PLAINS_KEYS)) {
+      expect(loadedKeys.has(key), key).toBe(true);
+    }
   });
 });

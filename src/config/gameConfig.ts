@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
 import { MenuScene } from '../scenes/MenuScene';
 import { PrologueScene } from '../scenes/prologue/PrologueScene';
+import { ArrayPlainsScene } from '../scenes/ArrayPlainsScene';
 import { P0_1_FollowThePath } from '../scenes/puzzles/P0_1_FollowThePath';
 import { P0_2_FlowConsoles } from '../scenes/puzzles/P0_2_FlowConsoles';
 import { Boss_Sentinel } from '../scenes/puzzles/Boss_Sentinel';
@@ -32,6 +33,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     BootScene,
     MenuScene,
     PrologueScene,
+    ArrayPlainsScene,
     P0_1_FollowThePath,
     P0_2_FlowConsoles,
     Boss_Sentinel,
