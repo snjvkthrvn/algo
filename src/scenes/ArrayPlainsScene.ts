@@ -267,10 +267,17 @@ export class ArrayPlainsScene extends Phaser.Scene {
 
   shutdown(): void {
     this.infoPanelCleanup?.();
+    this.infoPanelCleanup = null;
+
     this.interactionSystem?.destroy();
     this.hud?.destroy();
+
     this.returnGateway?.destroy();
+    this.returnGateway = null;
+
     for (const object of this.markerObjects) object.destroy();
+    this.markerObjects = [];
+
     this.bit?.destroy();
     this.player?.destroy();
   }

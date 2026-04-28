@@ -76,6 +76,8 @@ export class PrologueScene extends Phaser.Scene {
   private routeHandle: PrologueRouteHandle | null = null;
   private safePositionTimer!: Phaser.Time.TimerEvent;
   private storyBeatActive = false;
+  private cinematicCleanup: Array<() => void> = [];
+  private hasShutdown = false;
   private onDialogueAction!: (...args: unknown[]) => void;
   private onGateOpen!: (...args: unknown[]) => void;
 
@@ -90,6 +92,12 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.hasShutdown = false;
+    this.cinematicCleanup = [];
+    this.npcs = [];
+    this.stars = [];
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+
     audioManager.setScene(this);
     audioManager.playMusic('prologue-bgm');
 
@@ -590,6 +598,38 @@ export class PrologueScene extends Phaser.Scene {
     this.time.delayedCall(400, () => audioManager.playTone(659, 400, 'sine'));
   }
 
+  private trackCinematicCleanup(cleanup: () => void): { run: () => void; remove: () => void } {
+    let active = true;
+    let run: () => void = () => {};
+
+    const removeFromSceneCleanup = () => {
+      const index = this.cinematicCleanup.indexOf(run);
+      if (index >= 0) this.cinematicCleanup.splice(index, 1);
+    };
+
+    run = () => {
+      if (!active) return;
+      active = false;
+      removeFromSceneCleanup();
+      cleanup();
+    };
+
+    const remove = () => {
+      if (!active) return;
+      active = false;
+      removeFromSceneCleanup();
+    };
+
+    this.cinematicCleanup.push(run);
+    return { run, remove };
+  }
+
+  private runCinematicCleanup(): void {
+    const cleanups = [...this.cinematicCleanup];
+    this.cinematicCleanup.length = 0;
+    for (const cleanup of cleanups) cleanup();
+  }
+
   private playCinematicSequence(
     lines: Array<{ speaker: string; text: string; speakerColor?: string }>,
     onComplete: () => void
@@ -632,19 +672,28 @@ export class PrologueScene extends Phaser.Scene {
       activeLineCleanup.length = 0;
     };
 
+    const sequenceCleanup = this.trackCinematicCleanup(() => {
+      runActiveLineCleanup();
+      container.destroy();
+    });
+
     const finishSequence = () => {
       if (sequenceDone) return;
       sequenceDone = true;
       runActiveLineCleanup();
-      this.tweens.add({
+      let fadeTweenCleanup: { remove: () => void } | null = null;
+      const fadeTween = this.tweens.add({
         targets: container,
         alpha: 0,
         duration: 260,
         onComplete: () => {
+          fadeTweenCleanup?.remove();
+          sequenceCleanup.remove();
           container.destroy();
           onComplete();
         },
       });
+      fadeTweenCleanup = this.trackCinematicCleanup(() => fadeTween.stop());
     };
 
     const showLine = (index: number): void => {
@@ -667,6 +716,7 @@ export class PrologueScene extends Phaser.Scene {
       let typeTimerRef: Phaser.Time.TimerEvent | null = null;
 
       const completeCurrentLine = () => {
+        if (lineComplete) return;
         if (typeTimerRef) {
           typeTimerRef.destroy();
           typeTimerRef = null;
@@ -684,24 +734,34 @@ export class PrologueScene extends Phaser.Scene {
             promptText.setAlpha(blinkOn ? 1 : 0);
           },
         });
-        activeLineCleanup.push(() => {
+        const blinkCleanup = this.trackCinematicCleanup(() => {
           blinkTimer.destroy();
           promptText.setAlpha(0);
         });
+        activeLineCleanup.push(blinkCleanup.run);
       };
 
-      typeTimerRef = this.time.addEvent({
-        delay: Math.round(1000 / gameState.getSettings().textSpeed),
-        repeat: fullText.length - 1,
-        callback: () => {
-          charIndex++;
-          bodyText.setText(fullText.slice(0, charIndex));
-          if (charIndex >= fullText.length) {
-            completeCurrentLine();
-          }
-        },
-      });
-      activeLineCleanup.push(() => { typeTimerRef?.destroy(); typeTimerRef = null; });
+      if (fullText.length === 0) {
+        completeCurrentLine();
+      } else {
+        const textSpeed = Math.max(1, gameState.getSettings().textSpeed || 30);
+        typeTimerRef = this.time.addEvent({
+          delay: Math.max(8, Math.round(1000 / textSpeed)),
+          repeat: fullText.length - 1,
+          callback: () => {
+            charIndex++;
+            bodyText.setText(fullText.slice(0, charIndex));
+            if (charIndex >= fullText.length) {
+              completeCurrentLine();
+            }
+          },
+        });
+        const typeTimerCleanup = this.trackCinematicCleanup(() => {
+          typeTimerRef?.destroy();
+          typeTimerRef = null;
+        });
+        activeLineCleanup.push(typeTimerCleanup.run);
+      }
 
       const advanceLine = () => {
         if (!lineComplete) {
@@ -714,14 +774,16 @@ export class PrologueScene extends Phaser.Scene {
       const kbd = this.input.keyboard;
       kbd?.on('keydown-SPACE', advanceLine);
       kbd?.on('keydown-ENTER', advanceLine);
-      activeLineCleanup.push(() => {
+      const advanceCleanup = this.trackCinematicCleanup(() => {
         kbd?.off('keydown-SPACE', advanceLine);
         kbd?.off('keydown-ENTER', advanceLine);
       });
+      activeLineCleanup.push(advanceCleanup.run);
 
       const escHandler = () => finishSequence();
       kbd?.on('keydown-ESC', escHandler);
-      activeLineCleanup.push(() => kbd?.off('keydown-ESC', escHandler));
+      const escapeCleanup = this.trackCinematicCleanup(() => kbd?.off('keydown-ESC', escHandler));
+      activeLineCleanup.push(escapeCleanup.run);
     };
 
     showLine(0);
@@ -903,6 +965,9 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   shutdown(): void {
+    if (this.hasShutdown) return;
+    this.hasShutdown = true;
+    this.runCinematicCleanup();
     eventBus.off('dialogue:action', this.onDialogueAction, this);
     eventBus.off('progression:gate-open', this.onGateOpen, this);
     this.safePositionTimer?.destroy();
@@ -917,6 +982,13 @@ export class PrologueScene extends Phaser.Scene {
     this.glitch?.destroy();
     this.player?.destroy();
     for (const npc of this.npcs) npc.destroy();
+    this.moteEmitter = null;
+    this.bossGate = null;
+    this.gateway = null;
+    this.tilemapHandle = null;
+    this.routeHandle = null;
+    this.npcs = [];
+    this.stars = [];
   }
 
   // ─── Watcher System ─────────────────────────────────────────────────────────

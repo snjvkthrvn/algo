@@ -37,6 +37,7 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.cameras.main;
+    this.selectedMenuIndex = 0;
     audioManager.setScene(this);
 
     // Fade in via tween overlay (camera fadeIn is unreliable)
@@ -114,7 +115,10 @@ export class MenuScene extends Phaser.Scene {
     });
     this.renderMenuSelection();
     this.registerKeyboardMenuControls();
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.unregisterKeyboardMenuControls());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.closeSettingsModal?.();
+      this.unregisterKeyboardMenuControls();
+    });
 
     // Version text — slightly higher contrast so it's legible without shouting.
     this.add.text(width - 24, height - 24, 'v1.0.0', {
@@ -220,8 +224,11 @@ export class MenuScene extends Phaser.Scene {
   private continueGame(): void {
     if (saveLoadManager.load()) {
       const state = gameState.getState();
-      const sceneKey = SCENE_BY_REGION[state.player.region] ?? SCENE_KEYS.PROLOGUE;
-      TransitionManager.fade(this, sceneKey, {
+      const sceneKey = SCENE_BY_REGION[state.player.region];
+      if (!sceneKey) {
+        console.warn(`[Continue] Unknown saved region "${state.player.region}", falling back to Prologue`);
+      }
+      TransitionManager.fade(this, sceneKey ?? SCENE_KEYS.PROLOGUE, {
         spawnX: state.player.x,
         spawnY: state.player.y,
       });
