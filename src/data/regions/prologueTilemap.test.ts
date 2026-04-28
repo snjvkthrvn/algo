@@ -91,6 +91,17 @@ describe('prologue tilemap route', () => {
     )).toBe(false);
   });
 
+  it('lets the player stand close enough to gate and portal objects for prompts', () => {
+    expect(isPrologueStepWalkable(
+      { x: 1792, y: 395 },
+      [{ x: 1830, y: 395 }]
+    )).toBe(true);
+    expect(isPrologueStepWalkable(
+      { x: 1968, y: 395 },
+      [{ x: 2000, y: 395 }]
+    )).toBe(true);
+  });
+
   it('requires a tile step target to be on-route and unblocked', () => {
     expect(isPrologueStepWalkable(
       { x: 896, y: 400 },

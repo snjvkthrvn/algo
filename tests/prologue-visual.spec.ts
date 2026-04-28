@@ -41,7 +41,7 @@ type PhaserGame = {
     isActive(key: string): boolean;
     start(key: string, data?: Record<string, unknown>): void;
     stop(key: string): void;
-    scenes: Array<{ sys: { key: string; isActive(): boolean } }>;
+    scenes: Array<{ sys: { settings: { key: string }; isActive(): boolean } }>;
   };
 };
 
@@ -68,8 +68,34 @@ async function waitForScene(page: Page, key: string, timeout = 15_000) {
  * prologue fade-in overlay has cleared and the first game frame is stable.
  */
 async function goToPrologue(page: Page) {
-  // Menu is already shown; "NEW GAME" is the first selected item.
+  await page.evaluate(() => {
+    localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+      player: { x: 320, y: 400, region: 'prologue' },
+      companion: { stage: 'spark', mood: 'neutral' },
+      rival: { encountered: false, encounterStage: 0 },
+      shardsCollected: [],
+      puzzleResults: {},
+      codexEntries: [],
+      npcStates: {},
+      flags: {
+        opening_scene_done: true,
+        professor_node_intro_done: true,
+      },
+      settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+      saveVersion: 1,
+      playTime: 0,
+    }));
+  });
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForScene(page, 'MenuScene');
+  await page.waitForTimeout(1_000);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
+  await waitForScene(page, 'PrologueScene', 10_000);
+  await page.waitForTimeout(1_800);
+  return;
+  // PrologueScene fade-in runs for 800 ms game-time.
   // Wait for the prologue to become active.  The swirl animation is ~1000 ms
   // game-time; with ~1.8× RAF throttle that's ~1800 ms real time.
   await waitForScene(page, 'PrologueScene', 10_000);
@@ -96,7 +122,7 @@ async function jumpToScene(
       // Stop all running scenes first so their render state doesn't bleed.
       game.scene.scenes
         .filter(s => s.sys.isActive())
-        .forEach(s => game.scene.stop(s.sys.key));
+        .forEach(s => game.scene.stop(s.sys.settings.key));
       game.scene.start(k as string, d as Record<string, unknown>);
     },
     [key, data] as const,

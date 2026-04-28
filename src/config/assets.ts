@@ -13,6 +13,7 @@ export interface AssetEntry {
 const BASE = 'assets/prologue';
 const REWORK_BASE = 'assets/prologue_rework';
 const SHEET_BASE = 'assets/prologue_sheets';
+const ARRAY_PLAINS_BASE = 'assets/array_plains';
 
 export const PROLOGUE_REWORK_KEYS = {
   VOID_BG: 'prologue-rework-void-bg',
@@ -72,6 +73,14 @@ export const PROLOGUE_REWORK_IMAGE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_REWORK_KEYS.PROMPT, path: `${REWORK_BASE}/ui/prompt.png` },
 ];
 
+export const ARRAY_PLAINS_KEYS = {
+  FIELD_BACKGROUND: 'array-plains-field-background',
+} as const;
+
+export const ARRAY_PLAINS_IMAGE_ASSETS: AssetEntry[] = [
+  { key: ARRAY_PLAINS_KEYS.FIELD_BACKGROUND, path: `${ARRAY_PLAINS_BASE}/environment/array_plains_field.png` },
+];
+
 export const PROLOGUE_SHEET_KEYS = {
   ROUTE_TILESET: 'prologue-sheet-route-tileset',
   PLAYER: 'prologue-sheet-player-walk',
@@ -124,6 +133,7 @@ export const IMAGE_ASSETS: AssetEntry[] = [
   COMPOSITE_IMAGE('moretiles', 'bridge_corner_ne'),
   COMPOSITE_IMAGE('moretiles', 'bridge_corner_nw'),
   ...PROLOGUE_REWORK_IMAGE_ASSETS,
+  ...ARRAY_PLAINS_IMAGE_ASSETS,
 ];
 
 export const TILEMAP_ASSETS: AssetEntry[] = [];

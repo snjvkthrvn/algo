@@ -28,12 +28,14 @@ export class InteractableObject {
   config: InteractableConfig;
   private scene: Phaser.Scene;
   private glowGraphics: Phaser.GameObjects.Graphics;
+  private idleTween: Phaser.Tweens.Tween | null = null;
 
   constructor(scene: Phaser.Scene, config: InteractableConfig) {
     this.scene = scene;
     this.config = config;
 
     this.sprite = this.createVisual(config);
+    this.refreshIdleMotion();
 
     // Glow
     this.glowGraphics = scene.add.graphics();
@@ -198,6 +200,7 @@ export class InteractableObject {
     if (textureKey) {
       this.setImageTexture(textureKey);
     }
+    this.refreshIdleMotion();
   }
 
   setImageTexture(textureKey: string): void {
@@ -209,7 +212,39 @@ export class InteractableObject {
     return this.config.imageByState?.[state];
   }
 
+  private refreshIdleMotion(): void {
+    this.idleTween?.stop();
+    this.idleTween = null;
+
+    const state = this.config.initialState ?? (this.config.locked ? 'locked' : 'unlocked');
+    const isUnlocked = state === 'unlocked' || this.config.locked === false;
+    if (!isUnlocked || this.prefersReducedMotion()) return;
+
+    const baseScale = this.config.imageScale ?? this.config.spriteScale ?? 1;
+    const target = this.sprite as Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Container;
+
+    if (this.config.type === 'portal') {
+      target.setScale(baseScale);
+      this.idleTween = this.scene.tweens.add({
+        targets: target,
+        scaleX: baseScale * 1.04,
+        scaleY: baseScale * 1.04,
+        duration: 900,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+  }
+
+  private prefersReducedMotion(): boolean {
+    return typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
   destroy(): void {
+    this.idleTween?.stop();
     this.sprite.destroy();
     this.glowGraphics.destroy();
   }

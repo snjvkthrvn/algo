@@ -9,16 +9,18 @@ import Phaser from 'phaser';
 import { FONTS } from '../config/constants';
 import { drawPanel, PANEL_PALETTE } from './panel';
 
-const PROMPT_WIDTH = 192;
+export const INTERACTION_PROMPT_WIDTH = 320;
 const PROMPT_HEIGHT = 40;
 const PROMPT_DEPTH = 4000;
 
 export class InteractionPrompt {
+  private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
   private bobContainer: Phaser.GameObjects.Container;
   private text: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene) {
+    this.scene = scene;
     this.container = scene.add.container(0, 0).setDepth(PROMPT_DEPTH);
     this.container.setVisible(false);
     this.bobContainer = scene.add.container(0, 0);
@@ -26,9 +28,9 @@ export class InteractionPrompt {
 
     const bg = drawPanel(
       scene,
-      -PROMPT_WIDTH / 2,
+      -INTERACTION_PROMPT_WIDTH / 2,
       -PROMPT_HEIGHT / 2,
-      PROMPT_WIDTH,
+      INTERACTION_PROMPT_WIDTH,
       PROMPT_HEIGHT,
       { depth: PROMPT_DEPTH, scrollFactor: 1, fill: PANEL_PALETTE.FILL }
     );
@@ -55,7 +57,18 @@ export class InteractionPrompt {
   }
 
   show(x: number, y: number, promptText: string = '[SPACE] Talk'): void {
-    this.container.setPosition(x, y);
+    const camera = this.scene.cameras.main;
+    const zoom = camera.zoom > 0 ? camera.zoom : 1;
+    const scale = 1 / zoom;
+    const halfWidth = (INTERACTION_PROMPT_WIDTH * scale) / 2;
+    const halfHeight = (PROMPT_HEIGHT * scale) / 2;
+    const padding = 8 * scale;
+    const view = camera.worldView;
+    const clampedX = Math.max(view.left + halfWidth + padding, Math.min(x, view.right - halfWidth - padding));
+    const clampedY = Math.max(view.top + halfHeight + padding, Math.min(y, view.bottom - halfHeight - padding));
+
+    this.container.setScale(scale);
+    this.container.setPosition(clampedX, clampedY);
     this.text.setText(promptText);
     this.container.setVisible(true);
   }

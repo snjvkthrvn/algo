@@ -46,6 +46,7 @@ export const SCENE_KEYS = {
   BOOT: 'BootScene',
   MENU: 'MenuScene',
   PROLOGUE: 'PrologueScene',
+  ARRAY_PLAINS: 'ArrayPlainsScene',
   PUZZLE_P0_1: 'P0_1_FollowThePath',
   PUZZLE_P0_2: 'P0_2_FlowConsoles',
   BOSS_SENTINEL: 'Boss_Sentinel',
