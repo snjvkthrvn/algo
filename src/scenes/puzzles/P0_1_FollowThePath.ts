@@ -38,7 +38,6 @@ export class P0_1_FollowThePath extends BasePuzzleScene {
   private currentSequence: number[] = [];
   private playerInputIndex: number = 0;
   private puzzleState: PuzzleState = 'INTRO';
-  private roundMistakes: number = 0;
   private hintText: Phaser.GameObjects.Text | null = null;
   private bitHint!: BitHint;
 
@@ -152,7 +151,6 @@ export class P0_1_FollowThePath extends BasePuzzleScene {
     this.currentSequence = round.map((id) => runeIdToTileIndex(id));
 
     this.playerInputIndex = 0;
-    this.roundMistakes = 0;
 
     // Show round indicator
     this.showMessage(`Round ${this.currentRound + 1} of ${SEQUENCE_ROUNDS.length}`, COLORS.CYAN_GLOW);
@@ -238,7 +236,6 @@ export class P0_1_FollowThePath extends BasePuzzleScene {
       // Wrong!
       this.puzzleState = 'FEEDBACK';
       this.attempts++;
-      this.roundMistakes++;
       audioManager.playWrongTone();
       this.bitHint.showCold();
 
@@ -264,6 +261,8 @@ export class P0_1_FollowThePath extends BasePuzzleScene {
   }
 
   private puzzleComplete(): void {
+    this.hintText?.destroy();
+    this.hintText = null;
     this.puzzleState = 'PUZZLE_COMPLETE';
     this.bitHint.celebrate();
 
