@@ -61,6 +61,27 @@ async function waitForScene(page: Page, key: string, timeout = 15_000) {
   );
 }
 
+/** Block until P0-1 enters PLAYER_TURN for any round. */
+async function waitForP01PlayerTurn(page: Page, timeout = 60_000) {
+  await page.waitForFunction(
+    () => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+      return scene?.['puzzleState'] === 'PLAYER_TURN';
+    },
+    undefined,
+    { timeout },
+  );
+}
+
+/** Press a sequence of number keys with 250 ms between each. */
+async function pressSequence(page: Page, keys: string[]) {
+  for (const key of keys) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(250);
+  }
+}
+
 /**
  * Navigate to the PrologueScene the same way the player does: Enter on NEW GAME.
  *
@@ -286,5 +307,76 @@ test.describe('Prologue region – visual audit', () => {
     await waitForScene(page, 'PrologueScene', 10_000);
 
     expect(warnings.some((w) => w.includes('unknown_future_region'))).toBe(true);
+  });
+
+  test('10 – P0-1 Follow the Path – completes all 3 rounds', async ({ page }) => {
+    test.setTimeout(120_000);
+
+    await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
+
+    // Speed up Phaser's internal timer so delayedCall-driven pattern animations
+    // fire quickly in headless Chromium (where RAF is throttled to ~1 fps).
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+      const timeObj = scene?.['time'] as { timeScale?: number } | null;
+      if (timeObj) timeObj.timeScale = 20;
+    });
+
+    await waitForP01PlayerTurn(page);
+    // Restore normal speed before sending input so key debounce works correctly.
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+      const timeObj = scene?.['time'] as { timeScale?: number } | null;
+      if (timeObj) timeObj.timeScale = 1;
+    });
+    await pressSequence(page, ['1', '2', '3']);
+
+    // Re-accelerate for round 2 pattern display.
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+      const timeObj = scene?.['time'] as { timeScale?: number } | null;
+      if (timeObj) timeObj.timeScale = 20;
+    });
+    await waitForP01PlayerTurn(page, 60_000);
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+      const timeObj = scene?.['time'] as { timeScale?: number } | null;
+      if (timeObj) timeObj.timeScale = 1;
+    });
+    await pressSequence(page, ['2', '4', '1', '5', '3']);
+
+    // Re-accelerate for round 3 pattern display.
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+      const timeObj = scene?.['time'] as { timeScale?: number } | null;
+      if (timeObj) timeObj.timeScale = 20;
+    });
+    await waitForP01PlayerTurn(page, 60_000);
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+      const timeObj = scene?.['time'] as { timeScale?: number } | null;
+      if (timeObj) timeObj.timeScale = 1;
+    });
+    await pressSequence(page, ['5', '1', '4', '2', '3', '6', '4']);
+
+    await waitForScene(page, 'ConceptBridgeScene', 30_000);
+    await snap(page, '10-p0-1-complete.png');
+
+    for (let i = 0; i < 8; i++) {
+      await page.waitForTimeout(1_200);
+      await page.keyboard.press('Space');
+    }
+
+    await waitForScene(page, 'PrologueScene', 30_000);
+
+    expect(await page.evaluate(() =>
+      !!(window as GameWindow).__PHASER_GAME__?.scene.isActive('PrologueScene')
+    )).toBe(true);
   });
 });
