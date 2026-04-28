@@ -12,6 +12,27 @@ class AudioManagerClass {
   private currentMusicKey: string = '';
   private audioUnlocked: boolean = false;
   private pendingMusic: string | null = null;
+  private audioCtx: AudioContext | null = null;
+
+  private getAudioContext(): AudioContext | null {
+    // Prefer Phaser's context so tones share the same audio graph
+    const phaserCtx = (this.scene?.sound as Phaser.Sound.WebAudioSoundManager | null)?.context;
+    if (phaserCtx && phaserCtx.state !== 'closed') {
+      if (phaserCtx.state === 'suspended') phaserCtx.resume();
+      return phaserCtx;
+    }
+    // Fallback when scene is not set
+    try {
+      if (!this.audioCtx || this.audioCtx.state === 'closed') {
+        this.audioCtx = new (window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      }
+      if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+      return this.audioCtx;
+    } catch {
+      return null;
+    }
+  }
 
   setScene(scene: Phaser.Scene): void {
     this.scene = scene;
@@ -110,27 +131,23 @@ class AudioManagerClass {
     this.scene.sound.play(key, { volume: settings.sfxVolume });
   }
 
-  /**
-   * Play a procedural tone fallback when no authored SFX asset is available.
-   */
+  /** Play a procedural tone using the Web Audio API. Falls back silently if unavailable. */
   playTone(frequency: number, duration: number = 100, type: OscillatorType = 'sine'): void {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
     try {
-      const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
       oscillator.type = type;
-      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-      gainNode.gain.setValueAtTime(gameState.getSettings().sfxVolume * 0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration / 1000);
-
+      oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+      gainNode.gain.setValueAtTime(Math.max(gameState.getSettings().sfxVolume * 0.3, 0.0001), ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
       oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + duration / 1000);
+      gainNode.connect(ctx.destination);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + duration / 1000);
     } catch {
-      // Silently fail if Web Audio API unavailable
+      // Silently fail if nodes cannot be created
     }
   }
 
@@ -147,6 +164,17 @@ class AudioManagerClass {
 
   playClickTone(): void {
     this.playTone(880, 50, 'square');
+  }
+
+  applyVolumeSettings(): void {
+    if (!this.currentMusic) return;
+    const { musicVolume } = gameState.getSettings();
+    if (this.currentMusic instanceof Phaser.Sound.WebAudioSound) {
+      this.currentMusic.setVolume(musicVolume);
+    } else if (this.currentMusic instanceof Phaser.Sound.HTML5AudioSound) {
+      this.currentMusic.setVolume(musicVolume);
+    }
+    // NoAudioSound (no-audio environments) intentionally skipped
   }
 }
 

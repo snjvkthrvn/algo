@@ -6,7 +6,7 @@
 
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { PROLOGUE_REWORK_KEYS } from '../../config/assets';
-import { adjustBrightness, colorToHex } from '../../utils/colors';
+import { colorToHex } from '../../utils/colors';
 import { createRetroButton, updateButtonText, disableButton } from '../../ui/RetroButton';
 import { showStarRating } from '../../ui/StarRating';
 import { audioManager } from '../../core/AudioManager';
@@ -287,48 +287,4 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     });
   }
 
-  /**
-   * Create a retro-styled tile for puzzle elements
-   */
-  protected createPuzzleTile(
-    x: number,
-    y: number,
-    size: number,
-    color: number,
-    label?: string
-  ): Phaser.GameObjects.Container {
-    const container = this.add.container(x, y);
-
-    // Shadow
-    const shadow = this.add.rectangle(3, 3, size, size, 0x000000, 0.4);
-    container.add(shadow);
-
-    // Main tile
-    const tile = this.add.rectangle(0, 0, size, size, color);
-    tile.setStrokeStyle(3, adjustBrightness(color, 0.6));
-    container.add(tile);
-
-    // Highlight
-    const highlight = this.add.graphics();
-    highlight.lineStyle(2, adjustBrightness(color, 1.4), 0.7);
-    highlight.beginPath();
-    highlight.moveTo(-size / 2 + 4, size / 2 - 4);
-    highlight.lineTo(-size / 2 + 4, -size / 2 + 4);
-    highlight.lineTo(size / 2 - 4, -size / 2 + 4);
-    highlight.strokePath();
-    container.add(highlight);
-
-    if (label) {
-      const text = this.add.text(0, 0, label, {
-        fontSize: `${Math.floor(size * 0.4)}px`,
-        fontFamily: FONTS.RETRO,
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
-      container.add(text);
-    }
-
-    return container;
-  }
 }

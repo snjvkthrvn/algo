@@ -28,6 +28,7 @@ import { audioManager } from '../../core/AudioManager';
 import { gameState } from '../../core/GameStateManager';
 import { eventBus, GameEvents } from '../../core/EventBus';
 import { BitMood } from '../../data/types';
+import { GLITCH_DIALOGUE, GLITCH_EXIT_LINES } from '../../data/dialogue/glitch_dialogue';
 import { PROLOGUE_NPCS } from '../../data/npcs/prologue_npcs';
 import { PROLOGUE_CONFIG, PROLOGUE_ROUTE_LANDMARKS } from '../../data/regions/prologue';
 import {
@@ -46,6 +47,14 @@ import { PrologueTilemapRenderer, type PrologueTilemapHandle } from '../../syste
 import { PrologueRouteRenderer, type PrologueRouteHandle } from '../../systems/PrologueRouteRenderer';
 import { PROLOGUE_CAMERA_TUNING } from './cameraTuning';
 import { setupUICamera } from '../../utils/uiCamera';
+
+const NODE_INTRO_LINES = [
+  { speaker: 'Professor Node', text: 'Ah. There you are. I was beginning to wonder.' },
+  { speaker: 'Professor Node', text: 'I am Professor Node. This is the Chamber of Flow — where the oldest algorithms still run.' },
+  { speaker: 'Professor Node', text: 'That small light beside you is Bit. It grows as you learn. Right now it is a Spark — the simplest form.' },
+  { speaker: 'Professor Node', text: 'Two lessons wait for you here. Find the Rune Keeper and the Console Keeper. They will show you the way.' },
+  { speaker: 'Professor Node', text: 'The Chamber is yours to explore. I will be here if you need me.' },
+];
 
 export class PrologueScene extends Phaser.Scene {
   private player!: Player;
@@ -68,7 +77,6 @@ export class PrologueScene extends Phaser.Scene {
   private storyBeatActive = false;
   private onDialogueAction!: (...args: unknown[]) => void;
   private onGateOpen!: (...args: unknown[]) => void;
-  private onGlitchSpawn!: (...args: unknown[]) => void;
 
   constructor() {
     super({ key: SCENE_KEYS.PROLOGUE });
@@ -173,14 +181,6 @@ export class PrologueScene extends Phaser.Scene {
     });
     eventBus.on('progression:gate-open', this.onGateOpen, this);
 
-    // Listen for Glitch encounter triggers from ProgressionSystem
-    this.onGlitchSpawn = (() => {
-      const pos = this.player.getPosition();
-      const spawn = this.pickGlitchSpawnPosition(pos);
-      this.glitch.triggerEncounter(spawn.x, spawn.y);
-    });
-    eventBus.on('progression:glitch-spawn', this.onGlitchSpawn, this);
-
     // === WATCHER SYSTEM ===
     // Ambient flybys begin only after the scripted first Watcher warning.
     if (gameState.getFlag('watcher_warning_done')) {
@@ -235,6 +235,9 @@ export class PrologueScene extends Phaser.Scene {
     } else {
       showRegionIntro();
     }
+
+    // === STORY BEAT HANDLING ===
+    this.handlePendingPrologueBeat();
   }
 
   update(): void {
@@ -261,6 +264,12 @@ export class PrologueScene extends Phaser.Scene {
 
     // Save player position
     gameState.setPlayerPosition(pos.x, pos.y);
+
+    // Position-triggered watcher warning — fires once when player enters puzzle lane
+    if (!this.storyBeatActive && shouldTriggerWatcherAtPosition(this.getPrologueStoryFlags(), pos)) {
+      gameState.setFlag('watcher_warning_done', true);
+      this.handlePendingPrologueBeat();
+    }
   }
 
   private createPlatforms(): void {
@@ -308,42 +317,6 @@ export class PrologueScene extends Phaser.Scene {
     return blockers;
   }
 
-  private getPrologueStoryFlags() {
-    return createPrologueStoryFlags({
-      openingSceneDone: gameState.getFlag('opening_scene_done'),
-      professorNodeIntroDone: gameState.getFlag('professor_node_intro_done'),
-      watcherWarningDone: gameState.getFlag('watcher_warning_done'),
-      glitchIntroDone: gameState.getFlag('glitch_intro_done') || gameState.getFlag('glitch_encounter_1_done'),
-      bossGateCutsceneDone: gameState.getFlag('boss_gate_cutscene_done'),
-      bossReturnCutsceneDone: gameState.getFlag('boss_return_cutscene_done'),
-      puzzleP01Complete: gameState.getFlag('puzzle_p0_1_complete'),
-      puzzleP02Complete: gameState.getFlag('puzzle_p0_2_complete'),
-      puzzleBossSentinelComplete: gameState.getFlag('puzzle_boss_sentinel_complete'),
-    });
-  }
-
-  private handlePendingPrologueBeat(): void {
-    if (this.storyBeatActive) return;
-
-    const beat = getPendingPrologueBeat(this.getPrologueStoryFlags());
-    if (beat === 'glitch_intro') {
-      this.triggerGlitchEncounter(1);
-      return;
-    }
-    if (beat === 'boss_gate_cutscene') {
-      this.playBossGateCutscene();
-      return;
-    }
-    if (beat === 'boss_return_cutscene') {
-      this.playBossReturnCutscene();
-      return;
-    }
-
-    if (gameState.getFlag('glitch_encounter_2_pending')) {
-      this.triggerGlitchEncounter(2);
-    }
-  }
-
   private maybeTriggerWatcherWarning(position: { x: number; y: number }): void {
     if (this.storyBeatActive) return;
 
@@ -352,26 +325,6 @@ export class PrologueScene extends Phaser.Scene {
     if (!shouldTriggerWatcherAtPosition(flags, position)) return;
 
     this.playWatcherWarning();
-  }
-
-  private playOpeningScene(onComplete: () => void): void {
-    this.storyBeatActive = true;
-    this.player.freeze();
-
-    this.playCinematicSequence(
-      [
-        { speaker: 'System', text: '> System restored.' },
-        { speaker: 'System', text: '> Memory: fragmented' },
-        { speaker: 'System', text: '> Status: ready' },
-        { speaker: 'System', text: '> Welcome back.' },
-      ],
-      () => {
-        gameState.setFlag('opening_scene_done', true);
-        this.storyBeatActive = false;
-        this.player.unfreeze();
-        onComplete();
-      }
-    );
   }
 
   private playWatcherWarning(): void {
@@ -393,146 +346,6 @@ export class PrologueScene extends Phaser.Scene {
         }
       );
     });
-  }
-
-  private triggerGlitchEncounter(encounterNumber: 1 | 2): void {
-    if (this.storyBeatActive) return;
-
-    this.storyBeatActive = true;
-    this.player.freeze();
-    const pos = this.player.getPosition();
-    const spawn = this.pickGlitchSpawnPosition(pos);
-
-    this.time.delayedCall(300, () => {
-      this.glitch.triggerEncounter(spawn.x, spawn.y);
-
-      if (encounterNumber === 1) {
-        gameState.setFlag('glitch_encounter_1_pending', false);
-        gameState.setFlag('glitch_encounter_1_done', true);
-        gameState.setFlag('glitch_intro_done', true);
-      } else {
-        gameState.setFlag('glitch_encounter_2_pending', false);
-        gameState.setFlag('glitch_encounter_2_done', true);
-      }
-
-      this.time.delayedCall(encounterNumber === 1 ? 8000 : 9000, () => {
-        this.storyBeatActive = false;
-        this.player.unfreeze();
-        this.handlePendingPrologueBeat();
-      });
-    });
-  }
-
-  private playBossGateCutscene(): void {
-    this.storyBeatActive = true;
-    this.player.freeze();
-
-    if (this.bossGate) {
-      this.bossGate.setLocked(false);
-      this.bossGate.setVisualState('unlocked');
-      this.showGateOpenEffect(this.bossGate);
-    }
-
-    this.playCinematicSequence(
-      [
-        { speaker: 'Professor Node', text: 'Both shards are resonating. The gate recognizes the sequence and the mapping together.' },
-        { speaker: 'Professor Node', text: 'Beyond it waits the Sentinel. It will not teach a new trick. It will test whether you can hold both lessons at once.' },
-      ],
-      () => {
-        gameState.setFlag('boss_gate_cutscene_done', true);
-        this.storyBeatActive = false;
-        this.player.unfreeze();
-        this.handlePendingPrologueBeat();
-      }
-    );
-  }
-
-  private playBossReturnCutscene(): void {
-    this.storyBeatActive = true;
-    this.player.freeze();
-
-    if (this.gateway) {
-      this.gateway.setLocked(false);
-      this.gateway.setVisualState('unlocked');
-      this.showGateOpenEffect(this.gateway);
-    }
-
-    this.playCinematicSequence(
-      [
-        { speaker: 'System', text: '> Authentication: VALID' },
-        { speaker: 'Professor Node', text: 'You did it. The Chamber of Flow is complete, and your Construct has grown from Spark to Byte.' },
-        { speaker: 'Professor Node', text: 'The Array Plains gateway is open. The world is bigger now.' },
-      ],
-      () => {
-        gameState.setFlag('boss_return_cutscene_pending', false);
-        gameState.setFlag('boss_return_cutscene_done', true);
-        this.storyBeatActive = false;
-        this.player.unfreeze();
-
-        if (gameState.getFlag('glitch_encounter_2_pending')) {
-          this.time.delayedCall(700, () => this.triggerGlitchEncounter(2));
-          return;
-        }
-
-        this.handlePendingPrologueBeat();
-      }
-    );
-  }
-
-  private playCinematicSequence(
-    lines: Array<{ speaker: string; text: string }>,
-    onComplete: () => void
-  ): void {
-    const { width, height } = this.cameras.main;
-    const container = this.add.container(0, 0).setDepth(9000).setScrollFactor(0);
-    const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0.34)
-      .setOrigin(0)
-      .setDepth(9000)
-      .setScrollFactor(0);
-    const panel = this.add.rectangle(width / 2, height - 90, width - 104, 120, 0x0a0a1a, 0.92)
-      .setDepth(9001)
-      .setScrollFactor(0);
-    panel.setStrokeStyle(2, COLORS.CYAN_GLOW, 0.82);
-    const speakerText = this.add.text(74, height - 136, '', {
-      fontFamily: FONTS.RETRO,
-      fontSize: '12px',
-      color: '#fbbf24',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setDepth(9002).setScrollFactor(0);
-    const bodyText = this.add.text(74, height - 108, '', {
-      fontFamily: FONTS.MONO,
-      fontSize: '15px',
-      color: '#e2e8f0',
-      wordWrap: { width: width - 164 },
-      lineSpacing: 5,
-    }).setDepth(9002).setScrollFactor(0);
-    container.add([dim, panel, speakerText, bodyText]);
-
-    const showLine = (index: number): void => {
-      if (index >= lines.length) {
-        this.tweens.add({
-          targets: container,
-          alpha: 0,
-          duration: 260,
-          onComplete: () => {
-            container.destroy();
-            onComplete();
-          },
-        });
-        return;
-      }
-
-      const line = lines[index];
-      speakerText.setText(line.speaker);
-      bodyText.setText(line.text);
-      container.setAlpha(1);
-
-      const hold = Phaser.Math.Clamp(line.text.length * 36, 1500, 3600);
-      this.time.delayedCall(hold, () => showLine(index + 1));
-    };
-
-    showLine(0);
   }
 
   private createNPCs(): void {
@@ -809,10 +622,321 @@ export class PrologueScene extends Phaser.Scene {
     });
   }
 
+  private playCinematicSequence(
+    lines: Array<{ speaker: string; text: string; speakerColor?: string }>,
+    onComplete: () => void
+  ): void {
+    const { width, height } = this.cameras.main;
+    const container = this.add.container(0, 0).setDepth(9000).setScrollFactor(0);
+
+    const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0.34)
+      .setOrigin(0).setDepth(9000).setScrollFactor(0);
+    const panel = this.add.rectangle(width / 2, height - 90, width - 104, 120, 0x0a0a1a, 0.92)
+      .setDepth(9001).setScrollFactor(0);
+    panel.setStrokeStyle(2, COLORS.CYAN_GLOW, 0.82);
+    const speakerText = this.add.text(74, height - 136, '', {
+      fontFamily: FONTS.RETRO,
+      fontSize: '12px',
+      color: '#fbbf24',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setDepth(9002).setScrollFactor(0);
+    const bodyText = this.add.text(74, height - 108, '', {
+      fontFamily: FONTS.MONO,
+      fontSize: '15px',
+      color: '#e2e8f0',
+      wordWrap: { width: width - 164 },
+      lineSpacing: 5,
+    }).setDepth(9002).setScrollFactor(0);
+    const promptText = this.add.text(width - 84, height - 58, '▶', {
+      fontFamily: FONTS.RETRO,
+      fontSize: '10px',
+      color: '#fbbf24',
+    }).setDepth(9002).setScrollFactor(0).setAlpha(0);
+
+    container.add([dim, panel, speakerText, bodyText, promptText]);
+
+    let sequenceDone = false;
+    const activeLineCleanup: (() => void)[] = [];
+
+    const runActiveLineCleanup = () => {
+      for (const fn of activeLineCleanup) fn();
+      activeLineCleanup.length = 0;
+    };
+
+    const finishSequence = () => {
+      if (sequenceDone) return;
+      sequenceDone = true;
+      runActiveLineCleanup();
+      this.tweens.add({
+        targets: container,
+        alpha: 0,
+        duration: 260,
+        onComplete: () => {
+          container.destroy();
+          onComplete();
+        },
+      });
+    };
+
+    const showLine = (index: number): void => {
+      if (index >= lines.length) {
+        finishSequence();
+        return;
+      }
+
+      runActiveLineCleanup();
+
+      const line = lines[index];
+      speakerText.setColor(line.speakerColor ?? '#fbbf24');
+      speakerText.setText(line.speaker);
+      bodyText.setText('');
+      promptText.setAlpha(0);
+
+      const fullText = line.text;
+      let charIndex = 0;
+      let lineComplete = false;
+      let typeTimerRef: Phaser.Time.TimerEvent | null = null;
+
+      const completeCurrentLine = () => {
+        if (typeTimerRef) {
+          typeTimerRef.destroy();
+          typeTimerRef = null;
+        }
+        lineComplete = true;
+        charIndex = fullText.length;
+        bodyText.setText(fullText);
+        promptText.setAlpha(1);
+        let blinkOn = true;
+        const blinkTimer = this.time.addEvent({
+          delay: 400,
+          loop: true,
+          callback: () => {
+            blinkOn = !blinkOn;
+            promptText.setAlpha(blinkOn ? 1 : 0);
+          },
+        });
+        activeLineCleanup.push(() => {
+          blinkTimer.destroy();
+          promptText.setAlpha(0);
+        });
+      };
+
+      typeTimerRef = this.time.addEvent({
+        delay: Math.round(1000 / gameState.getSettings().textSpeed),
+        repeat: fullText.length - 1,
+        callback: () => {
+          charIndex++;
+          bodyText.setText(fullText.slice(0, charIndex));
+          if (charIndex >= fullText.length) {
+            completeCurrentLine();
+          }
+        },
+      });
+      activeLineCleanup.push(() => { typeTimerRef?.destroy(); typeTimerRef = null; });
+
+      const advanceLine = () => {
+        if (!lineComplete) {
+          completeCurrentLine();
+          return;
+        }
+        showLine(index + 1);
+      };
+
+      const kbd = this.input.keyboard;
+      kbd?.on('keydown-SPACE', advanceLine);
+      kbd?.on('keydown-ENTER', advanceLine);
+      activeLineCleanup.push(() => {
+        kbd?.off('keydown-SPACE', advanceLine);
+        kbd?.off('keydown-ENTER', advanceLine);
+      });
+
+      const escHandler = () => finishSequence();
+      kbd?.on('keydown-ESC', escHandler);
+      activeLineCleanup.push(() => kbd?.off('keydown-ESC', escHandler));
+    };
+
+    showLine(0);
+  }
+
+  private playNodeIntro(): void {
+    this.storyBeatActive = true;
+    this.player.freeze();
+    this.playCinematicSequence(NODE_INTRO_LINES, () => {
+      gameState.setFlag('professor_node_intro_done', true);
+      this.storyBeatActive = false;
+      this.player.unfreeze();
+      this.handlePendingPrologueBeat();
+    });
+  }
+
+  private getPrologueStoryFlags(): ReturnType<typeof createPrologueStoryFlags> {
+    return createPrologueStoryFlags({
+      openingSceneDone: gameState.getFlag('opening_scene_done'),
+      professorNodeIntroDone: gameState.getFlag('professor_node_intro_done'),
+      watcherWarningDone: gameState.getFlag('watcher_warning_done'),
+      glitchIntroDone: gameState.getFlag('glitch_intro_done') || gameState.getFlag('glitch_encounter_1_done'),
+      bossGateCutsceneDone: gameState.getFlag('boss_gate_cutscene_done'),
+      bossReturnCutsceneDone: gameState.getFlag('boss_return_cutscene_done'),
+      puzzleP01Complete: gameState.getFlag('puzzle_p0_1_complete'),
+      puzzleP02Complete: gameState.getFlag('puzzle_p0_2_complete'),
+      puzzleBossSentinelComplete: gameState.getFlag('puzzle_boss_sentinel_complete'),
+    });
+  }
+
+  private handlePendingPrologueBeat(): void {
+    if (this.storyBeatActive) return;
+    const beat = getPendingPrologueBeat(this.getPrologueStoryFlags());
+    if (beat === 'opening_scene') {
+      this.playOpeningScene(() => this.handlePendingPrologueBeat());
+      return;
+    }
+    if (beat === 'node_intro') {
+      this.playNodeIntro();
+      return;
+    }
+    if (beat === 'watcher_warning') {
+      return;
+    }
+    if (beat === 'glitch_intro') {
+      this.triggerGlitchEncounter(1);
+      return;
+    }
+    if (beat === 'boss_gate_cutscene') {
+      this.playBossGateCutscene();
+      return;
+    }
+    if (beat === 'boss_return_cutscene') {
+      this.playBossReturnCutscene();
+      return;
+    }
+    if (gameState.getFlag('glitch_encounter_2_pending')) {
+      this.triggerGlitchEncounter(2);
+    }
+  }
+
+  private playOpeningScene(onComplete: () => void): void {
+    this.storyBeatActive = true;
+    this.player.freeze();
+    this.playCinematicSequence(
+      [
+        { speaker: 'System', text: '> ...' },
+        { speaker: 'System', text: '> Signal detected.' },
+        { speaker: 'System', text: '> Reconstructing memory index...' },
+        { speaker: 'System', text: '> Partial. Continuing.' },
+        { speaker: 'System', text: '> Core process: ACTIVE' },
+        { speaker: 'System', text: '> You\'re back.' },
+        { speaker: 'System', text: '> The Chamber of Flow is still here. So is your path.' },
+        { speaker: 'System', text: '> Begin.' },
+      ],
+      () => {
+        gameState.setFlag('opening_scene_done', true);
+        this.storyBeatActive = false;
+        this.player.unfreeze();
+        onComplete();
+      }
+    );
+  }
+
+  private playBossGateCutscene(): void {
+    this.storyBeatActive = true;
+    this.player.freeze();
+
+    if (this.bossGate) {
+      this.bossGate.setLocked(false);
+      this.bossGate.setVisualState('unlocked');
+      this.showGateOpenEffect(this.bossGate);
+    }
+
+    this.playCinematicSequence(
+      [
+        { speaker: 'Professor Node', text: 'Both shards are resonating. The gate recognizes the sequence and the mapping together.' },
+        { speaker: 'Professor Node', text: 'Beyond it waits the Sentinel. It will not teach a new trick. It will test whether you can hold both lessons at once.' },
+      ],
+      () => {
+        gameState.setFlag('boss_gate_cutscene_done', true);
+        this.storyBeatActive = false;
+        this.player.unfreeze();
+        this.handlePendingPrologueBeat();
+      }
+    );
+  }
+
+  private playBossReturnCutscene(): void {
+    this.storyBeatActive = true;
+    this.player.freeze();
+
+    if (this.gateway) {
+      this.gateway.setLocked(false);
+      this.gateway.setVisualState('unlocked');
+      this.showGateOpenEffect(this.gateway);
+    }
+
+    this.playCinematicSequence(
+      [
+        { speaker: 'System', text: '> Authentication: VALID' },
+        { speaker: 'Professor Node', text: 'You did it. The Chamber of Flow is complete, and your Construct has grown from Spark to Byte.' },
+        { speaker: 'Professor Node', text: 'The Array Plains gateway is open. The world is bigger now.' },
+      ],
+      () => {
+        gameState.setFlag('boss_return_cutscene_pending', false);
+        gameState.setFlag('boss_return_cutscene_done', true);
+        this.storyBeatActive = false;
+        this.player.unfreeze();
+
+        if (gameState.getFlag('glitch_encounter_2_pending')) {
+          this.time.delayedCall(700, () => this.triggerGlitchEncounter(2));
+          return;
+        }
+
+        this.handlePendingPrologueBeat();
+      }
+    );
+  }
+
+  private triggerGlitchEncounter(encounterNumber: 1 | 2): void {
+    if (this.storyBeatActive) return;
+    this.storyBeatActive = true;
+    this.player.freeze();
+
+    const dialogueLines = GLITCH_DIALOGUE[encounterNumber].map((l) => ({
+      speaker: 'Glitch',
+      text: l.text,
+      speakerColor: '#8b5cf6',
+    }));
+    const exitLine = GLITCH_EXIT_LINES[encounterNumber % GLITCH_EXIT_LINES.length];
+    const lines = [
+      ...dialogueLines,
+      { speaker: 'Glitch', text: exitLine, speakerColor: '#8b5cf6' },
+    ];
+
+    const pos = this.player.getPosition();
+    const spawn = this.pickGlitchSpawnPosition(pos);
+
+    this.time.delayedCall(300, () => {
+      this.glitch.spawnIn(spawn.x, spawn.y, () => {
+        this.playCinematicSequence(lines, () => {
+          if (encounterNumber === 1) {
+            gameState.setFlag('glitch_encounter_1_pending', false);
+            gameState.setFlag('glitch_encounter_1_done', true);
+            gameState.setFlag('glitch_intro_done', true);
+          } else {
+            gameState.setFlag('glitch_encounter_2_pending', false);
+            gameState.setFlag('glitch_encounter_2_done', true);
+          }
+          this.glitch.exit(() => {
+            this.storyBeatActive = false;
+            this.player.unfreeze();
+            this.handlePendingPrologueBeat();
+          });
+        });
+      });
+    });
+  }
+
   shutdown(): void {
     eventBus.off('dialogue:action', this.onDialogueAction, this);
     eventBus.off('progression:gate-open', this.onGateOpen, this);
-    eventBus.off('progression:glitch-spawn', this.onGlitchSpawn, this);
     this.safePositionTimer?.destroy();
     this.moteEmitter?.destroy();
     this.dialogueSystem?.destroy();
