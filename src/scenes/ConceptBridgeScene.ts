@@ -21,6 +21,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
   private sectionContainer!: Phaser.GameObjects.Container;
   private dots: Phaser.GameObjects.Arc[] = [];
   private miniForgeAnswered: boolean = false;
+  private codexUnlockPlayed: boolean = false;
 
   constructor() {
     super({ key: SCENE_KEYS.CONCEPT_BRIDGE });
@@ -31,6 +32,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.content = CONCEPT_BRIDGE_DATA[data.puzzleId];
     this.currentSection = 0;
     this.miniForgeAnswered = false;
+    this.codexUnlockPlayed = false;
   }
 
   create(): void {
@@ -299,28 +301,31 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.sectionContainer.add(nameText);
 
     // Sparkle effect
-    for (let i = 0; i < 20; i++) {
-      const angle = (Math.PI * 2 * i) / 20;
-      const spark = this.add.circle(
-        width / 2 + Math.cos(angle) * 80,
-        180 + Math.sin(angle) * 80,
-        2, COLORS.GOLD_ACCENT, 0
-      );
-      this.tweens.add({
-        targets: spark,
-        alpha: 0.8,
-        scale: 2,
-        duration: 400,
-        delay: 500 + i * 30,
-        yoyo: true,
-        onComplete: () => spark.destroy(),
-      });
-      this.sectionContainer.add(spark);
-    }
+    if (!this.codexUnlockPlayed) {
+      this.codexUnlockPlayed = true;
+      for (let i = 0; i < 20; i++) {
+        const angle = (Math.PI * 2 * i) / 20;
+        const spark = this.add.circle(
+          width / 2 + Math.cos(angle) * 80,
+          180 + Math.sin(angle) * 80,
+          2, COLORS.GOLD_ACCENT, 0
+        );
+        this.tweens.add({
+          targets: spark,
+          alpha: 0.8,
+          scale: 2,
+          duration: 400,
+          delay: 500 + i * 30,
+          yoyo: true,
+          onComplete: () => spark.destroy(),
+        });
+        this.sectionContainer.add(spark);
+      }
 
-    audioManager.playTone(523, 200, 'sine');
-    this.time.delayedCall(200, () => audioManager.playTone(659, 200, 'sine'));
-    this.time.delayedCall(400, () => audioManager.playTone(784, 300, 'sine'));
+      audioManager.playTone(523, 200, 'sine');
+      this.time.delayedCall(200, () => audioManager.playTone(659, 200, 'sine'));
+      this.time.delayedCall(400, () => audioManager.playTone(784, 300, 'sine'));
+    }
 
     // Stats
     const stats = [

@@ -8,26 +8,25 @@
 
 export interface GlitchLine {
   text: string;
-  duration: number; // ms to display before auto-dismiss
 }
 
 export const GLITCH_DIALOGUE: Record<number, GlitchLine[]> = {
   1: [
-    { text: "Oh. A Spark. How... quaint.", duration: 2200 },
-    { text: "I've solved this whole region already. Brute-forced every path.", duration: 2800 },
-    { text: "Enjoy your little companion. You'll need it.", duration: 2200 },
+    { text: "Oh. A Spark. How... quaint." },
+    { text: "I've solved this whole region already. Brute-forced every path." },
+    { text: "Enjoy your little companion. You'll need it." },
   ],
   2: [
-    { text: "You again? You actually finished the Arrays?", duration: 2200 },
-    { text: "...I had to try 847 combinations. You did it in — how many?", duration: 2800 },
-    { text: "Not that it matters. Speed isn't everything.", duration: 2000 },
-    { text: "...right?", duration: 1400 },
+    { text: "You again? You actually finished the Arrays?" },
+    { text: "...I had to try 847 combinations. You did it in — how many?" },
+    { text: "Not that it matters. Speed isn't everything." },
+    { text: "...right?" },
   ],
   3: [
-    { text: "Your Bit looks different. It's grown.", duration: 2000 },
-    { text: "Mine never does that. I keep starting over.", duration: 2400 },
-    { text: "How do you get it to — nevermind. I figured it out myself anyway.", duration: 2800 },
-    { text: "(They didn't figure it out.)", duration: 1600 },
+    { text: "Your Bit looks different. It's grown." },
+    { text: "Mine never does that. I keep starting over." },
+    { text: "How do you get it to — nevermind. I figured it out myself anyway." },
+    { text: "(They didn't figure it out.)" },
   ],
 };
 
