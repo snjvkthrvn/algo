@@ -32,10 +32,14 @@ nul
 # Cursor IDE
 .cursor/
 
-# Local tool state
+# Local AI tool settings and state
+.claude/
 .superpowers/
 .remember/
 .codex-run/
+
+# Internal AI development docs (plans, specs, brainstorm artifacts)
+docs/superpowers/
 
 # Local package manager caches
 npm-cache/
@@ -47,9 +51,23 @@ game_rebuild/npm-cache/
 # Playwright MCP session artifacts
 .playwright-mcp/
 
+# Playwright generated reports and test results
+playwright-report/
+test-results/
+
+# Brainstorm HTML artifacts
+public/brainstorm/
+
 # Visual audit screenshots (transient, regenerable)
 /audit-*.png
 /prologue-*.png
+/polish-*.png
+/verify-*.png
+/zoom*.png
+/left_*.png
+/sprite_frames.png
+/tmp_*.png
+/player_frames*.txt
 
 # Python bytecode (slicer scripts)
 __pycache__/
