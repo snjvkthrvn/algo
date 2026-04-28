@@ -40,6 +40,15 @@ import { PrologueTilemapRenderer, type PrologueTilemapHandle } from '../../syste
 import { PrologueRouteRenderer, type PrologueRouteHandle } from '../../systems/PrologueRouteRenderer';
 import { PROLOGUE_CAMERA_TUNING } from './cameraTuning';
 import { setupUICamera } from '../../utils/uiCamera';
+import { getPendingPrologueBeat } from '../../prologue/prologueScriptState';
+
+const NODE_INTRO_LINES = [
+  { speaker: 'Professor Node', text: 'Ah. There you are. I was beginning to wonder.' },
+  { speaker: 'Professor Node', text: 'I am Professor Node. This is the Chamber of Flow — where the oldest algorithms still run.' },
+  { speaker: 'Professor Node', text: 'That small light beside you is Bit. It grows as you learn. Right now it is a Spark — the simplest form.' },
+  { speaker: 'Professor Node', text: 'Two lessons wait for you here. Find the Rune Keeper and the Console Keeper. They will show you the way.' },
+  { speaker: 'Professor Node', text: 'The Chamber is yours to explore. I will be here if you need me.' },
+];
 
 export class PrologueScene extends Phaser.Scene {
   private player!: Player;
@@ -62,6 +71,7 @@ export class PrologueScene extends Phaser.Scene {
   private onDialogueAction!: (...args: unknown[]) => void;
   private onGateOpen!: (...args: unknown[]) => void;
   private onGlitchSpawn!: (...args: unknown[]) => void;
+  private storyBeatActive = false;
 
   constructor() {
     super({ key: SCENE_KEYS.PROLOGUE });
@@ -212,6 +222,9 @@ export class PrologueScene extends Phaser.Scene {
     } else {
       this.hud.showRegionName('Chamber of Flow');
     }
+
+    // === STORY BEAT HANDLING ===
+    this.handlePendingPrologueBeat();
   }
 
   update(): void {
@@ -554,6 +567,82 @@ export class PrologueScene extends Phaser.Scene {
       subtext.destroy();
       back.destroy();
     });
+  }
+
+  private playCinematicSequence(
+    lines: Array<{ speaker: string; text: string }>,
+    onComplete: () => void
+  ): void {
+    let lineIndex = 0;
+
+    const playNextLine = () => {
+      if (lineIndex >= lines.length) {
+        onComplete();
+        return;
+      }
+
+      const line = lines[lineIndex];
+      this.dialogueSystem.startDialogue(
+        {
+          startNodeId: 'node_intro_' + lineIndex,
+          nodes: [
+            {
+              id: 'node_intro_' + lineIndex,
+              speaker: line.speaker,
+              text: line.text,
+            },
+          ],
+        },
+        'cinematic',
+        () => {
+          lineIndex++;
+          playNextLine();
+        }
+      );
+    };
+
+    playNextLine();
+  }
+
+  private playNodeIntro(): void {
+    this.storyBeatActive = true;
+    this.player.freeze();
+    this.playCinematicSequence(NODE_INTRO_LINES, () => {
+      gameState.setFlag('professor_node_intro_done', true);
+      this.storyBeatActive = false;
+      this.player.unfreeze();
+      this.handlePendingPrologueBeat();
+    });
+  }
+
+  private getPrologueStoryFlags() {
+    return {
+      openingSceneDone: gameState.getFlag('opening_scene_done') ?? false,
+      professorNodeIntroDone: gameState.getFlag('professor_node_intro_done') ?? false,
+      watcherWarningDone: gameState.getFlag('watcher_warning_done') ?? false,
+      glitchIntroDone: gameState.getFlag('glitch_intro_done') ?? false,
+      bossGateCutsceneDone: gameState.getFlag('boss_gate_cutscene_done') ?? false,
+      bossReturnCutsceneDone: gameState.getFlag('boss_return_cutscene_done') ?? false,
+      puzzleP01Complete: gameState.isPuzzleCompleted('p0_1'),
+      puzzleP02Complete: gameState.isPuzzleCompleted('p0_2'),
+      puzzleBossSentinelComplete: gameState.isPuzzleCompleted('boss_sentinel'),
+    };
+  }
+
+  private handlePendingPrologueBeat(): void {
+    if (this.storyBeatActive) return;
+
+    const beat = getPendingPrologueBeat(this.getPrologueStoryFlags());
+
+    if (beat === 'node_intro') {
+      this.playNodeIntro();
+      return;
+    }
+    if (beat === 'glitch_intro') {
+      // TODO: Implement glitch_intro handler
+      return;
+    }
+    // Additional beat handlers can be added here as needed
   }
 
   shutdown(): void {
