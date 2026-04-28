@@ -41,7 +41,7 @@ import { PrologueTilemapRenderer, type PrologueTilemapHandle } from '../../syste
 import { PrologueRouteRenderer, type PrologueRouteHandle } from '../../systems/PrologueRouteRenderer';
 import { PROLOGUE_CAMERA_TUNING } from './cameraTuning';
 import { setupUICamera } from '../../utils/uiCamera';
-import { createPrologueStoryFlags, getPendingPrologueBeat } from '../../prologue/prologueScriptState';
+import { createPrologueStoryFlags, getPendingPrologueBeat, shouldTriggerWatcherAtPosition } from '../../prologue/prologueScriptState';
 
 const NODE_INTRO_LINES = [
   { speaker: 'Professor Node', text: 'Ah. There you are. I was beginning to wonder.' },
@@ -249,6 +249,12 @@ export class PrologueScene extends Phaser.Scene {
 
     // Save player position
     gameState.setPlayerPosition(pos.x, pos.y);
+
+    // Position-triggered watcher warning — fires once when player enters puzzle lane
+    if (!this.storyBeatActive && shouldTriggerWatcherAtPosition(this.getPrologueStoryFlags(), pos)) {
+      gameState.setFlag('watcher_warning_done', true);
+      this.handlePendingPrologueBeat();
+    }
   }
 
   private createPlatforms(): void {
@@ -718,7 +724,7 @@ export class PrologueScene extends Phaser.Scene {
     });
   }
 
-  private getPrologueStoryFlags() {
+  private getPrologueStoryFlags(): ReturnType<typeof createPrologueStoryFlags> {
     return createPrologueStoryFlags({
       openingSceneDone: gameState.getFlag('opening_scene_done'),
       professorNodeIntroDone: gameState.getFlag('professor_node_intro_done'),
@@ -743,6 +749,9 @@ export class PrologueScene extends Phaser.Scene {
       this.playNodeIntro();
       return;
     }
+    if (beat === 'watcher_warning') {
+      return;
+    }
     if (beat === 'glitch_intro') {
       this.triggerGlitchEncounter(1);
       return;
@@ -764,7 +773,16 @@ export class PrologueScene extends Phaser.Scene {
     this.storyBeatActive = true;
     this.player.freeze();
     this.playCinematicSequence(
-      [{ speaker: 'System', text: '> Begin.' }],
+      [
+        { speaker: 'System', text: '> ...' },
+        { speaker: 'System', text: '> Signal detected.' },
+        { speaker: 'System', text: '> Reconstructing memory index...' },
+        { speaker: 'System', text: '> Partial. Continuing.' },
+        { speaker: 'System', text: '> Core process: ACTIVE' },
+        { speaker: 'System', text: '> You\'re back.' },
+        { speaker: 'System', text: '> The Chamber of Flow is still here. So is your path.' },
+        { speaker: 'System', text: '> Begin.' },
+      ],
       () => {
         gameState.setFlag('opening_scene_done', true);
         this.storyBeatActive = false;
@@ -800,10 +818,27 @@ export class PrologueScene extends Phaser.Scene {
     );
   }
 
-  private triggerGlitchEncounter(_encounterNumber: 1 | 2): void {
+  private triggerGlitchEncounter(encounterNumber: 1 | 2): void {
+    if (this.storyBeatActive) return;
+    this.storyBeatActive = true;
+    this.player.freeze();
     const pos = this.player.getPosition();
     const spawn = this.pickGlitchSpawnPosition(pos);
     this.glitch.triggerEncounter(spawn.x, spawn.y);
+    const freezeMs = encounterNumber === 1 ? 8000 : 9000;
+    this.time.delayedCall(freezeMs, () => {
+      if (encounterNumber === 1) {
+        gameState.setFlag('glitch_encounter_1_pending', false);
+        gameState.setFlag('glitch_encounter_1_done', true);
+        gameState.setFlag('glitch_intro_done', true);
+      } else {
+        gameState.setFlag('glitch_encounter_2_pending', false);
+        gameState.setFlag('glitch_encounter_2_done', true);
+      }
+      this.storyBeatActive = false;
+      this.player.unfreeze();
+      this.handlePendingPrologueBeat();
+    });
   }
 
   shutdown(): void {
