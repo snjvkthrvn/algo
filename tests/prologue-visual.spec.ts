@@ -253,4 +253,38 @@ test.describe('Prologue region – visual audit', () => {
     expect(pos!.y).toBeGreaterThanOrEqual(416);
     expect(pos!.y).toBeLessThanOrEqual(480);
   });
+
+  test('09 – Continue with unknown region falls back to Prologue', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 320, y: 400, region: 'unknown_future_region' },
+        companion: { stage: 'spark', mood: 'neutral' },
+        rival: { encountered: false, encounterStage: 0 },
+        shardsCollected: [],
+        puzzleResults: {},
+        codexEntries: [],
+        npcStates: {},
+        flags: { opening_scene_done: true },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }));
+    });
+
+    const warnings: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'warning') warnings.push(msg.text());
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+
+    await waitForScene(page, 'PrologueScene', 10_000);
+
+    expect(warnings.some((w) => w.includes('unknown_future_region'))).toBe(true);
+  });
 });
