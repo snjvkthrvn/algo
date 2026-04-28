@@ -148,6 +148,12 @@ class AudioManagerClass {
   playClickTone(): void {
     this.playTone(880, 50, 'square');
   }
+
+  applyVolumeSettings(): void {
+    if (!this.currentMusic) return;
+    const { musicVolume } = gameState.getSettings();
+    (this.currentMusic as Phaser.Sound.WebAudioSound).setVolume(musicVolume);
+  }
 }
 
 export const audioManager = new AudioManagerClass();
