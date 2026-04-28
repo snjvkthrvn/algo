@@ -40,7 +40,7 @@ import { PrologueTilemapRenderer, type PrologueTilemapHandle } from '../../syste
 import { PrologueRouteRenderer, type PrologueRouteHandle } from '../../systems/PrologueRouteRenderer';
 import { PROLOGUE_CAMERA_TUNING } from './cameraTuning';
 import { setupUICamera } from '../../utils/uiCamera';
-import { getPendingPrologueBeat } from '../../prologue/prologueScriptState';
+import { createPrologueStoryFlags, getPendingPrologueBeat } from '../../prologue/prologueScriptState';
 
 const NODE_INTRO_LINES = [
   { speaker: 'Professor Node', text: 'Ah. There you are. I was beginning to wonder.' },
@@ -616,33 +616,91 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private getPrologueStoryFlags() {
-    return {
-      openingSceneDone: gameState.getFlag('opening_scene_done') ?? false,
-      professorNodeIntroDone: gameState.getFlag('professor_node_intro_done') ?? false,
-      watcherWarningDone: gameState.getFlag('watcher_warning_done') ?? false,
-      glitchIntroDone: gameState.getFlag('glitch_intro_done') ?? false,
-      bossGateCutsceneDone: gameState.getFlag('boss_gate_cutscene_done') ?? false,
-      bossReturnCutsceneDone: gameState.getFlag('boss_return_cutscene_done') ?? false,
-      puzzleP01Complete: gameState.isPuzzleCompleted('p0_1'),
-      puzzleP02Complete: gameState.isPuzzleCompleted('p0_2'),
-      puzzleBossSentinelComplete: gameState.isPuzzleCompleted('boss_sentinel'),
-    };
+    return createPrologueStoryFlags({
+      openingSceneDone: gameState.getFlag('opening_scene_done'),
+      professorNodeIntroDone: gameState.getFlag('professor_node_intro_done'),
+      watcherWarningDone: gameState.getFlag('watcher_warning_done'),
+      glitchIntroDone: gameState.getFlag('glitch_intro_done') || gameState.getFlag('glitch_encounter_1_done'),
+      bossGateCutsceneDone: gameState.getFlag('boss_gate_cutscene_done'),
+      bossReturnCutsceneDone: gameState.getFlag('boss_return_cutscene_done'),
+      puzzleP01Complete: gameState.getFlag('puzzle_p0_1_complete'),
+      puzzleP02Complete: gameState.getFlag('puzzle_p0_2_complete'),
+      puzzleBossSentinelComplete: gameState.getFlag('puzzle_boss_sentinel_complete'),
+    });
   }
 
   private handlePendingPrologueBeat(): void {
     if (this.storyBeatActive) return;
-
     const beat = getPendingPrologueBeat(this.getPrologueStoryFlags());
-
+    if (beat === 'opening_scene') {
+      this.playOpeningScene(() => this.handlePendingPrologueBeat());
+      return;
+    }
     if (beat === 'node_intro') {
       this.playNodeIntro();
       return;
     }
     if (beat === 'glitch_intro') {
-      // TODO: Implement glitch_intro handler
+      this.triggerGlitchEncounter(1);
       return;
     }
-    // Additional beat handlers can be added here as needed
+    if (beat === 'boss_gate_cutscene') {
+      this.playBossGateCutscene();
+      return;
+    }
+    if (beat === 'boss_return_cutscene') {
+      this.playBossReturnCutscene();
+      return;
+    }
+    if (gameState.getFlag('glitch_encounter_2_pending')) {
+      this.triggerGlitchEncounter(2);
+    }
+  }
+
+  private playOpeningScene(onComplete: () => void): void {
+    this.storyBeatActive = true;
+    this.player.freeze();
+    this.playCinematicSequence(
+      [{ speaker: 'System', text: '> Begin.' }],
+      () => {
+        gameState.setFlag('opening_scene_done', true);
+        this.storyBeatActive = false;
+        this.player.unfreeze();
+        onComplete();
+      }
+    );
+  }
+
+  private playBossGateCutscene(): void {
+    this.storyBeatActive = true;
+    this.player.freeze();
+    this.playCinematicSequence(
+      [{ speaker: 'Professor Node', text: 'Both lessons learned. The Sentinel awaits beyond the gate.' }],
+      () => {
+        gameState.setFlag('boss_gate_cutscene_done', true);
+        this.storyBeatActive = false;
+        this.player.unfreeze();
+      }
+    );
+  }
+
+  private playBossReturnCutscene(): void {
+    this.storyBeatActive = true;
+    this.player.freeze();
+    this.playCinematicSequence(
+      [{ speaker: 'Professor Node', text: 'You have done it. The path forward is open.' }],
+      () => {
+        gameState.setFlag('boss_return_cutscene_done', true);
+        this.storyBeatActive = false;
+        this.player.unfreeze();
+      }
+    );
+  }
+
+  private triggerGlitchEncounter(_encounterNumber: 1 | 2): void {
+    const pos = this.player.getPosition();
+    const spawn = this.pickGlitchSpawnPosition(pos);
+    this.glitch.triggerEncounter(spawn.x, spawn.y);
   }
 
   shutdown(): void {
