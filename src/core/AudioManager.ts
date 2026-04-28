@@ -15,11 +15,19 @@ class AudioManagerClass {
   private audioCtx: AudioContext | null = null;
 
   private getAudioContext(): AudioContext | null {
+    // Prefer Phaser's context so tones share the same audio graph
+    const phaserCtx = (this.scene?.sound as Phaser.Sound.WebAudioSoundManager | null)?.context;
+    if (phaserCtx && phaserCtx.state !== 'closed') {
+      if (phaserCtx.state === 'suspended') phaserCtx.resume();
+      return phaserCtx;
+    }
+    // Fallback when scene is not set
     try {
       if (!this.audioCtx || this.audioCtx.state === 'closed') {
         this.audioCtx = new (window.AudioContext ||
           (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       }
+      if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
       return this.audioCtx;
     } catch {
       return null;
@@ -123,6 +131,7 @@ class AudioManagerClass {
     this.scene.sound.play(key, { volume: settings.sfxVolume });
   }
 
+  /** Play a procedural tone using the Web Audio API. Falls back silently if unavailable. */
   playTone(frequency: number, duration: number = 100, type: OscillatorType = 'sine'): void {
     const ctx = this.getAudioContext();
     if (!ctx) return;
@@ -131,7 +140,7 @@ class AudioManagerClass {
       const gainNode = ctx.createGain();
       oscillator.type = type;
       oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
-      gainNode.gain.setValueAtTime(gameState.getSettings().sfxVolume * 0.3, ctx.currentTime);
+      gainNode.gain.setValueAtTime(Math.max(gameState.getSettings().sfxVolume * 0.3, 0.0001), ctx.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
       oscillator.connect(gainNode);
       gainNode.connect(ctx.destination);
@@ -165,6 +174,7 @@ class AudioManagerClass {
     } else if (this.currentMusic instanceof Phaser.Sound.HTML5AudioSound) {
       this.currentMusic.setVolume(musicVolume);
     }
+    // NoAudioSound (no-audio environments) intentionally skipped
   }
 }
 
