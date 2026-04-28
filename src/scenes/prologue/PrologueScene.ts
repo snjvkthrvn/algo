@@ -6,6 +6,7 @@
 import Phaser from 'phaser';
 import {
   COLORS,
+  FONTS,
   SCENE_KEYS,
   VOID_RESPAWN_CHECK_INTERVAL,
   WORLD_HEIGHT,
@@ -570,38 +571,140 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private playCinematicSequence(
-    lines: Array<{ speaker: string; text: string }>,
+    lines: Array<{ speaker: string; text: string; speakerColor?: string }>,
     onComplete: () => void
   ): void {
-    let lineIndex = 0;
+    const { width, height } = this.cameras.main;
+    const container = this.add.container(0, 0).setDepth(9000).setScrollFactor(0);
 
-    const playNextLine = () => {
-      if (lineIndex >= lines.length) {
-        onComplete();
+    const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0.34)
+      .setOrigin(0).setDepth(9000).setScrollFactor(0);
+    const panel = this.add.rectangle(width / 2, height - 90, width - 104, 120, 0x0a0a1a, 0.92)
+      .setDepth(9001).setScrollFactor(0);
+    panel.setStrokeStyle(2, COLORS.CYAN_GLOW, 0.82);
+    const speakerText = this.add.text(74, height - 136, '', {
+      fontFamily: FONTS.RETRO,
+      fontSize: '12px',
+      color: '#fbbf24',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setDepth(9002).setScrollFactor(0);
+    const bodyText = this.add.text(74, height - 108, '', {
+      fontFamily: FONTS.MONO,
+      fontSize: '15px',
+      color: '#e2e8f0',
+      wordWrap: { width: width - 164 },
+      lineSpacing: 5,
+    }).setDepth(9002).setScrollFactor(0);
+    const promptText = this.add.text(width - 84, height - 58, '▶', {
+      fontFamily: FONTS.RETRO,
+      fontSize: '10px',
+      color: '#fbbf24',
+    }).setDepth(9002).setScrollFactor(0).setAlpha(0);
+
+    container.add([dim, panel, speakerText, bodyText, promptText]);
+
+    let sequenceDone = false;
+    const activeLineCleanup: (() => void)[] = [];
+
+    const runActiveLineCleanup = () => {
+      for (const fn of activeLineCleanup) fn();
+      activeLineCleanup.length = 0;
+    };
+
+    const finishSequence = () => {
+      if (sequenceDone) return;
+      sequenceDone = true;
+      runActiveLineCleanup();
+      this.tweens.add({
+        targets: container,
+        alpha: 0,
+        duration: 260,
+        onComplete: () => {
+          container.destroy();
+          onComplete();
+        },
+      });
+    };
+
+    const showLine = (index: number): void => {
+      if (index >= lines.length) {
+        finishSequence();
         return;
       }
 
-      const line = lines[lineIndex];
-      this.dialogueSystem.startDialogue(
-        {
-          startNodeId: 'node_intro_' + lineIndex,
-          nodes: [
-            {
-              id: 'node_intro_' + lineIndex,
-              speaker: line.speaker,
-              text: line.text,
-            },
-          ],
-        },
-        'cinematic',
-        () => {
-          lineIndex++;
-          playNextLine();
+      runActiveLineCleanup();
+
+      const line = lines[index];
+      speakerText.setColor(line.speakerColor ?? '#fbbf24');
+      speakerText.setText(line.speaker);
+      bodyText.setText('');
+      promptText.setAlpha(0);
+
+      const fullText = line.text;
+      let charIndex = 0;
+      let lineComplete = false;
+      let typeTimerRef: Phaser.Time.TimerEvent | null = null;
+
+      const completeCurrentLine = () => {
+        if (typeTimerRef) {
+          typeTimerRef.destroy();
+          typeTimerRef = null;
         }
-      );
+        lineComplete = true;
+        charIndex = fullText.length;
+        bodyText.setText(fullText);
+        promptText.setAlpha(1);
+        let blinkOn = true;
+        const blinkTimer = this.time.addEvent({
+          delay: 400,
+          loop: true,
+          callback: () => {
+            blinkOn = !blinkOn;
+            promptText.setAlpha(blinkOn ? 1 : 0);
+          },
+        });
+        activeLineCleanup.push(() => {
+          blinkTimer.destroy();
+          promptText.setAlpha(0);
+        });
+      };
+
+      typeTimerRef = this.time.addEvent({
+        delay: Math.round(1000 / gameState.getSettings().textSpeed),
+        repeat: fullText.length - 1,
+        callback: () => {
+          charIndex++;
+          bodyText.setText(fullText.slice(0, charIndex));
+          if (charIndex >= fullText.length) {
+            completeCurrentLine();
+          }
+        },
+      });
+      activeLineCleanup.push(() => { typeTimerRef?.destroy(); typeTimerRef = null; });
+
+      const advanceLine = () => {
+        if (!lineComplete) {
+          completeCurrentLine();
+          return;
+        }
+        showLine(index + 1);
+      };
+
+      const kbd = this.input.keyboard;
+      kbd?.on('keydown-SPACE', advanceLine);
+      kbd?.on('keydown-ENTER', advanceLine);
+      activeLineCleanup.push(() => {
+        kbd?.off('keydown-SPACE', advanceLine);
+        kbd?.off('keydown-ENTER', advanceLine);
+      });
+
+      const escHandler = () => finishSequence();
+      kbd?.on('keydown-ESC', escHandler);
+      activeLineCleanup.push(() => kbd?.off('keydown-ESC', escHandler));
     };
 
-    playNextLine();
+    showLine(0);
   }
 
   private playNodeIntro(): void {
