@@ -76,6 +76,7 @@ export class PrologueScene extends Phaser.Scene {
   private routeHandle: PrologueRouteHandle | null = null;
   private safePositionTimer!: Phaser.Time.TimerEvent;
   private storyBeatActive = false;
+  private inputCooldownUntil = 0;
   private cinematicCleanup: Array<() => void> = [];
   private hasShutdown = false;
   private onDialogueAction!: (...args: unknown[]) => void;
@@ -93,6 +94,7 @@ export class PrologueScene extends Phaser.Scene {
 
   create(): void {
     this.hasShutdown = false;
+    this.inputCooldownUntil = 0;
     this.cinematicCleanup = [];
     this.npcs = [];
     this.stars = [];
@@ -151,6 +153,7 @@ export class PrologueScene extends Phaser.Scene {
 
     // === INTERACTION HANDLER ===
     this.interactionSystem.onInteract((entry: InteractableEntry) => {
+      if (this.storyBeatActive || this.time.now < this.inputCooldownUntil) return;
       if (this.dialogueSystem.isDialogueActive()) return;
 
       if (entry.type === 'npc') {
@@ -254,21 +257,23 @@ export class PrologueScene extends Phaser.Scene {
 
   update(): void {
     const dialogueActive = this.dialogueSystem.isDialogueActive();
+    const inputCooldownActive = this.time.now < this.inputCooldownUntil;
+    const inputBlocked = dialogueActive || this.storyBeatActive || inputCooldownActive;
 
     // Update player
-    if (!dialogueActive) {
+    if (!inputBlocked) {
       this.player.update();
     }
 
     // Update companion — Bit always follows, even during dialogue
     const pos = this.player.getPosition();
     this.bit.update(pos.x, pos.y);
-    if (!dialogueActive) {
+    if (!inputBlocked) {
       this.maybeTriggerWatcherWarning(pos);
     }
 
     // Update systems
-    this.interactionSystem.update(!dialogueActive);
+    this.interactionSystem.update(!inputBlocked);
     this.npcBehavior.update();
 
     // Update starfield
@@ -278,7 +283,7 @@ export class PrologueScene extends Phaser.Scene {
     gameState.setPlayerPosition(pos.x, pos.y);
 
     // Position-triggered watcher warning — fires once when player enters puzzle lane
-    if (!this.storyBeatActive && shouldTriggerWatcherAtPosition(this.getPrologueStoryFlags(), pos)) {
+    if (!inputBlocked && shouldTriggerWatcherAtPosition(this.getPrologueStoryFlags(), pos)) {
       gameState.setFlag('watcher_warning_done', true);
       this.handlePendingPrologueBeat();
     }
@@ -340,8 +345,7 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private playWatcherWarning(): void {
-    this.storyBeatActive = true;
-    this.player.freeze();
+    this.beginStoryBeat();
     this.spawnWatcherFlyby(false, () => {
       this.playCinematicSequence(
         [
@@ -630,6 +634,12 @@ export class PrologueScene extends Phaser.Scene {
     for (const cleanup of cleanups) cleanup();
   }
 
+  private beginStoryBeat(): void {
+    this.storyBeatActive = true;
+    this.player.freeze();
+    this.interactionSystem?.update(false);
+  }
+
   private playCinematicSequence(
     lines: Array<{ speaker: string; text: string; speakerColor?: string }>,
     onComplete: () => void
@@ -690,6 +700,7 @@ export class PrologueScene extends Phaser.Scene {
           fadeTweenCleanup?.remove();
           sequenceCleanup.remove();
           container.destroy();
+          this.inputCooldownUntil = this.time.now + 1000;
           onComplete();
         },
       });
@@ -790,8 +801,7 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private playNodeIntro(): void {
-    this.storyBeatActive = true;
-    this.player.freeze();
+    this.beginStoryBeat();
     this.playCinematicSequence(NODE_INTRO_LINES, () => {
       gameState.setFlag('professor_node_intro_done', true);
       this.storyBeatActive = false;
@@ -846,8 +856,7 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private playOpeningScene(onComplete: () => void): void {
-    this.storyBeatActive = true;
-    this.player.freeze();
+    this.beginStoryBeat();
     this.playCinematicSequence(
       [
         { speaker: 'System', text: '> ...' },
@@ -869,8 +878,7 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private playBossGateCutscene(): void {
-    this.storyBeatActive = true;
-    this.player.freeze();
+    this.beginStoryBeat();
 
     if (this.bossGate) {
       this.bossGate.setLocked(false);
@@ -893,8 +901,7 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private playBossReturnCutscene(): void {
-    this.storyBeatActive = true;
-    this.player.freeze();
+    this.beginStoryBeat();
 
     if (this.gateway) {
       this.gateway.setLocked(false);
@@ -926,8 +933,7 @@ export class PrologueScene extends Phaser.Scene {
 
   private triggerGlitchEncounter(encounterNumber: 1 | 2): void {
     if (this.storyBeatActive) return;
-    this.storyBeatActive = true;
-    this.player.freeze();
+    this.beginStoryBeat();
 
     const dialogueLines = GLITCH_DIALOGUE[encounterNumber].map((l) => ({
       speaker: 'Glitch',

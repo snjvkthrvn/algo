@@ -41,6 +41,42 @@ describe('InteractionSystem', () => {
     expect(prompts[0].show).not.toHaveBeenCalled();
   });
 
+  it('clears stale targets while disabled so the same key cannot interact', () => {
+    prompts.length = 0;
+    let onInteract: (() => void) | undefined;
+    const scene = {
+      input: {
+        keyboard: {
+          on: (_event: string, callback: () => void) => { onInteract = callback; },
+          off: () => undefined,
+        },
+      },
+    };
+    const player = {
+      getPosition: () => ({ x: 0, y: 0 }),
+    };
+    const npc = {
+      getPosition: () => ({ x: 0, y: 0 }),
+      getPromptOffsetY: () => -42,
+      setHighlighted: vi.fn(),
+    };
+    const callback = vi.fn();
+
+    const system = new InteractionSystem(scene as never, player as never);
+    system.addNPC(npc as never);
+    system.onInteract(callback);
+
+    system.update(true);
+    expect(system.getCurrentTarget()).not.toBeNull();
+
+    system.update(false);
+    onInteract?.();
+
+    expect(system.getCurrentTarget()).toBeNull();
+    expect(npc.setHighlighted).toHaveBeenLastCalledWith(false);
+    expect(callback).not.toHaveBeenCalled();
+  });
+
   it('positions NPC prompts using the entity-provided offset so art-size changes stay in sync', () => {
     prompts.length = 0;
     const scene = {

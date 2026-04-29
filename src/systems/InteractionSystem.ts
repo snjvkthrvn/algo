@@ -21,6 +21,7 @@ export class InteractionSystem {
   private prompt: InteractionPrompt;
   private currentTarget: InteractableEntry | null = null;
   private interactionCallback: ((target: InteractableEntry) => void) | null = null;
+  private interactionsEnabled = true;
 
   private readonly onInteractKey = () => this.tryInteract();
   private keyboardAttached = false;
@@ -61,7 +62,9 @@ export class InteractionSystem {
   }
 
   update(showPrompts: boolean = true): void {
+    this.interactionsEnabled = showPrompts;
     if (!showPrompts) {
+      this.clearCurrentTarget();
       this.prompt.hide();
       return;
     }
@@ -114,10 +117,23 @@ export class InteractionSystem {
   }
 
   private tryInteract(): void {
+    if (!this.interactionsEnabled) return;
     if (!this.currentTarget) return;
     if (this.interactionCallback) {
       this.interactionCallback(this.currentTarget);
     }
+  }
+
+  private clearCurrentTarget(): void {
+    if (!this.currentTarget) return;
+
+    if (this.currentTarget.type === 'npc') {
+      (this.currentTarget.target as NPC).setHighlighted(false);
+    } else {
+      (this.currentTarget.target as InteractableObject).setHighlighted(false);
+    }
+
+    this.currentTarget = null;
   }
 
   getCurrentTarget(): InteractableEntry | null {
@@ -126,6 +142,7 @@ export class InteractionSystem {
 
   destroy(): void {
     this.detachKeyboard();
+    this.clearCurrentTarget();
     this.prompt.destroy();
   }
 }

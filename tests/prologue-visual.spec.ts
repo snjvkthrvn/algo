@@ -24,9 +24,9 @@
  * atomically, so the menu canvas is fully covered by the swirl before the
  * prologue renders its first frame.
  *
- * Puzzle tests jump via JS injection because reaching them through normal play
- * would require NPC dialogue interaction.  Puzzles are safe: BasePuzzleScene
- * draws a full-screen opaque overlay that hides any bleed from the menu canvas.
+ * Most puzzle layout tests jump via JS injection because they focus on puzzle
+ * rendering. Later NPC interaction tests cover the keyboard dialogue path into
+ * the first two puzzle scenes.
  */
 
 import { test, expect, type Page } from 'playwright/test';
@@ -145,6 +145,23 @@ async function walkStep(page: Page, key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' 
   await page.waitForTimeout(140);
 }
 
+async function clickMenuItem(page: Page, label: string) {
+  const bounds = await page.waitForFunction((targetLabel) => {
+    const game = (window as GameWindow).__PHASER_GAME__;
+    const scene = game?.scene.getScene('MenuScene') as Record<string, unknown> | null;
+    const items = scene?.['menuItems'] as Array<{ text: string }> | undefined;
+    const texts = scene?.['menuTexts'] as Array<{ getBounds?: () => { x: number; y: number; width: number; height: number } }> | undefined;
+    const index = items?.findIndex((item) => item.text === targetLabel) ?? -1;
+    const text = index >= 0 ? texts?.[index] : undefined;
+    return text?.getBounds?.() ?? null;
+  }, label);
+
+  const box = await bounds.jsonValue();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(100);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
+
 /**
  * Navigate to the PrologueScene the same way the player does: Enter on NEW GAME.
  *
@@ -175,8 +192,7 @@ async function goToPrologue(page: Page) {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForScene(page, 'MenuScene');
   await page.waitForTimeout(1_000);
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
+  await clickMenuItem(page, 'CONTINUE');
   await waitForScene(page, 'PrologueScene', 10_000);
   // PrologueScene fade-in runs for 800 ms game-time; swirl + RAF throttle ~1.8×.
   await page.waitForTimeout(1_800);
@@ -202,10 +218,62 @@ async function goToArrayPlainsViaContinue(page: Page) {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForScene(page, 'MenuScene');
   await page.waitForTimeout(1_000);
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
+  await clickMenuItem(page, 'CONTINUE');
   await waitForScene(page, 'ArrayPlainsScene', 10_000);
   await page.waitForTimeout(1_800);
+}
+
+async function continueToPrologueAt(
+  page: Page,
+  player: { x: number; y: number },
+  flags: Record<string, boolean>,
+) {
+  await page.evaluate(
+    ([p, f]) => {
+      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: p.x, y: p.y, region: 'prologue' },
+        companion: { stage: 'spark', mood: 'neutral' },
+        rival: { encountered: false, encounterStage: 0 },
+        shardsCollected: [],
+        puzzleResults: {},
+        codexEntries: [],
+        npcStates: {},
+        flags: f,
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }));
+    },
+    [player, flags] as const,
+  );
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForScene(page, 'MenuScene');
+  await page.waitForTimeout(1_000);
+  await clickMenuItem(page, 'CONTINUE');
+  await waitForScene(page, 'PrologueScene', 10_000);
+}
+
+async function getPrologueRuntimeState(page: Page) {
+  return page.evaluate(() => {
+    const game = (window as GameWindow).__PHASER_GAME__;
+    const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
+    const dialogueSystem = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
+    const player = scene?.['player'] as { state?: string } | undefined;
+    return {
+      storyBeatActive: scene?.['storyBeatActive'] === true,
+      dialogueActive: dialogueSystem?.isDialogueActive?.() === true,
+      playerState: player?.state ?? null,
+      professorNodeIntroDone: (window as GameWindow).__gameState__?.getFlag('professor_node_intro_done') === true,
+    };
+  });
+}
+
+async function pressThroughDialogue(page: Page, presses: number, gapMs = 350) {
+  for (let i = 0; i < presses; i++) {
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(gapMs);
+  }
 }
 
 /**
@@ -357,8 +425,7 @@ test.describe('Prologue region – visual audit', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForScene(page, 'MenuScene');
     await page.waitForTimeout(1_000);
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
+    await clickMenuItem(page, 'CONTINUE');
 
     await waitForScene(page, 'PrologueScene', 10_000);
     expect(warnings.some((warning) => warning.includes('unknown_future_region'))).toBe(true);
@@ -470,8 +537,7 @@ test.describe('Prologue region – visual audit', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForScene(page, 'MenuScene');
     await page.waitForTimeout(1_000);
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
+    await clickMenuItem(page, 'CONTINUE');
     await waitForScene(page, 'PrologueScene', 10_000);
 
     await jumpToScene(page, 'Boss_Sentinel', { returnScene: 'PrologueScene' });
@@ -515,8 +581,7 @@ test.describe('Prologue region – visual audit', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForScene(page, 'MenuScene');
     await page.waitForTimeout(1_000);
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
+    await clickMenuItem(page, 'CONTINUE');
     await waitForScene(page, 'ArrayPlainsScene', 10_000);
     await page.waitForTimeout(1_800);
 
@@ -546,5 +611,77 @@ test.describe('Prologue region – visual audit', () => {
     expect(returnPos!.x).toBeLessThanOrEqual(2032);
     expect(returnPos!.y).toBeGreaterThanOrEqual(331);
     expect(returnPos!.y).toBeLessThanOrEqual(459);
+  });
+
+  test('14 - Professor Node intro cannot open overlapping NPC dialogue', async ({ page }) => {
+    await continueToPrologueAt(page, { x: 860, y: 395 }, {
+      opening_scene_done: true,
+      prologue_visited: true,
+    });
+
+    await page.waitForFunction(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
+      return scene?.['storyBeatActive'] === true;
+    });
+
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(250);
+
+    const midIntro = await getPrologueRuntimeState(page);
+    expect(midIntro.storyBeatActive).toBe(true);
+    expect(midIntro.dialogueActive).toBe(false);
+    expect(midIntro.playerState).toBe('frozen');
+
+    await snap(page, '14-professor-node-intro-clean.png');
+
+    await pressThroughDialogue(page, 12, 250);
+    await page.waitForTimeout(700);
+
+    const afterIntro = await getPrologueRuntimeState(page);
+    expect(afterIntro.professorNodeIntroDone).toBe(true);
+    expect(afterIntro.storyBeatActive).toBe(false);
+    expect(afterIntro.dialogueActive).toBe(false);
+    expect(afterIntro.playerState).toBe('idle');
+  });
+
+  test('15 - Rune Keeper keyboard choice starts Follow the Path', async ({ page }) => {
+    await continueToPrologueAt(page, { x: 900, y: 197 }, {
+      opening_scene_done: true,
+      professor_node_intro_done: true,
+      watcher_warning_done: true,
+      prologue_visited: true,
+    });
+    await page.waitForTimeout(1_800);
+
+    await page.keyboard.press('Space');
+    await pressThroughDialogue(page, 6);
+    await snap(page, '15-rune-keeper-choice-ui.png');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(700);
+    await page.keyboard.press('Enter');
+
+    await waitForScene(page, 'P0_1_FollowThePath', 10_000);
+    await snap(page, '15-rune-keeper-puzzle-start.png');
+  });
+
+  test('16 - Console Keeper keyboard choice starts Flow Consoles', async ({ page }) => {
+    await continueToPrologueAt(page, { x: 900, y: 593 }, {
+      opening_scene_done: true,
+      professor_node_intro_done: true,
+      watcher_warning_done: true,
+      prologue_visited: true,
+    });
+    await page.waitForTimeout(1_800);
+
+    await page.keyboard.press('Space');
+    await pressThroughDialogue(page, 6);
+    await snap(page, '16-console-keeper-choice-ui.png');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(700);
+    await page.keyboard.press('Enter');
+
+    await waitForScene(page, 'P0_2_FlowConsoles', 10_000);
+    await snap(page, '16-console-keeper-puzzle-start.png');
   });
 });
