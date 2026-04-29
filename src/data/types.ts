@@ -409,6 +409,7 @@ export interface ConceptBridgeData {
   puzzleName: string;
   puzzleId: string;
   concept: string;
+  returnScene?: string;
   attempts: number;
   timeSpent: number;
   hintsUsed: number;

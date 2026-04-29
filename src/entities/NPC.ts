@@ -4,7 +4,7 @@
 
 import Phaser from 'phaser';
 import { COLORS } from '../config/constants';
-import { PROLOGUE_REWORK_KEYS, PROLOGUE_SHEET_KEYS } from '../config/assets';
+import { PROLOGUE_REWORK_KEYS, PROLOGUE_SHEET_KEYS, VISUAL_REVAMP_KEYS } from '../config/assets';
 import type { NPCConfig } from '../data/types';
 
 const STATIC_NPC_SCALES: Record<string, number> = {
@@ -12,6 +12,10 @@ const STATIC_NPC_SCALES: Record<string, number> = {
   [PROLOGUE_REWORK_KEYS.RUNE_KEEPER]: 0.3,
   [PROLOGUE_REWORK_KEYS.CONSOLE_KEEPER]: 0.3,
   [PROLOGUE_SHEET_KEYS.NPCS]: 0.22,
+  [VISUAL_REVAMP_KEYS.PROFESSOR_NODE]: 0.34,
+  [VISUAL_REVAMP_KEYS.RUNE_KEEPER]: 0.32,
+  [VISUAL_REVAMP_KEYS.CONSOLE_KEEPER]: 0.31,
+  [VISUAL_REVAMP_KEYS.GLITCH]: 0.3,
 };
 
 export class NPC {
@@ -28,7 +32,7 @@ export class NPC {
     this.config = config;
     const { x, y } = config.defaultPosition;
 
-    this.sprite = config.spriteKey.startsWith('prologue-')
+    this.sprite = this.shouldUseSpriteTexture(config)
       ? this.createSpriteNPC(config)
       : this.createProceduralNPC(config);
 
@@ -99,6 +103,14 @@ export class NPC {
     }
 
     return sprite;
+  }
+
+  private shouldUseSpriteTexture(config: NPCConfig): boolean {
+    return (
+      config.spriteKey.startsWith('prologue-') ||
+      Boolean(config.idleFrames?.length) ||
+      Boolean(this.scene.textures?.exists(config.spriteKey))
+    );
   }
 
   private getSpriteScale(spriteKey: string): number {

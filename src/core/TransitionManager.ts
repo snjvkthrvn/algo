@@ -136,6 +136,56 @@ export class TransitionManager {
     });
   }
 
+  /**
+   * Pixel dissolve transition — fills screen with 32px tiles in random order, then cuts.
+   * Reads as a GB-era power-off rather than a generic fade.
+   */
+  static pixelDissolve(scene: Phaser.Scene, targetScene: string, data?: object): void {
+    const { width, height } = scene.cameras.main;
+    const TILE = 32;
+    const cols = Math.ceil(width / TILE);
+    const rows = Math.ceil(height / TILE);
+    const tiles: { col: number; row: number }[] = [];
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        tiles.push({ col: c, row: r });
+      }
+    }
+
+    // Fisher-Yates shuffle
+    for (let i = tiles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+    }
+
+    const g = scene.add.graphics().setDepth(10000);
+    g.fillStyle(0x081820, 1);
+
+    const chunkSize = Math.ceil(tiles.length / 16);
+    let tick = 0;
+
+    const timer = scene.time.addEvent({
+      delay: 18,
+      repeat: 15,
+      callback: () => {
+        const start = tick * chunkSize;
+        const end = Math.min(start + chunkSize, tiles.length);
+        for (let i = start; i < end; i++) {
+          g.fillRect(tiles[i].col * TILE, tiles[i].row * TILE, TILE, TILE);
+        }
+        tick++;
+        if (tick >= 16) {
+          timer.remove();
+          scene.time.delayedCall(60, () => {
+            g.destroy();
+            scene.scene.start(targetScene, data);
+          });
+        }
+      },
+    });
+  }
+
   private static drawHexagon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number): void {
     const points: { x: number; y: number }[] = [];
     for (let i = 0; i < 6; i++) {

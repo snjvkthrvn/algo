@@ -34,13 +34,15 @@ export function createRetroButton(
   bg.setInteractive({ useHandCursor: true });
 
   bg.on('pointerover', () => {
-    bg.setFillStyle(adjustBrightness(color, 1.2));
-    scene.tweens.add({ targets: container, scale: 1.05, duration: 100 });
+    bg.setFillStyle(adjustBrightness(color, 1.4));
+    bg.setStrokeStyle(2, 0xffffff);
+    scene.tweens.add({ targets: container, scale: 1.1, duration: 80 });
   });
 
   bg.on('pointerout', () => {
     bg.setFillStyle(color);
-    scene.tweens.add({ targets: container, scale: 1, duration: 100 });
+    bg.setStrokeStyle(2, adjustBrightness(color, 0.7));
+    scene.tweens.add({ targets: container, scale: 1, duration: 80 });
   });
 
   bg.on('pointerdown', () => {

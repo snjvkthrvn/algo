@@ -6,14 +6,14 @@
 
 import Phaser from 'phaser';
 import { gameState } from '../core/GameStateManager';
-import { PROLOGUE_SHEET_KEYS } from '../config/assets';
+import { VISUAL_REVAMP_KEYS } from '../config/assets';
 
 const GLITCH_COLORS = [0x6b21a8, 0x7c3aed, 0x4c1d95, 0x1e1b4b];
 
 export class GlitchRival {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
-  private glitchSprite: Phaser.GameObjects.Sprite;
+  private glitchSprite: Phaser.GameObjects.Image;
   private glitchTimer: Phaser.Time.TimerEvent | null = null;
   private isActive: boolean = false;
 
@@ -22,14 +22,12 @@ export class GlitchRival {
     this.container = scene.add.container(-200, -200);
     this.container.setDepth(9).setAlpha(0).setVisible(false);
 
-    this.ensureAnimations();
     this.glitchSprite = scene.add
-      .sprite(0, 0, PROLOGUE_SHEET_KEYS.NPCS, 12)
-      .setDisplaySize(54, 66);
-    this.glitchSprite.anims.play('glitch-idle');
-    const staticShard = scene.add.rectangle(10, -20, 13, 3, 0xc4b5fd, 0.82);
+      .image(0, 0, VISUAL_REVAMP_KEYS.GLITCH)
+      .setDisplaySize(48, 76);
+    const aura = scene.add.ellipse(0, 8, 54, 82, 0x8b5cf6, 0.13);
 
-    this.container.add([this.glitchSprite, staticShard]);
+    this.container.add([aura, this.glitchSprite]);
     this.startGlitchFlicker();
   }
 
@@ -90,13 +88,4 @@ export class GlitchRival {
     });
   }
 
-  private ensureAnimations(): void {
-    if (this.scene.anims.exists('glitch-idle')) return;
-    this.scene.anims.create({
-      key: 'glitch-idle',
-      frames: this.scene.anims.generateFrameNumbers(PROLOGUE_SHEET_KEYS.NPCS, { start: 12, end: 15 }),
-      frameRate: 5,
-      repeat: -1,
-    });
-  }
 }

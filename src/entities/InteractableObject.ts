@@ -17,6 +17,7 @@ export interface InteractableConfig {
   spriteImageKey?: string;
   imageByState?: Record<string, string>;
   imageScale?: number;
+  imageOriginY?: number;
   frameByState?: Record<string, number>;
   initialState?: string;
   onInteract?: () => void;
@@ -74,10 +75,12 @@ export class InteractableObject {
     const stateImageKey = this.getStateImageKey(config.initialState ?? (config.locked ? 'locked' : 'unlocked'));
     const imageKey = config.spriteImageKey ?? stateImageKey;
     if (imageKey) {
-      return this.scene.add
+      const image = this.scene.add
         .image(config.x, config.y, imageKey)
         .setDepth(4)
         .setScale(config.imageScale ?? 0.16);
+      image.setOrigin?.(0.5, config.imageOriginY ?? (config.type === 'portal' || config.type === 'gate' ? 0.82 : 0.5));
+      return image;
     }
 
     const container = this.scene.add.container(config.x, config.y);
@@ -136,10 +139,14 @@ export class InteractableObject {
   }
 
   private drawSign(container: Phaser.GameObjects.Container): void {
-    const post = this.scene.add.rectangle(0, 8, 4, 24, 0x8b6914);
-    const board = this.scene.add.rectangle(0, -6, 28, 20, 0x8b6914);
-    board.setStrokeStyle(1, 0x5a4510);
-    container.add([post, board]);
+    const shadow = this.scene.add.ellipse(0, 24, 32, 10, 0x000000, 0.24);
+    const post = this.scene.add.rectangle(0, 11, 5, 28, 0x6b4f1d);
+    const board = this.scene.add.rectangle(0, -8, 34, 22, 0xb9893b);
+    const inset = this.scene.add.rectangle(0, -8, 24, 12, 0xf3c970, 0.34);
+    const gem = this.scene.add.polygon(0, -22, [0, -7, 7, 0, 0, 7, -7, 0], COLORS.CYAN_GLOW, 0.9);
+    board.setStrokeStyle(2, 0x3b2b12);
+    post.setStrokeStyle(1, 0x2a1f0e);
+    container.add([shadow, post, board, inset, gem]);
   }
 
   private drawChest(container: Phaser.GameObjects.Container): void {

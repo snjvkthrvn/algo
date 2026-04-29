@@ -4,7 +4,7 @@
 
 import { NPCType } from '../types';
 import type { NPCConfig } from '../types';
-import { PROLOGUE_SHEET_KEYS } from '../../config/assets';
+import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 
 import {
   professorNodeDialogue,
@@ -20,8 +20,7 @@ export const PROLOGUE_NPCS: NPCConfig[] = [
     id: 'professor_node',
     name: 'Professor Node',
     type: NPCType.MENTOR,
-    spriteKey: PROLOGUE_SHEET_KEYS.NPCS,
-    idleFrames: [0, 1, 2, 3],
+    spriteKey: VISUAL_REVAMP_KEYS.PROFESSOR_NODE,
     defaultPosition: { x: 900, y: 395 },
     dialogue: professorNodeDialogue,
     postPuzzleDialogue: professorNodePostPuzzle,
@@ -31,8 +30,7 @@ export const PROLOGUE_NPCS: NPCConfig[] = [
     id: 'rune_keeper',
     name: 'Rune Keeper',
     type: NPCType.GUIDE,
-    spriteKey: PROLOGUE_SHEET_KEYS.NPCS,
-    idleFrames: [4, 5, 6, 7],
+    spriteKey: VISUAL_REVAMP_KEYS.RUNE_KEEPER,
     defaultPosition: { x: 900, y: 165 },
     dialogue: runeKeeperDialogue,
     postPuzzleDialogue: runeKeeperPostPuzzle,
@@ -42,8 +40,7 @@ export const PROLOGUE_NPCS: NPCConfig[] = [
     id: 'console_keeper',
     name: 'Console Keeper',
     type: NPCType.GUIDE,
-    spriteKey: PROLOGUE_SHEET_KEYS.NPCS,
-    idleFrames: [8, 9, 10, 11],
+    spriteKey: VISUAL_REVAMP_KEYS.CONSOLE_KEEPER,
     defaultPosition: { x: 900, y: 625 },
     dialogue: consoleKeeperDialogue,
     postPuzzleDialogue: consoleKeeperPostPuzzle,

@@ -1,7 +1,3 @@
-/**
- * StarRating - Animated star display component.
- */
-
 import Phaser from 'phaser';
 
 export function showStarRating(
@@ -13,29 +9,58 @@ export function showStarRating(
 ): void {
   container.removeAll(true);
 
-  const starSize = 24;
-  const spacing = 30;
+  const spacing = 38;
   const startX = x - spacing;
 
   for (let i = 0; i < 3; i++) {
     const sx = startX + i * spacing;
     const isFilled = i < stars;
 
-    const star = scene.add.text(sx, 0, '\u2605', {
-      fontSize: `${starSize}px`,
-      color: isFilled ? '#fbbf24' : '#4a4a6a',
-    }).setOrigin(0.5);
+    if (isFilled) {
+      const shadow = scene.add.text(sx + 3, 3, '★', {
+        fontSize: '28px',
+        color: '#000000',
+      }).setOrigin(0.5).setAlpha(0.45).setScale(0).setY(-35);
+      container.add(shadow);
+      scene.tweens.add({
+        targets: shadow,
+        scale: 1,
+        y: 3,
+        duration: 420,
+        delay: i * 160 + 60,
+        ease: 'Expo.easeOut',
+      });
+    }
 
-    star.setScale(0);
+    const star = scene.add.text(sx, 0, '★', {
+      fontSize: '28px',
+      color: isFilled ? '#fbbf24' : '#2a2a4a',
+      stroke: '#f97316',
+      strokeThickness: isFilled ? 1 : 0,
+    }).setOrigin(0.5).setScale(0).setY(-35);
+
+    container.add(star);
+
     scene.tweens.add({
       targets: star,
       scale: 1,
-      duration: 300,
-      delay: i * 150,
-      ease: 'Back.easeOut',
+      y: 0,
+      duration: 420,
+      delay: i * 160,
+      ease: 'Expo.easeOut',
     });
 
-    container.add(star);
+    if (isFilled) {
+      scene.tweens.add({
+        targets: star,
+        alpha: 0.65,
+        duration: 900,
+        delay: i * 160 + 520,
+        yoyo: true,
+        repeat: 2,
+        ease: 'Sine.easeInOut',
+      });
+    }
   }
 
   container.setVisible(true);

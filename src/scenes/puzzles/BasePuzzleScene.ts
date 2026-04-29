@@ -11,6 +11,8 @@ import { createRetroButton, updateButtonText, disableButton } from '../../ui/Ret
 import { showStarRating } from '../../ui/StarRating';
 import { audioManager } from '../../core/AudioManager';
 import { gameState } from '../../core/GameStateManager';
+import { TransitionManager } from '../../core/TransitionManager';
+import { JuiceSystem } from '../../systems/JuiceSystem';
 import type { ConceptBridgeData } from '../../data/types';
 
 export abstract class BasePuzzleScene extends Phaser.Scene {
@@ -91,6 +93,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.createTitleArea(width);
     this.createControlButtons(width);
     this.createStarRatingContainer(width);
+    this.addStatusIndicator(width, height);
   }
 
   protected createPuzzleFrame(width: number, height: number): void {
@@ -104,7 +107,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.puzzleFrame.fillStyle(0x000000, 0.5);
     this.puzzleFrame.fillRoundedRect(padding + 4, padding + 4, frameWidth, frameHeight, 8);
 
-    // Translucent playfield over the imagegen Chamber backdrop.
+    // Translucent playfield over the Chamber backdrop.
     this.puzzleFrame.fillStyle(COLORS.FRAME_BG, 0.58);
     this.puzzleFrame.fillRoundedRect(padding, padding, frameWidth, frameHeight, 8);
 
@@ -116,14 +119,70 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.puzzleFrame.lineStyle(2, COLORS.FRAME_BORDER_LIGHT, 0.78);
     this.puzzleFrame.strokeRoundedRect(padding + 6, padding + 6, frameWidth - 12, frameHeight - 12, 6);
 
-    // Decorative line
-    this.puzzleFrame.lineStyle(2, COLORS.CYAN_GLOW, 0.6);
-    this.puzzleFrame.beginPath();
-    this.puzzleFrame.moveTo(padding + 100, padding + 70);
-    this.puzzleFrame.lineTo(width - padding - 100, padding + 70);
-    this.puzzleFrame.strokePath();
-
+    this.puzzleFrame.setAlpha(0);
     this.uiContainer.add(this.puzzleFrame);
+
+    // CRT scanlines — added before title/buttons so they render underneath.
+    this.addScanlines(width, height, padding);
+
+    // Decorative line grows from center outward after frame fades in.
+    const lineY = padding + 70;
+    const lineRect = this.add.rectangle(width / 2, lineY, frameWidth - 200, 2, COLORS.CYAN_GLOW, 0.7);
+    lineRect.setScale(0, 1);
+    this.uiContainer.add(lineRect);
+
+    // Frame fade-in
+    this.tweens.add({
+      targets: this.puzzleFrame,
+      alpha: 1,
+      duration: 350,
+      ease: 'Power2',
+    });
+
+    // Line grows after frame is visible
+    this.tweens.add({
+      targets: lineRect,
+      scaleX: 1,
+      duration: 500,
+      delay: 280,
+      ease: 'Power3.easeOut',
+    });
+
+    // Corner accents snap in after the frame settles
+    this.time.delayedCall(200, () => this.addCornerAccents(width, height, padding));
+  }
+
+  private addScanlines(width: number, height: number, padding: number): void {
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.08);
+    for (let scanY = padding + 2; scanY < height - padding; scanY += 4) {
+      g.fillRect(padding + 1, scanY, width - padding * 2 - 2, 1);
+    }
+    g.setAlpha(0);
+    this.uiContainer.add(g);
+    this.tweens.add({ targets: g, alpha: 1, duration: 400, delay: 300, ease: 'Power1' });
+  }
+
+  private addCornerAccents(width: number, height: number, padding: number): void {
+    const arm = 22;
+    const corners: { x: number; y: number; hDir: number; vDir: number }[] = [
+      { x: padding, y: padding, hDir: 1, vDir: 1 },
+      { x: width - padding, y: padding, hDir: -1, vDir: 1 },
+      { x: padding, y: height - padding, hDir: 1, vDir: -1 },
+      { x: width - padding, y: height - padding, hDir: -1, vDir: -1 },
+    ];
+    corners.forEach(({ x, y, hDir, vDir }, i) => {
+      const g = this.add.graphics();
+      g.lineStyle(3, COLORS.CYAN_GLOW, 1);
+      g.beginPath();
+      g.moveTo(x + hDir * arm, y);
+      g.lineTo(x, y);
+      g.lineTo(x, y + vDir * arm);
+      g.strokePath();
+      g.setAlpha(0);
+      this.uiContainer.add(g);
+      this.tweens.add({ targets: g, alpha: 1, duration: 180, delay: i * 70, ease: 'Power2.easeOut' });
+    });
   }
 
   protected createTitleArea(width: number): void {
@@ -133,33 +192,108 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 4,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setAlpha(0);
 
-    if (this.titleText.postFX) {
-      this.titleText.postFX.addGlow(COLORS.CYAN_GLOW, 2, 0, false, 0.1, 12);
-    }
-
-    this.instructionText = this.add.text(width / 2, 115, this.puzzleDescription, {
+    // Instruction starts slightly left and slides into place.
+    this.instructionText = this.add.text(width / 2 - 80, 115, this.puzzleDescription, {
       fontSize: '14px',
       fontFamily: FONTS.MONO,
       color: '#9ca3af',
       align: 'center',
       wordWrap: { width: width - 200 },
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setAlpha(0);
 
     this.uiContainer.add([this.titleText, this.instructionText]);
+
+    // Glitch-reveal the title after the frame starts fading in.
+    this.time.delayedCall(180, () => this.glitchReveal(this.titleText, '#ffffff'));
+
+    // Instruction slides in after title settles.
+    this.tweens.add({
+      targets: this.instructionText,
+      x: width / 2,
+      alpha: 1,
+      duration: 380,
+      delay: 520,
+      ease: 'Power2.easeOut',
+    });
+  }
+
+  private glitchReveal(text: Phaser.GameObjects.Text, finalColor: string): void {
+    const glitchColors = ['#06b6d4', '#8b5cf6', '#ff44aa', '#ffffff'];
+    let tick = 0;
+    const totalTicks = 14;
+    this.time.addEvent({
+      delay: 40,
+      repeat: totalTicks,
+      callback: () => {
+        tick++;
+        text.setAlpha(tick % 2 === 0 ? 0.9 : 0.1);
+        text.setColor(glitchColors[tick % glitchColors.length]);
+        if (tick >= totalTicks) {
+          text.setAlpha(1);
+          text.setColor(finalColor);
+        }
+      },
+    });
   }
 
   protected createControlButtons(width: number): void {
     this.exitButton = createRetroButton(
       this, width - 80, 60, 'EXIT', COLORS.ERROR, () => this.exitPuzzle()
     );
-
     this.hintButton = createRetroButton(
       this, 80, 60, `HINT (${this.maxHints - this.hintsUsed})`, COLORS.GOLD_ACCENT, () => this.showHint()
     );
 
+    this.exitButton.setScale(0);
+    this.hintButton.setScale(0);
     this.uiContainer.add([this.exitButton, this.hintButton]);
+
+    // Spring in from scale 0 with staggered delay.
+    this.tweens.add({ targets: this.exitButton, scale: 1, duration: 280, delay: 420, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: this.hintButton, scale: 1, duration: 280, delay: 500, ease: 'Back.easeOut' });
+
+    // Exit button pulses as a persistent warning cue.
+    this.tweens.add({
+      targets: this.exitButton,
+      alpha: 0.6,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 900,
+    });
+  }
+
+  protected addStatusIndicator(width: number, _height: number): void {
+    const padding = 40;
+    const dotX = width - padding - 160;
+    const dotY = padding + 14;
+
+    const dot = this.add.circle(dotX, dotY, 4, COLORS.SUCCESS);
+    const label = this.add.text(dotX - 8, dotY, 'ONLINE', {
+      fontSize: '8px',
+      fontFamily: FONTS.RETRO,
+      color: colorToHex(COLORS.SUCCESS),
+    }).setOrigin(1, 0.5);
+
+    dot.setAlpha(0);
+    label.setAlpha(0);
+    this.uiContainer.add([dot, label]);
+
+    this.tweens.add({ targets: [dot, label], alpha: 1, duration: 300, delay: 600 });
+
+    // Pulsing dot signals the puzzle module is active.
+    this.tweens.add({
+      targets: dot,
+      alpha: 0.15,
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 1000,
+    });
   }
 
   protected createStarRatingContainer(width: number): void {
@@ -203,18 +337,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   protected exitPuzzle(): void {
-    const { width, height } = this.cameras.main;
-    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0).setDepth(10000);
-
-    this.tweens.add({
-      targets: overlay,
-      alpha: 1,
-      duration: 300,
-      onComplete: () => {
-        overlay.destroy();
-        this.scene.start(this.returnScene);
-      },
-    });
+    TransitionManager.pixelDissolve(this, this.returnScene);
   }
 
   protected restartPuzzle(): void {
@@ -228,15 +351,15 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected onPuzzleComplete(stars: number): void {
     const timeSpent = Math.floor((Date.now() - this.startTime) / 1000);
+    const { width, height } = this.cameras.main;
 
-    // Show stars
     showStarRating(this, this.starContainer, stars);
-
-    // Show message
     this.showMessage('PUZZLE COMPLETE!', COLORS.SUCCESS);
-
-    // Play sound
     audioManager.playCorrectTone();
+
+    JuiceSystem.cameraShake(this, 80, 0.003);
+    JuiceSystem.screenFlash(this, COLORS.SUCCESS, 0.10, 300);
+    JuiceSystem.correctBurst(this, width / 2, height / 2);
 
     // Save result
     gameState.setPuzzleResult(this.puzzleId, {
@@ -247,12 +370,22 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     });
 
     if (this.shouldSkipConceptBridge()) {
-      this.scene.start(this.returnScene);
+      const { width: bw, height: bh } = this.cameras.main;
+      const exitFade = this.add.rectangle(0, 0, bw, bh, 0x000000, 0).setOrigin(0).setDepth(10000);
+      this.tweens.add({
+        targets: exitFade,
+        alpha: 1,
+        duration: 500,
+        delay: 1800,
+        onComplete: () => {
+          exitFade.destroy();
+          this.scene.start(this.returnScene);
+        },
+      });
       return;
     }
 
     // Transition to ConceptBridge after a brief hold
-    const { width, height } = this.cameras.main;
     const fadeOverlay = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0).setDepth(10000);
 
     this.tweens.add({
@@ -266,6 +399,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
           puzzleName: this.puzzleName,
           puzzleId: this.puzzleId,
           concept: this.getConceptName(),
+          returnScene: this.returnScene,
           attempts: this.attempts,
           timeSpent: timeSpent,
           hintsUsed: this.hintsUsed,
@@ -278,22 +412,45 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected showMessage(text: string, color: number = COLORS.TEXT_LIGHT): void {
     const { width, height } = this.cameras.main;
+    const msgW = Math.min(width - 80, 480);
+    const msgH = 52;
+    const msgY = height / 2 - 20;
 
-    const message = this.add.text(width / 2, height / 2, text, {
-      fontSize: '24px',
+    const msgContainer = this.add.container(width + msgW, msgY).setDepth(1000);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x060610, 0.92);
+    bg.fillRect(-msgW / 2, -msgH / 2, msgW, msgH);
+    bg.lineStyle(2, color, 1);
+    bg.strokeRect(-msgW / 2, -msgH / 2, msgW, msgH);
+    // Inner accent line across the top of the box.
+    bg.lineStyle(1, color, 0.35);
+    bg.beginPath();
+    bg.moveTo(-msgW / 2 + 4, -msgH / 2 + 4);
+    bg.lineTo(msgW / 2 - 4, -msgH / 2 + 4);
+    bg.strokePath();
+
+    const label = this.add.text(0, 0, text, {
+      fontSize: '20px',
       fontFamily: FONTS.RETRO,
       color: colorToHex(color),
       stroke: '#000000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setDepth(1000);
+      strokeThickness: 3,
+    }).setOrigin(0.5);
 
+    msgContainer.add([bg, label]);
+
+    // Slide in from the right edge.
+    this.tweens.add({ targets: msgContainer, x: width / 2, duration: 220, ease: 'Power3.easeOut' });
+
+    // Hold then slide out to the left.
     this.tweens.add({
-      targets: message,
-      y: height / 2 - 50,
-      alpha: 0,
-      duration: 1500,
-      delay: 500,
-      onComplete: () => message.destroy(),
+      targets: msgContainer,
+      x: -msgW,
+      duration: 220,
+      ease: 'Power3.easeIn',
+      delay: 1600,
+      onComplete: () => msgContainer.destroy(),
     });
   }
 

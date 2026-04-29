@@ -3,6 +3,10 @@ import {
   IMAGE_ASSETS,
   ARRAY_PLAINS_IMAGE_ASSETS,
   ARRAY_PLAINS_KEYS,
+  TWIN_RIVERS_IMAGE_ASSETS,
+  TWIN_RIVERS_KEYS,
+  VISUAL_REVAMP_IMAGE_ASSETS,
+  VISUAL_REVAMP_KEYS,
   PROLOGUE_SHEET_KEYS,
   PROLOGUE_SHEET_SPRITE_ASSETS,
   PROLOGUE_REWORK_IMAGE_ASSETS,
@@ -135,6 +139,48 @@ describe('array plains asset manifest', () => {
     const loadedKeys = new Set(IMAGE_ASSETS.map((asset) => asset.key));
 
     for (const key of Object.values(ARRAY_PLAINS_KEYS)) {
+      expect(loadedKeys.has(key), key).toBe(true);
+    }
+  });
+});
+
+describe('visual revamp asset manifest', () => {
+  it('registers the full-region visual asset set', () => {
+    expect(VISUAL_REVAMP_IMAGE_ASSETS).toHaveLength(Object.keys(VISUAL_REVAMP_KEYS).length);
+
+    for (const asset of VISUAL_REVAMP_IMAGE_ASSETS) {
+      expect(asset.path).toMatch(/^assets\/visual_revamp\//);
+      expect(asset.path.endsWith('.png')).toBe(true);
+    }
+  });
+
+  it('includes visual revamp images in the global preload list', () => {
+    const loadedKeys = new Set(IMAGE_ASSETS.map((asset) => asset.key));
+
+    for (const key of Object.values(VISUAL_REVAMP_KEYS)) {
+      expect(loadedKeys.has(key), key).toBe(true);
+    }
+  });
+});
+
+describe('twin rivers asset manifest', () => {
+  it('registers the generated river background image', () => {
+    expect(TWIN_RIVERS_KEYS).toEqual({
+      FIELD_BACKGROUND: 'twin-rivers-field-background',
+    });
+
+    expect(TWIN_RIVERS_IMAGE_ASSETS).toEqual([
+      {
+        key: TWIN_RIVERS_KEYS.FIELD_BACKGROUND,
+        path: 'assets/twin_rivers/environment/twin_rivers_field.png',
+      },
+    ]);
+  });
+
+  it('includes Twin Rivers images in the global preload list', () => {
+    const loadedKeys = new Set(IMAGE_ASSETS.map((asset) => asset.key));
+
+    for (const key of Object.values(TWIN_RIVERS_KEYS)) {
       expect(loadedKeys.has(key), key).toBe(true);
     }
   });

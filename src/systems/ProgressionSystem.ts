@@ -60,6 +60,31 @@ class ProgressionSystemClass {
         gameState.setFlag('glitch_encounter_2_pending', true);
       }
     }
+
+    const arrayPuzzlesDone = [
+      'puzzle_ap_1_complete',
+      'puzzle_ap_2_complete',
+      'puzzle_ap_3_complete',
+      'puzzle_ap_4_complete',
+    ].every((flag) => gameState.getFlag(flag));
+
+    if (arrayPuzzlesDone && !gameState.getFlag('shuffler_gate_open')) {
+      gameState.setFlag('shuffler_gate_open', true);
+      eventBus.emit('progression:gate-open', { gateId: 'shuffler_gate' });
+    }
+
+    const shufflerDefeated = gameState.getFlag('puzzle_boss_shuffler_complete');
+    if (shufflerDefeated && !gameState.getFlag('twin_rivers_gateway_open')) {
+      gameState.setFlag('twin_rivers_gateway_open', true);
+      eventBus.emit('progression:gate-open', { gateId: 'twin_rivers_gateway' });
+
+      if (gameState.getBitStage() === BitStage.BYTE) {
+        gameState.setBitStage(BitStage.FRAME);
+      }
+
+      gameState.collectShard('array_plains_logic_shard');
+      gameState.unlockCodexEntry('collection_mastery');
+    }
   }
 
   isBossGateOpen(): boolean {
@@ -76,6 +101,24 @@ class ProgressionSystemClass {
     if (gameState.getFlag('puzzle_p0_2_complete')) completed++;
     if (gameState.getFlag('puzzle_boss_sentinel_complete')) completed++;
     return { puzzles: completed, total: 3 };
+  }
+
+  isShufflerGateOpen(): boolean {
+    return gameState.getFlag('shuffler_gate_open');
+  }
+
+  isTwinRiversGatewayOpen(): boolean {
+    return gameState.getFlag('twin_rivers_gateway_open');
+  }
+
+  getArrayPlainsProgress(): { puzzles: number; total: number } {
+    let completed = 0;
+    if (gameState.getFlag('puzzle_ap_1_complete')) completed++;
+    if (gameState.getFlag('puzzle_ap_2_complete')) completed++;
+    if (gameState.getFlag('puzzle_ap_3_complete')) completed++;
+    if (gameState.getFlag('puzzle_ap_4_complete')) completed++;
+    if (gameState.getFlag('puzzle_boss_shuffler_complete')) completed++;
+    return { puzzles: completed, total: 5 };
   }
 }
 

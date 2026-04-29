@@ -13,7 +13,7 @@ import {
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from '../../config/constants';
-import { PROLOGUE_REWORK_KEYS, PROLOGUE_SHEET_KEYS } from '../../config/assets';
+import { PROLOGUE_SHEET_KEYS, VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { Player } from '../../entities/Player';
 import { BitCompanion } from '../../entities/BitCompanion';
 import { GlitchRival } from '../../entities/GlitchRival';
@@ -109,6 +109,12 @@ export class PrologueScene extends Phaser.Scene {
     this.add.rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, COLORS.VOID_BLACK, 1)
       .setOrigin(0)
       .setDepth(-100);
+    const chamber = this.add.image(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, VISUAL_REVAMP_KEYS.PROLOGUE_BG)
+      .setOrigin(0.5)
+      .setDepth(-95)
+      .setAlpha(0.46);
+    const source = chamber.texture.getSourceImage() as HTMLImageElement;
+    chamber.setScale(Math.max(WORLD_WIDTH / source.width, WORLD_HEIGHT / source.height));
 
     // === ATMOSPHERE ===
     this.createStarfield(WORLD_WIDTH, WORLD_HEIGHT);
@@ -396,10 +402,11 @@ export class PrologueScene extends Phaser.Scene {
       prompt: bossGateOpen ? '[SPACE] Enter' : 'Sealed',
       locked: !bossGateOpen,
       imageByState: {
-        locked: PROLOGUE_REWORK_KEYS.BOSS_GATE_LOCKED,
-        unlocked: PROLOGUE_REWORK_KEYS.BOSS_GATE_OPEN,
+        locked: VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
+        unlocked: VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_OPEN,
       },
-      imageScale: 0.13,
+      imageScale: 0.25,
+      imageOriginY: 0.84,
       initialState: bossGateOpen ? 'unlocked' : 'locked',
       onInteract: () => {
         if (progressionSystem.isBossGateOpen()) {
@@ -423,10 +430,11 @@ export class PrologueScene extends Phaser.Scene {
       prompt: gatewayOpen ? '[SPACE] Enter Gateway' : 'Sealed',
       locked: !gatewayOpen,
       imageByState: {
-        locked: PROLOGUE_REWORK_KEYS.ARRAY_PORTAL_LOCKED,
-        unlocked: PROLOGUE_REWORK_KEYS.ARRAY_PORTAL_ACTIVE,
+        locked: VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
+        unlocked: VISUAL_REVAMP_KEYS.PORTAL_FIELD,
       },
-      imageScale: 0.13,
+      imageScale: 0.25,
+      imageOriginY: 0.86,
       initialState: gatewayOpen ? 'unlocked' : 'locked',
       onInteract: () => {
         if (progressionSystem.isGatewayOpen()) {
@@ -1012,19 +1020,33 @@ export class PrologueScene extends Phaser.Scene {
     const endX = worldView.right + 50;
     const y = worldView.top + worldView.height * 0.25;
 
-    // Watcher: a rotating crystalline diamond — geometric, cold, scanning
     const watcher = this.add
-      .sprite(startX, y, PROLOGUE_SHEET_KEYS.COMPANIONS, 4)
-      .setDisplaySize(58, 58)
+      .image(startX, y, VISUAL_REVAMP_KEYS.WATCHER)
+      .setDisplaySize(76, 110)
       .setDepth(8)
-      .setAlpha(0.82);
+      .setAlpha(0.9);
+    const scanBeam = this.add.rectangle(startX, y + 28, 148, 4, COLORS.CYAN_GLOW, 0.38)
+      .setDepth(7)
+      .setAlpha(0.58);
 
-    // Slow rotation tween
     this.tweens.add({
       targets: watcher,
-      angle: 360,
-      duration: 2400,
+      angle: { from: -4, to: 4 },
+      scaleX: 1.04,
+      scaleY: 1.04,
+      duration: 1200,
+      yoyo: true,
       repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    this.tweens.add({
+      targets: scanBeam,
+      alpha: 0.15,
+      scaleX: 1.2,
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
     });
 
     // Emit Bit scared event as watcher enters view
@@ -1033,12 +1055,13 @@ export class PrologueScene extends Phaser.Scene {
 
     // Fly across
     this.tweens.add({
-      targets: watcher,
+      targets: [watcher, scanBeam],
       x: endX,
       duration: 5000,
       ease: 'Linear',
       onComplete: () => {
         watcher.destroy();
+        scanBeam.destroy();
         // Bit recovers 1.5s after the watcher leaves
         this.time.delayedCall(1500, () => {
           if (gameState.getBitMood() === BitMood.SCARED) {

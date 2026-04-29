@@ -41,8 +41,8 @@ export class CodexScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, 30, 'CODEX', {
-      fontSize: '20px', fontFamily: FONTS.RETRO, color: '#06b6d4',
-      stroke: '#000000', strokeThickness: 4,
+      fontSize: '20px', fontFamily: FONTS.RETRO, color: '#e0f8d0',
+      stroke: '#081820', strokeThickness: 4,
     }).setOrigin(0.5);
 
     // Close button
@@ -137,13 +137,13 @@ export class CodexScene extends Phaser.Scene {
 
     // Entry title
     const title = this.add.text(10, 10, entry.algorithmName, {
-      fontSize: '16px', fontFamily: FONTS.RETRO, color: '#06b6d4',
+      fontSize: '16px', fontFamily: FONTS.RETRO, color: '#e0f8d0',
     });
     this.contentContainer.add(title);
 
     // Difficulty
     const diffText = this.add.text(10, 40, `Difficulty: ${entry.difficulty}`, {
-      fontSize: '9px', fontFamily: FONTS.MONO, color: '#4a4a6a',
+      fontSize: '10px', fontFamily: FONTS.MONO, color: '#4a4a6a',
     });
     this.contentContainer.add(diffText);
 
@@ -183,7 +183,7 @@ export class CodexScene extends Phaser.Scene {
   private getSectionColor(type: string): string {
     switch (type) {
       case 'what_you_felt': return '#8b5cf6';
-      case 'plain_explanation': return '#06b6d4';
+      case 'plain_explanation': return '#88c070';
       case 'pattern_steps': return '#22c55e';
       case 'real_world': return '#f97316';
       case 'unlocked_ability': return '#fbbf24';

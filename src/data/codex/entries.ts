@@ -170,4 +170,224 @@ export const CODEX_ENTRIES: CodexEntry[] = [
       },
     ],
   },
+  {
+    id: 'bubble_sort',
+    algorithmName: 'Sorting - Bubble Sort',
+    category: AlgorithmType.SORTING,
+    unlockedBy: 'ap_1',
+    difficulty: Difficulty.EASY,
+    relatedConcepts: ['sorting', 'adjacent-swaps', 'passes'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'The row was scrambled, but you could only touch neighbors.',
+          'Each useful swap fixed one local mistake. Over time, the larger values drifted right.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'Bubble sort repeatedly compares adjacent values and swaps them if they are out of order.',
+          'It is simple and visual, but it can take many passes for large lists.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: [
+          '1. Compare two neighboring values',
+          '2. Swap them if the left one is larger',
+          '3. Move to the next pair',
+          '4. Repeat passes until no swaps happen',
+        ],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['Teaching sorting basics', 'Small ordered lists', 'Understanding why better sorting algorithms matter'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Order Sense - Local disorder now stands out. Neighbor pairs reveal whether a row is settling or drifting.',
+      },
+    ],
+  },
+  {
+    id: 'array_indexing',
+    algorithmName: 'Indexing - O(1) Direct Access',
+    category: AlgorithmType.ARRAY_INDEXING,
+    unlockedBy: 'ap_2',
+    difficulty: Difficulty.EASY,
+    relatedConcepts: ['arrays', 'indices', 'constant-time-access'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'A request named an item and its basket number.',
+          'You did not search the barn. You used the number and went directly to the slot.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'Array indexing retrieves a value by position.',
+          'Because the position is known, the lookup stays constant time even when the array grows.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: ['1. Know the index', '2. Jump to that slot', '3. Read or write the value'],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['Seat numbers', 'Spreadsheet cells', 'Memory addresses', 'Playlist track positions'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Index Sight - Numbered rows now reveal their direct addresses.',
+      },
+    ],
+  },
+  {
+    id: 'hash_functions',
+    algorithmName: 'Hash Functions - Mapping Inputs To Buckets',
+    category: AlgorithmType.HASHING,
+    unlockedBy: 'ap_3',
+    difficulty: Difficulty.MEDIUM,
+    relatedConcepts: ['hashing', 'modulo', 'collisions'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'Each crop name became a number, and each number became a bucket.',
+          'The formula was small, but it gave the same answer every time.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'A hash function converts an input into an address-like value.',
+          'Modulo is often used to keep that value inside a fixed bucket range.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: [
+          '1. Convert the input into a number',
+          '2. Compress the number into a bucket range',
+          '3. Store or find the item in that bucket',
+          '4. Handle collisions when multiple inputs land together',
+        ],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['Hash tables', 'Password hashing', 'Cache keys', 'Load distribution'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Hash Trace - Formula-driven destinations become visible before the item lands.',
+      },
+    ],
+  },
+  {
+    id: 'two_sum',
+    algorithmName: 'Two Sum - The Complement Technique',
+    category: AlgorithmType.TWO_SUM,
+    unlockedBy: 'ap_4',
+    difficulty: Difficulty.MEDIUM,
+    relatedConcepts: ['complements', 'sets', 'lookup'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'A target number changed the whole field.',
+          'Every chosen tile told you exactly which partner it needed.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'Two Sum asks for two values that add to a target.',
+          'The complement of value x is target - x. Fast lookup makes that complement check powerful.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: [
+          '1. Pick or scan a value',
+          '2. Compute target - value',
+          '3. Check whether that complement exists',
+          '4. Return the pair when it does',
+        ],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['Budget pairs', 'Matching inventory counts', 'Finding complementary constraints', 'Interview problem foundations'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Complement Sense - One number now reveals the exact partner needed to complete a target.',
+      },
+    ],
+  },
+  {
+    id: 'collection_mastery',
+    algorithmName: 'Collection Mastery - Sort, Index, Hash, Pair',
+    category: AlgorithmType.HYBRID,
+    unlockedBy: 'boss_shuffler',
+    difficulty: Difficulty.MEDIUM,
+    relatedConcepts: ['arrays', 'sorting', 'hashing', 'two-sum'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'The Shuffler tried to make every lesson happen at once.',
+          'You answered chaos with reusable rules instead of random retries.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'Collection problems often combine multiple tools.',
+          'Sorting, indexing, hashing, and complements are separate ideas, but real problems mix them.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: ['1. Identify the data shape', '2. Choose the useful operation', '3. Apply the rule consistently', '4. Combine rules only when needed'],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['Search features', 'Data cleanup', 'Inventory systems', 'Recommendation filters'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Collection Mastery - Array Plains settles. The way forward opens toward Twin Rivers.',
+      },
+    ],
+  },
 ];

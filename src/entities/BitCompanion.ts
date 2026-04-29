@@ -12,7 +12,7 @@ import Phaser from 'phaser';
 import { eventBus, GameEvents } from '../core/EventBus';
 import { gameState } from '../core/GameStateManager';
 import { BitStage, BitMood } from '../data/types';
-import { PROLOGUE_SHEET_KEYS } from '../config/assets';
+import { VISUAL_REVAMP_KEYS } from '../config/assets';
 import { COLORS } from '../config/constants';
 
 // Offset from player center where Bit hovers
@@ -33,7 +33,7 @@ const STAGE_COLORS: Record<BitStage, number> = {
 };
 
 interface ParticleDot {
-  rect: Phaser.GameObjects.Rectangle;
+  dot: Phaser.GameObjects.Arc;
   offsetX: number;
   offsetY: number;
 }
@@ -42,7 +42,7 @@ export class BitCompanion {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
   private dots: ParticleDot[] = [];
-  private sparkImage: Phaser.GameObjects.Sprite | null = null;
+  private sparkImage: Phaser.GameObjects.Image | null = null;
   private orbitAngle: number = 0;
   private currentX: number;
   private currentY: number;
@@ -94,21 +94,27 @@ export class BitCompanion {
 
     const color = STAGE_COLORS[this.stage];
     const offsets = this.getStageOffsets(this.stage);
-    this.ensureAnimations();
     this.sparkImage = this.scene.add
-      .sprite(0, 0, PROLOGUE_SHEET_KEYS.COMPANIONS, 0)
-      .setDisplaySize(this.stage === BitStage.SPARK ? 28 : 34, this.stage === BitStage.SPARK ? 28 : 34)
-      .setAlpha(0.86)
+      .image(0, 0, this.getStageImageKey(this.stage))
+      .setDisplaySize(this.stage === BitStage.SPARK ? 30 : 36, this.stage === BitStage.SPARK ? 38 : 34)
+      .setAlpha(0.95)
       .setTint(color);
-    this.sparkImage.anims.play('bit-spark-pulse');
     this.container.add(this.sparkImage);
 
+    this.scene.tweens.add({
+      targets: this.sparkImage,
+      angle: this.stage === BitStage.SPARK ? 5 : 360,
+      duration: this.stage === BitStage.SPARK ? 1400 : 4200,
+      yoyo: this.stage === BitStage.SPARK,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
     for (const [ox, oy] of offsets) {
-      const size = this.stage === BitStage.SPARK ? 5 : 4;
-      const rect = this.scene.add.rectangle(ox, oy, size, size, color);
-      rect.setAlpha(0.9);
-      this.container.add(rect);
-      this.dots.push({ rect, offsetX: ox, offsetY: oy });
+      const radius = this.stage === BitStage.SPARK ? 2 : 1.5;
+      const dot = this.scene.add.circle(ox, oy, radius, color, 0.82);
+      this.container.add(dot);
+      this.dots.push({ dot, offsetX: ox, offsetY: oy });
     }
 
     // Add a subtle glow behind CORE stage
@@ -116,6 +122,12 @@ export class BitCompanion {
       const glow = this.scene.add.ellipse(0, 0, 36, 36, 0xffffff, 0.08);
       this.container.addAt(glow, 0); // behind everything
     }
+  }
+
+  private getStageImageKey(stage: BitStage): string {
+    if (stage === BitStage.SPARK) return VISUAL_REVAMP_KEYS.BIT_SPARK;
+    if (stage === BitStage.BYTE) return VISUAL_REVAMP_KEYS.BIT_BYTE;
+    return VISUAL_REVAMP_KEYS.BIT_FRAME;
   }
 
   /**
@@ -199,22 +211,11 @@ export class BitCompanion {
       onComplete: () => { this.container.setPosition(this.currentX, this.currentY); },
     });
     // Tint all dots red-ish during fear
-    this.dots.forEach(d => d.rect.setFillStyle(COLORS.ERROR));
+    this.dots.forEach(d => d.dot.setFillStyle(COLORS.ERROR));
     this.sparkImage?.setTint(COLORS.ERROR);
     this.scene.time.delayedCall(600, () => {
-      this.dots.forEach(d => d.rect.setFillStyle(STAGE_COLORS[this.stage]));
+      this.dots.forEach(d => d.dot.setFillStyle(STAGE_COLORS[this.stage]));
       this.sparkImage?.setTint(STAGE_COLORS[this.stage]);
-    });
-  }
-
-  private ensureAnimations(): void {
-    if (this.scene.anims.exists('bit-spark-pulse')) return;
-
-    this.scene.anims.create({
-      key: 'bit-spark-pulse',
-      frames: this.scene.anims.generateFrameNumbers(PROLOGUE_SHEET_KEYS.COMPANIONS, { start: 0, end: 3 }),
-      frameRate: 5,
-      repeat: -1,
     });
   }
 
@@ -231,10 +232,10 @@ export class BitCompanion {
       ease: 'Sine.easeInOut',
       onComplete: () => { this.container.setScale(1).setAlpha(1); },
     });
-    this.dots.forEach(d => d.rect.setFillStyle(COLORS.ORANGE_ACCENT));
+    this.dots.forEach(d => d.dot.setFillStyle(COLORS.ORANGE_ACCENT));
     this.sparkImage?.setTint(COLORS.ORANGE_ACCENT);
     this.scene.time.delayedCall(700, () => {
-      this.dots.forEach(d => d.rect.setFillStyle(STAGE_COLORS[this.stage]));
+      this.dots.forEach(d => d.dot.setFillStyle(STAGE_COLORS[this.stage]));
       this.sparkImage?.setTint(STAGE_COLORS[this.stage]);
     });
   }
@@ -255,7 +256,7 @@ export class BitCompanion {
   private playEvolve(toStage: BitStage): void {
     this.stopReactionTween();
     // Flash white, then rebuild as new stage
-    this.dots.forEach(d => d.rect.setFillStyle(0xffffff));
+    this.dots.forEach(d => d.dot.setFillStyle(0xffffff));
     this.sparkImage?.setTint(0xffffff);
     this.scene.tweens.add({
       targets: this.container,

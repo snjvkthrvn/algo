@@ -11,13 +11,28 @@ import { TransitionManager } from '../core/TransitionManager';
 import { moveMenuSelection } from '../input/MenuNavigation';
 import { drawPanel } from '../ui/panel';
 
+// Persists for the entire browser session — scramble plays once only
+let menuTitleAssembled = false;
+
+const GLYPHS = '0123456789#%&*!?<>=+~^@$';
+
+interface Star {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  alpha: number;
+  speed: number;
+  radius: number;
+}
+
 interface MenuItem {
   text: string;
   callback: () => void;
 }
 
 export class MenuScene extends Phaser.Scene {
-  private stars: { x: number; y: number; alpha: number; speed: number }[] = [];
+  private stars: Star[] = [];
   private starGraphics!: Phaser.GameObjects.Graphics;
   private menuItems: MenuItem[] = [];
   private menuTexts: Phaser.GameObjects.Text[] = [];
@@ -40,20 +55,31 @@ export class MenuScene extends Phaser.Scene {
     this.selectedMenuIndex = 0;
     audioManager.setScene(this);
 
-    // Fade in via tween overlay (camera fadeIn is unreliable)
+    // Fade in
     const fadeIn = this.add.rectangle(0, 0, width, height, 0x000000, 1).setOrigin(0).setDepth(10000);
-    this.tweens.add({
-      targets: fadeIn,
-      alpha: 0,
-      duration: 500,
-      onComplete: () => fadeIn.destroy(),
-    });
+    this.tweens.add({ targets: fadeIn, alpha: 0, duration: 500, onComplete: () => fadeIn.destroy() });
 
-    // Starfield background
     this.createStarfield(width, height);
 
-    // Title (positions snapped to an 8-pixel grid for crisp rendering).
-    this.add.text(width / 2, 184, 'ALGORITHMIA', {
+    // Pixel ornament above title
+    const ox = Math.round(width / 2);
+    const oy = 152;
+    const ps = 4;
+    const orn = this.add.graphics();
+    orn.fillStyle(0xe0f8d0, 0.9);
+    orn.fillRect(ox - ps / 2, oy - ps / 2, ps, ps);
+    orn.fillStyle(0x88c070, 0.75);
+    orn.fillRect(ox - ps / 2 - ps * 2, oy - ps / 2, ps, ps);
+    orn.fillRect(ox - ps / 2 + ps * 2, oy - ps / 2, ps, ps);
+    orn.fillRect(ox - ps / 2, oy - ps / 2 - ps * 2, ps, ps);
+    orn.fillRect(ox - ps / 2, oy - ps / 2 + ps * 2, ps, ps);
+
+    // Subtle composition frame
+    const compFrame = this.add.graphics();
+    compFrame.lineStyle(1, 0x88c070, 0.16);
+    compFrame.strokeRect(Math.round(width / 2 - 264), 160, 528, 312);
+
+    const titleText = this.add.text(width / 2, 184, menuTitleAssembled ? 'ALGORITHMIA' : '', {
       fontSize: '40px',
       fontFamily: FONTS.RETRO,
       color: '#e0f8d0',
@@ -69,7 +95,6 @@ export class MenuScene extends Phaser.Scene {
       strokeThickness: 2,
     }).setOrigin(0.5);
 
-    // Decorative line
     const line = this.add.graphics();
     line.lineStyle(2, 0x88c070, 0.8);
     line.beginPath();
@@ -77,35 +102,32 @@ export class MenuScene extends Phaser.Scene {
     line.lineTo(width / 2 + 200, 264);
     line.strokePath();
 
-    // Menu options
-    this.menuItems = [
-      { text: 'NEW GAME', callback: () => this.startNewGame() },
-    ];
-
+    // Menu items — built but rendered invisible for slide-up entrance
+    this.menuItems = [{ text: 'NEW GAME', callback: () => this.startNewGame() }];
     if (saveLoadManager.hasSave()) {
       this.menuItems.push({ text: 'CONTINUE', callback: () => this.continueGame() });
     }
-
     this.menuItems.push({ text: 'SETTINGS', callback: () => this.openSettings() });
 
     this.menuTexts = [];
     this.menuItems.forEach((item, index) => {
-      const y = 320 + index * 48;
-      const text = this.add.text(width / 2, y, item.text, {
+      const finalY = 320 + index * 48;
+      const text = this.add.text(width / 2, menuTitleAssembled ? finalY : finalY + 32, item.text, {
         fontSize: '16px',
         fontFamily: FONTS.RETRO,
         color: '#88c070',
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      })
+        .setOrigin(0.5)
+        .setAlpha(menuTitleAssembled ? 1 : 0)
+        .setInteractive({ useHandCursor: true });
 
       text.on('pointerover', () => {
         this.setSelectedMenuIndex(index);
         this.tweens.add({ targets: text, scale: 1.1, duration: 100 });
       });
-
       text.on('pointerout', () => {
         this.tweens.add({ targets: text, scale: 1, duration: 100 });
       });
-
       text.on('pointerdown', () => {
         audioManager.playClickTone();
         this.activateSelectedMenuItem();
@@ -113,6 +135,7 @@ export class MenuScene extends Phaser.Scene {
 
       this.menuTexts.push(text);
     });
+
     this.renderMenuSelection();
     this.registerKeyboardMenuControls();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -120,29 +143,38 @@ export class MenuScene extends Phaser.Scene {
       this.unregisterKeyboardMenuControls();
     });
 
-    // Version text — slightly higher contrast so it's legible without shouting.
     this.add.text(width - 24, height - 24, 'v1.0.0', {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
       color: '#7a7aaa',
     }).setOrigin(1, 1);
 
-    // Subtitle
     this.add.text(width / 2, height - 56, 'A world of algorithms awaits', {
       fontSize: '12px',
       fontFamily: FONTS.RETRO,
       color: '#7a7aaa',
     }).setOrigin(0.5);
+
+    if (!menuTitleAssembled) {
+      this.animateTitleAssembly(titleText);
+    }
   }
 
-  update(): void {
-    // Animate starfield
+  update(_time: number, _delta: number): void {
+    const { width, height } = this.cameras.main;
     this.starGraphics.clear();
     for (const star of this.stars) {
-      star.alpha += Math.sin(Date.now() * star.speed * 0.001) * 0.01;
+      star.x += star.vx;
+      star.y += star.vy;
+      if (star.x < 0) star.x += width;
+      if (star.x > width) star.x -= width;
+      if (star.y < 0) star.y += height;
+      if (star.y > height) star.y -= height;
+
+      star.alpha += Math.sin(this.time.now * star.speed * 0.001) * 0.01;
       star.alpha = Math.max(0.1, Math.min(0.8, star.alpha));
       this.starGraphics.fillStyle(0xffffff, star.alpha);
-      this.starGraphics.fillCircle(star.x, star.y, 1);
+      this.starGraphics.fillCircle(star.x, star.y, star.radius);
     }
   }
 
@@ -150,14 +182,78 @@ export class MenuScene extends Phaser.Scene {
     this.starGraphics = this.add.graphics();
     this.stars = [];
 
-    for (let i = 0; i < 100; i++) {
-      this.stars.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        alpha: Math.random() * 0.6 + 0.1,
-        speed: Math.random() * 2 + 0.5,
-      });
+    // Three layers: small faint, small mid, large bright
+    const layers: { count: number; radius: number; speed: number; maxAlpha: number }[] = [
+      { count: 60, radius: 1, speed: 0.5, maxAlpha: 0.4 },
+      { count: 30, radius: 1, speed: 1.2, maxAlpha: 0.65 },
+      { count: 10, radius: 2, speed: 2.0, maxAlpha: 0.85 },
+    ];
+
+    for (const layer of layers) {
+      for (let i = 0; i < layer.count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const driftSpeed = 0.02 + Math.random() * 0.04;
+        this.stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: Math.cos(angle) * driftSpeed,
+          vy: Math.sin(angle) * driftSpeed * 0.4,
+          alpha: Math.random() * layer.maxAlpha + 0.1,
+          speed: Math.random() * (layer.speed - 0.3) + 0.3,
+          radius: layer.radius,
+        });
+      }
     }
+  }
+
+  private animateTitleAssembly(titleText: Phaser.GameObjects.Text): void {
+    const FINAL = 'ALGORITHMIA';
+    const displayed: string[] = new Array(FINAL.length).fill(' ');
+    const resolved: boolean[] = new Array(FINAL.length).fill(false);
+
+    const redraw = () => titleText.setText(displayed.join(''));
+
+    FINAL.split('').forEach((finalChar, i) => {
+      this.time.delayedCall(i * 72, () => {
+        // 8 scramble ticks at 40ms each
+        const scramble = this.time.addEvent({
+          delay: 40,
+          repeat: 7,
+          callback: () => {
+            displayed[i] = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+            redraw();
+          },
+        });
+
+        this.time.delayedCall(40 * 9, () => {
+          scramble.remove();
+          displayed[i] = finalChar;
+          resolved[i] = true;
+          redraw();
+
+          if (resolved.every(Boolean)) {
+            menuTitleAssembled = true;
+            this.slideInMenuItems();
+          }
+        });
+      });
+    });
+
+    redraw();
+  }
+
+  private slideInMenuItems(): void {
+    this.menuTexts.forEach((text, i) => {
+      const finalY = 320 + i * 48;
+      this.tweens.add({
+        targets: text,
+        y: finalY,
+        alpha: 1,
+        duration: 320,
+        delay: i * 70,
+        ease: 'Expo.easeOut',
+      });
+    });
   }
 
   private registerKeyboardMenuControls(): void {
@@ -199,7 +295,6 @@ export class MenuScene extends Phaser.Scene {
       this.closeSettingsModal();
       return;
     }
-
     const item = this.menuItems[this.selectedMenuIndex];
     if (!item) return;
     audioManager.playClickTone();
@@ -245,10 +340,7 @@ export class MenuScene extends Phaser.Scene {
     const panelX = Math.round(width / 2 - PANEL_W / 2);
     const panelY = Math.round(height / 2 - PANEL_H / 2);
 
-    const overlay = this.add
-      .rectangle(0, 0, width, height, 0x000000, 0.7)
-      .setOrigin(0)
-      .setDepth(100);
+    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.7).setOrigin(0).setDepth(100);
 
     const panel = drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
       depth: 101,
@@ -262,7 +354,6 @@ export class MenuScene extends Phaser.Scene {
       color: '#081820',
     }).setOrigin(0.5, 0).setDepth(102);
 
-    // Slider state — stored as 0–100 integers for display, converted to 0–1 when saving
     const volumes = [
       Math.round(gameState.getSettings().musicVolume * 100),
       Math.round(gameState.getSettings().sfxVolume * 100),
@@ -280,20 +371,13 @@ export class MenuScene extends Phaser.Scene {
         fontSize: '10px',
         fontFamily: FONTS.RETRO,
         color: '#081820',
-      }).setDepth(102)
+      }).setDepth(102),
     );
 
-    const barGraphics = [
-      this.add.graphics().setDepth(102),
-      this.add.graphics().setDepth(102),
-    ];
+    const barGraphics = [this.add.graphics().setDepth(102), this.add.graphics().setDepth(102)];
     const pctTexts = [
-      this.add.text(BAR_X + BAR_W + 12, ROW_Y[0], '', {
-        fontSize: '10px', fontFamily: FONTS.RETRO, color: '#081820',
-      }).setDepth(102),
-      this.add.text(BAR_X + BAR_W + 12, ROW_Y[1], '', {
-        fontSize: '10px', fontFamily: FONTS.RETRO, color: '#081820',
-      }).setDepth(102),
+      this.add.text(BAR_X + BAR_W + 12, ROW_Y[0], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: '#081820' }).setDepth(102),
+      this.add.text(BAR_X + BAR_W + 12, ROW_Y[1], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: '#081820' }).setDepth(102),
     ];
 
     const redrawSliders = () => {
@@ -316,10 +400,7 @@ export class MenuScene extends Phaser.Scene {
 
     const adjust = (delta: number) => {
       volumes[focusedRow] = Phaser.Math.Clamp(volumes[focusedRow] + delta, 0, 100);
-      gameState.updateSettings({
-        musicVolume: volumes[0] / 100,
-        sfxVolume: volumes[1] / 100,
-      });
+      gameState.updateSettings({ musicVolume: volumes[0] / 100, sfxVolume: volumes[1] / 100 });
       audioManager.applyVolumeSettings();
       redrawSliders();
     };
@@ -338,26 +419,18 @@ export class MenuScene extends Phaser.Scene {
 
     const onLeft = () => adjust(-10);
     const onRight = () => adjust(10);
-    const onTab = () => {
-      focusedRow = focusedRow === 0 ? 1 : 0;
-      redrawSliders();
-    };
+    const onTab = () => { focusedRow = focusedRow === 0 ? 1 : 0; redrawSliders(); };
 
     this.input.keyboard?.on('keydown-LEFT', onLeft);
     this.input.keyboard?.on('keydown-RIGHT', onRight);
     this.input.keyboard?.on('keydown-TAB', onTab);
 
     const preventBrowserDefault = (e: KeyboardEvent) => {
-      if (['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        e.preventDefault();
-      }
+      if (['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault();
     };
     window.addEventListener('keydown', preventBrowserDefault);
 
-    const allObjects = [
-      overlay, panel, settingsTitle, hintText, closeBtn,
-      ...rowLabelTexts, ...barGraphics, ...pctTexts,
-    ];
+    const allObjects = [overlay, panel, settingsTitle, hintText, closeBtn, ...rowLabelTexts, ...barGraphics, ...pctTexts];
 
     this.closeSettingsModal = () => {
       this.input.keyboard?.off('keydown-LEFT', onLeft);

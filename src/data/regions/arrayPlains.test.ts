@@ -21,6 +21,20 @@ describe('ARRAY_PLAINS_CONFIG', () => {
         leadsTo: 'prologue',
         position: { x: 112, y: 448 },
       }),
+      expect.objectContaining({
+        id: 'twin_rivers_gateway',
+        leadsTo: 'twin_rivers',
+        position: { x: 1784, y: 416 },
+        unlockCondition: 'twin_rivers_gateway_open',
+      }),
+    ]);
+
+    expect(ARRAY_PLAINS_CONFIG.puzzles.map((puzzle) => puzzle.id)).toEqual([
+      'ap_1',
+      'ap_2',
+      'ap_3',
+      'ap_4',
+      'boss_shuffler',
     ]);
   });
 
@@ -48,9 +62,15 @@ describe('Array Plains route helpers', () => {
       'index_walk',
       'guide_clearing',
       'return_lane',
+      'sorting_shed',
+      'indexing_barn',
+      'grain_hopper',
+      'pairing_grounds',
+      'shuffler_lane',
     ]);
 
     expect(isPointOnArrayPlainsRoute({ x: 512, y: 448 })).toBe(true);
+    expect(isPointOnArrayPlainsRoute({ x: 1784, y: 416 })).toBe(true);
     expect(isPointOnArrayPlainsRoute({ x: 512, y: 96 })).toBe(false);
   });
 

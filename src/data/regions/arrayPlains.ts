@@ -20,9 +20,14 @@ export interface ArrayPlainsCollisionBlocker {
 
 export const ARRAY_PLAINS_ROUTE_RECTS: ArrayPlainsRouteRect[] = [
   { id: 'entry_lane', x: 80, y: 392, width: 336, height: 112 },
-  { id: 'index_walk', x: 384, y: 360, width: 1024, height: 160 },
+  { id: 'index_walk', x: 384, y: 360, width: 1144, height: 160 },
   { id: 'guide_clearing', x: 760, y: 264, width: 416, height: 128 },
   { id: 'return_lane', x: 80, y: 296, width: 160, height: 128 },
+  { id: 'sorting_shed', x: 448, y: 248, width: 224, height: 144 },
+  { id: 'indexing_barn', x: 656, y: 504, width: 224, height: 120 },
+  { id: 'grain_hopper', x: 1096, y: 248, width: 224, height: 144 },
+  { id: 'pairing_grounds', x: 1184, y: 504, width: 224, height: 120 },
+  { id: 'shuffler_lane', x: 1456, y: 360, width: 344, height: 160 },
 ];
 
 const pointInsideRect = (
@@ -108,11 +113,24 @@ export const ARRAY_PLAINS_CONFIG: RegionConfig = {
       leadsTo: REGIONS.PROLOGUE,
       requiresUnlock: false,
     },
+    {
+      id: 'twin_rivers_gateway',
+      position: { x: 1784, y: 416 },
+      leadsTo: REGIONS.TWIN_RIVERS,
+      requiresUnlock: true,
+      unlockCondition: 'twin_rivers_gateway_open',
+    },
   ],
   npcs: [
     { id: 'array_guide', position: { x: 912, y: 336 }, enabled: true },
   ],
-  puzzles: [],
+  puzzles: [
+    { id: 'ap_1', position: { x: 560, y: 320 }, enabled: true },
+    { id: 'ap_2', position: { x: 768, y: 560 }, enabled: true },
+    { id: 'ap_3', position: { x: 1208, y: 320 }, enabled: true },
+    { id: 'ap_4', position: { x: 1296, y: 560 }, enabled: true },
+    { id: 'boss_shuffler', position: { x: 1608, y: 416 }, enabled: true },
+  ],
   interactables: [
     indexMarker('index_marker_0', 608, 416),
     indexMarker('index_marker_1', 736, 416),

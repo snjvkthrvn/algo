@@ -5,7 +5,7 @@
 
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
-import { SCENE_KEYS, COLORS } from '../../config/constants';
+import { SCENE_KEYS, COLORS, FONTS } from '../../config/constants';
 import { adjustBrightness } from '../../utils/colors';
 import { audioManager } from '../../core/AudioManager';
 import { BitHint } from '../../entities/BitHint';
@@ -111,7 +111,7 @@ export class P0_1_FollowThePath extends BasePuzzleScene {
     // Label
     const label = this.add.text(0, 0, `${index + 1}`, {
       fontSize: '20px',
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: FONTS.RETRO,
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 2,
@@ -286,7 +286,7 @@ export class P0_1_FollowThePath extends BasePuzzleScene {
         this.hintText = this.add.text(
           this.cameras.main.width / 2, this.cameras.main.height - 80,
           'Hint: Watch the order carefully. The first tile glows first.',
-          { fontSize: '11px', fontFamily: 'monospace', color: '#fbbf24', align: 'center', wordWrap: { width: 500 } }
+          { fontSize: '11px', fontFamily: FONTS.MONO, color: '#fbbf24', align: 'center', wordWrap: { width: 500 } }
         ).setOrigin(0.5).setDepth(500);
         break;
 
@@ -303,7 +303,7 @@ export class P0_1_FollowThePath extends BasePuzzleScene {
           this.hintText = this.add.text(
             this.cameras.main.width / 2, this.cameras.main.height - 80,
             'Hint: The first tile in the sequence is highlighted.',
-            { fontSize: '11px', fontFamily: 'monospace', color: '#fbbf24', align: 'center' }
+            { fontSize: '11px', fontFamily: FONTS.MONO, color: '#fbbf24', align: 'center' }
           ).setOrigin(0.5).setDepth(500);
         }
         break;
@@ -313,7 +313,7 @@ export class P0_1_FollowThePath extends BasePuzzleScene {
           this.hintText = this.add.text(
             this.cameras.main.width / 2, this.cameras.main.height - 80,
             'Hint: Replaying sequence at half speed...',
-            { fontSize: '11px', fontFamily: 'monospace', color: '#fbbf24', align: 'center' }
+            { fontSize: '11px', fontFamily: FONTS.MONO, color: '#fbbf24', align: 'center' }
           ).setOrigin(0.5).setDepth(500);
 
           // Replay at 0.5x speed (2x duration)
