@@ -5,10 +5,11 @@
  */
 
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { PROLOGUE_REWORK_KEYS } from '../../config/assets';
+import { PROLOGUE_REWORK_KEYS, VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { colorToHex } from '../../utils/colors';
 import { createRetroButton, updateButtonText, disableButton } from '../../ui/RetroButton';
 import { showStarRating } from '../../ui/StarRating';
+import { drawPanel } from '../../ui/panel';
 import { audioManager } from '../../core/AudioManager';
 import { gameState } from '../../core/GameStateManager';
 import { TransitionManager } from '../../core/TransitionManager';
@@ -78,14 +79,22 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0, 0).setDepth(-30);
 
-    if (this.textures.exists(PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME)) {
+    const backdropKey = this.getPuzzleBackdropKey();
+    const resolvedBackdropKey = backdropKey && this.textures.exists(backdropKey)
+      ? backdropKey
+      : PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME;
+    const hasBackdrop = this.textures.exists(resolvedBackdropKey);
+
+    if (hasBackdrop) {
       this.add
-        .image(width / 2, height / 2, PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME)
+        .image(width / 2, height / 2, resolvedBackdropKey)
         .setDisplaySize(width, height)
         .setDepth(-29);
     }
 
-    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 0.18).setOrigin(0, 0).setDepth(-28);
+    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, hasBackdrop ? 0.04 : 0.18)
+      .setOrigin(0, 0)
+      .setDepth(-28);
 
     this.uiContainer = this.add.container(0, 0);
 
@@ -94,6 +103,14 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.createControlButtons(width);
     this.createStarRatingContainer(width);
     this.addStatusIndicator(width, height);
+  }
+
+  protected getPuzzleBackdropKey(): string | null {
+    return VISUAL_REVAMP_KEYS.PUZZLE_FRAME;
+  }
+
+  protected getPuzzleFrameFillAlpha(): number {
+    return 0.06;
   }
 
   protected createPuzzleFrame(width: number, height: number): void {
@@ -107,16 +124,17 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.puzzleFrame.fillStyle(0x000000, 0.5);
     this.puzzleFrame.fillRoundedRect(padding + 4, padding + 4, frameWidth, frameHeight, 8);
 
-    // Translucent playfield over the Chamber backdrop.
-    this.puzzleFrame.fillStyle(COLORS.FRAME_BG, 0.58);
+    // Keep the generated encounter art visible while giving primitive puzzle
+    // objects a shared readable surface.
+    this.puzzleFrame.fillStyle(0xe0f8d0, this.getPuzzleFrameFillAlpha());
     this.puzzleFrame.fillRoundedRect(padding, padding, frameWidth, frameHeight, 8);
 
     // Outer border
-    this.puzzleFrame.lineStyle(4, COLORS.FRAME_BORDER_DARK, 0.95);
+    this.puzzleFrame.lineStyle(3, 0x081820, 0.9);
     this.puzzleFrame.strokeRoundedRect(padding, padding, frameWidth, frameHeight, 8);
 
     // Inner border
-    this.puzzleFrame.lineStyle(2, COLORS.FRAME_BORDER_LIGHT, 0.78);
+    this.puzzleFrame.lineStyle(1, 0x346856, 0.78);
     this.puzzleFrame.strokeRoundedRect(padding + 6, padding + 6, frameWidth - 12, frameHeight - 12, 6);
 
     this.puzzleFrame.setAlpha(0);
@@ -127,7 +145,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     // Decorative line grows from center outward after frame fades in.
     const lineY = padding + 70;
-    const lineRect = this.add.rectangle(width / 2, lineY, frameWidth - 200, 2, COLORS.CYAN_GLOW, 0.7);
+    const lineRect = this.add.rectangle(width / 2, lineY, frameWidth - 240, 2, 0x346856, 0.5);
     lineRect.setScale(0, 1);
     this.uiContainer.add(lineRect);
 
@@ -187,26 +205,43 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected createTitleArea(width: number): void {
     this.titleText = this.add.text(width / 2, 75, this.puzzleName, {
-      fontSize: '28px',
+      fontSize: '24px',
       fontFamily: FONTS.RETRO,
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 4,
+      color: '#081820',
+      stroke: '#e0f8d0',
+      strokeThickness: 2,
     }).setOrigin(0.5).setAlpha(0);
 
     // Instruction starts slightly left and slides into place.
     this.instructionText = this.add.text(width / 2 - 80, 115, this.puzzleDescription, {
       fontSize: '14px',
       fontFamily: FONTS.MONO,
-      color: '#9ca3af',
+      color: '#346856',
       align: 'center',
       wordWrap: { width: width - 200 },
     }).setOrigin(0.5).setAlpha(0);
 
-    this.uiContainer.add([this.titleText, this.instructionText]);
+    const titlePanel = drawPanel(this, width / 2 - 368, 48, 736, 86, {
+      depth: 0,
+      fill: 0xe0f8d0,
+      frame: 0x081820,
+      inner: 0x346856,
+      alpha: 0.94,
+    });
+    titlePanel.setAlpha(0);
+
+    this.uiContainer.add([titlePanel, this.titleText, this.instructionText]);
 
     // Glitch-reveal the title after the frame starts fading in.
-    this.time.delayedCall(180, () => this.glitchReveal(this.titleText, '#ffffff'));
+    this.time.delayedCall(180, () => this.glitchReveal(this.titleText, '#081820'));
+
+    this.tweens.add({
+      targets: titlePanel,
+      alpha: 1,
+      duration: 260,
+      delay: 120,
+      ease: 'Power2',
+    });
 
     // Instruction slides in after title settles.
     this.tweens.add({
@@ -413,13 +448,13 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   protected showMessage(text: string, color: number = COLORS.TEXT_LIGHT): void {
     const { width, height } = this.cameras.main;
     const msgW = Math.min(width - 80, 480);
-    const msgH = 52;
+    const msgH = 48;
     const msgY = height / 2 - 20;
 
-    const msgContainer = this.add.container(width + msgW, msgY).setDepth(1000);
+    const msgContainer = this.add.container(width / 2, msgY).setDepth(1000).setAlpha(0);
 
     const bg = this.add.graphics();
-    bg.fillStyle(0x060610, 0.92);
+    bg.fillStyle(0xe0f8d0, 0.96);
     bg.fillRect(-msgW / 2, -msgH / 2, msgW, msgH);
     bg.lineStyle(2, color, 1);
     bg.strokeRect(-msgW / 2, -msgH / 2, msgW, msgH);
@@ -431,23 +466,24 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     bg.strokePath();
 
     const label = this.add.text(0, 0, text, {
-      fontSize: '20px',
+      fontSize: '16px',
       fontFamily: FONTS.RETRO,
-      color: colorToHex(color),
-      stroke: '#000000',
-      strokeThickness: 3,
+      color: '#081820',
+      stroke: colorToHex(color),
+      strokeThickness: 1,
+      align: 'center',
+      wordWrap: { width: msgW - 36 },
     }).setOrigin(0.5);
 
     msgContainer.add([bg, label]);
 
-    // Slide in from the right edge.
-    this.tweens.add({ targets: msgContainer, x: width / 2, duration: 220, ease: 'Power3.easeOut' });
+    this.tweens.add({ targets: msgContainer, alpha: 1, y: msgY - 4, duration: 160, ease: 'Power2.easeOut' });
 
-    // Hold then slide out to the left.
     this.tweens.add({
       targets: msgContainer,
-      x: -msgW,
-      duration: 220,
+      alpha: 0,
+      y: msgY - 12,
+      duration: 180,
       ease: 'Power3.easeIn',
       delay: 1600,
       onComplete: () => msgContainer.destroy(),

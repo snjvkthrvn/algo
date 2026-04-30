@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
+import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { audioManager } from '../../core/AudioManager';
 import { BASKET_ITEMS, basketIndexForItem } from '../../data/puzzles/arrayPlainsPuzzleLogic';
@@ -24,6 +25,14 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     this.puzzleDescription = 'Use the index to fetch the requested item instantly.';
   }
 
+  protected getPuzzleBackdropKey(): string | null {
+    return VISUAL_REVAMP_KEYS.PUZZLE_INDEXING_BARN_BG;
+  }
+
+  protected getPuzzleFrameFillAlpha(): number {
+    return 0.02;
+  }
+
   create(): void {
     super.create();
     this.createBaskets();
@@ -42,25 +51,27 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     this.requestText = this.add.text(width / 2, 170, '', {
       fontSize: '13px',
       fontFamily: FONTS.RETRO,
-      color: '#fbbf24',
+      color: '#081820',
       align: 'center',
+      backgroundColor: '#e0f8d0',
+      padding: { x: 14, y: 8 },
     }).setOrigin(0.5);
 
     for (let i = 0; i < 10; i++) {
       const x = startX + (i % 5) * 180;
       const rowY = y + Math.floor(i / 5) * 104;
-      const box = this.add.rectangle(x, rowY, 108, 64, 0x8b6914, 0.92)
-        .setStrokeStyle(3, 0xe0f8d0, 0.55)
+      const box = this.add.rectangle(x, rowY, 108, 64, 0xd6b45c, 0.94)
+        .setStrokeStyle(3, 0x346856, 0.92)
         .setInteractive({ useHandCursor: true });
       const label = this.add.text(x, rowY, `[${i}]`, {
         fontSize: '15px',
         fontFamily: FONTS.RETRO,
-        color: '#e0f8d0',
+        color: '#081820',
       }).setOrigin(0.5);
       const key = this.add.text(x, rowY + 46, i === 9 ? '0' : `${i + 1}`, {
         fontSize: '8px',
         fontFamily: FONTS.RETRO,
-        color: '#9ca3af',
+        color: '#e0f8d0',
       }).setOrigin(0.5);
       box.on('pointerdown', () => this.chooseBasket(i));
       this.baskets.push({ index: i, box, label });
@@ -73,9 +84,9 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     this.requestText.setText(`Fetch: ${request.item.toUpperCase()}    Known index: ${request.index}`);
 
     for (const basket of this.baskets) {
-      basket.box.setFillStyle(0x8b6914, 0.92);
-      basket.box.setStrokeStyle(3, 0xe0f8d0, 0.55);
-      basket.label.setColor('#e0f8d0');
+      basket.box.setFillStyle(0xd6b45c, 0.94);
+      basket.box.setStrokeStyle(3, 0x346856, 0.92);
+      basket.label.setColor('#081820');
     }
   }
 

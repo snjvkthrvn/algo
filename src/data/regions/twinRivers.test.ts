@@ -11,24 +11,24 @@ describe('TWIN_RIVERS_CONFIG', () => {
       id: 'twin_rivers',
       displayName: 'Twin Rivers',
       backgroundMusic: 'prologue-bgm',
-      spawnPoint: { x: 192, y: 448 },
+      spawnPoint: { x: 192, y: 384 },
     });
 
     expect(TWIN_RIVERS_CONFIG.exitPoints).toEqual([
       expect.objectContaining({
         id: 'array_plains_gateway',
         leadsTo: 'array_plains',
-        position: { x: 112, y: 448 },
+        position: { x: 128, y: 384 },
       }),
       expect.objectContaining({
         id: 'hash_highlands_gateway',
         leadsTo: 'hash_highlands',
-        position: { x: 1784, y: 416 },
+        position: { x: 1784, y: 384 },
       }),
     ]);
   });
 
-  it('keeps spawn, return gateway, and guide on the route', () => {
+  it('keeps spawn, exits, guide, and puzzle stops on the route', () => {
     expect(isPointOnTwinRiversRoute(TWIN_RIVERS_CONFIG.spawnPoint), 'spawn').toBe(true);
 
     for (const exit of TWIN_RIVERS_CONFIG.exitPoints) {
@@ -37,6 +37,10 @@ describe('TWIN_RIVERS_CONFIG', () => {
 
     for (const npc of TWIN_RIVERS_CONFIG.npcs) {
       expect(isPointOnTwinRiversRoute(npc.position), npc.id).toBe(true);
+    }
+
+    for (const puzzle of TWIN_RIVERS_CONFIG.puzzles) {
+      expect(isPointOnTwinRiversRoute(puzzle.position), puzzle.id).toBe(true);
     }
   });
 });
@@ -51,7 +55,8 @@ describe('Twin Rivers route helpers', () => {
       'future_gate_lane',
     ]);
 
-    expect(isPointOnTwinRiversRoute({ x: 900, y: 320 })).toBe(true);
+    expect(isPointOnTwinRiversRoute({ x: 900, y: 384 })).toBe(true);
+    expect(isPointOnTwinRiversRoute({ x: 900, y: 224 })).toBe(true);
     expect(isPointOnTwinRiversRoute({ x: 900, y: 120 })).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
+import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { audioManager } from '../../core/AudioManager';
 import { TWO_SUM_ROUNDS, isTwoSumPair } from '../../data/puzzles/arrayPlainsPuzzleLogic';
@@ -25,6 +26,14 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.puzzleDescription = 'Select two tiles whose values add to the target.';
   }
 
+  protected getPuzzleBackdropKey(): string | null {
+    return VISUAL_REVAMP_KEYS.PUZZLE_PAIRING_GROUNDS_BG;
+  }
+
+  protected getPuzzleFrameFillAlpha(): number {
+    return 0.02;
+  }
+
   create(): void {
     super.create();
     this.createTiles();
@@ -40,25 +49,27 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.targetText = this.add.text(width / 2, 176, '', {
       fontSize: '15px',
       fontFamily: FONTS.RETRO,
-      color: '#fbbf24',
+      color: '#081820',
+      backgroundColor: '#e0f8d0',
+      padding: { x: 14, y: 8 },
     }).setOrigin(0.5);
 
     const startX = width / 2 - 240;
     const y = height / 2 + 72;
     for (let i = 0; i < 5; i++) {
       const x = startX + i * 120;
-      const box = this.add.rectangle(x, y, 84, 84, 0x4a4a6a, 0.9)
-        .setStrokeStyle(3, COLORS.CYAN_GLOW, 0.55)
+      const box = this.add.rectangle(x, y, 84, 84, 0xe0f8d0, 0.94)
+        .setStrokeStyle(3, 0x346856, 0.95)
         .setInteractive({ useHandCursor: true });
       const label = this.add.text(x, y, '', {
         fontSize: '20px',
         fontFamily: FONTS.RETRO,
-        color: '#ffffff',
+        color: '#081820',
       }).setOrigin(0.5);
       const key = this.add.text(x, y + 58, `${i + 1}`, {
         fontSize: '8px',
         fontFamily: FONTS.RETRO,
-        color: '#9ca3af',
+        color: '#e0f8d0',
       }).setOrigin(0.5);
       key.setDepth(5);
       box.on('pointerdown', () => this.chooseTile(i));
@@ -74,8 +85,8 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.tiles.forEach((tile, index) => {
       tile.value = round.values[index];
       tile.label.setText(`${tile.value}`);
-      tile.box.setFillStyle(0x4a4a6a, 0.9);
-      tile.box.setStrokeStyle(3, COLORS.CYAN_GLOW, 0.55);
+      tile.box.setFillStyle(0xe0f8d0, 0.94);
+      tile.box.setStrokeStyle(3, 0x346856, 0.95);
     });
   }
 
@@ -85,6 +96,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
 
     this.selected.push(tile.value);
     tile.box.setFillStyle(COLORS.GOLD_ACCENT, 0.95);
+    tile.box.setStrokeStyle(3, COLORS.CYAN_GLOW, 0.9);
 
     if (this.selected.length < 2) {
       const round = TWO_SUM_ROUNDS[this.roundIndex];

@@ -123,10 +123,11 @@ export class ArrayPlainsScene extends Phaser.Scene {
     const route = this.add.graphics().setDepth(1);
 
     for (const rect of ARRAY_PLAINS_ROUTE_RECTS) {
-      route.fillStyle(0xe0f8d0, 0.055);
-      route.fillRect(rect.x, rect.y, rect.width, rect.height);
-      route.lineStyle(1, 0xe0f8d0, 0.16);
-      route.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      route.lineStyle(1, 0xe0f8d0, 0.035);
+      route.beginPath();
+      route.moveTo(rect.x + 14, rect.y + rect.height / 2);
+      route.lineTo(rect.x + rect.width - 14, rect.y + rect.height / 2);
+      route.strokePath();
     }
 
     const cursor = this.add.rectangle(608, 416, 40, 40, COLORS.GOLD_ACCENT, 0.04)

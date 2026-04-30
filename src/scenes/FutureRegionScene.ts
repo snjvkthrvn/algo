@@ -29,6 +29,8 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   private interactionSystem!: InteractionSystem;
   private readonly regionConfig: FutureRegionSceneConfig;
   private readonly interactables: InteractableObject[] = [];
+  private readonly encounterObjects: InteractableObject[] = [];
+  private readonly labelObjects: Phaser.GameObjects.Text[] = [];
   private infoPanelCleanup: (() => void) | null = null;
 
   protected constructor(regionConfig: FutureRegionSceneConfig) {
@@ -112,10 +114,36 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   private renderRoute(): void {
     const route = this.add.graphics().setDepth(1);
     for (const rect of FUTURE_REGION_ROUTE_RECTS) {
-      route.fillStyle(0xe0f8d0, 0.045);
-      route.fillRect(rect.x, rect.y, rect.width, rect.height);
-      route.lineStyle(1, this.regionConfig.accentColor, 0.15);
-      route.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      route.lineStyle(1, this.regionConfig.accentColor, 0.035);
+      route.beginPath();
+      route.moveTo(rect.x + 16, rect.y + rect.height / 2);
+      route.lineTo(rect.x + rect.width - 16, rect.y + rect.height / 2);
+      route.strokePath();
+    }
+
+    if (this.prefersReducedMotion()) return;
+
+    for (const rect of FUTURE_REGION_ROUTE_RECTS) {
+      const count = Math.max(2, Math.floor(rect.width / 220));
+      for (let i = 0; i < count; i++) {
+        const glint = this.add.circle(
+          rect.x + 42 + i * 212,
+          rect.y + rect.height / 2 + Phaser.Math.Between(-12, 12),
+          Phaser.Math.FloatBetween(1.1, 1.8),
+          this.regionConfig.accentColor,
+          0.22
+        ).setDepth(2);
+        this.tweens.add({
+          targets: glint,
+          alpha: 0.02,
+          scale: 1.8,
+          duration: Phaser.Math.Between(900, 1600),
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+          delay: Phaser.Math.Between(0, 900),
+        });
+      }
     }
   }
 
@@ -270,18 +298,27 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
 
     if (this.regionConfig.next) {
       const next = this.regionConfig.next;
+      const locked = !!next.requiresPuzzleId && !gameState.isPuzzleCompleted(next.requiresPuzzleId);
       const gateway = new InteractableObject(this, {
         id: 'next_gateway',
         type: 'portal',
         x: 1784,
         y: 416,
-        prompt: next.label,
-        locked: false,
-        imageByState: { unlocked: next.portalKey },
+        prompt: locked ? (next.lockedLabel ?? '[LOCKED] Complete region') : next.label,
+        locked,
+        imageByState: {
+          locked: VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
+          unlocked: next.portalKey,
+        },
         imageScale: 0.24,
         imageOriginY: 0.86,
-        initialState: 'unlocked',
+        initialState: locked ? 'locked' : 'unlocked',
         onInteract: () => {
+          if (locked) {
+            this.showNote(this.regionConfig.title, 'The next road is sealed until this region settles.');
+            return;
+          }
+
           this.scene.launch(next.sceneKey, {
             spawnX: next.spawnX,
             spawnY: next.spawnY,
@@ -321,6 +358,53 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
       onInteract: () => this.showNote(this.regionConfig.title, this.regionConfig.subtitle),
     });
     this.addInteractable(shrine);
+
+    this.createEncounterObjects();
+  }
+
+  private createEncounterObjects(): void {
+    for (const encounter of this.regionConfig.encounters ?? []) {
+      const completed = gameState.isPuzzleCompleted(encounter.id);
+      const locked = encounter.requiresPuzzleIds?.some((id) => !gameState.isPuzzleCompleted(id)) ?? false;
+      const isBoss = encounter.kind === 'boss';
+      const object = new InteractableObject(this, {
+        id: encounter.id,
+        type: isBoss ? 'gate' : 'sign',
+        x: encounter.position.x,
+        y: encounter.position.y,
+        prompt: locked ? (encounter.lockedPrompt ?? '[LOCKED] Complete lessons') : completed ? '[SPACE] Replay' : encounter.prompt,
+        locked,
+        spriteImageKey: isBoss ? undefined : VISUAL_REVAMP_KEYS.PROP_PUZZLE_SHRINE,
+        imageByState: isBoss
+          ? {
+              locked: VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
+              unlocked: VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_OPEN,
+            }
+          : undefined,
+        imageScale: isBoss ? 0.19 : 0.12,
+        imageOriginY: 0.84,
+        initialState: locked ? 'locked' : 'unlocked',
+        onInteract: () => {
+          if (locked) {
+            this.showNote(encounter.title, 'Complete the four teachings before this challenge opens.');
+            return;
+          }
+
+          this.startPuzzle(encounter.sceneKey);
+        },
+      });
+      this.encounterObjects.push(object);
+      this.interactionSystem.addObject(object);
+
+      const label = this.add.text(encounter.position.x, encounter.position.y - 52, encounter.title, {
+        fontSize: '8px',
+        fontFamily: FONTS.RETRO,
+        color: completed ? '#e0f8d0' : '#081820',
+        backgroundColor: completed ? '#4a3821' : '#e0f8d0',
+        padding: { x: 4, y: 3 },
+      }).setOrigin(0.5).setDepth(5);
+      this.labelObjects.push(label);
+    }
   }
 
   private addInteractable(object: InteractableObject): void {
@@ -332,6 +416,10 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     if (entry.type !== 'object') return;
     const object = entry.target as InteractableObject;
     object.config.onInteract?.();
+  }
+
+  private startPuzzle(sceneKey: string): void {
+    this.scene.start(sceneKey, { returnScene: this.regionConfig.sceneKey });
   }
 
   private showNote(title: string, body: string): void {
@@ -385,6 +473,10 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     this.hud?.destroy();
     for (const object of this.interactables) object.destroy();
     this.interactables.length = 0;
+    for (const object of this.encounterObjects) object.destroy();
+    this.encounterObjects.length = 0;
+    for (const label of this.labelObjects) label.destroy();
+    this.labelObjects.length = 0;
     this.bit?.destroy();
     this.player?.destroy();
   }

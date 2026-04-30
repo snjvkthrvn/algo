@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
+import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { SCENE_KEYS, COLORS } from '../../config/constants';
 import { adjustBrightness } from '../../utils/colors';
 import { audioManager } from '../../core/AudioManager';
@@ -69,6 +70,10 @@ export class P0_2_FlowConsoles extends BasePuzzleScene {
     this.puzzleId = 'p0_2';
     this.puzzleName = 'Flow Consoles';
     this.puzzleDescription = 'Match each shard shape to the console color that accepts it.';
+  }
+
+  protected getPuzzleBackdropKey(): string | null {
+    return VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG;
   }
 
   create(): void {

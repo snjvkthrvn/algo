@@ -13,11 +13,11 @@ export interface TwinRiversRouteRect {
 }
 
 export const TWIN_RIVERS_ROUTE_RECTS: TwinRiversRouteRect[] = [
-  { id: 'entry_bank', x: 80, y: 392, width: 360, height: 112 },
-  { id: 'lower_riverbank', x: 400, y: 424, width: 1120, height: 96 },
-  { id: 'upper_riverbank', x: 400, y: 248, width: 1120, height: 96 },
-  { id: 'bridge_crossing', x: 792, y: 320, width: 224, height: 128 },
-  { id: 'future_gate_lane', x: 1488, y: 352, width: 312, height: 144 },
+  { id: 'entry_bank', x: 64, y: 320, width: 416, height: 144 },
+  { id: 'lower_riverbank', x: 432, y: 336, width: 1120, height: 136 },
+  { id: 'upper_riverbank', x: 432, y: 160, width: 1120, height: 112 },
+  { id: 'bridge_crossing', x: 760, y: 248, width: 296, height: 176 },
+  { id: 'future_gate_lane', x: 1488, y: 312, width: 344, height: 152 },
 ];
 
 const pointInsideRect = (
@@ -52,24 +52,30 @@ export const TWIN_RIVERS_CONFIG: RegionConfig = {
     specificPuzzles: ['boss_shuffler'],
   },
   backgroundMusic: 'prologue-bgm',
-  spawnPoint: { x: 192, y: 448 },
+  spawnPoint: { x: 192, y: 384 },
   exitPoints: [
     {
       id: 'array_plains_gateway',
-      position: { x: 112, y: 448 },
+      position: { x: 128, y: 384 },
       leadsTo: REGIONS.ARRAY_PLAINS,
       requiresUnlock: false,
     },
     {
       id: 'hash_highlands_gateway',
-      position: { x: 1784, y: 416 },
+      position: { x: 1784, y: 384 },
       leadsTo: REGIONS.HASH_HIGHLANDS,
       requiresUnlock: false,
     },
   ],
   npcs: [
-    { id: 'river_guide', position: { x: 904, y: 320 }, enabled: true },
+    { id: 'river_guide', position: { x: 912, y: 368 }, enabled: true },
   ],
-  puzzles: [],
+  puzzles: [
+    { id: 'tr_1', position: { x: 544, y: 384 }, enabled: true },
+    { id: 'tr_2', position: { x: 912, y: 224 }, enabled: true },
+    { id: 'tr_3', position: { x: 1008, y: 384 }, enabled: true },
+    { id: 'tr_4', position: { x: 1328, y: 384 }, enabled: true },
+    { id: 'boss_mirror_serpent', position: { x: 1696, y: 384 }, enabled: true },
+  ],
   interactables: [],
 };

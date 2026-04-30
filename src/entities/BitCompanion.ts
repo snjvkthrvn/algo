@@ -96,9 +96,8 @@ export class BitCompanion {
     const offsets = this.getStageOffsets(this.stage);
     this.sparkImage = this.scene.add
       .image(0, 0, this.getStageImageKey(this.stage))
-      .setDisplaySize(this.stage === BitStage.SPARK ? 30 : 36, this.stage === BitStage.SPARK ? 38 : 34)
-      .setAlpha(0.95)
-      .setTint(color);
+      .setDisplaySize(...this.getStageDisplaySize(this.stage))
+      .setAlpha(0.98);
     this.container.add(this.sparkImage);
 
     this.scene.tweens.add({
@@ -130,6 +129,12 @@ export class BitCompanion {
     return VISUAL_REVAMP_KEYS.BIT_FRAME;
   }
 
+  private getStageDisplaySize(stage: BitStage): [number, number] {
+    if (stage === BitStage.SPARK) return [34, 34];
+    if (stage === BitStage.BYTE) return [38, 38];
+    return [42, 42];
+  }
+
   /**
    * Returns [x, y] offsets for each particle dot in a given stage.
    * Formations are chosen to mirror the DSA concept they represent.
@@ -137,8 +142,8 @@ export class BitCompanion {
   private getStageOffsets(stage: BitStage): [number, number][] {
     switch (stage) {
       case BitStage.SPARK:
-        // Single point — the very beginning
-        return [[0, 0]];
+        // Tiny orbiting motes — the very beginning without covering Bit's face
+        return [[-11, -8], [12, -7], [10, 10], [-12, 8]];
 
       case BitStage.BYTE:
         // 8 dots in a row — like array indices [0][1][2]...[7]
@@ -215,7 +220,7 @@ export class BitCompanion {
     this.sparkImage?.setTint(COLORS.ERROR);
     this.scene.time.delayedCall(600, () => {
       this.dots.forEach(d => d.dot.setFillStyle(STAGE_COLORS[this.stage]));
-      this.sparkImage?.setTint(STAGE_COLORS[this.stage]);
+      this.sparkImage?.clearTint();
     });
   }
 
@@ -236,7 +241,7 @@ export class BitCompanion {
     this.sparkImage?.setTint(COLORS.ORANGE_ACCENT);
     this.scene.time.delayedCall(700, () => {
       this.dots.forEach(d => d.dot.setFillStyle(STAGE_COLORS[this.stage]));
-      this.sparkImage?.setTint(STAGE_COLORS[this.stage]);
+      this.sparkImage?.clearTint();
     });
   }
 

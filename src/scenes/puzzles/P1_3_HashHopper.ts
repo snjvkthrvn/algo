@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
+import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { audioManager } from '../../core/AudioManager';
 import { HASH_CROPS, hashBucket } from '../../data/puzzles/arrayPlainsPuzzleLogic';
@@ -25,6 +26,14 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     this.puzzleDescription = 'Apply the hash formula and route each crop to its bucket.';
   }
 
+  protected getPuzzleBackdropKey(): string | null {
+    return VISUAL_REVAMP_KEYS.PUZZLE_GRAIN_HOPPER_BG;
+  }
+
+  protected getPuzzleFrameFillAlpha(): number {
+    return 0.02;
+  }
+
   create(): void {
     super.create();
     this.createBuckets();
@@ -40,25 +49,29 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     this.cropText = this.add.text(width / 2, 178, '', {
       fontSize: '14px',
       fontFamily: FONTS.RETRO,
-      color: '#fbbf24',
+      color: '#081820',
+      backgroundColor: '#e0f8d0',
+      padding: { x: 14, y: 8 },
     }).setOrigin(0.5);
     this.formulaText = this.add.text(width / 2, 212, 'bucket = first-letter-index % 4', {
       fontSize: '12px',
       fontFamily: FONTS.MONO,
-      color: '#d1d5db',
+      color: '#e0f8d0',
+      backgroundColor: '#346856',
+      padding: { x: 10, y: 5 },
     }).setOrigin(0.5);
 
     const startX = width / 2 - 270;
     const y = height / 2 + 100;
     for (let i = 0; i < 4; i++) {
       const x = startX + i * 180;
-      const box = this.add.rectangle(x, y, 118, 112, 0x346856, 0.92)
-        .setStrokeStyle(3, 0xe0f8d0, 0.55)
+      const box = this.add.rectangle(x, y, 118, 112, 0xe0f8d0, 0.94)
+        .setStrokeStyle(3, 0x346856, 0.95)
         .setInteractive({ useHandCursor: true });
       const label = this.add.text(x, y, `BUCKET ${i}`, {
         fontSize: '10px',
         fontFamily: FONTS.RETRO,
-        color: '#e0f8d0',
+        color: '#081820',
         align: 'center',
       }).setOrigin(0.5);
       box.on('pointerdown', () => this.chooseBucket(i));
@@ -71,8 +84,8 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     this.cropText.setText(`${crop.crop}: first letter index ${crop.letterIndex}`);
     this.formulaText.setText(`${crop.letterIndex} % 4 = ?`);
     for (const bucket of this.buckets) {
-      bucket.box.setFillStyle(0x346856, 0.92);
-      bucket.box.setStrokeStyle(3, 0xe0f8d0, 0.55);
+      bucket.box.setFillStyle(0xe0f8d0, 0.94);
+      bucket.box.setStrokeStyle(3, 0x346856, 0.95);
     }
   }
 

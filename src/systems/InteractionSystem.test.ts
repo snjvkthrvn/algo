@@ -127,4 +127,31 @@ describe('InteractionSystem', () => {
 
     expect(prompts[0].show).toHaveBeenCalledWith(100, 142, '[SPACE] Enter');
   });
+
+  it('allows interaction from exactly one configured tile away', () => {
+    prompts.length = 0;
+    const scene = {
+      input: {
+        keyboard: {
+          on: () => undefined,
+        },
+      },
+    };
+    const player = {
+      getPosition: () => ({ x: 208, y: 384 }),
+    };
+    const gate = {
+      getPosition: () => ({ x: 160, y: 384 }),
+      getPromptOffsetY: () => -58,
+      setHighlighted: vi.fn(),
+      config: { prompt: '[SPACE] Return' },
+    };
+
+    const system = new InteractionSystem(scene as never, player as never);
+    system.addObject(gate as never);
+    system.update();
+
+    expect(system.getCurrentTarget()?.target).toBe(gate);
+    expect(prompts[0].show).toHaveBeenCalledWith(160, 326, '[SPACE] Return');
+  });
 });

@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
+import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { SCENE_KEYS, COLORS, FONTS } from '../../config/constants';
 import { adjustBrightness } from '../../utils/colors';
 import { audioManager } from '../../core/AudioManager';
@@ -46,6 +47,10 @@ export class P0_1_FollowThePath extends BasePuzzleScene {
     this.puzzleId = 'p0_1';
     this.puzzleName = 'Follow the Path';
     this.puzzleDescription = 'Watch the sequence. Repeat the pattern. Order matters.';
+  }
+
+  protected getPuzzleBackdropKey(): string | null {
+    return VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG;
   }
 
   create(): void {

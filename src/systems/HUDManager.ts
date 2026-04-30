@@ -45,8 +45,8 @@ export class HUDManager {
   showRegionCard(name: string, subtitle: string): void {
     const { width } = this.scene.cameras.main;
 
-    const cardW = 416;
-    const cardH = 96;
+    const cardW = Math.min(width - 96, 560);
+    const cardH = 104;
     const cardX = Math.round(width / 2 - cardW / 2);
     const cardY = 64;
 
@@ -63,9 +63,12 @@ export class HUDManager {
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(3002);
 
     const subText = this.scene.add.text(width / 2, cardY + 56, subtitle, {
-      fontSize: '12px',
+      fontSize: '10px',
       fontFamily: FONTS.RETRO,
       color: '#346856',
+      align: 'center',
+      wordWrap: { width: cardW - 48, useAdvancedWrap: true },
+      lineSpacing: 6,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(3002);
 
     cardBg.setAlpha(0);

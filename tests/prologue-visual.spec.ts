@@ -146,20 +146,31 @@ async function walkStep(page: Page, key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' 
 }
 
 async function clickMenuItem(page: Page, label: string) {
-  const bounds = await page.waitForFunction((targetLabel) => {
+  const menuInfo = await page.waitForFunction((targetLabel) => {
     const game = (window as GameWindow).__PHASER_GAME__;
     const scene = game?.scene.getScene('MenuScene') as Record<string, unknown> | null;
     const items = scene?.['menuItems'] as Array<{ text: string }> | undefined;
-    const texts = scene?.['menuTexts'] as Array<{ getBounds?: () => { x: number; y: number; width: number; height: number } }> | undefined;
+    const texts = scene?.['menuTexts'] as Array<{ alpha?: number }> | undefined;
     const index = items?.findIndex((item) => item.text === targetLabel) ?? -1;
     const text = index >= 0 ? texts?.[index] : undefined;
-    return text?.getBounds?.() ?? null;
+    if (index < 0 || !text || (text.alpha ?? 0) < 0.95) return null;
+    return {
+      index,
+      itemCount: items?.length ?? 0,
+      selectedIndex: (scene?.['selectedMenuIndex'] as number | undefined) ?? 0,
+    };
   }, label);
 
-  const box = await bounds.jsonValue();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.waitForTimeout(100);
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const { index, itemCount, selectedIndex } = await menuInfo.jsonValue();
+  const downSteps = (index - selectedIndex + itemCount) % itemCount;
+  const upSteps = (selectedIndex - index + itemCount) % itemCount;
+  const key = downSteps <= upSteps ? 'ArrowDown' : 'ArrowUp';
+  const steps = Math.min(downSteps, upSteps);
+  for (let i = 0; i < steps; i++) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(120);
+  }
+  await page.keyboard.press('Enter');
 }
 
 /**
@@ -220,6 +231,44 @@ async function goToArrayPlainsViaContinue(page: Page) {
   await page.waitForTimeout(1_000);
   await clickMenuItem(page, 'CONTINUE');
   await waitForScene(page, 'ArrayPlainsScene', 10_000);
+  await page.waitForTimeout(1_800);
+}
+
+async function goToFutureRegionViaContinue(
+  page: Page,
+  region: string,
+  sceneKey: string,
+  puzzleResults: Record<string, { stars: number; time: number; attempts: number; hintsUsed: number }>,
+) {
+  await page.evaluate(
+    ([targetRegion, results]) => {
+      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 192, y: 448, region: targetRegion },
+        companion: { stage: 'graph', mood: 'neutral' },
+        rival: { encountered: true, encounterStage: 5 },
+        shardsCollected: ['array_plains_logic_shard', 'hash_highlands_logic_shard'],
+        puzzleResults: results,
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+          gateway_open: true,
+          twin_rivers_gateway_open: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }));
+    },
+    [region, puzzleResults] as const,
+  );
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForScene(page, 'MenuScene');
+  await page.waitForTimeout(1_000);
+  await clickMenuItem(page, 'CONTINUE');
+  await waitForScene(page, sceneKey, 10_000);
   await page.waitForTimeout(1_800);
 }
 
@@ -394,10 +443,10 @@ test.describe('Prologue region – visual audit', () => {
 
     const pos = await getScenePlayerPosition(page, 'ArrayPlainsScene');
     expect(pos).not.toBeNull();
-    expect(pos!.x).toBeGreaterThanOrEqual(368);
-    expect(pos!.x).toBeLessThanOrEqual(432);
-    expect(pos!.y).toBeGreaterThanOrEqual(416);
-    expect(pos!.y).toBeLessThanOrEqual(480);
+    expect(pos!.x).toBeGreaterThanOrEqual(192);
+    expect(pos!.x).toBeLessThanOrEqual(256);
+    expect(pos!.y).toBeGreaterThanOrEqual(304);
+    expect(pos!.y).toBeLessThanOrEqual(368);
   });
 
   test('09 - Continue with unknown region falls back to Prologue', async ({ page }) => {
@@ -559,7 +608,7 @@ test.describe('Prologue region – visual audit', () => {
 
     await page.evaluate(() => {
       localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: 560, y: 416, region: 'array_plains' },
+        player: { x: 560, y: 384, region: 'array_plains' },
         companion: { stage: 'spark', mood: 'neutral' },
         rival: { encountered: false, encounterStage: 0 },
         shardsCollected: [],
@@ -611,6 +660,413 @@ test.describe('Prologue region – visual audit', () => {
     expect(returnPos!.x).toBeLessThanOrEqual(2032);
     expect(returnPos!.y).toBeGreaterThanOrEqual(331);
     expect(returnPos!.y).toBeLessThanOrEqual(459);
+  });
+
+  test('17 - AP-1 Sorting Shed - region encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P1_1_BubbleSort', { returnScene: 'ArrayPlainsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '17-ap1-sorting-shed-layout.png');
+  });
+
+  test('18 - AP-2 Indexing Barn - region encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P1_2_BasketIndexing', { returnScene: 'ArrayPlainsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '18-ap2-indexing-barn-layout.png');
+  });
+
+  test('19 - AP-3 Grain Hopper - region encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P1_3_HashHopper', { returnScene: 'ArrayPlainsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '19-ap3-grain-hopper-layout.png');
+  });
+
+  test('20 - AP-4 Pairing Grounds - region encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P1_4_TwoSum', { returnScene: 'ArrayPlainsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '20-ap4-pairing-grounds-layout.png');
+  });
+
+  test('21 - Shuffler Domain - boss encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'Boss_Shuffler', { returnScene: 'ArrayPlainsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '21-shuffler-domain-layout.png');
+  });
+
+  test('22 - Twin Rivers - Continue from save', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 192, y: 384, region: 'twin_rivers' },
+        companion: { stage: 'frame', mood: 'neutral' },
+        rival: { encountered: true, encounterStage: 2 },
+        shardsCollected: [],
+        puzzleResults: { boss_shuffler: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 } },
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+          watcher_warning_done: true,
+          prologue_visited: true,
+          gateway_open: true,
+          twin_rivers_gateway_open: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }));
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+    await clickMenuItem(page, 'CONTINUE');
+    await waitForScene(page, 'TwinRiversScene', 10_000);
+    await page.waitForTimeout(1_800);
+    await snap(page, '22-twin-rivers-continue.png');
+  });
+
+  test('23 - TR-1 Mirror Walk - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P2_1_MirrorWalk', { returnScene: 'TwinRiversScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '23-tr1-mirror-walk-layout.png');
+  });
+
+  test('24 - TR-2 Pointer Bridge - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P2_2_PointerBridge', { returnScene: 'TwinRiversScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '24-tr2-pointer-bridge-layout.png');
+  });
+
+  test('25 - TR-3 Fixed Window Dock - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P2_3_FixedWindowDock', { returnScene: 'TwinRiversScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '25-tr3-fixed-window-layout.png');
+  });
+
+  test('26 - TR-4 Current Rider - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P2_4_CurrentRider', { returnScene: 'TwinRiversScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '26-tr4-current-rider-layout.png');
+  });
+
+  test('27 - Mirror Serpent - boss encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'Boss_MirrorSerpent', { returnScene: 'TwinRiversScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '27-mirror-serpent-layout.png');
+  });
+
+  test('28 - Hash Highlands - Continue from save', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 192, y: 448, region: 'hash_highlands' },
+        companion: { stage: 'frame', mood: 'neutral' },
+        rival: { encountered: true, encounterStage: 3 },
+        shardsCollected: ['array_plains_logic_shard'],
+        puzzleResults: { boss_mirror_serpent: { stars: 3, time: 35, attempts: 0, hintsUsed: 0 } },
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+          gateway_open: true,
+          twin_rivers_gateway_open: true,
+          puzzle_boss_mirror_serpent_complete: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }));
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+    await clickMenuItem(page, 'CONTINUE');
+    await waitForScene(page, 'HashHighlandsScene', 10_000);
+    await page.waitForTimeout(1_800);
+    await snap(page, '28-hash-highlands-continue.png');
+
+    const pos = await getScenePlayerPosition(page, 'HashHighlandsScene');
+    expect(pos).not.toBeNull();
+    expect(pos!.x).toBeGreaterThanOrEqual(160);
+    expect(pos!.x).toBeLessThanOrEqual(224);
+    expect(pos!.y).toBeGreaterThanOrEqual(416);
+    expect(pos!.y).toBeLessThanOrEqual(480);
+  });
+
+  test('29 - HH-1 Nameplate Gates - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P3_1_NameplateGates', { returnScene: 'HashHighlandsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '29-hh1-nameplate-gates-layout.png');
+  });
+
+  test('30 - HH-2 Frequency Forge - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P3_2_FrequencyForge', { returnScene: 'HashHighlandsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '30-hh2-frequency-forge-layout.png');
+  });
+
+  test('31 - HH-3 Anagram Gardens - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P3_3_AnagramGardens', { returnScene: 'HashHighlandsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '31-hh3-anagram-gardens-layout.png');
+  });
+
+  test('32 - HH-4 Cache Cavern - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P3_4_CacheCavern', { returnScene: 'HashHighlandsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '32-hh4-cache-cavern-layout.png');
+  });
+
+  test('33 - Archivist - boss encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'Boss_Archivist', { returnScene: 'HashHighlandsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '33-archivist-layout.png');
+  });
+
+  test('34 - Stack Spires - Continue from save', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 192, y: 448, region: 'stack_spires' },
+        companion: { stage: 'branch', mood: 'neutral' },
+        rival: { encountered: true, encounterStage: 4 },
+        shardsCollected: ['array_plains_logic_shard', 'hash_highlands_logic_shard'],
+        puzzleResults: { boss_archivist: { stars: 3, time: 38, attempts: 0, hintsUsed: 0 } },
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+          gateway_open: true,
+          twin_rivers_gateway_open: true,
+          puzzle_boss_archivist_complete: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }));
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+    await clickMenuItem(page, 'CONTINUE');
+    await waitForScene(page, 'StackSpiresScene', 10_000);
+    await page.waitForTimeout(1_800);
+    await snap(page, '34-stack-spires-continue.png');
+
+    const pos = await getScenePlayerPosition(page, 'StackSpiresScene');
+    expect(pos).not.toBeNull();
+    expect(pos!.x).toBeGreaterThanOrEqual(160);
+    expect(pos!.x).toBeLessThanOrEqual(224);
+    expect(pos!.y).toBeGreaterThanOrEqual(416);
+    expect(pos!.y).toBeLessThanOrEqual(480);
+  });
+
+  test('35 - SS-1 Scroll Stack - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P4_1_ScrollStack', { returnScene: 'StackSpiresScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '35-ss1-scroll-stack-layout.png');
+  });
+
+  test('36 - SS-2 Mirror Staircase - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P4_2_MirrorStaircase', { returnScene: 'StackSpiresScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '36-ss2-mirror-staircase-layout.png');
+  });
+
+  test('37 - SS-3 Maze of Forks - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P4_3_MazeOfForks', { returnScene: 'StackSpiresScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '37-ss3-maze-of-forks-layout.png');
+  });
+
+  test('38 - SS-4 Tower of Memory - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P4_4_TowerOfMemory', { returnScene: 'StackSpiresScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '38-ss4-tower-of-memory-layout.png');
+  });
+
+  test('39 - Recursion - boss encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'Boss_Recursion', { returnScene: 'StackSpiresScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '39-recursion-layout.png');
+  });
+
+  test('40 - Queue Canals - Continue from save', async ({ page }) => {
+    await goToFutureRegionViaContinue(page, 'queue_canals', 'QueueCanalsScene', {
+      boss_recursion: { stars: 3, time: 38, attempts: 0, hintsUsed: 0 },
+    });
+    await snap(page, '40-queue-canals-continue.png');
+
+    const pos = await getScenePlayerPosition(page, 'QueueCanalsScene');
+    expect(pos).not.toBeNull();
+    expect(pos!.x).toBeGreaterThanOrEqual(160);
+    expect(pos!.x).toBeLessThanOrEqual(224);
+    expect(pos!.y).toBeGreaterThanOrEqual(416);
+    expect(pos!.y).toBeLessThanOrEqual(480);
+  });
+
+  test('41 - QC-1 Ferry Dock - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P5_1_FerryQueue', { returnScene: 'QueueCanalsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '41-qc1-ferry-dock-layout.png');
+  });
+
+  test('42 - QC-2 Ripple Map - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P5_2_BfsLocks', { returnScene: 'QueueCanalsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '42-qc2-ripple-map-layout.png');
+  });
+
+  test('43 - QC-3 Priority Dock - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P5_3_PriorityHarbor', { returnScene: 'QueueCanalsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '43-qc3-priority-dock-layout.png');
+  });
+
+  test('44 - QC-4 Scheduler Lottery - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P5_4_SchedulerOffice', { returnScene: 'QueueCanalsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '44-qc4-scheduler-lottery-layout.png');
+  });
+
+  test('45 - Reconciler - boss encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'Boss_Reconciler', { returnScene: 'QueueCanalsScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '45-reconciler-layout.png');
+  });
+
+  test('46 - Tree Canopy - Continue from save', async ({ page }) => {
+    await goToFutureRegionViaContinue(page, 'tree_canopy', 'TreeCanopyScene', {
+      boss_reconciler: { stars: 3, time: 40, attempts: 0, hintsUsed: 0 },
+    });
+    await snap(page, '46-tree-canopy-continue.png');
+
+    const pos = await getScenePlayerPosition(page, 'TreeCanopyScene');
+    expect(pos).not.toBeNull();
+    expect(pos!.x).toBeGreaterThanOrEqual(160);
+    expect(pos!.x).toBeLessThanOrEqual(224);
+    expect(pos!.y).toBeGreaterThanOrEqual(416);
+    expect(pos!.y).toBeLessThanOrEqual(480);
+  });
+
+  test('47 - TC-1 First Fork - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P6_1_RootWalk', { returnScene: 'TreeCanopyScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '47-tc1-first-fork-layout.png');
+  });
+
+  test('48 - TC-2 Sorted Grove - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P6_2_BstGrove', { returnScene: 'TreeCanopyScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '48-tc2-sorted-grove-layout.png');
+  });
+
+  test('49 - TC-3 Deep Root - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P6_3_DfsBranches', { returnScene: 'TreeCanopyScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '49-tc3-deep-root-layout.png');
+  });
+
+  test('50 - TC-4 Bent Bough - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P6_4_BalanceCanopy', { returnScene: 'TreeCanopyScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '50-tc4-bent-bough-layout.png');
+  });
+
+  test('51 - Pattern - boss encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'Boss_Pattern', { returnScene: 'TreeCanopyScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '51-pattern-layout.png');
+  });
+
+  test('52 - Graph Nexus - Continue from save', async ({ page }) => {
+    await goToFutureRegionViaContinue(page, 'graph_nexus', 'GraphNexusScene', {
+      boss_pattern: { stars: 3, time: 42, attempts: 0, hintsUsed: 0 },
+    });
+    await snap(page, '52-graph-nexus-continue.png');
+
+    const pos = await getScenePlayerPosition(page, 'GraphNexusScene');
+    expect(pos).not.toBeNull();
+    expect(pos!.x).toBeGreaterThanOrEqual(160);
+    expect(pos!.x).toBeLessThanOrEqual(224);
+    expect(pos!.y).toBeGreaterThanOrEqual(416);
+    expect(pos!.y).toBeLessThanOrEqual(480);
+  });
+
+  test('53 - GN-1 Bridge Map - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P7_1_NodeLinks', { returnScene: 'GraphNexusScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '53-gn1-bridge-map-layout.png');
+  });
+
+  test('54 - GN-2 Courier Dilemma - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P7_2_ShortestPath', { returnScene: 'GraphNexusScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '54-gn2-courier-dilemma-layout.png');
+  });
+
+  test('55 - GN-3 Cycle Bazaar - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P7_3_CycleCourt', { returnScene: 'GraphNexusScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '55-gn3-cycle-bazaar-layout.png');
+  });
+
+  test('56 - GN-4 Island Census - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P7_4_ComponentFields', { returnScene: 'GraphNexusScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '56-gn4-island-census-layout.png');
+  });
+
+  test('57 - Echo - boss encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'Boss_Echo', { returnScene: 'GraphNexusScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '57-echo-layout.png');
+  });
+
+  test('58 - The Core - Continue from save', async ({ page }) => {
+    await goToFutureRegionViaContinue(page, 'core', 'CoreScene', {
+      boss_echo: { stars: 3, time: 44, attempts: 0, hintsUsed: 0 },
+    });
+    await snap(page, '58-core-continue.png');
+
+    const pos = await getScenePlayerPosition(page, 'CoreScene');
+    expect(pos).not.toBeNull();
+    expect(pos!.x).toBeGreaterThanOrEqual(160);
+    expect(pos!.x).toBeLessThanOrEqual(224);
+    expect(pos!.y).toBeGreaterThanOrEqual(416);
+    expect(pos!.y).toBeLessThanOrEqual(480);
+  });
+
+  test('59 - CORE-1 Echo Chamber - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P8_1_EchoChamber', { returnScene: 'CoreScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '59-core1-echo-chamber-layout.png');
+  });
+
+  test('60 - CORE-2 Weighted Staircase - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P8_2_WeightedStaircase', { returnScene: 'CoreScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '60-core2-weighted-staircase-layout.png');
+  });
+
+  test('61 - CORE-3 Grand Archive - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P8_3_GrandArchive', { returnScene: 'CoreScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '61-core3-grand-archive-layout.png');
+  });
+
+  test('62 - CORE-4 Hall of Patterns - encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'P8_4_HallOfPatterns', { returnScene: 'CoreScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '62-core4-hall-of-patterns-layout.png');
+  });
+
+  test('63 - Protocol Omega - final boss encounter layout', async ({ page }) => {
+    await jumpToScene(page, 'Boss_ProtocolOmega', { returnScene: 'CoreScene' });
+    await page.waitForTimeout(700);
+    await snap(page, '63-protocol-omega-layout.png');
   });
 
   test('14 - Professor Node intro cannot open overlapping NPC dialogue', async ({ page }) => {

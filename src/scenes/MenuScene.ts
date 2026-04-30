@@ -3,6 +3,7 @@
  */
 
 import Phaser from 'phaser';
+import { VISUAL_REVAMP_KEYS } from '../config/assets';
 import { COLORS, FONTS, SCENE_BY_REGION, SCENE_KEYS } from '../config/constants';
 import { saveLoadManager } from '../core/SaveLoadManager';
 import { gameState } from '../core/GameStateManager';
@@ -59,7 +60,7 @@ export class MenuScene extends Phaser.Scene {
     const fadeIn = this.add.rectangle(0, 0, width, height, 0x000000, 1).setOrigin(0).setDepth(10000);
     this.tweens.add({ targets: fadeIn, alpha: 0, duration: 500, onComplete: () => fadeIn.destroy() });
 
-    this.createStarfield(width, height);
+    this.createTitleBackdrop(width, height);
 
     // Pixel ornament above title
     const ox = Math.round(width / 2);
@@ -158,6 +159,25 @@ export class MenuScene extends Phaser.Scene {
     if (!menuTitleAssembled) {
       this.animateTitleAssembly(titleText);
     }
+  }
+
+  private createTitleBackdrop(width: number, height: number): void {
+    const bg = this.add.image(width / 2, height / 2, VISUAL_REVAMP_KEYS.TITLE_BG)
+      .setOrigin(0.5)
+      .setDepth(-4);
+    const source = bg.texture.getSourceImage() as HTMLImageElement;
+    const coverScale = Math.max(width / source.width, height / source.height);
+    bg.setScale(coverScale);
+
+    this.add.rectangle(0, 0, width, height, 0x081820, 0.34)
+      .setOrigin(0)
+      .setDepth(-3);
+    this.add.rectangle(0, 0, width, 360, 0x081820, 0.22)
+      .setOrigin(0)
+      .setDepth(-2);
+
+    this.createStarfield(width, height);
+    this.starGraphics.setDepth(-1);
   }
 
   update(_time: number, _delta: number): void {

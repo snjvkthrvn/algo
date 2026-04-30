@@ -27,6 +27,8 @@ export class TwinRiversScene extends Phaser.Scene {
   private returnGateway: InteractableObject | null = null;
   private nextGateway: InteractableObject | null = null;
   private guide: InteractableObject | null = null;
+  private puzzleObjects: InteractableObject[] = [];
+  private labelObjects: Phaser.GameObjects.Text[] = [];
   private infoPanelCleanup: (() => void) | null = null;
 
   constructor() {
@@ -111,10 +113,11 @@ export class TwinRiversScene extends Phaser.Scene {
   private renderRoute(): void {
     const route = this.add.graphics().setDepth(1);
     for (const rect of TWIN_RIVERS_ROUTE_RECTS) {
-      route.fillStyle(0xe0f8d0, 0.055);
-      route.fillRect(rect.x, rect.y, rect.width, rect.height);
-      route.lineStyle(1, 0x9be8ff, 0.16);
-      route.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      route.lineStyle(1, 0x9be8ff, 0.035);
+      route.beginPath();
+      route.moveTo(rect.x + 14, rect.y + rect.height / 2);
+      route.lineTo(rect.x + rect.width - 14, rect.y + rect.height / 2);
+      route.strokePath();
     }
 
     this.createWaterFlow();
@@ -176,6 +179,54 @@ export class TwinRiversScene extends Phaser.Scene {
       ),
     });
     this.interactionSystem.addObject(this.guide);
+
+    this.createPuzzleObjects();
+  }
+
+  private createPuzzleObjects(): void {
+    const puzzleLabels: Record<string, { title: string; scene: string; prompt: string }> = {
+      tr_1: { title: 'Mirror Walk', scene: SCENE_KEYS.PUZZLE_TR_1, prompt: '[SPACE] Mirror' },
+      tr_2: { title: 'Pointer Bridge', scene: SCENE_KEYS.PUZZLE_TR_2, prompt: '[SPACE] Pair' },
+      tr_3: { title: 'Fixed Window Dock', scene: SCENE_KEYS.PUZZLE_TR_3, prompt: '[SPACE] Window' },
+      tr_4: { title: 'Current Rider', scene: SCENE_KEYS.PUZZLE_TR_4, prompt: '[SPACE] Ride' },
+      boss_mirror_serpent: { title: 'Mirror Serpent', scene: SCENE_KEYS.BOSS_MIRROR_SERPENT, prompt: '[SPACE] Challenge' },
+    };
+
+    for (const puzzle of TWIN_RIVERS_CONFIG.puzzles) {
+      const meta = puzzleLabels[puzzle.id];
+      if (!meta) continue;
+
+      const completed = gameState.isPuzzleCompleted(puzzle.id);
+      const object = new InteractableObject(this, {
+        id: puzzle.id,
+        type: puzzle.id === 'boss_mirror_serpent' ? 'portal' : 'sign',
+        x: puzzle.position.x,
+        y: puzzle.position.y,
+        prompt: completed ? '[SPACE] Replay' : meta.prompt,
+        locked: false,
+        spriteImageKey: puzzle.id === 'boss_mirror_serpent'
+          ? undefined
+          : VISUAL_REVAMP_KEYS.PROP_WATER_BUOY,
+        imageByState: puzzle.id === 'boss_mirror_serpent'
+          ? { unlocked: VISUAL_REVAMP_KEYS.PORTAL_WATER }
+          : undefined,
+        imageScale: puzzle.id === 'boss_mirror_serpent' ? 0.24 : 0.13,
+        imageOriginY: 0.84,
+        initialState: 'unlocked',
+        onInteract: () => this.startPuzzle(meta.scene),
+      });
+      this.puzzleObjects.push(object);
+      this.interactionSystem.addObject(object);
+
+      const label = this.add.text(puzzle.position.x, puzzle.position.y - 52, meta.title, {
+        fontSize: '10px',
+        fontFamily: FONTS.RETRO,
+        color: completed ? '#e0f8d0' : '#081820',
+        backgroundColor: completed ? '#28698a' : '#e0f8d0',
+        padding: { x: 5, y: 4 },
+      }).setOrigin(0.5).setDepth(5);
+      this.labelObjects.push(label);
+    }
   }
 
   private createWaterFlow(): void {
@@ -203,6 +254,10 @@ export class TwinRiversScene extends Phaser.Scene {
     if (entry.type !== 'object') return;
     const object = entry.target as InteractableObject;
     object.config.onInteract?.();
+  }
+
+  private startPuzzle(sceneKey: string): void {
+    this.scene.start(sceneKey, { returnScene: SCENE_KEYS.TWIN_RIVERS });
   }
 
   private showFieldNote(title: string, body: string): void {
@@ -260,6 +315,10 @@ export class TwinRiversScene extends Phaser.Scene {
     this.nextGateway = null;
     this.guide?.destroy();
     this.guide = null;
+    for (const object of this.puzzleObjects) object.destroy();
+    this.puzzleObjects = [];
+    for (const label of this.labelObjects) label.destroy();
+    this.labelObjects = [];
     this.bit?.destroy();
     this.player?.destroy();
   }

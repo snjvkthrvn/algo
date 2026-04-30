@@ -12,19 +12,19 @@ describe('ARRAY_PLAINS_CONFIG', () => {
       id: 'array_plains',
       displayName: 'Array Plains',
       backgroundMusic: 'prologue-bgm',
-      spawnPoint: { x: 192, y: 448 },
+      spawnPoint: { x: 224, y: 336 },
     });
 
     expect(ARRAY_PLAINS_CONFIG.exitPoints).toEqual([
       expect.objectContaining({
         id: 'prologue_gateway',
         leadsTo: 'prologue',
-        position: { x: 112, y: 448 },
+        position: { x: 160, y: 384 },
       }),
       expect.objectContaining({
         id: 'twin_rivers_gateway',
         leadsTo: 'twin_rivers',
-        position: { x: 1784, y: 416 },
+        position: { x: 1784, y: 384 },
         unlockCondition: 'twin_rivers_gateway_open',
       }),
     ]);
@@ -69,25 +69,26 @@ describe('Array Plains route helpers', () => {
       'shuffler_lane',
     ]);
 
-    expect(isPointOnArrayPlainsRoute({ x: 512, y: 448 })).toBe(true);
+    expect(isPointOnArrayPlainsRoute({ x: 512, y: 384 })).toBe(true);
     expect(isPointOnArrayPlainsRoute({ x: 1784, y: 416 })).toBe(true);
+    expect(isPointOnArrayPlainsRoute({ x: 512, y: 448 })).toBe(false);
     expect(isPointOnArrayPlainsRoute({ x: 512, y: 96 })).toBe(false);
   });
 
   it('blocks movement into registered object positions', () => {
     expect(isArrayPlainsStepWalkable(
-      { x: 128, y: 448 },
-      [{ x: 112, y: 448 }]
+      { x: 192, y: 384 },
+      [{ x: 160, y: 384 }]
     )).toBe(true);
 
     expect(isArrayPlainsStepWalkable(
-      { x: 608, y: 416 },
-      [{ x: 608, y: 416 }]
+      { x: 640, y: 384 },
+      [{ x: 640, y: 384 }]
     )).toBe(false);
 
     expect(isArrayPlainsStepWalkable(
-      { x: 640, y: 416 },
-      [{ x: 608, y: 416 }]
+      { x: 672, y: 384 },
+      [{ x: 640, y: 384 }]
     )).toBe(true);
   });
 });

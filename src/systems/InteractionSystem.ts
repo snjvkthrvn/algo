@@ -77,7 +77,7 @@ export class InteractionSystem {
       const pos = entry.target.getPosition();
       const dist = distance(playerPos.x, playerPos.y, pos.x, pos.y);
 
-      if (dist < INTERACTION_RANGE && dist < closestDist) {
+      if (dist <= INTERACTION_RANGE && dist < closestDist) {
         closest = entry;
         closestDist = dist;
       }

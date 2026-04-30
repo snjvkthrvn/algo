@@ -19,15 +19,15 @@ export interface ArrayPlainsCollisionBlocker {
 }
 
 export const ARRAY_PLAINS_ROUTE_RECTS: ArrayPlainsRouteRect[] = [
-  { id: 'entry_lane', x: 80, y: 392, width: 336, height: 112 },
-  { id: 'index_walk', x: 384, y: 360, width: 1144, height: 160 },
+  { id: 'entry_lane', x: 80, y: 304, width: 360, height: 112 },
+  { id: 'index_walk', x: 360, y: 304, width: 1224, height: 112 },
   { id: 'guide_clearing', x: 760, y: 264, width: 416, height: 128 },
-  { id: 'return_lane', x: 80, y: 296, width: 160, height: 128 },
-  { id: 'sorting_shed', x: 448, y: 248, width: 224, height: 144 },
-  { id: 'indexing_barn', x: 656, y: 504, width: 224, height: 120 },
-  { id: 'grain_hopper', x: 1096, y: 248, width: 224, height: 144 },
-  { id: 'pairing_grounds', x: 1184, y: 504, width: 224, height: 120 },
-  { id: 'shuffler_lane', x: 1456, y: 360, width: 344, height: 160 },
+  { id: 'return_lane', x: 80, y: 272, width: 192, height: 176 },
+  { id: 'sorting_shed', x: 384, y: 208, width: 256, height: 184 },
+  { id: 'indexing_barn', x: 680, y: 208, width: 256, height: 184 },
+  { id: 'grain_hopper', x: 1000, y: 208, width: 256, height: 184 },
+  { id: 'pairing_grounds', x: 1320, y: 208, width: 256, height: 184 },
+  { id: 'shuffler_lane', x: 1544, y: 312, width: 336, height: 168 },
 ];
 
 const pointInsideRect = (
@@ -105,17 +105,17 @@ export const ARRAY_PLAINS_CONFIG: RegionConfig = {
   },
   // Reuses prologue BGM until a dedicated Array Plains track is shipped (see AUDIO_ASSETS).
   backgroundMusic: 'prologue-bgm',
-  spawnPoint: { x: 192, y: 448 },
+  spawnPoint: { x: 224, y: 336 },
   exitPoints: [
     {
       id: 'prologue_gateway',
-      position: { x: 112, y: 448 },
+      position: { x: 160, y: 384 },
       leadsTo: REGIONS.PROLOGUE,
       requiresUnlock: false,
     },
     {
       id: 'twin_rivers_gateway',
-      position: { x: 1784, y: 416 },
+      position: { x: 1784, y: 384 },
       leadsTo: REGIONS.TWIN_RIVERS,
       requiresUnlock: true,
       unlockCondition: 'twin_rivers_gateway_open',
@@ -125,17 +125,17 @@ export const ARRAY_PLAINS_CONFIG: RegionConfig = {
     { id: 'array_guide', position: { x: 912, y: 336 }, enabled: true },
   ],
   puzzles: [
-    { id: 'ap_1', position: { x: 560, y: 320 }, enabled: true },
-    { id: 'ap_2', position: { x: 768, y: 560 }, enabled: true },
-    { id: 'ap_3', position: { x: 1208, y: 320 }, enabled: true },
-    { id: 'ap_4', position: { x: 1296, y: 560 }, enabled: true },
-    { id: 'boss_shuffler', position: { x: 1608, y: 416 }, enabled: true },
+    { id: 'ap_1', position: { x: 504, y: 320 }, enabled: true },
+    { id: 'ap_2', position: { x: 792, y: 320 }, enabled: true },
+    { id: 'ap_3', position: { x: 1112, y: 320 }, enabled: true },
+    { id: 'ap_4', position: { x: 1432, y: 320 }, enabled: true },
+    { id: 'boss_shuffler', position: { x: 1744, y: 360 }, enabled: true },
   ],
   interactables: [
-    indexMarker('index_marker_0', 608, 416),
-    indexMarker('index_marker_1', 736, 416),
-    indexMarker('index_marker_2', 864, 416),
-    indexMarker('index_marker_3', 992, 416),
-    indexMarker('index_marker_4', 1120, 416),
+    indexMarker('index_marker_0', 640, 384),
+    indexMarker('index_marker_1', 880, 384),
+    indexMarker('index_marker_2', 1120, 384),
+    indexMarker('index_marker_3', 1360, 384),
+    indexMarker('index_marker_4', 1520, 384),
   ],
 };

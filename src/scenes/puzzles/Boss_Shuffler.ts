@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
+import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { audioManager } from '../../core/AudioManager';
 
@@ -69,6 +70,14 @@ export class Boss_Shuffler extends BasePuzzleScene {
     return true;
   }
 
+  protected getPuzzleBackdropKey(): string | null {
+    return VISUAL_REVAMP_KEYS.PUZZLE_SHUFFLER_DOMAIN_BG;
+  }
+
+  protected getPuzzleFrameFillAlpha(): number {
+    return 0.03;
+  }
+
   create(): void {
     super.create();
     this.createShuffler();
@@ -117,9 +126,11 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.promptText = this.add.text(width / 2, 196, '', {
       fontSize: '13px',
       fontFamily: FONTS.MONO,
-      color: '#d1d5db',
+      color: '#e0f8d0',
       align: 'center',
       wordWrap: { width: 820 },
+      backgroundColor: '#081820',
+      padding: { x: 12, y: 7 },
     }).setOrigin(0.5);
     this.optionContainer = this.add.container(0, 0);
   }
@@ -136,13 +147,13 @@ export class Boss_Shuffler extends BasePuzzleScene {
     phase.options.forEach((option, index) => {
       const x = startX + index * 300;
       const button = this.add.container(x, y);
-      const bg = this.add.rectangle(0, 0, 248, 64, COLORS.COSMIC_PURPLE, 0.96)
-        .setStrokeStyle(2, COLORS.CYAN_GLOW, 0.6)
+      const bg = this.add.rectangle(0, 0, 248, 64, 0xe0f8d0, 0.96)
+        .setStrokeStyle(3, COLORS.CYAN_GLOW, 0.86)
         .setInteractive({ useHandCursor: true });
       const label = this.add.text(0, 0, option, {
         fontSize: '11px',
         fontFamily: FONTS.MONO,
-        color: '#ffffff',
+        color: '#081820',
         align: 'center',
         wordWrap: { width: 220 },
       }).setOrigin(0.5);

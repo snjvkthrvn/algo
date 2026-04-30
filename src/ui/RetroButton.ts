@@ -19,29 +19,30 @@ export function createRetroButton(
 ): Phaser.GameObjects.Container {
   const container = scene.add.container(x, y);
 
-  const shadow = scene.add.rectangle(2, 2, width, height, 0x000000, 0.5).setOrigin(0.5);
-  const bg = scene.add.rectangle(0, 0, width, height, color, 1).setOrigin(0.5);
-  bg.setStrokeStyle(2, adjustBrightness(color, 0.7));
+  const shadow = scene.add.rectangle(2, 2, width, height, 0x081820, 0.28).setOrigin(0.5);
+  const bg = scene.add.rectangle(0, 0, width, height, 0xe0f8d0, 1).setOrigin(0.5);
+  bg.setStrokeStyle(2, color, 0.95);
+  const accent = scene.add.rectangle(-width / 2 + 5, 0, 4, height - 8, color, 0.95).setOrigin(0.5);
 
   const btnText = scene.add.text(0, 0, text, {
     fontSize: '10px',
     fontFamily: FONTS.RETRO,
-    color: '#ffffff',
+    color: '#081820',
   }).setOrigin(0.5);
 
-  container.add([shadow, bg, btnText]);
+  container.add([shadow, bg, accent, btnText]);
 
   bg.setInteractive({ useHandCursor: true });
 
   bg.on('pointerover', () => {
-    bg.setFillStyle(adjustBrightness(color, 1.4));
-    bg.setStrokeStyle(2, 0xffffff);
+    bg.setFillStyle(0xf0ffe4);
+    bg.setStrokeStyle(2, adjustBrightness(color, 1.15));
     scene.tweens.add({ targets: container, scale: 1.1, duration: 80 });
   });
 
   bg.on('pointerout', () => {
-    bg.setFillStyle(color);
-    bg.setStrokeStyle(2, adjustBrightness(color, 0.7));
+    bg.setFillStyle(0xe0f8d0);
+    bg.setStrokeStyle(2, color, 0.95);
     scene.tweens.add({ targets: container, scale: 1, duration: 80 });
   });
 
@@ -54,12 +55,13 @@ export function createRetroButton(
 }
 
 export function updateButtonText(button: Phaser.GameObjects.Container, text: string): void {
-  const btnText = button.getAt(2) as Phaser.GameObjects.Text;
+  const btnText = button.getAt(3) as Phaser.GameObjects.Text;
   btnText.setText(text);
 }
 
 export function disableButton(button: Phaser.GameObjects.Container): void {
   const bg = button.getAt(1) as Phaser.GameObjects.Rectangle;
-  bg.setFillStyle(COLORS.FRAME_BORDER);
+  bg.setFillStyle(0xc7d8bd);
+  bg.setStrokeStyle(2, COLORS.FRAME_BORDER);
   bg.disableInteractive();
 }
