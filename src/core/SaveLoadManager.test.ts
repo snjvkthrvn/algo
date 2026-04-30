@@ -97,6 +97,31 @@ describe('SaveLoadManager', () => {
       saveLoadManager.save();
       expect(saveLoadManager.hasSave()).toBe(true);
     });
+
+    it('should return false for corrupt save data', () => {
+      localStorageMock.setItem('algorithmia_save_v1', 'not-json');
+      expect(saveLoadManager.hasSave()).toBe(false);
+    });
+  });
+
+  describe('getSavedState', () => {
+    it('should preview a valid save without loading it into active state', () => {
+      gameState.setPlayerRegion('hash_highlands');
+      gameState.setPlayerPosition(300, 400);
+      saveLoadManager.save();
+
+      gameState.resetState();
+
+      const savedState = saveLoadManager.getSavedState();
+      expect(savedState?.player.region).toBe('hash_highlands');
+      expect(savedState?.player.x).toBe(300);
+      expect(gameState.getState().player.region).toBe('prologue');
+    });
+
+    it('should return null for invalid save shapes', () => {
+      localStorageMock.setItem('algorithmia_save_v1', JSON.stringify({ invalid: true }));
+      expect(saveLoadManager.getSavedState()).toBeNull();
+    });
   });
 
   describe('deleteSave', () => {

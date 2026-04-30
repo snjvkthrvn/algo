@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { REGION_ORDER, REGIONS, SCENE_BY_REGION, SCENE_KEYS } from './constants';
+import { REGION_DISPLAY_NAMES, REGION_ORDER, REGIONS, SCENE_BY_REGION, SCENE_KEYS } from './constants';
 
 describe('region and scene keys', () => {
   it('registers Array Plains as a real scene target', () => {
@@ -45,5 +45,12 @@ describe('region and scene keys', () => {
       REGIONS.GRAPH_NEXUS,
       REGIONS.CORE,
     ]);
+  });
+
+  it('has player-facing display names for every saved region', () => {
+    for (const region of REGION_ORDER) {
+      expect(REGION_DISPLAY_NAMES[region], region).toBeTruthy();
+    }
+    expect(REGION_DISPLAY_NAMES[REGIONS.CORE]).toBe('The Core');
   });
 });

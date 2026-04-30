@@ -120,6 +120,18 @@ export const REGION_ORDER = [
   REGIONS.CORE,
 ] as const;
 
+export const REGION_DISPLAY_NAMES: Record<string, string> = {
+  [REGIONS.PROLOGUE]: 'Prologue',
+  [REGIONS.ARRAY_PLAINS]: 'Array Plains',
+  [REGIONS.TWIN_RIVERS]: 'Twin Rivers',
+  [REGIONS.HASH_HIGHLANDS]: 'Hash Highlands',
+  [REGIONS.STACK_SPIRES]: 'Stack Spires',
+  [REGIONS.QUEUE_CANALS]: 'Queue Canals',
+  [REGIONS.TREE_CANOPY]: 'Tree Canopy',
+  [REGIONS.GRAPH_NEXUS]: 'Graph Nexus',
+  [REGIONS.CORE]: 'The Core',
+};
+
 /** Maps persisted `player.region` to Phaser scene key (Continue / routing). */
 export const SCENE_BY_REGION: Record<string, string> = {
   [REGIONS.PROLOGUE]: SCENE_KEYS.PROLOGUE,

@@ -3,6 +3,7 @@ import { BasePuzzleScene } from './BasePuzzleScene';
 import { COLORS, FONTS } from '../../config/constants';
 import { audioManager } from '../../core/AudioManager';
 import { colorToHex } from '../../utils/colors';
+import { createChoiceButton } from '../../ui/ChoiceButton';
 
 export interface ScriptedChoiceRound {
   title: string;
@@ -223,25 +224,11 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
     const startX = width / 2 - 300;
     round.options.forEach((option, index) => {
       const x = startX + index * 300;
-      const button = this.add.container(x, 0);
-      const bg = this.add.rectangle(0, 0, 252, 62, 0xe0f8d0, 0.96)
-        .setStrokeStyle(3, this.theme.optionStrokeColor, 0.9)
-        .setInteractive({ useHandCursor: true });
-      const number = this.add.text(-108, -20, `${index + 1}`, {
-        fontSize: '9px',
-        fontFamily: FONTS.RETRO,
-        color: colorToHex(this.theme.optionStrokeColor),
-      }).setOrigin(0.5);
-      const label = this.add.text(0, 0, option, {
-        fontSize: '11px',
-        fontFamily: FONTS.MONO,
-        color: '#081820',
-        align: 'center',
-        wordWrap: { width: 210 },
-      }).setOrigin(0.5);
-
-      bg.on('pointerdown', () => this.choose(index));
-      button.add([bg, number, label]);
+      const button = createChoiceButton(this, x, 0, index, option, {
+        strokeColor: this.theme.optionStrokeColor,
+        wrapWidth: 210,
+        onChoose: () => this.choose(index),
+      });
       this.optionContainer.add(button);
     });
   }

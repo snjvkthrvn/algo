@@ -3,6 +3,7 @@ import { BasePuzzleScene } from './BasePuzzleScene';
 import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { audioManager } from '../../core/AudioManager';
+import { createChoiceButton } from '../../ui/ChoiceButton';
 import {
   ANAGRAM_GARDEN_ROUNDS,
   ARCHIVIST_ROUNDS,
@@ -111,25 +112,11 @@ abstract class HashHighlandsChoiceScene extends BasePuzzleScene {
     const startX = width / 2 - 300;
     round.options.forEach((option, index) => {
       const x = startX + index * 300;
-      const button = this.add.container(x, 0);
-      const bg = this.add.rectangle(0, 0, 252, 62, 0xe0f8d0, 0.96)
-        .setStrokeStyle(3, 0x4a3821, 0.9)
-        .setInteractive({ useHandCursor: true });
-      const number = this.add.text(-108, -20, `${index + 1}`, {
-        fontSize: '9px',
-        fontFamily: FONTS.RETRO,
-        color: '#4a3821',
-      }).setOrigin(0.5);
-      const label = this.add.text(0, 0, option, {
-        fontSize: '11px',
-        fontFamily: FONTS.MONO,
-        color: '#081820',
-        align: 'center',
-        wordWrap: { width: 208 },
-      }).setOrigin(0.5);
-
-      bg.on('pointerdown', () => this.choose(index));
-      button.add([bg, number, label]);
+      const button = createChoiceButton(this, x, 0, index, option, {
+        strokeColor: 0x4a3821,
+        wrapWidth: 208,
+        onChoose: () => this.choose(index),
+      });
       this.optionContainer.add(button);
     });
   }

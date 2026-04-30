@@ -4,7 +4,7 @@
 
 import Phaser from 'phaser';
 import { VISUAL_REVAMP_KEYS } from '../config/assets';
-import { COLORS, FONTS, SCENE_BY_REGION, SCENE_KEYS } from '../config/constants';
+import { COLORS, FONTS, REGION_DISPLAY_NAMES, SCENE_BY_REGION, SCENE_KEYS } from '../config/constants';
 import { saveLoadManager } from '../core/SaveLoadManager';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
@@ -37,6 +37,7 @@ export class MenuScene extends Phaser.Scene {
   private starGraphics!: Phaser.GameObjects.Graphics;
   private menuItems: MenuItem[] = [];
   private menuTexts: Phaser.GameObjects.Text[] = [];
+  private saveSummaryText: Phaser.GameObjects.Text | null = null;
   private selectedMenuIndex = 0;
   private closeSettingsModal: (() => void) | null = null;
 
@@ -54,6 +55,7 @@ export class MenuScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.cameras.main;
     this.selectedMenuIndex = 0;
+    this.saveSummaryText = null;
     audioManager.setScene(this);
 
     // Fade in
@@ -138,6 +140,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.renderMenuSelection();
+    this.createSaveSummary(width);
     this.registerKeyboardMenuControls();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.closeSettingsModal?.();
@@ -274,6 +277,35 @@ export class MenuScene extends Phaser.Scene {
         ease: 'Expo.easeOut',
       });
     });
+
+    if (this.saveSummaryText) {
+      this.tweens.add({
+        targets: this.saveSummaryText,
+        y: 478,
+        alpha: 1,
+        duration: 320,
+        delay: this.menuTexts.length * 70 + 90,
+        ease: 'Expo.easeOut',
+      });
+    }
+  }
+
+  private createSaveSummary(width: number): void {
+    const savedState = saveLoadManager.getSavedState();
+    if (!savedState) return;
+
+    const regionName = REGION_DISPLAY_NAMES[savedState.player.region] ?? savedState.player.region.split('_').join(' ');
+    const solvedCount = Object.keys(savedState.puzzleResults).length;
+    const solvedLabel = solvedCount === 1 ? 'PUZZLE' : 'PUZZLES';
+    const finalY = 478;
+
+    this.saveSummaryText = this.add.text(width / 2, menuTitleAssembled ? finalY : finalY + 28, `CONTINUE: ${regionName.toUpperCase()} | ${solvedCount} ${solvedLabel}`, {
+      fontSize: '8px',
+      fontFamily: FONTS.RETRO,
+      color: '#e0f8d0',
+      backgroundColor: '#081820',
+      padding: { x: 10, y: 6 },
+    }).setOrigin(0.5).setAlpha(menuTitleAssembled ? 1 : 0);
   }
 
   private registerKeyboardMenuControls(): void {
@@ -347,7 +379,30 @@ export class MenuScene extends Phaser.Scene {
         spawnX: state.player.x,
         spawnY: state.player.y,
       });
+      return;
     }
+
+    this.showMenuNotice('SAVE COULD NOT BE LOADED');
+  }
+
+  private showMenuNotice(text: string): void {
+    const { width, height } = this.cameras.main;
+    const notice = this.add.text(width / 2, height - 96, text, {
+      fontSize: '9px',
+      fontFamily: FONTS.RETRO,
+      color: '#081820',
+      backgroundColor: '#e0f8d0',
+      padding: { x: 10, y: 7 },
+    }).setOrigin(0.5).setDepth(200);
+
+    this.tweens.add({
+      targets: notice,
+      alpha: 0,
+      y: notice.y - 10,
+      duration: 220,
+      delay: 1400,
+      onComplete: () => notice.destroy(),
+    });
   }
 
   private openSettings(): void {
@@ -425,7 +480,7 @@ export class MenuScene extends Phaser.Scene {
       redrawSliders();
     };
 
-    const hintText = this.add.text(width / 2, panelY + 192, 'Tab to switch  ◄ ► to adjust', {
+    const hintText = this.add.text(width / 2, panelY + 192, 'Tab switch | arrows adjust', {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
       color: '#4a5568',
