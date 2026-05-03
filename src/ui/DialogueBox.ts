@@ -65,14 +65,14 @@ export class DialogueBox {
     this.container.add(this.portraitFrame);
 
     this.speakerText = scene.add.text(textX, speakerY, '', {
-      fontSize: '16px',
+      fontSize: '24px',
       fontFamily: FONTS.RETRO,
       color: '#081820',
     });
     this.container.add(this.speakerText);
 
     this.contentText = scene.add.text(textX, bodyY, '', {
-      fontSize: '16px',
+      fontSize: '24px',
       fontFamily: FONTS.RETRO,
       color: '#081820',
       wordWrap: { width: wrapWidth },

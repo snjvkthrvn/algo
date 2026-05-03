@@ -116,9 +116,9 @@ export class MenuScene extends Phaser.Scene {
 
     this.menuTexts = [];
     this.menuItems.forEach((item, index) => {
-      const finalY = 340 + index * 56;
+      const finalY = 320 + index * 48;
       const text = this.add.text(width / 2, menuTitleAssembled ? finalY : finalY + 32, item.text, {
-        fontSize: '24px',
+        fontSize: '16px',
         fontFamily: FONTS.RETRO,
         color: '#88c070',
       })
