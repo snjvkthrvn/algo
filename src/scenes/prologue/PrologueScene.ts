@@ -266,13 +266,26 @@ export class PrologueScene extends Phaser.Scene {
     const inputCooldownActive = this.time.now < this.inputCooldownUntil;
     const inputBlocked = dialogueActive || this.storyBeatActive || inputCooldownActive;
 
+    // Trigger auto-walk to Professor Node when crossing the bridge
+    const pos = this.player.getPosition();
+    if (!inputBlocked && !gameState.getFlag('professor_node_intro_done') && pos.x >= 450) {
+      if (!this.storyBeatActive && getPendingPrologueBeat(this.getPrologueStoryFlags()) === 'node_intro') {
+        this.beginStoryBeat();
+        this.player.walkTo(860, pos.y, () => {
+          this.storyBeatActive = false;
+          this.playNodeIntro();
+        });
+      }
+    }
+
     // Update player
-    if (!inputBlocked) {
+    if (!inputBlocked && !this.storyBeatActive) {
       this.player.update();
+    } else {
+      this.player.update(); // allow auto-walk tweening to continue even if input is blocked
     }
 
     // Update companion — Bit always follows, even during dialogue
-    const pos = this.player.getPosition();
     this.bit.update(pos.x, pos.y);
     if (!inputBlocked) {
       this.maybeTriggerWatcherWarning(pos);
@@ -840,7 +853,7 @@ export class PrologueScene extends Phaser.Scene {
       return;
     }
     if (beat === 'node_intro') {
-      this.playNodeIntro();
+      // Node intro is handled by the position-triggered auto-walk in update()
       return;
     }
     if (beat === 'watcher_warning') {
@@ -872,8 +885,10 @@ export class PrologueScene extends Phaser.Scene {
         { speaker: 'System', text: '> Reconstructing memory index...' },
         { speaker: 'System', text: '> Partial. Continuing.' },
         { speaker: 'System', text: '> Core process: ACTIVE' },
-        { speaker: 'System', text: '> You\'re back.' },
+        { speaker: 'System', text: "> You're back." },
         { speaker: 'System', text: '> The Chamber of Flow is still here. So is your path.' },
+        { speaker: 'System', text: '> [W][A][S][D] or [ARROWS] to Move.' },
+        { speaker: 'System', text: '> [SPACE] or [ENTER] to Interact.' },
         { speaker: 'System', text: '> Begin.' },
       ],
       () => {

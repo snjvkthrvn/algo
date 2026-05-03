@@ -29,6 +29,8 @@ export class Player {
   private facingDirection: FacingDirection = 'down';
   private movementTween: Phaser.Tweens.Tween | null = null;
   private canMoveTo: (position: { x: number; y: number }) => boolean;
+  private autoWalkTarget: { x: number; y: number } | null = null;
+  private autoWalkCallback: (() => void) | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: PlayerOptions = {}) {
     this.scene = scene;
@@ -62,6 +64,12 @@ export class Player {
     }
   }
 
+  walkTo(x: number, y: number, onComplete?: () => void): void {
+    this.autoWalkTarget = { x, y };
+    this.autoWalkCallback = onComplete || null;
+    this.state = PlayerState.IDLE;
+  }
+
   update(): void {
     if (this.state === PlayerState.FROZEN || this.state === PlayerState.INTERACTING) {
       this.stopMovementTween();
@@ -73,9 +81,30 @@ export class Player {
       return;
     }
 
-    const direction = this.resolveMoveDirection();
+    let direction = this.resolveMoveDirection();
+
+    if (this.autoWalkTarget) {
+      const dx = this.autoWalkTarget.x - this.sprite.x;
+      const dy = this.autoWalkTarget.y - this.sprite.y;
+
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) {
+        this.autoWalkTarget = null;
+        if (this.autoWalkCallback) {
+          const cb = this.autoWalkCallback;
+          this.autoWalkCallback = null;
+          cb();
+        }
+      } else {
+        if (Math.abs(dx) > Math.abs(dy)) {
+          direction = dx > 0 ? 'right' : 'left';
+        } else {
+          direction = dy > 0 ? 'down' : 'up';
+        }
+      }
+    }
+
     if (!direction) {
-      if (this.state !== PlayerState.IDLE) {
+      if (this.state === PlayerState.WALKING) {
         this.state = PlayerState.IDLE;
         this.playIdleAnimation();
       }
