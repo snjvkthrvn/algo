@@ -84,11 +84,6 @@ export class MenuScene extends Phaser.Scene {
     orn.fillRect(ox - ps / 2, oy - ps / 2 - ps * 2, ps, ps);
     orn.fillRect(ox - ps / 2, oy - ps / 2 + ps * 2, ps, ps);
 
-    // Subtle composition frame
-    const compFrame = this.add.graphics();
-    compFrame.lineStyle(1, 0x88c070, 0.16);
-    compFrame.strokeRect(Math.round(width / 2 - 264), 160, 528, 312);
-
     const titleText = this.add.text(width / 2, 184, menuTitleAssembled ? 'ALGORITHMIA' : '', {
       fontSize: '40px',
       fontFamily: FONTS.RETRO,
