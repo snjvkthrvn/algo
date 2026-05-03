@@ -9,8 +9,8 @@ import { PlayerState } from '../data/types';
 
 const PLAYER_SPRITE_SCALE = 0.2;
 export const PLAYER_GRID_STEP = 32;
-const PLAYER_STEP_DURATION_MS = 150;
-const PLAYER_WALK_FRAME_RATE = 18;
+const PLAYER_STEP_DURATION_MS = 120;
+const PLAYER_WALK_FRAME_RATE = 20;
 
 type FacingDirection = 'down' | 'up' | 'left' | 'right';
 

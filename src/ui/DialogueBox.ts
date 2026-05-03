@@ -91,10 +91,11 @@ export class DialogueBox {
 
     scene.tweens.add({
       targets: this.continuePrompt,
-      alpha: 0.3,
-      duration: 500,
+      y: '+=4',
+      duration: 400,
       yoyo: true,
       repeat: -1,
+      ease: 'Stepped',
     });
   }
 

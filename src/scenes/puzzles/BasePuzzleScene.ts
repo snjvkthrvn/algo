@@ -213,10 +213,12 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0);
 
     // Instruction starts slightly left and slides into place.
+    // Color matches title (#081820) for ~14:1 contrast on the cream panel — the
+    // win condition reads at a glance instead of fading into the chrome.
     this.instructionText = this.add.text(width / 2 - 80, 115, this.puzzleDescription, {
       fontSize: '14px',
       fontFamily: FONTS.MONO,
-      color: '#346856',
+      color: '#081820',
       align: 'center',
       wordWrap: { width: width - 200 },
     }).setOrigin(0.5).setAlpha(0);

@@ -12,7 +12,7 @@ import { PROLOGUE_CONFIG } from '../data/regions/prologue';
 const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.7,
   sfxVolume: 0.8,
-  textSpeed: 30, // chars per second
+  textSpeed: 45, // chars per second
 };
 
 function createDefaultState(): GameState {

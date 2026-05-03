@@ -304,7 +304,7 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
-    return isPrologueStepWalkable(point, this.getCollisionBlockers(), 10);
+    return isPrologueStepWalkable(point, this.getCollisionBlockers(), 0);
   }
 
   /**
@@ -319,7 +319,7 @@ export class PrologueScene extends Phaser.Scene {
 
     for (const dx of candidates) {
       const candidate = { x: playerPos.x + dx, y: playerPos.y };
-      if (isPrologueStepWalkable(candidate, blockers, 10)) {
+      if (isPrologueStepWalkable(candidate, blockers, 0)) {
         return candidate;
       }
     }

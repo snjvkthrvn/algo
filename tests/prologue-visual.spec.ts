@@ -1111,10 +1111,12 @@ test.describe('Prologue region – visual audit', () => {
     await page.waitForTimeout(1_800);
 
     await page.keyboard.press('Space');
-    await pressThroughDialogue(page, 6);
+    await pressThroughDialogue(page, 5);
     await snap(page, '15-rune-keeper-choice-ui.png');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(600);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(600);
     await page.keyboard.press('Enter');
 
     await waitForScene(page, 'P0_1_FollowThePath', 10_000);
@@ -1134,10 +1136,13 @@ test.describe('Prologue region – visual audit', () => {
     await pressThroughDialogue(page, 6);
     await snap(page, '16-console-keeper-choice-ui.png');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(800);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(800);
     await page.keyboard.press('Enter');
 
     await waitForScene(page, 'P0_2_FlowConsoles', 10_000);
     await snap(page, '16-console-keeper-puzzle-start.png');
   });
 });
+

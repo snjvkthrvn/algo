@@ -17,16 +17,19 @@ import {
   isPointOnArrayPlainsRoute,
   type ArrayPlainsCollisionBlocker,
 } from '../data/regions/arrayPlains';
+import { DialogueSystem } from '../systems/DialogueSystem';
 import { HUDManager } from '../systems/HUDManager';
 import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
 import { progressionSystem } from '../systems/ProgressionSystem';
-import { drawPanel } from '../ui/panel';
+import type { DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
+import { PAUSE_OVERLAY_KEY } from './PauseOverlayScene';
 
 export class ArrayPlainsScene extends Phaser.Scene {
   private player!: Player;
   private bit!: BitCompanion;
   private interactionSystem!: InteractionSystem;
+  private dialogueSystem!: DialogueSystem;
   private hud!: HUDManager;
   private returnGateway: InteractableObject | null = null;
   private twinRiversGateway: InteractableObject | null = null;
@@ -34,7 +37,10 @@ export class ArrayPlainsScene extends Phaser.Scene {
   private markerObjects: InteractableObject[] = [];
   private puzzleObjects: InteractableObject[] = [];
   private labelObjects: Phaser.GameObjects.Text[] = [];
-  private infoPanelCleanup: (() => void) | null = null;
+  private lastPlayerX: number = NaN;
+  private lastPlayerY: number = NaN;
+
+  private readonly onEscPause = () => this.openPauseOverlay();
 
   constructor() {
     super({ key: SCENE_KEYS.ARRAY_PLAINS });
@@ -71,6 +77,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
     this.bit = new BitCompanion(this, px, py);
 
     this.interactionSystem = new InteractionSystem(this, this.player);
+    this.dialogueSystem = new DialogueSystem(this);
     this.createInteractables();
     this.interactionSystem.onInteract((entry) => this.handleInteract(entry));
     eventBus.on('progression:gate-open', this.onGateOpen, this);
@@ -80,24 +87,36 @@ export class ArrayPlainsScene extends Phaser.Scene {
 
     const camera = this.cameras.main;
     camera.setBounds(0, 0, ARRAY_PLAINS_WORLD_WIDTH, ARRAY_PLAINS_WORLD_HEIGHT);
-    camera.setZoom(2);
-    camera.startFollow(this.player.sprite, true, 1, 1);
-    camera.setDeadzone(96, 64);
+    camera.setZoom(1.8);
+    camera.startFollow(this.player.sprite, true, 0.1, 0.1);
+    camera.setDeadzone(100, 100);
 
     TransitionManager.fadeIn(this, 700);
     this.hud.showRegionCard('Array Plains', 'Where order becomes addressable.');
+    this.input.keyboard?.on('keydown-ESC', this.onEscPause);
+  }
+
+  private openPauseOverlay(): void {
+    if (this.dialogueSystem?.isDialogueActive()) return;
+    if (this.scene.isPaused()) return;
+    this.scene.pause();
+    this.scene.launch(PAUSE_OVERLAY_KEY, { parentSceneKey: SCENE_KEYS.ARRAY_PLAINS });
   }
 
   update(): void {
-    const panelOpen = this.infoPanelCleanup !== null;
-    if (!panelOpen) {
+    const dialogueActive = this.dialogueSystem?.isDialogueActive() ?? false;
+    if (!dialogueActive) {
       this.player.update();
     }
 
     const pos = this.player.getPosition();
     this.bit.update(pos.x, pos.y);
-    this.interactionSystem.update(!panelOpen);
-    gameState.setPlayerPosition(pos.x, pos.y);
+    this.interactionSystem.update(!dialogueActive);
+    if (pos.x !== this.lastPlayerX || pos.y !== this.lastPlayerY) {
+      gameState.setPlayerPosition(pos.x, pos.y);
+      this.lastPlayerX = pos.x;
+      this.lastPlayerY = pos.y;
+    }
   }
 
   private renderField(): void {
@@ -341,58 +360,23 @@ export class ArrayPlainsScene extends Phaser.Scene {
   }
 
   private handleInteract(entry: InteractableEntry): void {
+    if (this.dialogueSystem.isDialogueActive()) return;
     if (entry.type !== 'object') return;
     const object = entry.target as InteractableObject;
     object.config.onInteract?.();
   }
 
-  private showFieldNote(title: string, body: string): void {
-    if (this.infoPanelCleanup) return;
-
-    const { width, height } = this.cameras.main;
-    const panelW = 640;
-    const panelH = 128;
-    const panelX = Math.round(width / 2 - panelW / 2);
-    const panelY = height - panelH - 40;
-
-    const panel = drawPanel(this, panelX, panelY, panelW, panelH, {
-      depth: 5000,
-      scrollFactor: 0,
-      inner: 0x346856,
-    });
-    const titleText = this.add.text(panelX + 32, panelY + 24, title, {
-      fontSize: '12px',
-      fontFamily: FONTS.RETRO,
-      color: '#081820',
-    }).setDepth(5001).setScrollFactor(0);
-    const bodyText = this.add.text(panelX + 32, panelY + 56, body, {
-      fontSize: '12px',
-      fontFamily: FONTS.MONO,
-      color: '#081820',
-      wordWrap: { width: panelW - 64 },
-      lineSpacing: 5,
-    }).setDepth(5001).setScrollFactor(0);
-    const closeText = this.add.text(panelX + panelW - 32, panelY + panelH - 28, '[SPACE]', {
-      fontSize: '8px',
-      fontFamily: FONTS.RETRO,
-      color: '#346856',
-    }).setOrigin(1, 0).setDepth(5001).setScrollFactor(0);
-
-    const close = () => {
-      panel.destroy();
-      titleText.destroy();
-      bodyText.destroy();
-      closeText.destroy();
-      this.infoPanelCleanup = null;
+  private showFieldNote(speaker: string, body: string | string[]): void {
+    if (this.dialogueSystem.isDialogueActive()) return;
+    const tree: DialogueTree = {
+      startNodeId: 'note',
+      nodes: [{ id: 'note', speaker, text: body }],
     };
-
-    this.infoPanelCleanup = close;
-    this.input.keyboard?.once('keydown-SPACE', close);
-    this.input.keyboard?.once('keydown-ENTER', close);
+    this.dialogueSystem.startDialogue(tree, `field_${speaker.toLowerCase().replace(/\s+/g, '_')}`);
   }
 
   private startPuzzle(sceneKey: string): void {
-    this.scene.start(sceneKey, { returnScene: SCENE_KEYS.ARRAY_PLAINS });
+    TransitionManager.pixelDissolve(this, sceneKey, { returnScene: SCENE_KEYS.ARRAY_PLAINS });
   }
 
   private onGateOpen(data: unknown): void {
@@ -409,7 +393,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
   }
 
   private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
-    return isArrayPlainsStepWalkable(point, this.getCollisionBlockers(), 10);
+    return isArrayPlainsStepWalkable(point, this.getCollisionBlockers(), 0);
   }
 
   private getCollisionBlockers(): ArrayPlainsCollisionBlocker[] {
@@ -437,9 +421,9 @@ export class ArrayPlainsScene extends Phaser.Scene {
 
   shutdown(): void {
     eventBus.off('progression:gate-open', this.onGateOpen, this);
-    this.infoPanelCleanup?.();
-    this.infoPanelCleanup = null;
+    this.input.keyboard?.off('keydown-ESC', this.onEscPause);
 
+    this.dialogueSystem?.destroy();
     this.interactionSystem?.destroy();
     this.hud?.destroy();
 

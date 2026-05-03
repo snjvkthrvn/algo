@@ -49,10 +49,10 @@ export class InteractionPrompt {
     scene.tweens.add({
       targets: this.bobContainer,
       y: '-=4',
-      duration: 1000,
+      duration: 800,
       yoyo: true,
       repeat: -1,
-      ease: 'Sine.easeInOut',
+      ease: 'Stepped',
     });
   }
 
