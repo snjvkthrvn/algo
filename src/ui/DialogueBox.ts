@@ -9,6 +9,7 @@ import Phaser from 'phaser';
 import { FONTS } from '../config/constants';
 import { gameState } from '../core/GameStateManager';
 import { drawPanel, PANEL_PALETTE } from './panel';
+import { a11yManager } from '../core/A11yManager';
 
 export class DialogueBox {
   private scene: Phaser.Scene;
@@ -108,6 +109,8 @@ export class DialogueBox {
     this.continuePrompt.setVisible(false);
     this.isTyping = true;
     this.onCompleteCallback = onComplete || null;
+
+    a11yManager.announce(`${speaker} says: ${text}`, true);
 
     const speed = gameState.getSettings().textSpeed;
     const delay = Math.max(10, Math.floor(1000 / speed));

@@ -28,7 +28,7 @@ Runtime assets added in this pass:
 
 - `public/assets/visual_revamp/title/title_panorama_v1.png`
 - `public/assets/visual_revamp/ui/puzzle_encounter_frame_v2.png`
-- `public/assets/visual_revamp/regions/array_plains_route_v3.png`
+- `public/assets/visual_revamp/regions/array_plains_grounded_v1.png`
 - `public/assets/visual_revamp/puzzles/rune_memory_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/flow_consoles_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/sorting_shed_backdrop_v2.png`
@@ -36,13 +36,13 @@ Runtime assets added in this pass:
 - `public/assets/visual_revamp/puzzles/grain_hopper_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/pairing_grounds_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/shuffler_domain_backdrop_v1.png`
-- `public/assets/visual_revamp/regions/twin_rivers_route_v1.png`
+- `public/assets/visual_revamp/regions/twin_rivers_grounded_v1.png`
 - `public/assets/visual_revamp/puzzles/twin_mirror_walk_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/twin_pointer_bridge_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/twin_fixed_window_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/twin_variable_window_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/mirror_serpent_backdrop_v1.png`
-- `public/assets/visual_revamp/regions/hash_highlands_route_v1.png`
+- `public/assets/visual_revamp/regions/hash_highlands_grounded_v1.png`
 - `public/assets/visual_revamp/puzzles/hash_nameplate_gates_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/hash_frequency_forge_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/hash_anagram_gardens_backdrop_v1.png`
@@ -66,13 +66,13 @@ Runtime assets added in this pass:
 - `public/assets/visual_revamp/puzzles/tree_deep_root_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/tree_bent_bough_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/tree_pattern_backdrop_v1.png`
-- `public/assets/visual_revamp/regions/graph_nexus_route_v1.png`
+- `public/assets/visual_revamp/regions/graph_nexus_grounded_v1.png`
 - `public/assets/visual_revamp/puzzles/graph_bridge_map_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/graph_courier_dilemma_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/graph_cycle_bazaar_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/graph_island_census_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/graph_echo_backdrop_v1.png`
-- `public/assets/visual_revamp/regions/core_route_v1.png`
+- `public/assets/visual_revamp/regions/core_grounded_v1.png`
 - `public/assets/visual_revamp/puzzles/core_echo_chamber_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/core_weighted_staircase_backdrop_v1.png`
 - `public/assets/visual_revamp/puzzles/core_grand_archive_backdrop_v1.png`
@@ -131,8 +131,8 @@ Every region should pass these checks:
    - Status: implemented as `public/assets/visual_revamp/ui/puzzle_encounter_frame_v2.png` plus per-region generated encounter backdrops.
 
 2. Make Array Plains feel walkable and game-like.
-   - Current files: `src/scenes/ArrayPlainsScene.ts`, `src/data/regions/arrayPlains.ts`, `public/assets/visual_revamp/regions/array_plains.png`.
-   - Status: implemented as `public/assets/visual_revamp/regions/array_plains_route_v3.png` with matching route rects and puzzle stops.
+   - Current files: `src/scenes/ArrayPlainsScene.ts`, `src/data/regions/arrayPlains.ts`, `public/assets/visual_revamp/regions/legacy/array_plains.png`.
+   - Status: implemented as `public/assets/visual_revamp/regions/array_plains_grounded_v1.png` with matching route rects and puzzle stops.
 
 3. Bring puzzle UI into the same visual language.
    - Current files: `src/scenes/puzzles/BasePuzzleScene.ts`, `src/scenes/puzzles/P1_1_BubbleSort.ts`, `P1_2_BasketIndexing.ts`, `P1_3_HashHopper.ts`, `P1_4_TwoSum.ts`, `Boss_Shuffler.ts`.

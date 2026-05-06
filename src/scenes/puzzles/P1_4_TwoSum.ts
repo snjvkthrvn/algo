@@ -18,6 +18,9 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private mistakes = 0;
   private tiles: NumberTile[] = [];
   private targetText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
+  private actionTimer: Phaser.Time.TimerEvent | null = null;
+  private timeLeft = 12;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_4 });
@@ -54,6 +57,14 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       padding: { x: 14, y: 8 },
     }).setOrigin(0.5);
 
+    this.timerText = this.add.text(width / 2, 212, '', {
+      fontSize: '14px',
+      fontFamily: FONTS.RETRO,
+      color: '#fbbf24',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+
     const startX = width / 2 - 240;
     const y = height / 2 + 72;
     for (let i = 0; i < 5; i++) {
@@ -88,6 +99,35 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       tile.box.setFillStyle(0xe0f8d0, 0.94);
       tile.box.setStrokeStyle(3, 0x346856, 0.95);
     });
+
+    this.startTimer();
+  }
+
+  private startTimer(): void {
+    this.timeLeft = Math.max(5, 12 - this.roundIndex * 2);
+    this.timerText.setText(`TIME REMAINING: ${this.timeLeft}`);
+    this.timerText.setColor('#fbbf24');
+
+    if (this.actionTimer) this.actionTimer.destroy();
+    this.actionTimer = this.time.addEvent({
+      delay: 1000,
+      repeat: -1,
+      callback: () => {
+        this.timeLeft--;
+        this.timerText.setText(`TIME REMAINING: ${this.timeLeft}`);
+        if (this.timeLeft <= 3) this.timerText.setColor('#ef4444');
+        if (this.timeLeft <= 0) this.timeOut();
+      }
+    });
+  }
+
+  private timeOut(): void {
+    if (this.actionTimer) this.actionTimer.destroy();
+    this.mistakes++;
+    this.attempts++;
+    audioManager.playWrongTone();
+    this.showMessage('Too slow! The pairs reset.', COLORS.WARNING);
+    this.time.delayedCall(500, () => this.renderRound());
   }
 
   private chooseTile(index: number): void {
@@ -104,6 +144,8 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.showMessage(`Need complement: ${complement}`, COLORS.CYAN_GLOW);
       return;
     }
+
+    if (this.actionTimer) this.actionTimer.destroy();
 
     const round = TWO_SUM_ROUNDS[this.roundIndex];
     if (isTwoSumPair(round.values, round.target, this.selected)) {
@@ -125,6 +167,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   }
 
   private complete(): void {
+    if (this.actionTimer) this.actionTimer.destroy();
     const stars = this.mistakes === 0 ? 3 : this.mistakes <= 2 ? 2 : 1;
     this.onPuzzleComplete(stars);
   }

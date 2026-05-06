@@ -18,6 +18,9 @@ export class P1_3_HashHopper extends BasePuzzleScene {
   private mistakes = 0;
   private cropText!: Phaser.GameObjects.Text;
   private formulaText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
+  private actionTimer: Phaser.Time.TimerEvent | null = null;
+  private timeLeft = 10;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_3 });
@@ -61,6 +64,14 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       padding: { x: 10, y: 5 },
     }).setOrigin(0.5);
 
+    this.timerText = this.add.text(width / 2, 244, '', {
+      fontSize: '14px',
+      fontFamily: FONTS.RETRO,
+      color: '#fbbf24',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+
     const startX = width / 2 - 270;
     const y = height / 2 + 100;
     for (let i = 0; i < 4; i++) {
@@ -87,9 +98,39 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       bucket.box.setFillStyle(0xe0f8d0, 0.94);
       bucket.box.setStrokeStyle(3, 0x346856, 0.95);
     }
+
+    this.startTimer();
+  }
+
+  private startTimer(): void {
+    this.timeLeft = Math.max(4, 10 - this.cropIndex);
+    this.timerText.setText(`TIME REMAINING: ${this.timeLeft}`);
+    this.timerText.setColor('#fbbf24');
+
+    if (this.actionTimer) this.actionTimer.destroy();
+    this.actionTimer = this.time.addEvent({
+      delay: 1000,
+      repeat: -1,
+      callback: () => {
+        this.timeLeft--;
+        this.timerText.setText(`TIME REMAINING: ${this.timeLeft}`);
+        if (this.timeLeft <= 3) this.timerText.setColor('#ef4444');
+        if (this.timeLeft <= 0) this.timeOut();
+      }
+    });
+  }
+
+  private timeOut(): void {
+    if (this.actionTimer) this.actionTimer.destroy();
+    this.mistakes++;
+    this.attempts++;
+    audioManager.playWrongTone();
+    this.showMessage('Too slow! The crop was lost.', COLORS.WARNING);
+    this.time.delayedCall(500, () => this.renderCrop());
   }
 
   private chooseBucket(index: number): void {
+    if (this.actionTimer) this.actionTimer.destroy();
     const crop = HASH_CROPS[this.cropIndex];
     const expected = hashBucket(crop.letterIndex, this.buckets.length);
     if (index === expected) {
@@ -110,9 +151,15 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     this.buckets[index].box.setFillStyle(COLORS.ERROR, 0.85);
     audioManager.playWrongTone();
     this.showMessage('Hash miss. Run the formula again.', COLORS.WARNING);
+    this.time.delayedCall(500, () => this.renderRoundOrCrop());
+  }
+
+  private renderRoundOrCrop(): void {
+    this.renderCrop();
   }
 
   private complete(): void {
+    if (this.actionTimer) this.actionTimer.destroy();
     const stars = this.mistakes === 0 ? 3 : this.mistakes <= 2 ? 2 : 1;
     this.onPuzzleComplete(stars);
   }

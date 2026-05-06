@@ -5,13 +5,12 @@
  */
 
 import Phaser from 'phaser';
-import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
+import { COLORS, FONTS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { gameState } from '../core/GameStateManager';
-import { saveLoadManager } from '../core/SaveLoadManager';
-import { TransitionManager } from '../core/TransitionManager';
 import { moveMenuSelection } from '../input/MenuNavigation';
 import { drawPanel } from '../ui/panel';
+import { saveAndReturnToTitle } from './titleNavigation';
 
 export const PAUSE_OVERLAY_KEY = 'PauseOverlayScene';
 
@@ -39,7 +38,7 @@ export class PauseOverlayScene extends Phaser.Scene {
       this.closeSettingsModal();
       return;
     }
-    this.resumeParent();
+    this.saveAndQuit();
   };
 
   constructor() {
@@ -160,12 +159,11 @@ export class PauseOverlayScene extends Phaser.Scene {
   }
 
   private saveAndQuit(): void {
-    saveLoadManager.save();
-    // Stop the paused parent first so it tears down. Then fade-transition this
+    saveAndReturnToTitle(this, {
+      stopSceneKeys: [this.parentSceneKey],
+      duration: 400,
+    });
     // scene to the menu — TransitionManager.fade ends with scene.start(MENU),
-    // which automatically stops PauseOverlayScene as part of the swap.
-    this.scene.stop(this.parentSceneKey);
-    TransitionManager.fade(this, SCENE_KEYS.MENU, undefined, 400);
   }
 
   private openSettings(): void {

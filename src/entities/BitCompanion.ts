@@ -18,7 +18,7 @@ import { COLORS } from '../config/constants';
 // Offset from player center where Bit hovers
 const FOLLOW_OFFSET_X = 38;
 const FOLLOW_OFFSET_Y = -22;
-const FOLLOW_LERP = 0.07; // 7% per frame — floaty but responsive
+const FOLLOW_LERP = 0.15; // match camera lerp for cohesive, not detached companion feel
 const ORBIT_RADIUS = 6;
 const ORBIT_SPEED = 0.025; // radians per frame
 
@@ -31,6 +31,13 @@ const STAGE_COLORS: Record<BitStage, number> = {
   [BitStage.GRAPH]:  COLORS.GOLD_ACCENT,
   [BitStage.CORE]:   0xffffff,
 };
+const BIT_STAGE_FALLBACK = BitStage.GRAPH;
+
+export function normalizeBitStage(stage: unknown): BitStage {
+  return Object.values(BitStage).includes(stage as BitStage)
+    ? stage as BitStage
+    : BIT_STAGE_FALLBACK;
+}
 
 interface ParticleDot {
   dot: Phaser.GameObjects.Arc;
@@ -54,7 +61,7 @@ export class BitCompanion {
     this.scene = scene;
     this.currentX = playerX + FOLLOW_OFFSET_X;
     this.currentY = playerY + FOLLOW_OFFSET_Y;
-    this.stage = gameState.getBitStage();
+    this.stage = normalizeBitStage(gameState.getBitStage());
     this.mood = gameState.getBitMood();
 
     this.container = scene.add.container(this.currentX, this.currentY);
@@ -324,7 +331,7 @@ export class BitCompanion {
 
   private onEvolve = (...args: unknown[]): void => {
     const data = args[0] as { from: BitStage; to: BitStage };
-    this.playEvolve(data.to);
+    this.playEvolve(normalizeBitStage(data.to));
   };
 
   private onPuzzleComplete = (): void => {

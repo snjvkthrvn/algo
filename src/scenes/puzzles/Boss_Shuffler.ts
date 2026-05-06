@@ -55,6 +55,9 @@ export class Boss_Shuffler extends BasePuzzleScene {
   private mistakes = 0;
   private phaseTitle!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
+  private phaseTimer: Phaser.Time.TimerEvent | null = null;
+  private timeLeft = 10;
   private optionContainer!: Phaser.GameObjects.Container;
   private shuffler!: Phaser.GameObjects.Container;
 
@@ -132,6 +135,13 @@ export class Boss_Shuffler extends BasePuzzleScene {
       backgroundColor: '#081820',
       padding: { x: 12, y: 7 },
     }).setOrigin(0.5);
+    this.timerText = this.add.text(width / 2, 240, '', {
+      fontSize: '14px',
+      fontFamily: FONTS.RETRO,
+      color: '#fbbf24',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
     this.optionContainer = this.add.container(0, 0);
   }
 
@@ -140,6 +150,21 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.phaseTitle.setText(phase.title);
     this.promptText.setText(phase.prompt);
     this.optionContainer.removeAll(true);
+
+    this.timeLeft = 12 - this.phaseIndex; // Gets faster each phase
+    this.timerText.setText(`TIME REMAINING: ${this.timeLeft}`);
+    this.timerText.setColor('#fbbf24');
+    if (this.phaseTimer) this.phaseTimer.destroy();
+    this.phaseTimer = this.time.addEvent({
+      delay: 1000,
+      repeat: -1,
+      callback: () => {
+        this.timeLeft--;
+        this.timerText.setText(`TIME REMAINING: ${this.timeLeft}`);
+        if (this.timeLeft <= 3) this.timerText.setColor('#ef4444');
+        if (this.timeLeft <= 0) this.timeOut();
+      }
+    });
 
     const { width, height } = this.cameras.main;
     const startX = width / 2 - 300;
@@ -163,7 +188,28 @@ export class Boss_Shuffler extends BasePuzzleScene {
     });
   }
 
+  private timeOut(): void {
+    if (this.phaseTimer) this.phaseTimer.destroy();
+    this.mistakes++;
+    this.attempts++;
+    audioManager.playWrongTone();
+    this.showMessage('Time is up! The Shuffler laughs.', COLORS.WARNING);
+
+    // Penalize and reload the same phase
+    this.tweens.add({
+      targets: this.shuffler,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      duration: 160,
+      yoyo: true,
+      ease: 'Sine.easeInOut',
+      onComplete: () => this.renderPhase(),
+    });
+  }
+
   private choose(index: number): void {
+    if (this.phaseTimer) this.phaseTimer.destroy();
+
     const phase = PHASES[this.phaseIndex];
     if (index !== phase.correctIndex) {
       this.mistakes++;

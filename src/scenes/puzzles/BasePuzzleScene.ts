@@ -14,6 +14,7 @@ import { audioManager } from '../../core/AudioManager';
 import { gameState } from '../../core/GameStateManager';
 import { TransitionManager } from '../../core/TransitionManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
+import { a11yManager } from '../../core/A11yManager';
 import type { ConceptBridgeData } from '../../data/types';
 
 export abstract class BasePuzzleScene extends Phaser.Scene {
@@ -90,11 +91,11 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
         .image(width / 2, height / 2, resolvedBackdropKey)
         .setDisplaySize(width, height)
         .setDepth(-29);
+    } else {
+      this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1)
+        .setOrigin(0, 0)
+        .setDepth(-28);
     }
-
-    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, hasBackdrop ? 0.04 : 0.18)
-      .setOrigin(0, 0)
-      .setDepth(-28);
 
     this.uiContainer = this.add.container(0, 0);
 
@@ -110,7 +111,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.06;
+    return 1;
   }
 
   protected createPuzzleFrame(width: number, height: number): void {
@@ -168,6 +169,17 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     // Corner accents snap in after the frame settles
     this.time.delayedCall(200, () => this.addCornerAccents(width, height, padding));
+
+    // Production polish: subtle living pulse on the frame to make the puzzle chamber feel alive
+    this.tweens.add({
+      targets: this.puzzleFrame,
+      alpha: 0.92,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: 600,
+    });
   }
 
   private addScanlines(width: number, height: number, padding: number): void {
@@ -277,10 +289,10 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected createControlButtons(width: number): void {
     this.exitButton = createRetroButton(
-      this, width - 80, 60, 'EXIT', COLORS.ERROR, () => this.exitPuzzle()
+      this, width - 88, 60, 'EXIT', COLORS.ERROR, () => this.exitPuzzle(), 112
     );
     this.hintButton = createRetroButton(
-      this, 80, 60, `HINT (${this.maxHints - this.hintsUsed})`, COLORS.GOLD_ACCENT, () => this.showHint()
+      this, 96, 60, `HINT (${this.maxHints - this.hintsUsed})`, COLORS.GOLD_ACCENT, () => this.showHint(), 128
     );
 
     this.exitButton.setScale(0);
@@ -386,6 +398,25 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     });
   }
 
+  protected onCorrectAnswer(explanation?: string): void {
+    const { width, height } = this.cameras.main;
+    JuiceSystem.correctBurst(this, width / 2, height / 2 - 40);
+    JuiceSystem.screenFlash(this, COLORS.SUCCESS, 0.08, 180);
+    audioManager.playCorrectTone();
+    if (explanation) {
+      this.showMessage(explanation, COLORS.SUCCESS);
+    }
+  }
+
+  protected onWrongAnswer(message: string = 'Not quite. Try again.'): void {
+    const { width, height } = this.cameras.main;
+    JuiceSystem.wrongBurst(this, width / 2, height / 2);
+    JuiceSystem.cameraShake(this, 60, 0.002);
+    audioManager.playWrongTone?.();
+    this.showMessage(message, COLORS.WARNING);
+    this.attempts++;
+  }
+
   protected onPuzzleComplete(stars: number): void {
     const timeSpent = Math.floor((Date.now() - this.startTime) / 1000);
     const { width, height } = this.cameras.main;
@@ -453,19 +484,17 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     const msgH = 48;
     const msgY = height / 2 - 20;
 
+    a11yManager.announce(text, true);
+
     const msgContainer = this.add.container(width / 2, msgY).setDepth(1000).setAlpha(0);
 
-    const bg = this.add.graphics();
-    bg.fillStyle(0xe0f8d0, 0.96);
-    bg.fillRect(-msgW / 2, -msgH / 2, msgW, msgH);
-    bg.lineStyle(2, color, 1);
-    bg.strokeRect(-msgW / 2, -msgH / 2, msgW, msgH);
-    // Inner accent line across the top of the box.
-    bg.lineStyle(1, color, 0.35);
-    bg.beginPath();
-    bg.moveTo(-msgW / 2 + 4, -msgH / 2 + 4);
-    bg.lineTo(msgW / 2 - 4, -msgH / 2 + 4);
-    bg.strokePath();
+    const panel = drawPanel(this, -msgW / 2, -msgH / 2, msgW, msgH, {
+      depth: 0,
+      fill: COLORS.FRAME_BG,
+      frame: color,
+      inner: color,
+      alpha: 1
+    });
 
     const label = this.add.text(0, 0, text, {
       fontSize: '16px',
@@ -477,7 +506,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       wordWrap: { width: msgW - 36 },
     }).setOrigin(0.5);
 
-    msgContainer.add([bg, label]);
+    msgContainer.add([panel, label]);
 
     this.tweens.add({ targets: msgContainer, alpha: 1, y: msgY - 4, duration: 160, ease: 'Power2.easeOut' });
 

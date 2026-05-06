@@ -62,6 +62,14 @@ export function createChoiceButton(
     bg.setStrokeStyle(4, hovered ? PANEL_PALETTE.ACCENT : config.strokeColor);
     container.setY(hovered ? startY - 4 : startY);
     shadow.setY(hovered ? 8 : 4);
+    // Production polish: subtle lift + glow on hover for delightful choice feel
+    if (hovered) {
+      container.setScale(1.02);
+      bg.setFillStyle(0xf0f8e0); // slight warm tint on hover
+    } else {
+      container.setScale(1);
+      bg.setFillStyle(PANEL_PALETTE.FILL);
+    }
   };
 
   container.on('pointerover', () => setHovered(true));

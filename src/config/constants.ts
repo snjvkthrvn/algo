@@ -18,22 +18,22 @@ export const COLORS = {
   ORANGE_ACCENT: 0xf97316,
   GOLD_ACCENT: 0xfbbf24,
 
-  // UI colors
-  SUCCESS: 0x22c55e,
-  ERROR: 0xef4444,
-  WARNING: 0xf97316,
+  // UI colors (GameBoy theme from .impeccable.md)
+  SUCCESS: 0x88c070, // GameBoy "light" accent
+  ERROR: 0x081820,   // Highest contrast dark
+  WARNING: 0x346856, // Medium dark
 
   // Text colors
-  TEXT_LIGHT: 0xffffff,
-  TEXT_MUTED: 0x9ca3af,
-  TEXT_DARK: 0x4a5568,
+  TEXT_LIGHT: 0xe0f8d0, // GameBoy "lightest" / UI panel fill
+  TEXT_MUTED: 0x88c070, // Accent / highlight
+  TEXT_DARK: 0x081820,  // GameBoy "darkest" primary text
 
   // Frame colors
-  FRAME_BG: 0x1a1a2e,
-  FRAME_BORDER: 0x4a4a6a,
-  FRAME_BORDER_LIGHT: 0x7a7aaa,
-  FRAME_BORDER_DARK: 0x2a2a4a,
-  OVERLAY_BG: 0x0a0a14,
+  FRAME_BG: 0xe0f8d0,   // Cream fill
+  FRAME_BORDER: 0x081820, // Darkest
+  FRAME_BORDER_LIGHT: 0x346856,
+  FRAME_BORDER_DARK: 0x0a0a1a,
+  OVERLAY_BG: 0x0a0a1a, // Void backdrop
 } as const;
 
 export const REGIONS = {
@@ -51,6 +51,7 @@ export const REGIONS = {
 export const SCENE_KEYS = {
   BOOT: 'BootScene',
   MENU: 'MenuScene',
+  DEBUG_SELECT: 'DebugSelectScene',
   PROLOGUE: 'PrologueScene',
   ARRAY_PLAINS: 'ArrayPlainsScene',
   TWIN_RIVERS: 'TwinRiversScene',
@@ -148,4 +149,16 @@ export const SCENE_BY_REGION: Record<string, string> = {
 export const FONTS = {
   RETRO: '"Press Start 2P", monospace',
   MONO: 'monospace',
+} as const;
+
+/**
+ * Unified camera tuning for consistent, responsive feel across all regions.
+ * Lerp ~0.18 gives tight follow without jitter for 32px grid steps at 60fps.
+ * Deadzone sized to ~1-1.5 tiles so small movements don't shake camera.
+ */
+export const CAMERA_TUNING = {
+  ZOOM: 2,
+  FOLLOW_LERP: 0.18,
+  DEADZONE_WIDTH: 80,
+  DEADZONE_HEIGHT: 48,
 } as const;

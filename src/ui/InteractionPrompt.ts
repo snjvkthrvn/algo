@@ -8,6 +8,7 @@
 import Phaser from 'phaser';
 import { FONTS } from '../config/constants';
 import { drawPanel, PANEL_PALETTE } from './panel';
+import { a11yManager } from '../core/A11yManager';
 
 export const INTERACTION_PROMPT_WIDTH = 320;
 const PROMPT_HEIGHT = 40;
@@ -57,6 +58,9 @@ export class InteractionPrompt {
   }
 
   show(x: number, y: number, promptText: string = '[SPACE] Talk'): void {
+    const wasVisible = this.container.visible;
+    const oldText = this.text.text;
+
     const camera = this.scene.cameras.main;
     const zoom = camera.zoom > 0 ? camera.zoom : 1;
     const scale = 1 / zoom;
@@ -71,6 +75,10 @@ export class InteractionPrompt {
     this.container.setPosition(clampedX, clampedY);
     this.text.setText(promptText);
     this.container.setVisible(true);
+
+    if (!wasVisible || oldText !== promptText) {
+      a11yManager.announce(`Interaction available: ${promptText}`);
+    }
   }
 
   hide(): void {

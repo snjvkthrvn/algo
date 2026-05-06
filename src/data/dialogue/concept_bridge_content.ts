@@ -10,7 +10,7 @@ export interface ConceptBridgeContent {
   sections: {
     storyRecap: string[];
     patternReveal: { title: string; explanation: string[] };
-    pseudocode: { code: string; explanation: string };
+    pseudocode: { code: string; python: string; js: string; explanation: string };
     miniForge: { question: string; options: string[]; correctIndex: number; explanation: string };
     codexEntryId: string;
   };
@@ -37,13 +37,27 @@ export const CONCEPT_BRIDGE_DATA: Record<string, ConceptBridgeContent> = {
       pseudocode: {
         code: `function followPattern(runes):
     for each rune in sequence:
-        observe(rune)        // Watch which tile glows
-        memorize(rune.index) // Remember its position
+        observe(rune)
+        memorize(rune.index)
 
     for each memorized position:
-        step_on(position)    // Reproduce the sequence
+        step_on(position)
         if wrong:
-            restart()        // Try again from beginning`,
+            restart()`,
+        python: `def follow_pattern(runes):
+    memory = []
+    for rune in runes:
+        memory.append(rune.index)
+
+    for pos in memory:
+        if not step_on(pos):
+            restart()`,
+        js: `function followPattern(runes) {
+    const memory = runes.map(r => r.index);
+    for (const pos of memory) {
+        if (!stepOn(pos)) restart();
+    }
+}`,
         explanation: 'This is the same rule in code form: move through the pattern in order, one step at a time, and restart if the sequence breaks.',
       },
       miniForge: {
@@ -75,15 +89,32 @@ export const CONCEPT_BRIDGE_DATA: Record<string, ConceptBridgeContent> = {
       },
       pseudocode: {
         code: `consoleMap = {
-    "circle-solid-red": console_1,
-    "triangle-striped-blue": console_2,
-    "square-dotted-green": console_3
+    "circle-red": console_1,
+    "square-green": console_3
 }
 
 function placeShard(shard):
-    key = shard.shape + shard.pattern + shard.color
-    target = consoleMap[key]  // Instant lookup!
+    key = shard.shape + shard.color
+    target = consoleMap[key]
     place(shard, target)`,
+        python: `console_map = {
+    "circle-red": console_1,
+    "square-green": console_3
+}
+
+def place_shard(shard):
+    key = f"{shard.shape}-{shard.color}"
+    target = console_map.get(key)
+    place(shard, target)`,
+        js: `const consoleMap = {
+    "circle-red": console_1,
+    "square-green": console_3
+};
+
+function placeShard(shard) {
+    const key = \`\${shard.shape}-\${shard.color}\`;
+    place(shard, consoleMap[key]);
+}`,
         explanation: 'The map stores each console under a descriptive key. Once the key is known, the destination is a direct lookup instead of a search.',
       },
       miniForge: {
@@ -115,19 +146,22 @@ function placeShard(shard):
       },
       pseudocode: {
         code: `function authenticate(user):
-    // Step 1: Verify pattern knowledge
     if not verifySequence(user.input, expected):
         return DENIED
-
-    // Step 2: Verify key possession
     if not verifyMapping(user.shards, sockets):
         return DENIED
-
-    // Step 3: Combined verification
-    if not verifyCombined(user):
-        return DENIED
-
-    return AUTHORIZED  // Access granted!`,
+    return AUTHORIZED`,
+        python: `def authenticate(user):
+    if not verify_sequence(user.input, expected):
+        return "DENIED"
+    if not verify_mapping(user.shards, sockets):
+        return "DENIED"
+    return "AUTHORIZED"`,
+        js: `function authenticate(user) {
+    if (!verifySequence(user.input, expected)) return "DENIED";
+    if (!verifyMapping(user.shards, sockets)) return "DENIED";
+    return "AUTHORIZED";
+}`,
         explanation: 'The Sentinel fight modeled layered verification: pass one check, then the next, then prove you can coordinate both together.',
       },
       miniForge: {
@@ -165,6 +199,27 @@ function placeShard(shard):
                 swap(row[i], row[i + 1])
                 swapped = true
     until swapped == false`,
+        python: `def bubble_sort(row):
+    while True:
+        swapped = False
+        for i in range(len(row) - 1):
+            if row[i] > row[i+1]:
+                row[i], row[i+1] = row[i+1], row[i]
+                swapped = True
+        if not swapped:
+            break`,
+        js: `function bubbleSort(row) {
+    let swapped;
+    do {
+        swapped = false;
+        for (let i = 0; i < row.length - 1; i++) {
+            if (row[i] > row[i+1]) {
+                [row[i], row[i+1]] = [row[i+1], row[i]];
+                swapped = true;
+            }
+        }
+    } while (swapped);
+}`,
         explanation: 'The loop keeps sweeping over neighbor pairs. When a full pass needs no swaps, the row is sorted.',
       },
       miniForge: {
@@ -195,9 +250,15 @@ function placeShard(shard):
       },
       pseudocode: {
         code: `tools = ["rake", "seed", "rope", "hammer"]
-
 function fetch(index):
     return tools[index]`,
+        python: `tools = ["rake", "seed", "rope", "hammer"]
+def fetch(index):
+    return tools[index]`,
+        js: `const tools = ["rake", "seed", "rope", "hammer"];
+function fetch(index) {
+    return tools[index];
+}`,
         explanation: 'The index points directly to one slot. No loop is needed when the address is known.',
       },
       miniForge: {
@@ -230,6 +291,13 @@ function fetch(index):
         code: `function bucketFor(name):
     first = alphabetIndex(name[0])
     return first % bucketCount`,
+        python: `def bucket_for(name, bucket_count):
+    first = ord(name[0]) - ord('A')
+    return first % bucket_count`,
+        js: `function bucketFor(name, bucketCount) {
+    const first = name.charCodeAt(0) - 65;
+    return first % bucketCount;
+}`,
         explanation: 'Modulo keeps the hash output inside the valid bucket range.',
       },
       miniForge: {
@@ -263,9 +331,23 @@ function fetch(index):
     seen = set()
     for value in values:
         need = target - value
+        if need in seen: return [need, value]
+        seen.add(value)`,
+        python: `def two_sum(values, target):
+    seen = set()
+    for value in values:
+        need = target - value
         if need in seen:
             return [need, value]
         seen.add(value)`,
+        js: `function twoSum(values, target) {
+    const seen = new Set();
+    for (const value of values) {
+        const need = target - value;
+        if (seen.has(need)) return [need, value];
+        seen.add(value);
+    }
+}`,
         explanation: 'The set remembers values already seen, so each new value can check for its complement directly.',
       },
       miniForge: {

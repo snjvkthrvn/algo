@@ -16,6 +16,8 @@ dist-ssr
 
 # Archive folder for old design assets
 archive/
+!public/assets/visual_revamp/regions/archive/
+!public/assets/visual_revamp/regions/archive/**
 
 # Editor directories and files
 .vscode/*

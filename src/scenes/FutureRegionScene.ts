@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { VISUAL_REVAMP_KEYS } from '../config/assets';
-import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
+import { CAMERA_TUNING, COLORS, FONTS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { gameState } from '../core/GameStateManager';
 import { TransitionManager } from '../core/TransitionManager';
@@ -12,15 +12,23 @@ import {
   FUTURE_REGION_SCENE_CONFIGS,
   FUTURE_REGION_WORLD_HEIGHT,
   FUTURE_REGION_WORLD_WIDTH,
+  isFutureRegionStepWalkable,
   isPointOnFutureRegionRoute,
+  type FutureRegionCollisionBlocker,
+  type FutureRegionRouteRect,
   type FutureRegionSceneConfig,
 } from '../data/regions/futureRegions';
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { HUDManager } from '../systems/HUDManager';
 import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
+import {
+  ROUTE_SURFACE_STYLES,
+  renderRouteStopPads,
+  renderRouteSurfaces,
+} from '../systems/RouteSurfaceRenderer';
 import type { DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
-import { PAUSE_OVERLAY_KEY } from './PauseOverlayScene';
+import { saveAndReturnToTitle } from './titleNavigation';
 
 type SpawnData = { spawnX?: number; spawnY?: number };
 
@@ -37,7 +45,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   private lastPlayerX: number = NaN;
   private lastPlayerY: number = NaN;
 
-  private readonly onEscPause = () => this.openPauseOverlay();
+  private readonly onEscReturnToTitle = () => saveAndReturnToTitle(this);
 
   protected constructor(regionConfig: FutureRegionSceneConfig) {
     super({ key: regionConfig.sceneKey });
@@ -57,7 +65,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
 
     let px = gameState.getState().player.x;
     let py = gameState.getState().player.y;
-    if (!isPointOnFutureRegionRoute({ x: px, y: py }, 0)) {
+    if (!isPointOnFutureRegionRoute({ x: px, y: py }, 0, this.getRouteRects())) {
       px = 192;
       py = 448;
       gameState.setPlayerPosition(px, py);
@@ -70,7 +78,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     this.createAmbientLayer();
 
     this.player = new Player(this, px, py, {
-      canMoveTo: (point) => isPointOnFutureRegionRoute(point, 0),
+      canMoveTo: (point) => this.isPlayerStepWalkable(point),
     });
     this.bit = new BitCompanion(this, px, py);
 
@@ -84,25 +92,19 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
 
     const camera = this.cameras.main;
     camera.setBounds(0, 0, FUTURE_REGION_WORLD_WIDTH, FUTURE_REGION_WORLD_HEIGHT);
-    camera.setZoom(2);
-    camera.startFollow(this.player.sprite, true, 1, 1);
-    camera.setDeadzone(96, 64);
+    camera.setZoom(CAMERA_TUNING.ZOOM);
+    camera.startFollow(this.player.sprite, true, CAMERA_TUNING.FOLLOW_LERP, CAMERA_TUNING.FOLLOW_LERP);
+    camera.setDeadzone(CAMERA_TUNING.DEADZONE_WIDTH, CAMERA_TUNING.DEADZONE_HEIGHT);
 
     TransitionManager.fadeIn(this, 700);
     this.hud.showRegionCard(this.regionConfig.title, this.regionConfig.subtitle);
-    this.input.keyboard?.on('keydown-ESC', this.onEscPause);
-  }
-
-  private openPauseOverlay(): void {
-    if (this.dialogueSystem?.isDialogueActive()) return;
-    if (this.scene.isPaused()) return;
-    this.scene.pause();
-    this.scene.launch(PAUSE_OVERLAY_KEY, { parentSceneKey: this.regionConfig.sceneKey });
+    this.input.keyboard?.on('keydown-ESC', this.onEscReturnToTitle);
   }
 
   update(): void {
     const dialogueActive = this.dialogueSystem?.isDialogueActive() ?? false;
-    if (!dialogueActive) this.player.update();
+    // Always update player so auto-walk / tween chaining works even if dialogue blocks new input
+    this.player.update();
 
     const pos = this.player.getPosition();
     this.bit.update(pos.x, pos.y);
@@ -131,9 +133,14 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   private renderRoute(): void {
-    const route = this.add.graphics().setDepth(1);
-    for (const rect of FUTURE_REGION_ROUTE_RECTS) {
-      route.lineStyle(1, this.regionConfig.accentColor, 0.035);
+    const routeRects = this.getRouteRects();
+    const style = ROUTE_SURFACE_STYLES[this.regionConfig.routeSurface];
+    renderRouteSurfaces(this, routeRects, style, VISUAL_REVAMP_KEYS.ROUTE_MATERIALS);
+    renderRouteStopPads(this, this.getRouteStopPads(), style);
+
+    const route = this.add.graphics().setDepth(1.3);
+    for (const rect of routeRects) {
+      route.lineStyle(2, this.regionConfig.accentColor, 0.055);
       route.beginPath();
       route.moveTo(rect.x + 16, rect.y + rect.height / 2);
       route.lineTo(rect.x + rect.width - 16, rect.y + rect.height / 2);
@@ -142,7 +149,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
 
     if (this.prefersReducedMotion()) return;
 
-    for (const rect of FUTURE_REGION_ROUTE_RECTS) {
+    for (const rect of routeRects) {
       const count = Math.max(2, Math.floor(rect.width / 220));
       for (let i = 0; i < count; i++) {
         const glint = this.add.circle(
@@ -348,11 +355,12 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
       this.addInteractable(gateway);
     }
 
+    const guidePosition = this.getGuidePosition();
     const guide = new InteractableObject(this, {
       id: 'region_guide',
       type: 'sign',
-      x: 960,
-      y: 336,
+      x: guidePosition.x,
+      y: guidePosition.y,
       prompt: '[SPACE] Listen',
       locked: false,
       spriteImageKey: this.regionConfig.guide.assetKey,
@@ -362,11 +370,12 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     });
     this.addInteractable(guide);
 
+    const shrinePosition = this.getShrinePosition();
     const shrine = new InteractableObject(this, {
       id: 'region_shrine',
       type: 'sign',
-      x: 960,
-      y: 536,
+      x: shrinePosition.x,
+      y: shrinePosition.y,
       prompt: '[SPACE] Inspect',
       locked: false,
       spriteImageKey: this.regionConfig.ambient === 'core'
@@ -379,6 +388,36 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     this.addInteractable(shrine);
 
     this.createEncounterObjects();
+  }
+
+  private getRouteStopPads(): Array<{ x: number; y: number; radius?: number }> {
+    const pads = [
+      { x: 112, y: 448, radius: 58 },
+      { ...this.getGuidePosition(), radius: 46 },
+      { ...this.getShrinePosition(), radius: 46 },
+    ];
+
+    if (this.regionConfig.next) {
+      pads.push({ x: 1784, y: 416, radius: 58 });
+    }
+
+    for (const encounter of this.regionConfig.encounters ?? []) {
+      pads.push({
+        x: encounter.position.x,
+        y: encounter.position.y,
+        radius: encounter.kind === 'boss' ? 58 : 44,
+      });
+    }
+
+    return pads;
+  }
+
+  private getGuidePosition(): { x: number; y: number } {
+    return this.regionConfig.guidePosition ?? { x: 960, y: 336 };
+  }
+
+  private getShrinePosition(): { x: number; y: number } {
+    return this.regionConfig.shrinePosition ?? { x: 960, y: 536 };
   }
 
   private createEncounterObjects(): void {
@@ -442,6 +481,21 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     TransitionManager.pixelDissolve(this, sceneKey, { returnScene: this.regionConfig.sceneKey });
   }
 
+  private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
+    return isFutureRegionStepWalkable(point, this.getCollisionBlockers(), 0, this.getRouteRects());
+  }
+
+  private getCollisionBlockers(): FutureRegionCollisionBlocker[] {
+    return [
+      ...this.interactables.map((object) => object.getPosition()),
+      ...this.encounterObjects.map((object) => object.getPosition()),
+    ];
+  }
+
+  private getRouteRects(): FutureRegionRouteRect[] {
+    return this.regionConfig.routeRects ?? FUTURE_REGION_ROUTE_RECTS;
+  }
+
   private showNote(speaker: string, body: string | string[]): void {
     if (this.dialogueSystem.isDialogueActive()) return;
     const tree: DialogueTree = {
@@ -458,7 +512,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   shutdown(): void {
-    this.input.keyboard?.off('keydown-ESC', this.onEscPause);
+    this.input.keyboard?.off('keydown-ESC', this.onEscReturnToTitle);
     this.dialogueSystem?.destroy();
     this.interactionSystem?.destroy();
     this.hud?.destroy();

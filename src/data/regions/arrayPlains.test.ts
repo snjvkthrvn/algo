@@ -67,11 +67,13 @@ describe('Array Plains route helpers', () => {
       'grain_hopper',
       'pairing_grounds',
       'shuffler_lane',
+      'sequence_puzzle',
     ]);
 
     expect(isPointOnArrayPlainsRoute({ x: 512, y: 384 })).toBe(true);
     expect(isPointOnArrayPlainsRoute({ x: 1784, y: 416 })).toBe(true);
-    expect(isPointOnArrayPlainsRoute({ x: 512, y: 448 })).toBe(false);
+    expect(isPointOnArrayPlainsRoute({ x: 512, y: 448 })).toBe(true);
+    expect(isPointOnArrayPlainsRoute({ x: 512, y: 608 })).toBe(false);
     expect(isPointOnArrayPlainsRoute({ x: 512, y: 96 })).toBe(false);
   });
 

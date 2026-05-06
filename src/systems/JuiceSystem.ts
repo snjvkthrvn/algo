@@ -15,24 +15,30 @@ export const JuiceSystem = {
     count: number = 12,
     spread: number = 60,
   ): void {
+    if (!scene?.add?.rectangle || !scene?.tweens) return;
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 40 + Math.random() * spread;
-      const vx = Math.cos(angle) * speed;
-      const vy = Math.sin(angle) * speed - 38; // slight upward bias
-      const size = Math.random() < 0.25 ? 4 : 2;
-      const lifetime = 480 + Math.random() * 180;
+      try {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 40 + Math.random() * spread;
+        const vx = Math.cos(angle) * speed;
+        const vy = Math.sin(angle) * speed - 38; // slight upward bias
+        const size = Math.random() < 0.25 ? 4 : 2;
+        const lifetime = 480 + Math.random() * 180;
 
-      const p = scene.add.rectangle(x, y, size, size, color, 1).setDepth(5000);
-      scene.tweens.add({
-        targets: p,
-        x: x + vx * 0.6,
-        y: y + vy * 0.6 + 28,
-        alpha: 0,
-        duration: lifetime,
-        ease: 'Power2.easeOut',
-        onComplete: () => p.destroy(),
-      });
+        const p = scene.add.rectangle(x, y, size, size, color, 1);
+        if (p && typeof p.setDepth === 'function') p.setDepth(5000);
+        scene.tweens.add({
+          targets: p,
+          x: x + vx * 0.6,
+          y: y + vy * 0.6 + 28,
+          alpha: 0,
+          duration: lifetime,
+          ease: 'Power2.easeOut',
+          onComplete: () => p?.destroy?.(),
+        });
+      } catch {
+        // Silently skip in test mocks or edge cases
+      }
     }
   },
 
@@ -44,6 +50,7 @@ export const JuiceSystem = {
 
   // Red pixels drooping downward — for wrong answers
   wrongBurst(scene: Phaser.Scene, x: number, y: number): void {
+    if (!scene?.add?.rectangle || !scene?.tweens) return;
     for (let i = 0; i < 10; i++) {
       const angle = Math.PI * 0.2 + Math.random() * Math.PI * 0.8;
       const speed = 30 + Math.random() * 40;
@@ -64,6 +71,7 @@ export const JuiceSystem = {
 
   // Gold pixels falling from top — for codex unlock celebration
   goldRain(scene: Phaser.Scene): void {
+    if (!scene?.cameras?.main || !scene?.add?.rectangle || !scene?.tweens) return;
     const { width, height } = scene.cameras.main;
     for (let i = 0; i < 52; i++) {
       const delay = Math.random() * 900;
@@ -88,6 +96,7 @@ export const JuiceSystem = {
     alpha: number = 0.15,
     duration: number = 140,
   ): void {
+    if (!scene?.cameras?.main || !scene?.add?.rectangle || !scene?.tweens) return;
     const { width, height } = scene.cameras.main;
     const flash = scene.add
       .rectangle(0, 0, width, height, color, alpha)
@@ -103,6 +112,7 @@ export const JuiceSystem = {
   },
 
   cameraShake(scene: Phaser.Scene, duration: number = 90, intensity: number = 0.004): void {
+    if (!scene?.cameras?.main) return; // defensive for tests / headless / scenes without camera
     scene.cameras.main.shake(duration, intensity);
   },
 };

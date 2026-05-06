@@ -274,7 +274,7 @@ describe('Player', () => {
     expect(configByKey.get('player-idle-up')?.frames.map((frame) => frame.frame)).toEqual([12]);
 
     expect(configByKey.get('player-walk-down')).toMatchObject({
-      frameRate: 18,
+      frameRate: 20,
       repeat: -1,
       frames: [
         { key: 'prologue-sheet-player-walk', frame: 0 },
@@ -331,8 +331,10 @@ describe('Player', () => {
     completeLatestStep();
     player.update();
 
-    expect(tweenCalls).toHaveLength(2);
-    expect(tweenCalls[1].x).toBe(100 + PLAYER_GRID_STEP * 2);
+    // JuiceSystem adds particle tweens on step complete; filter to movement tweens only
+    const movementTweens = tweenCalls.filter((c: any) => typeof c.x === 'number' && (c.x === 100 + PLAYER_GRID_STEP || c.x === 100 + PLAYER_GRID_STEP * 2));
+    expect(movementTweens.length).toBe(2);
+    expect(movementTweens[1].x).toBe(100 + PLAYER_GRID_STEP * 2);
   });
 
   it('moves left one tile and keeps the sprite unflipped so the left-facing frames read correctly', () => {

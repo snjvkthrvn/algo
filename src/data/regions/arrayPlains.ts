@@ -28,6 +28,7 @@ export const ARRAY_PLAINS_ROUTE_RECTS: ArrayPlainsRouteRect[] = [
   { id: 'grain_hopper', x: 1000, y: 208, width: 256, height: 184 },
   { id: 'pairing_grounds', x: 1320, y: 208, width: 256, height: 184 },
   { id: 'shuffler_lane', x: 1544, y: 312, width: 336, height: 168 },
+  { id: 'sequence_puzzle', x: 400, y: 416, width: 320, height: 160 },
 ];
 
 const pointInsideRect = (

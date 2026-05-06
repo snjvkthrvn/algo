@@ -11,6 +11,8 @@ import { audioManager } from '../core/AudioManager';
 import { TransitionManager } from '../core/TransitionManager';
 import { moveMenuSelection } from '../input/MenuNavigation';
 import { drawPanel } from '../ui/panel';
+import { a11yManager } from '../core/A11yManager';
+import type { TitleMenuLaunchData } from './titleNavigation';
 
 // Persists for the entire browser session — scramble plays once only
 let menuTitleAssembled = false;
@@ -41,6 +43,7 @@ export class MenuScene extends Phaser.Scene {
   private selectedMenuIndex = 0;
   private closeSettingsModal: (() => void) | null = null;
   private closeConfirmModal: (() => void) | null = null;
+  private preferResume = false;
 
   private readonly onMenuUp = () => this.moveSelectedMenuItem(-1);
   private readonly onMenuW = () => this.moveSelectedMenuItem(-1);
@@ -57,6 +60,10 @@ export class MenuScene extends Phaser.Scene {
 
   constructor() {
     super({ key: SCENE_KEYS.MENU });
+  }
+
+  init(data: TitleMenuLaunchData = {}): void {
+    this.preferResume = data.preferResume === true;
   }
 
   create(): void {
@@ -108,11 +115,17 @@ export class MenuScene extends Phaser.Scene {
     line.strokePath();
 
     // Menu items — built but rendered invisible for slide-up entrance
-    this.menuItems = [{ text: 'NEW GAME', callback: () => this.startNewGame() }];
-    if (saveLoadManager.hasSave()) {
+    const hasSave = saveLoadManager.hasSave();
+    this.menuItems = [];
+    if (hasSave && this.preferResume) {
+      this.menuItems.push({ text: 'RESUME', callback: () => this.continueGame() });
+    }
+    this.menuItems.push({ text: 'NEW GAME', callback: () => this.startNewGame() });
+    if (hasSave && !this.preferResume) {
       this.menuItems.push({ text: 'CONTINUE', callback: () => this.continueGame() });
     }
     this.menuItems.push({ text: 'SETTINGS', callback: () => this.openSettings() });
+    this.menuItems.push({ text: 'DEBUG SELECT', callback: () => TransitionManager.swirl(this, SCENE_KEYS.DEBUG_SELECT) });
 
     this.menuTexts = [];
     this.menuItems.forEach((item, index) => {
@@ -302,7 +315,9 @@ export class MenuScene extends Phaser.Scene {
     const solvedLabel = solvedCount === 1 ? 'PUZZLE' : 'PUZZLES';
     const finalY = 478;
 
-    this.saveSummaryText = this.add.text(width / 2, menuTitleAssembled ? finalY : finalY + 28, `CONTINUE: ${regionName.toUpperCase()} | ${solvedCount} ${solvedLabel}`, {
+    const summaryLabel = this.preferResume ? 'RESUME' : 'CONTINUE';
+
+    this.saveSummaryText = this.add.text(width / 2, menuTitleAssembled ? finalY : finalY + 28, `${summaryLabel}: ${regionName.toUpperCase()} | ${solvedCount} ${solvedLabel}`, {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
       color: '#e0f8d0',
@@ -365,6 +380,10 @@ export class MenuScene extends Phaser.Scene {
       text.setBackgroundColor(selected ? '#e0f8d0' : 'transparent');
       text.setPadding(selected ? 6 : 0, selected ? 4 : 0, selected ? 6 : 0, selected ? 4 : 0);
     });
+
+    if (menuTitleAssembled && this.menuItems.length > 0) {
+      a11yManager.announce(this.menuItems[this.selectedMenuIndex].text);
+    }
   }
 
   private startNewGame(): void {

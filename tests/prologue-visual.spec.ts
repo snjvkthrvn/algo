@@ -443,10 +443,38 @@ test.describe('Prologue region – visual audit', () => {
 
     const pos = await getScenePlayerPosition(page, 'ArrayPlainsScene');
     expect(pos).not.toBeNull();
-    expect(pos!.x).toBeGreaterThanOrEqual(192);
-    expect(pos!.x).toBeLessThanOrEqual(256);
-    expect(pos!.y).toBeGreaterThanOrEqual(304);
-    expect(pos!.y).toBeLessThanOrEqual(368);
+    expect(pos!.x).toBeCloseTo(400, 0);
+    expect(pos!.y).toBeCloseTo(448, 0);
+  });
+
+  test('08b - Escape returns to title with Resume first', async ({ page }) => {
+    await goToArrayPlainsViaContinue(page);
+
+    await page.keyboard.press('Escape');
+    await waitForScene(page, 'MenuScene', 8_000);
+
+    const menuState = await page.waitForFunction(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('MenuScene') as Record<string, unknown> | null;
+      const items = scene?.['menuItems'] as Array<{ text: string }> | undefined;
+      const texts = scene?.['menuTexts'] as Array<{ alpha?: number }> | undefined;
+      if (!items?.length || !texts?.length || (texts[0].alpha ?? 0) < 0.95) return null;
+      return {
+        items: items.map(item => item.text),
+        selectedIndex: scene?.['selectedMenuIndex'] as number | undefined,
+      };
+    }, { timeout: 8_000 });
+
+    const { items, selectedIndex } = await menuState.jsonValue();
+    expect(items[0]).toBe('RESUME');
+    expect(items).toContain('NEW GAME');
+    expect(selectedIndex).toBe(0);
+
+    const savedRegion = await page.evaluate(() => {
+      const saveData = localStorage.getItem('algorithmia_save_v1');
+      return saveData ? JSON.parse(saveData).player.region : null;
+    });
+    expect(savedRegion).toBe('array_plains');
   });
 
   test('09 - Continue with unknown region falls back to Prologue', async ({ page }) => {
