@@ -181,6 +181,18 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PUZZLE_CORE_PROTOCOL_OMEGA_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/core_protocol_omega_backdrop_v1.png` },
 ];
 
+/**
+ * Prologue asset audit notes (Task 1 - Setup & Asset Audit)
+ * Current state: Most rework assets exist and are substantial (>1MB sprites).
+ * Identified gaps / low-quality items needing Grok regeneration:
+ * - Player spritesheet: missing idle breathe animation frames + foot dust particle variants.
+ * - No dedicated hint bubble UI elements for educational tooltips.
+ * - NPC emotes (rune-keeper, console-keeper, professor-node) lack expression variants.
+ * - Array element icons (for sorting/ordering puzzles) not yet extracted as reusable sprites.
+ * Planned files (placeholders added below): player_improved.png, hint_bubble.png, npc_emote.png, array_element_icon.png
+ * These will be saved to public/assets/prologue_rework/ after external Grok image generation.
+ * Legacy SPRITE_ASSETS (old prologue/ sheets) should be phased out once improved versions land.
+ */
 export const PROLOGUE_REWORK_KEYS = {
   VOID_BG: 'prologue-rework-void-bg',
   AWAKENING_PLATFORM: 'prologue-rework-awakening-platform',
@@ -208,6 +220,11 @@ export const PROLOGUE_REWORK_KEYS = {
   PUZZLE_CHAMBER_FRAME: 'prologue-rework-puzzle-chamber-frame',
   DIALOGUE_BOX: 'prologue-rework-dialogue-box',
   PROMPT: 'prologue-rework-prompt',
+  // --- Planned improvements (Task 1 audit) ---
+  PLAYER_IMPROVED: 'prologue-rework-player-improved',
+  HINT_BUBBLE: 'prologue-rework-hint-bubble',
+  NPC_EMOTE: 'prologue-rework-npc-emote',
+  ARRAY_ELEMENT_ICON: 'prologue-rework-array-element-icon',
 } as const;
 
 export const PROLOGUE_REWORK_IMAGE_ASSETS: AssetEntry[] = [
@@ -237,6 +254,11 @@ export const PROLOGUE_REWORK_IMAGE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME, path: `${REWORK_BASE}/ui/puzzle_chamber_frame.png` },
   { key: PROLOGUE_REWORK_KEYS.DIALOGUE_BOX, path: `${REWORK_BASE}/ui/dialogue_box.png` },
   { key: PROLOGUE_REWORK_KEYS.PROMPT, path: `${REWORK_BASE}/ui/prompt.png` },
+  // Placeholder entries for regenerated assets (Task 1)
+  { key: PROLOGUE_REWORK_KEYS.PLAYER_IMPROVED, path: `${REWORK_BASE}/characters/player_improved.png` },
+  { key: PROLOGUE_REWORK_KEYS.HINT_BUBBLE, path: `${REWORK_BASE}/ui/hint_bubble.png` },
+  { key: PROLOGUE_REWORK_KEYS.NPC_EMOTE, path: `${REWORK_BASE}/characters/npc_emote.png` },
+  { key: PROLOGUE_REWORK_KEYS.ARRAY_ELEMENT_ICON, path: `${REWORK_BASE}/objects/array_element_icon.png` },
 ];
 
 export const ARRAY_PLAINS_KEYS = {
