@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   basketIndexForItem,
+  getSortingEducationalTooltip,
   hashBucket,
   isSortedAscending,
   isTwoSumPair,
@@ -32,5 +33,13 @@ describe('arrayPlainsPuzzleLogic', () => {
     expect(isTwoSumPair([3, 6, 2, 7], 9, [3, 6])).toBe(true);
     expect(isTwoSumPair([3, 6, 2, 7], 9, [2, 7])).toBe(true);
     expect(isTwoSumPair([3, 6, 2, 7], 9, [3, 2])).toBe(false);
+  });
+
+  it('provides educational sorting tooltip mentioning O(n log n) and comparisons', () => {
+    // failing until implemented
+    expect(typeof getSortingEducationalTooltip).toBe('function');
+    const tip = getSortingEducationalTooltip();
+    expect(tip).toContain('O(n log n)');
+    expect(tip).toContain('comparison');
   });
 });

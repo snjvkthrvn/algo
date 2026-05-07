@@ -49,3 +49,7 @@ export function isTwoSumPair(values: readonly number[], target: number, selected
   if (!selected.every((value) => values.includes(value))) return false;
   return selected[0] + selected[1] === target;
 }
+
+export function getSortingEducationalTooltip(): string {
+  return "Compare adjacent elements and swap if out of order. Bubble sort is O(n^2) comparisons; efficient sorts use O(n log n) like merge/quick.";
+}
