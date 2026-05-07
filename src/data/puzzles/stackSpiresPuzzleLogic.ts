@@ -136,3 +136,47 @@ export const RECURSION_ROUNDS: StackSpiresChoiceRound[] = [
 export function isCorrectStackChoice(round: StackSpiresChoiceRound, choiceIndex: number): boolean {
   return choiceIndex === round.correctIndex;
 }
+
+export interface LifoStackState {
+  height: number;
+  items: readonly string[];
+}
+
+export interface LifoAnimResult {
+  height: number;
+  tween: { from: number; to: number; type: string };
+  particles: string;
+  reverse?: boolean;
+}
+
+export function createLifoStack(): LifoStackState {
+  return { height: 0, items: [] };
+}
+
+export function pushWithAnim(state: LifoStackState, item: string): LifoAnimResult {
+  const newItems = [...state.items, item];
+  const newHeight = newItems.length;
+  return {
+    height: newHeight,
+    tween: { from: state.height, to: newHeight, type: 'height' },
+    particles: 'push-spark',
+  };
+}
+
+export function popWithAnim(state: LifoStackState): LifoAnimResult {
+  const newItems = state.items.slice(0, -1);
+  const newHeight = newItems.length;
+  return {
+    height: newHeight,
+    tween: { from: state.height, to: newHeight, type: 'height' },
+    particles: 'pop-spark',
+    reverse: true,
+  };
+}
+
+export function getLifoHint(action: string): string {
+  if (action === 'push') return 'Push adds to the top of the stack.';
+  if (action === 'pop') return 'Pop removes from the top (LIFO).';
+  if (action === 'undo') return 'Undo reverses the last push/pop.';
+  return 'Last In, First Out: top element leaves first.';
+}
