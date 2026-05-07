@@ -6,6 +6,7 @@ import {
   POINTER_BRIDGE_ROUNDS,
   VARIABLE_WINDOW_ROUNDS,
   isCorrectChoice,
+  getNextFlowStep,
 } from './twinRiversPuzzleLogic';
 
 describe('Twin Rivers puzzle logic', () => {
@@ -35,5 +36,10 @@ describe('Twin Rivers puzzle logic', () => {
     const round = MIRROR_WALK_ROUNDS[0];
     expect(round.education).toBeDefined();
     expect(round.education).toContain('queue');
+  });
+
+  it('provides next step guidance for smooth puzzle progression', () => {
+    const step = getNextFlowStep('mirror_walk', 0);
+    expect(step).toMatchObject({ nextRound: 1, hint: expect.any(String) });
   });
 });

@@ -138,3 +138,7 @@ export const MIRROR_SERPENT_ROUNDS: TwinRiversChoiceRound[] = [
 export function isCorrectChoice(round: TwinRiversChoiceRound, choiceIndex: number): boolean {
   return choiceIndex === round.correctIndex;
 }
+
+export function getNextFlowStep(puzzleId: string, currentRound: number) {
+  return { nextRound: currentRound + 1, hint: 'Mirror both banks' };
+}
