@@ -12,7 +12,7 @@ export interface ScriptedChoiceRound {
   success: string;
 }
 
-type Motif = 'queue' | 'tree' | 'graph' | 'core';
+type Motif = 'river' | 'hash' | 'stack' | 'queue' | 'tree' | 'graph' | 'core';
 
 export interface ScriptedChoiceTheme {
   markerLabel: string;
@@ -92,6 +92,12 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
 
   private createMotif(): Phaser.GameObjects.GameObject[] {
     switch (this.theme.motif) {
+      case 'river':
+        return this.createRiverMotif();
+      case 'hash':
+        return this.createHashMotif();
+      case 'stack':
+        return this.createStackMotif();
       case 'queue':
         return this.createQueueMotif();
       case 'tree':
@@ -101,6 +107,32 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
       case 'core':
         return this.createCoreMotif();
     }
+  }
+
+  private createRiverMotif(): Phaser.GameObjects.GameObject[] {
+    const blue = this.add.circle(-48, -18, 24, this.theme.secondaryAccentColor, 0.9)
+      .setStrokeStyle(3, 0xe0f8d0, 0.88);
+    const orange = this.add.circle(48, -18, 24, this.theme.accentColor, 0.9)
+      .setStrokeStyle(3, 0xe0f8d0, 0.88);
+    const link = this.add.rectangle(0, -18, 72, 8, 0xe0f8d0, 0.88)
+      .setStrokeStyle(1, 0x081820, 0.5);
+    const pointer = this.add.triangle(0, 18, -14, -10, 14, -10, 0, 12, this.theme.accentColor, 0.82)
+      .setStrokeStyle(2, 0x081820, 0.52);
+    return [link, blue, orange, pointer];
+  }
+
+  private createHashMotif(): Phaser.GameObjects.GameObject[] {
+    return [-84, -42, 42, 84].map((x, index) =>
+      this.add.rectangle(x, -14, 28, 28, index % 2 === 0 ? this.theme.accentColor : this.theme.secondaryAccentColor, 0.78)
+        .setStrokeStyle(2, 0x081820, 0.7));
+  }
+
+  private createStackMotif(): Phaser.GameObjects.GameObject[] {
+    return [-36, -12, 12, 36].map((y, index) => {
+      const color = index === 0 ? this.theme.accentColor : index % 2 === 0 ? this.theme.secondaryAccentColor : 0xfbbf24;
+      return this.add.rectangle(0, y - 20, 92, 18, color, 0.74)
+        .setStrokeStyle(2, 0x081820, 0.7);
+    });
   }
 
   private createQueueMotif(): Phaser.GameObjects.GameObject[] {
