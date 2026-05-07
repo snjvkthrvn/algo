@@ -4,6 +4,7 @@ import {
   TWIN_RIVERS_ROUTE_RECTS,
   isTwinRiversStepWalkable,
   isPointOnTwinRiversRoute,
+  TWIN_RIVERS_PARTICLE_CONFIG,
 } from './twinRivers';
 
 describe('TWIN_RIVERS_CONFIG', () => {
@@ -72,5 +73,15 @@ describe('Twin Rivers route helpers', () => {
       { x: 576, y: 384 },
       [{ x: 544, y: 384 }]
     )).toBe(true);
+  });
+});
+
+describe('Twin Rivers particles', () => {
+  it('exports river flow particle configuration', () => {
+    expect(TWIN_RIVERS_PARTICLE_CONFIG).toMatchObject({
+      density: expect.any(Number),
+      speed: expect.any(Number),
+      color: expect.any(String),
+    });
   });
 });

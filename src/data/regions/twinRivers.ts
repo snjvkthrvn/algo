@@ -4,6 +4,14 @@ import { REGIONS } from '../../config/constants';
 export const TWIN_RIVERS_WORLD_WIDTH = 1920;
 export const TWIN_RIVERS_WORLD_HEIGHT = 720;
 
+export const TWIN_RIVERS_PARTICLE_CONFIG = {
+  density: 24,
+  speed: 1.2,
+  color: '#7dd3fc',
+  size: 2,
+  flowDirection: 'horizontal' as const,
+};
+
 export interface TwinRiversRouteRect {
   id: string;
   x: number;
