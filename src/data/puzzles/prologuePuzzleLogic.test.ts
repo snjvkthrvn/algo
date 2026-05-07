@@ -1,60 +1,70 @@
 import { describe, expect, it } from 'vitest';
 import {
-  SEQUENCE_ROUNDS,
-  runeIdToTileIndex,
-  getShardTarget,
+  createInitialArray,
+  accessByIndex,
+  reorderArray,
+  sequentialAccess,
+  getFloatingHint,
+  mutateAndFeedback,
+  ArrayPuzzleState,
 } from './prologuePuzzleLogic';
 
-describe('prologuePuzzleLogic', () => {
-  describe('SEQUENCE_ROUNDS', () => {
-    it('has exactly three rounds with increasing length', () => {
-      expect(SEQUENCE_ROUNDS.length).toBe(3);
-      expect(SEQUENCE_ROUNDS[0].length).toBe(3);
-      expect(SEQUENCE_ROUNDS[1].length).toBe(5);
-      expect(SEQUENCE_ROUNDS[2].length).toBe(7);
-    });
-
-    it('all rune IDs are in the rune-1..rune-6 range', () => {
-      for (const round of SEQUENCE_ROUNDS) {
-        for (const id of round) {
-          expect(id).toMatch(/^rune-[1-6]$/);
-        }
-      }
+describe('prologuePuzzleLogic - Array Intro', () => {
+  describe('createInitialArray', () => {
+    it('creates ordered sequence of runes for indexing practice', () => {
+      const arr = createInitialArray();
+      expect(arr).toEqual(['rune-1', 'rune-2', 'rune-3', 'rune-4']);
+      expect(arr.length).toBe(4);
     });
   });
 
-  describe('runeIdToTileIndex', () => {
-    it('converts rune-1 through rune-6 to zero-based tile indices', () => {
-      expect(runeIdToTileIndex('rune-1')).toBe(0);
-      expect(runeIdToTileIndex('rune-2')).toBe(1);
-      expect(runeIdToTileIndex('rune-3')).toBe(2);
-      expect(runeIdToTileIndex('rune-4')).toBe(3);
-      expect(runeIdToTileIndex('rune-5')).toBe(4);
-      expect(runeIdToTileIndex('rune-6')).toBe(5);
+  describe('accessByIndex', () => {
+    it('returns element at 0-based index and hint about indices starting at 0', () => {
+      const state: ArrayPuzzleState = { array: ['a', 'b', 'c'], feedback: '' };
+      const result = accessByIndex(state, 0);
+      expect(result.value).toBe('a');
+      expect(result.hint).toContain('indices start at 0');
     });
 
-    it('clamps out-of-range values to 0..5', () => {
-      expect(runeIdToTileIndex('rune-0')).toBe(0);
-      expect(runeIdToTileIndex('rune-7')).toBe(5);
-    });
-
-    it('returns 0 for malformed ids', () => {
-      expect(runeIdToTileIndex('rune')).toBe(0);
-      expect(runeIdToTileIndex('')).toBe(0);
-      expect(runeIdToTileIndex('tile-1')).toBe(0);
+    it('provides immediate feedback on valid access', () => {
+      const state: ArrayPuzzleState = { array: ['a', 'b'], feedback: '' };
+      const result = accessByIndex(state, 1);
+      expect(result.feedback).toContain('order matters');
     });
   });
 
-  describe('getShardTarget', () => {
-    it('maps each shard shape to the matching console color', () => {
-      expect(getShardTarget('triangle')).toBe('red');
-      expect(getShardTarget('diamond')).toBe('blue');
-      expect(getShardTarget('circle')).toBe('green');
+  describe('reorderArray', () => {
+    it('mutates array visually and emphasizes order', () => {
+      const state: ArrayPuzzleState = { array: [1, 2, 3], feedback: '' };
+      const newState = reorderArray(state, [2, 0, 1]);
+      expect(newState.array).toEqual([3, 1, 2]);
+      expect(newState.feedback).toContain('arrays hold sequences');
     });
+  });
 
-    it('returns null for unknown shard ids', () => {
-      expect(getShardTarget('square')).toBeNull();
-      expect(getShardTarget('')).toBeNull();
+  describe('sequentialAccess', () => {
+    it('flows through array sequentially for algorithm intro', () => {
+      const state: ArrayPuzzleState = { array: ['x', 'y', 'z'], feedback: '' };
+      const result = sequentialAccess(state);
+      expect(result.visited).toEqual(['x', 'y', 'z']);
+      expect(result.flowHint).toContain('Sequential access');
+    });
+  });
+
+  describe('getFloatingHint', () => {
+    it('returns educational floating hints', () => {
+      expect(getFloatingHint('index')).toContain('indices start at 0');
+      expect(getFloatingHint('order')).toContain('order matters');
+      expect(getFloatingHint('sequence')).toContain('arrays hold sequences');
+    });
+  });
+
+  describe('mutateAndFeedback', () => {
+    it('provides visual mutation feedback immediately', () => {
+      const state: ArrayPuzzleState = { array: ['p', 'q'], feedback: '' };
+      const mutated = mutateAndFeedback(state, 'swap', 0, 1);
+      expect(mutated.array).toEqual(['q', 'p']);
+      expect(mutated.feedback).toBeTruthy();
     });
   });
 });

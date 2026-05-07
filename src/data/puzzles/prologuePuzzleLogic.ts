@@ -1,34 +1,48 @@
-/**
- * Prologue puzzle rules from the visual prototype (pokemon_based_game_visuals).
- * Fixed sequence rounds and shard→console mapping for P0-1 / P0-2.
- */
+export type ArrayPuzzleState = {
+  array: any[];
+  feedback: string;
+};
 
-export const SEQUENCE_ROUNDS = [
-  ['rune-1', 'rune-2', 'rune-3'],
-  ['rune-2', 'rune-4', 'rune-1', 'rune-5', 'rune-3'],
-  ['rune-5', 'rune-1', 'rune-4', 'rune-2', 'rune-3', 'rune-6', 'rune-4'],
-] as const;
-
-export type RuneId = (typeof SEQUENCE_ROUNDS)[number][number];
-
-export const SHARD_TARGETS = {
-  triangle: 'red',
-  diamond: 'blue',
-  circle: 'green',
-} as const;
-
-export type ShardKind = keyof typeof SHARD_TARGETS;
-export type ConsoleKind = (typeof SHARD_TARGETS)[ShardKind];
-
-export function runeIdToTileIndex(id: string): number {
-  const match = /^rune-(\d+)$/.exec(id);
-  if (!match) return 0;
-  return Math.max(0, Math.min(5, Number.parseInt(match[1], 10) - 1));
+export function createInitialArray(): string[] {
+  return ['rune-1', 'rune-2', 'rune-3', 'rune-4'];
 }
 
-export function getShardTarget(shardId: string): ConsoleKind | null {
-  if (shardId in SHARD_TARGETS) {
-    return SHARD_TARGETS[shardId as ShardKind];
+export function accessByIndex(state: ArrayPuzzleState, index: number) {
+  const value = state.array[index];
+  const hint = 'Remember: indices start at 0';
+  const feedback = index >= 0 ? 'Access successful - order matters in sequences' : '';
+  return { value, hint, feedback };
+}
+
+export function reorderArray(state: ArrayPuzzleState, newOrder: number[]): ArrayPuzzleState {
+  const newArr = newOrder.map(i => state.array[i]);
+  return {
+    array: newArr,
+    feedback: 'Reordered: arrays hold sequences of data flowing through algorithms',
+  };
+}
+
+export function sequentialAccess(state: ArrayPuzzleState) {
+  return {
+    visited: [...state.array],
+    flowHint: 'Sequential access: simple flow of data step-by-step',
+  };
+}
+
+export function getFloatingHint(topic: string): string {
+  if (topic === 'index') return 'Floating hint: indices start at 0';
+  if (topic === 'order') return 'Floating hint: order matters';
+  if (topic === 'sequence') return 'Floating hint: arrays hold sequences';
+  return 'Hint: explore the array flow';
+}
+
+export function mutateAndFeedback(state: ArrayPuzzleState, op: string, i: number, j: number): ArrayPuzzleState {
+  const arr = [...state.array];
+  if (op === 'swap') {
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return null;
+  return {
+    array: arr,
+    feedback: 'Visual mutation complete - immediate feedback on array change',
+  };
 }
