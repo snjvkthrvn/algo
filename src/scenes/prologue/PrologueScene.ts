@@ -47,7 +47,9 @@ import {
 import { PrologueTilemapRenderer, type PrologueTilemapHandle } from '../../systems/PrologueTilemapRenderer';
 import { PrologueRouteRenderer, type PrologueRouteHandle } from '../../systems/PrologueRouteRenderer';
 import { PROLOGUE_CAMERA_TUNING } from './cameraTuning';
+import { CAMERA_TUNING } from '../../config/constants';
 import { setupUICamera } from '../../utils/uiCamera';
+import { saveAndReturnToTitle } from '../titleNavigation';
 
 const NODE_INTRO_LINES = [
   { speaker: 'Professor Node', text: 'Ah. There you are. I was beginning to wonder.' },
@@ -81,6 +83,7 @@ export class PrologueScene extends Phaser.Scene {
   private hasShutdown = false;
   private onDialogueAction!: (...args: unknown[]) => void;
   private onGateOpen!: (...args: unknown[]) => void;
+  private readonly onEscReturnToTitle = () => this.returnToTitle();
 
   constructor() {
     super({ key: SCENE_KEYS.PROLOGUE });
@@ -213,14 +216,14 @@ export class PrologueScene extends Phaser.Scene {
     // === CAMERA ===
     const camera = this.cameras.main;
     camera.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    camera.setZoom(PROLOGUE_CAMERA_TUNING.zoom);
+    camera.setZoom(CAMERA_TUNING.ZOOM);
     camera.startFollow(
       this.player.sprite,
       true,
-      PROLOGUE_CAMERA_TUNING.followLerpX,
-      PROLOGUE_CAMERA_TUNING.followLerpY
+      CAMERA_TUNING.FOLLOW_LERP,
+      CAMERA_TUNING.FOLLOW_LERP
     );
-    camera.setDeadzone(PROLOGUE_CAMERA_TUNING.deadzoneWidth, PROLOGUE_CAMERA_TUNING.deadzoneHeight);
+    camera.setDeadzone(CAMERA_TUNING.DEADZONE_WIDTH, CAMERA_TUNING.DEADZONE_HEIGHT);
 
     // === VOID RESPAWN ===
     this.safePositionTimer = this.time.addEvent({
@@ -259,6 +262,7 @@ export class PrologueScene extends Phaser.Scene {
     } else {
       showRegionIntro();
     }
+    this.input.keyboard?.on('keydown-ESC', this.onEscReturnToTitle);
   }
 
   update(): void {
@@ -266,13 +270,25 @@ export class PrologueScene extends Phaser.Scene {
     const inputCooldownActive = this.time.now < this.inputCooldownUntil;
     const inputBlocked = dialogueActive || this.storyBeatActive || inputCooldownActive;
 
+    // Trigger auto-walk to Professor Node when crossing the bridge
+    const pos = this.player.getPosition();
+    if (!inputBlocked && !gameState.getFlag('professor_node_intro_done') && pos.x >= 450) {
+      if (!this.storyBeatActive && getPendingPrologueBeat(this.getPrologueStoryFlags()) === 'node_intro') {
+        this.beginStoryBeat();
+        this.player.walkTo(860, pos.y, () => {
+          this.playNodeIntro();
+        });
+      }
+    }
+
     // Update player
-    if (!inputBlocked) {
+    if (!inputBlocked && !this.storyBeatActive) {
       this.player.update();
+    } else {
+      this.player.update(); // allow auto-walk tweening to continue even if input is blocked
     }
 
     // Update companion — Bit always follows, even during dialogue
-    const pos = this.player.getPosition();
     this.bit.update(pos.x, pos.y);
     if (!inputBlocked) {
       this.maybeTriggerWatcherWarning(pos);
@@ -304,7 +320,7 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
-    return isPrologueStepWalkable(point, this.getCollisionBlockers(), 10);
+    return isPrologueStepWalkable(point, this.getCollisionBlockers(), 0);
   }
 
   /**
@@ -319,7 +335,7 @@ export class PrologueScene extends Phaser.Scene {
 
     for (const dx of candidates) {
       const candidate = { x: playerPos.x + dx, y: playerPos.y };
-      if (isPrologueStepWalkable(candidate, blockers, 10)) {
+      if (isPrologueStepWalkable(candidate, blockers, 0)) {
         return candidate;
       }
     }
@@ -809,6 +825,8 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private playNodeIntro(): void {
+    if (gameState.getFlag('professor_node_intro_done')) return;
+
     this.beginStoryBeat();
     this.playCinematicSequence(NODE_INTRO_LINES, () => {
       gameState.setFlag('professor_node_intro_done', true);
@@ -816,6 +834,11 @@ export class PrologueScene extends Phaser.Scene {
       this.player.unfreeze();
       this.handlePendingPrologueBeat();
     });
+  }
+
+  private returnToTitle(): void {
+    if (this.storyBeatActive || this.dialogueSystem?.isDialogueActive()) return;
+    saveAndReturnToTitle(this);
   }
 
   private getPrologueStoryFlags(): ReturnType<typeof createPrologueStoryFlags> {
@@ -840,7 +863,7 @@ export class PrologueScene extends Phaser.Scene {
       return;
     }
     if (beat === 'node_intro') {
-      this.playNodeIntro();
+      // Node intro is handled by the position-triggered auto-walk in update()
       return;
     }
     if (beat === 'watcher_warning') {
@@ -872,8 +895,10 @@ export class PrologueScene extends Phaser.Scene {
         { speaker: 'System', text: '> Reconstructing memory index...' },
         { speaker: 'System', text: '> Partial. Continuing.' },
         { speaker: 'System', text: '> Core process: ACTIVE' },
-        { speaker: 'System', text: '> You\'re back.' },
+        { speaker: 'System', text: "> You're back." },
         { speaker: 'System', text: '> The Chamber of Flow is still here. So is your path.' },
+        { speaker: 'System', text: '> [W][A][S][D] or [ARROWS] to Move.' },
+        { speaker: 'System', text: '> [SPACE] or [ENTER] to Interact.' },
         { speaker: 'System', text: '> Begin.' },
       ],
       () => {
@@ -982,6 +1007,7 @@ export class PrologueScene extends Phaser.Scene {
     if (this.hasShutdown) return;
     this.hasShutdown = true;
     this.runCinematicCleanup();
+    this.input.keyboard?.off('keydown-ESC', this.onEscReturnToTitle);
     eventBus.off('dialogue:action', this.onDialogueAction, this);
     eventBus.off('progression:gate-open', this.onGateOpen, this);
     this.safePositionTimer?.destroy();

@@ -17,10 +17,22 @@
         width: 100%;
         height: 100%;
       }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
     </style>
   </head>
   <body>
     <div id="game-container"></div>
+    <div id="a11y-announcer" aria-live="polite" aria-atomic="true" class="sr-only"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

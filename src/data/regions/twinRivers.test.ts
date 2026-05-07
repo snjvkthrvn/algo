@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TWIN_RIVERS_CONFIG,
   TWIN_RIVERS_ROUTE_RECTS,
+  isTwinRiversStepWalkable,
   isPointOnTwinRiversRoute,
 } from './twinRivers';
 
@@ -53,10 +54,23 @@ describe('Twin Rivers route helpers', () => {
       'upper_riverbank',
       'bridge_crossing',
       'future_gate_lane',
+      'sequence_puzzle',
     ]);
 
     expect(isPointOnTwinRiversRoute({ x: 900, y: 384 })).toBe(true);
     expect(isPointOnTwinRiversRoute({ x: 900, y: 224 })).toBe(true);
     expect(isPointOnTwinRiversRoute({ x: 900, y: 120 })).toBe(false);
+  });
+
+  it('blocks object footprints while preserving adjacent interaction tiles', () => {
+    expect(isTwinRiversStepWalkable(
+      { x: 544, y: 384 },
+      [{ x: 544, y: 384 }]
+    )).toBe(false);
+
+    expect(isTwinRiversStepWalkable(
+      { x: 576, y: 384 },
+      [{ x: 544, y: 384 }]
+    )).toBe(true);
   });
 });

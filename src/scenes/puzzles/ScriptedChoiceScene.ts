@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
 import { COLORS, FONTS } from '../../config/constants';
-import { audioManager } from '../../core/AudioManager';
 import { colorToHex } from '../../utils/colors';
 import { createChoiceButton } from '../../ui/ChoiceButton';
 
@@ -237,14 +236,11 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
     const round = this.rounds[this.roundIndex];
     if (!this.isCorrectChoice(round, index)) {
       this.mistakes++;
-      this.attempts++;
-      audioManager.playWrongTone();
-      this.showMessage(this.theme.wrongMessage, COLORS.WARNING);
+      this.onWrongAnswer(this.theme.wrongMessage);
       return;
     }
 
-    audioManager.playCorrectTone();
-    this.showMessage(round.success, COLORS.SUCCESS);
+    this.onCorrectAnswer(round.success);
     this.roundIndex++;
 
     if (this.roundIndex >= this.rounds.length) {

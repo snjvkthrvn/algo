@@ -22,7 +22,11 @@ export class DialogueSystem {
   private validChoices: DialogueChoice[] = [];
   private selectedChoiceIndex: number = 0;
   private endCooldown: boolean = false;
+  private activationTime: number = 0;
   private destroyed: boolean = false;
+
+  /** SPACE that opens dialogue must not also advance it on the same frame. */
+  private static readonly OPEN_COOLDOWN_MS = 100;
 
   private readonly onAdvanceKey = () => this.handleAdvance();
   private readonly onChoiceUp = () => this.moveChoice(-1);
@@ -52,6 +56,7 @@ export class DialogueSystem {
     this.currentTree = tree;
     this.onDialogueEnd = onEnd || null;
     this.isActive = true;
+    this.activationTime = this.scene.time.now;
 
     eventBus.emit(GameEvents.DIALOGUE_START, { treeId: tree.startNodeId, npcId });
     this.showNode(tree.startNodeId);
@@ -238,6 +243,8 @@ export class DialogueSystem {
 
   private handleAdvance(): void {
     if (!this.isActive) return;
+    // Suppress the same SPACE press that opened the dialogue via InteractionSystem.
+    if (this.scene.time.now - this.activationTime < DialogueSystem.OPEN_COOLDOWN_MS) return;
     if (this.choiceContainer?.visible) {
       this.selectChoice(this.selectedChoiceIndex);
       return;

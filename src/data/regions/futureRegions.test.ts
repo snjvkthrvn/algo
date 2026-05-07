@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { REGIONS, SCENE_KEYS } from '../../config/constants';
 import {
+  CORE_REGION_ROUTE_RECTS,
   FUTURE_REGION_ROUTE_RECTS,
   FUTURE_REGION_SCENE_CONFIGS,
+  type FutureRegionSceneConfig,
+  isFutureRegionStepWalkable,
   isPointOnFutureRegionRoute,
 } from './futureRegions';
+
+const isPointOnConfiguredRoute = (
+  config: FutureRegionSceneConfig,
+  point: { x: number; y: number }
+): boolean => isPointOnFutureRegionRoute(point, 0, config.routeRects ?? FUTURE_REGION_ROUTE_RECTS);
 
 describe('future region visual configs', () => {
   it('defines a playable scene config for every post-Twin-Rivers region', () => {
@@ -22,8 +30,22 @@ describe('future region visual configs', () => {
         sceneKey,
         regionId: region,
         backgroundKey: expect.stringMatching(/^visual-revamp-/),
+        routeSurface: expect.any(String),
       });
     }
+  });
+
+  it('assigns a grounded route material to every generated region', () => {
+    expect(Object.fromEntries(
+      Object.entries(FUTURE_REGION_SCENE_CONFIGS).map(([sceneKey, config]) => [sceneKey, config.routeSurface])
+    )).toEqual({
+      [SCENE_KEYS.HASH_HIGHLANDS]: 'highland',
+      [SCENE_KEYS.STACK_SPIRES]: 'spire',
+      [SCENE_KEYS.QUEUE_CANALS]: 'canal',
+      [SCENE_KEYS.TREE_CANOPY]: 'root',
+      [SCENE_KEYS.GRAPH_NEXUS]: 'graph',
+      [SCENE_KEYS.CORE]: 'core',
+    });
   });
 
   it('keeps portal anchors and guide clearings on the shared walkable route', () => {
@@ -59,7 +81,7 @@ describe('future region visual configs', () => {
     ]);
 
     for (const encounter of config.encounters ?? []) {
-      expect(isPointOnFutureRegionRoute(encounter.position), encounter.id).toBe(true);
+      expect(isPointOnConfiguredRoute(config, encounter.position), encounter.id).toBe(true);
     }
   });
 
@@ -77,7 +99,7 @@ describe('future region visual configs', () => {
     ]);
 
     for (const encounter of config.encounters ?? []) {
-      expect(isPointOnFutureRegionRoute(encounter.position), encounter.id).toBe(true);
+      expect(isPointOnConfiguredRoute(config, encounter.position), encounter.id).toBe(true);
     }
   });
 
@@ -108,7 +130,7 @@ describe('future region visual configs', () => {
     expect(config.encounters?.map((encounter) => encounter.id)).toEqual(encounters);
 
     for (const encounter of config.encounters ?? []) {
-      expect(isPointOnFutureRegionRoute(encounter.position), encounter.id).toBe(true);
+      expect(isPointOnConfiguredRoute(config, encounter.position), encounter.id).toBe(true);
     }
   });
 
@@ -117,6 +139,23 @@ describe('future region visual configs', () => {
 
     expect(config.backgroundKey).toBe('visual-revamp-core-bg');
     expect(config.next).toBeUndefined();
+    expect(config.routeRects).toBe(CORE_REGION_ROUTE_RECTS);
+    expect(config.routeRects?.map((rect) => rect.id)).toEqual([
+      'entry_plaza',
+      'left_bridge',
+      'left_terminal_pad',
+      'center_bridge_left',
+      'upper_platform',
+      'central_hub',
+      'lower_lift',
+      'lower_terminal',
+      'center_bridge_right',
+      'final_approach',
+      'final_dais',
+    ]);
+    expect(config.shrinePosition).toEqual({ x: 1024, y: 584 });
+    expect(isPointOnConfiguredRoute(config, config.shrinePosition!)).toBe(true);
+    expect(isPointOnConfiguredRoute(config, { x: 960, y: 512 }), 'Core lower lift approach').toBe(true);
     expect(config.encounters?.map((encounter) => encounter.id)).toEqual([
       'core_1',
       'core_2',
@@ -126,7 +165,33 @@ describe('future region visual configs', () => {
     ]);
 
     for (const encounter of config.encounters ?? []) {
-      expect(isPointOnFutureRegionRoute(encounter.position), encounter.id).toBe(true);
+      expect(isPointOnConfiguredRoute(config, encounter.position), encounter.id).toBe(true);
     }
+
+    expect(isPointOnConfiguredRoute(config, { x: 192, y: 448 }), 'Core entry spawn').toBe(true);
+    expect(isPointOnConfiguredRoute(config, { x: 1712, y: 416 }), 'Core final approach').toBe(true);
+    expect(isFutureRegionStepWalkable(
+      { x: 640, y: 488 },
+      [],
+      0,
+      config.routeRects
+    )).toBe(false);
+  });
+
+  it('keeps object footprints blocked while adjacent route tiles remain usable', () => {
+    expect(isFutureRegionStepWalkable(
+      { x: 544, y: 416 },
+      [{ x: 544, y: 416 }]
+    )).toBe(false);
+
+    expect(isFutureRegionStepWalkable(
+      { x: 576, y: 416 },
+      [{ x: 544, y: 416 }]
+    )).toBe(true);
+
+    expect(isFutureRegionStepWalkable(
+      { x: 512, y: 608 },
+      []
+    )).toBe(false);
   });
 });

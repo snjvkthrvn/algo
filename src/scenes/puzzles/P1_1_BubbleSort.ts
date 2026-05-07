@@ -20,6 +20,10 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   private tiles: SortTile[] = [];
   private swapCount = 0;
   private bitHint: BitHint | null = null;
+  private timerText!: Phaser.GameObjects.Text;
+  private actionTimer: Phaser.Time.TimerEvent | null = null;
+  private timeLeft = 15;
+  private correctSwaps = 0;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_1 });
@@ -63,12 +67,59 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       padding: { x: 12, y: 8 },
     }).setOrigin(0.5).setDepth(20);
 
+    this.timerText = this.add.text(width / 2, 204, '', {
+      fontSize: '14px',
+      fontFamily: FONTS.RETRO,
+      color: '#fbbf24',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(20);
+
     for (let i = 0; i < this.values.length; i++) {
       const tile = this.createTile(startX + i * 120, y, this.values[i], i);
       this.tiles.push(tile);
     }
 
     this.bitHint = new BitHint(this, startX - 64, y - 84);
+    this.startTimer();
+  }
+
+  private startTimer(): void {
+    this.timeLeft = Math.max(5, 15 - this.correctSwaps * 2);
+    this.timerText.setText(`TIME REMAINING: ${this.timeLeft}`);
+    this.timerText.setColor('#fbbf24');
+
+    if (this.actionTimer) this.actionTimer.destroy();
+    this.actionTimer = this.time.addEvent({
+      delay: 1000,
+      repeat: -1,
+      callback: () => {
+        this.timeLeft--;
+        this.timerText.setText(`TIME REMAINING: ${this.timeLeft}`);
+        if (this.timeLeft <= 3) this.timerText.setColor('#ef4444');
+        if (this.timeLeft <= 0) this.timeOut();
+      }
+    });
+  }
+
+  private timeOut(): void {
+    if (this.actionTimer) this.actionTimer.destroy();
+    this.attempts++;
+    this.swapCount += 3;
+    audioManager.playWrongTone();
+    this.showMessage('Too slow! The array scrambles.', COLORS.WARNING);
+
+    this.values = [...BUBBLE_SORT_START];
+
+    // Sort array randomly for visual effect? Or just reset to start.
+    this.tiles.forEach((tile, i) => {
+      tile.value = this.values[i];
+      tile.label.setText(`${tile.value}`);
+      this.tweens.add({ targets: tile.container, y: tile.container.y - 10, duration: 100, yoyo: true });
+    });
+
+    this.refreshHints();
+    this.startTimer();
   }
 
   private createTile(x: number, y: number, value: number, index: number): SortTile {
@@ -120,6 +171,8 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     if (wasUseful) {
       JuiceSystem.correctBurst(this, midX, tileY);
       this.bitHint?.showWarm();
+      this.correctSwaps++;
+      this.startTimer();
     } else {
       JuiceSystem.wrongBurst(this, midX, tileY);
       this.bitHint?.showCold();
@@ -151,6 +204,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   }
 
   private complete(): void {
+    if (this.actionTimer) this.actionTimer.destroy();
     const stars = this.swapCount <= 7 ? 3 : this.swapCount <= 10 ? 2 : 1;
     this.bitHint?.celebrate();
     this.onPuzzleComplete(stars);

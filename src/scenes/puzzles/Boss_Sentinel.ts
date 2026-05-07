@@ -71,6 +71,9 @@ export class Boss_Sentinel extends BasePuzzleScene {
 
   private phaseAttempts: number[] = [0, 0, 0];
   private phaseText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
+  private phaseTimer: Phaser.Time.TimerEvent | null = null;
+  private timeLeft = 0;
 
   constructor() {
     super({ key: SCENE_KEYS.BOSS_SENTINEL });
@@ -246,6 +249,29 @@ export class Boss_Sentinel extends BasePuzzleScene {
     this.time.delayedCall(delay + 200, () => {
       this.phaseState = 'PLAYER_TURN';
       this.showMessage('Repeat the pattern while the orbs drift.', COLORS.GOLD_ACCENT);
+
+      this.timeLeft = 10 - this.p1CurrentSeq;
+      this.timerText.setText(`TIME: ${this.timeLeft}`);
+      this.timerText.setColor('#fbbf24');
+      if (this.phaseTimer) this.phaseTimer.destroy();
+      this.phaseTimer = this.time.addEvent({
+        delay: 1000,
+        repeat: -1,
+        callback: () => {
+          this.timeLeft--;
+          this.timerText.setText(`TIME: ${this.timeLeft}`);
+          if (this.timeLeft <= 3) this.timerText.setColor('#ef4444');
+          if (this.timeLeft <= 0) {
+            if (this.phaseTimer) this.phaseTimer.destroy();
+            this.phaseAttempts[0]++;
+            this.attempts++;
+            audioManager.playWrongTone();
+            this.cameras.main.shake(180, 0.004);
+            this.showMessage('Too slow. Watch the order again.', COLORS.ERROR);
+            this.time.delayedCall(800, () => this.showP1Sequence());
+          }
+        }
+      });
     });
   }
 
@@ -270,6 +296,7 @@ export class Boss_Sentinel extends BasePuzzleScene {
       this.p1PlayerInput.push(index);
 
       if (this.p1PlayerInput.length >= seq.length) {
+        if (this.phaseTimer) this.phaseTimer.destroy();
         this.p1SequencesComplete++;
         audioManager.playCorrectTone();
 
@@ -283,6 +310,7 @@ export class Boss_Sentinel extends BasePuzzleScene {
         }
       }
     } else {
+      if (this.phaseTimer) this.phaseTimer.destroy();
       this.phaseAttempts[0]++;
       this.attempts++;
       audioManager.playWrongTone();
@@ -489,6 +517,29 @@ export class Boss_Sentinel extends BasePuzzleScene {
     this.time.delayedCall(delay + 200, () => {
       this.phaseState = 'PLAYER_TURN';
       this.showMessage('Repeat the pattern and place the shard.', COLORS.GOLD_ACCENT);
+
+      this.timeLeft = 12 - this.p3Round;
+      this.timerText.setText(`TIME: ${this.timeLeft}`);
+      this.timerText.setColor('#fbbf24');
+      if (this.phaseTimer) this.phaseTimer.destroy();
+      this.phaseTimer = this.time.addEvent({
+        delay: 1000,
+        repeat: -1,
+        callback: () => {
+          this.timeLeft--;
+          this.timerText.setText(`TIME: ${this.timeLeft}`);
+          if (this.timeLeft <= 3) this.timerText.setColor('#ef4444');
+          if (this.timeLeft <= 0) {
+            if (this.phaseTimer) this.phaseTimer.destroy();
+            this.phaseAttempts[2]++;
+            this.attempts++;
+            audioManager.playWrongTone();
+            this.cameras.main.shake(180, 0.004);
+            this.showMessage('Too slow. Both skills slipped. Resetting round.', COLORS.ERROR);
+            this.time.delayedCall(900, () => this.startCombinedTrial());
+          }
+        }
+      });
     });
   }
 
@@ -503,6 +554,7 @@ export class Boss_Sentinel extends BasePuzzleScene {
       this.p1PlayerInput.push(index);
 
       if (this.p1PlayerInput.length >= seq.length) {
+        if (this.phaseTimer) this.phaseTimer.destroy();
         this.combinedRoundSolved = true;
         audioManager.playCorrectTone();
         this.finishCombinedRoundIfReady();
@@ -511,6 +563,7 @@ export class Boss_Sentinel extends BasePuzzleScene {
         }
       }
     } else {
+      if (this.phaseTimer) this.phaseTimer.destroy();
       this.phaseAttempts[2]++;
       this.attempts++;
       audioManager.playWrongTone();

@@ -12,12 +12,19 @@ export interface TwinRiversRouteRect {
   height: number;
 }
 
+export interface TwinRiversCollisionBlocker {
+  x: number;
+  y: number;
+  radiusTiles?: number;
+}
+
 export const TWIN_RIVERS_ROUTE_RECTS: TwinRiversRouteRect[] = [
   { id: 'entry_bank', x: 64, y: 320, width: 416, height: 144 },
   { id: 'lower_riverbank', x: 432, y: 336, width: 1120, height: 136 },
   { id: 'upper_riverbank', x: 432, y: 160, width: 1120, height: 112 },
   { id: 'bridge_crossing', x: 760, y: 248, width: 296, height: 176 },
   { id: 'future_gate_lane', x: 1488, y: 312, width: 344, height: 152 },
+  { id: 'sequence_puzzle', x: 1040, y: 440, width: 320, height: 160 },
 ];
 
 const pointInsideRect = (
@@ -35,6 +42,37 @@ export const isPointOnTwinRiversRoute = (
   point: { x: number; y: number },
   padding = 0
 ): boolean => TWIN_RIVERS_ROUTE_RECTS.some((rect) => pointInsideRect(point, rect, padding));
+
+const movementTile = (point: { x: number; y: number }): { col: number; row: number } => ({
+  col: Math.floor(point.x / 32),
+  row: Math.floor(point.y / 32),
+});
+
+export const isPointBlockedByTwinRiversCollision = (
+  point: { x: number; y: number },
+  blockers: TwinRiversCollisionBlocker[]
+): boolean => {
+  const target = movementTile(point);
+
+  return blockers.some((blocker) => {
+    const origin = movementTile(blocker);
+    const radiusTiles = blocker.radiusTiles ?? 0;
+
+    return (
+      Math.abs(target.col - origin.col) <= radiusTiles &&
+      Math.abs(target.row - origin.row) <= radiusTiles
+    );
+  });
+};
+
+export const isTwinRiversStepWalkable = (
+  point: { x: number; y: number },
+  blockers: TwinRiversCollisionBlocker[],
+  routePadding = 0
+): boolean => (
+  isPointOnTwinRiversRoute(point, routePadding) &&
+  !isPointBlockedByTwinRiversCollision(point, blockers)
+);
 
 export const TWIN_RIVERS_CONFIG: RegionConfig = {
   id: REGIONS.TWIN_RIVERS,

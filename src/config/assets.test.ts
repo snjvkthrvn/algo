@@ -145,6 +145,27 @@ describe('array plains asset manifest', () => {
 });
 
 describe('visual revamp asset manifest', () => {
+  it('uses grounded imagegen region backgrounds for every post-prologue overworld', () => {
+    const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
+
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe('assets/visual_revamp/regions/array_plains_grounded_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe('assets/visual_revamp/regions/twin_rivers_grounded_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG)).toBe('assets/visual_revamp/regions/hash_highlands_grounded_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.STACK_SPIRES_BG)).toBe('assets/visual_revamp/regions/stack_spires_grounded_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.QUEUE_CANALS_BG)).toBe('assets/visual_revamp/regions/queue_canals_grounded_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.TREE_CANOPY_BG)).toBe('assets/visual_revamp/regions/tree_canopy_grounded_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.GRAPH_NEXUS_BG)).toBe('assets/visual_revamp/regions/graph_nexus_grounded_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.CORE_BG)).toBe('assets/visual_revamp/regions/core_grounded_v1.png');
+  });
+
+  it('registers the imagegen-derived grounded route material atlas', () => {
+    expect(VISUAL_REVAMP_KEYS.ROUTE_MATERIALS).toBe('visual-revamp-route-materials');
+    expect(VISUAL_REVAMP_IMAGE_ASSETS).toContainEqual({
+      key: VISUAL_REVAMP_KEYS.ROUTE_MATERIALS,
+      path: 'assets/visual_revamp/regions/grounded_route_material_reference.png',
+    });
+  });
+
   it('registers the full-region visual asset set', () => {
     expect(VISUAL_REVAMP_IMAGE_ASSETS).toHaveLength(Object.keys(VISUAL_REVAMP_KEYS).length);
 

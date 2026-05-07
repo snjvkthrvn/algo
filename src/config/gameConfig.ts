@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
 import { MenuScene } from '../scenes/MenuScene';
+import { DebugSelectScene } from '../scenes/DebugSelectScene';
 import { PrologueScene } from '../scenes/prologue/PrologueScene';
 import { ArrayPlainsScene } from '../scenes/ArrayPlainsScene';
 import { TwinRiversScene } from '../scenes/TwinRiversScene';
@@ -72,6 +73,7 @@ import {
 import { ConceptBridgeScene } from '../scenes/ConceptBridgeScene';
 import { CodexScene } from '../scenes/CodexScene';
 import { CRTScene } from '../scenes/CRTScene';
+import { PauseOverlayScene } from '../scenes/PauseOverlayScene';
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -79,6 +81,10 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   width: 1280,
   height: 720,
   backgroundColor: '#0a0a1a',
+
+  dom: {
+    createContainer: true,
+  },
 
   scale: {
     mode: Phaser.Scale.FIT,
@@ -97,6 +103,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     BootScene,
     CRTScene,
     MenuScene,
+    DebugSelectScene,
     PrologueScene,
     ArrayPlainsScene,
     TwinRiversScene,
@@ -151,6 +158,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     Boss_ProtocolOmega,
     ConceptBridgeScene,
     CodexScene,
+    PauseOverlayScene,
   ],
 
   pixelArt: true,

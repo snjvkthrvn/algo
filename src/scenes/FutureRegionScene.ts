@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { VISUAL_REVAMP_KEYS } from '../config/assets';
-import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
+import { CAMERA_TUNING, COLORS, FONTS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { gameState } from '../core/GameStateManager';
 import { TransitionManager } from '../core/TransitionManager';
@@ -12,13 +12,23 @@ import {
   FUTURE_REGION_SCENE_CONFIGS,
   FUTURE_REGION_WORLD_HEIGHT,
   FUTURE_REGION_WORLD_WIDTH,
+  isFutureRegionStepWalkable,
   isPointOnFutureRegionRoute,
+  type FutureRegionCollisionBlocker,
+  type FutureRegionRouteRect,
   type FutureRegionSceneConfig,
 } from '../data/regions/futureRegions';
+import { DialogueSystem } from '../systems/DialogueSystem';
 import { HUDManager } from '../systems/HUDManager';
 import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
-import { drawPanel } from '../ui/panel';
+import {
+  ROUTE_SURFACE_STYLES,
+  renderRouteStopPads,
+  renderRouteSurfaces,
+} from '../systems/RouteSurfaceRenderer';
+import type { DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
+import { saveAndReturnToTitle } from './titleNavigation';
 
 type SpawnData = { spawnX?: number; spawnY?: number };
 
@@ -27,11 +37,15 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   private bit!: BitCompanion;
   private hud!: HUDManager;
   private interactionSystem!: InteractionSystem;
+  private dialogueSystem!: DialogueSystem;
   private readonly regionConfig: FutureRegionSceneConfig;
   private readonly interactables: InteractableObject[] = [];
   private readonly encounterObjects: InteractableObject[] = [];
   private readonly labelObjects: Phaser.GameObjects.Text[] = [];
-  private infoPanelCleanup: (() => void) | null = null;
+  private lastPlayerX: number = NaN;
+  private lastPlayerY: number = NaN;
+
+  private readonly onEscReturnToTitle = () => saveAndReturnToTitle(this);
 
   protected constructor(regionConfig: FutureRegionSceneConfig) {
     super({ key: regionConfig.sceneKey });
@@ -51,7 +65,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
 
     let px = gameState.getState().player.x;
     let py = gameState.getState().player.y;
-    if (!isPointOnFutureRegionRoute({ x: px, y: py }, 10)) {
+    if (!isPointOnFutureRegionRoute({ x: px, y: py }, 0, this.getRouteRects())) {
       px = 192;
       py = 448;
       gameState.setPlayerPosition(px, py);
@@ -64,11 +78,12 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     this.createAmbientLayer();
 
     this.player = new Player(this, px, py, {
-      canMoveTo: (point) => isPointOnFutureRegionRoute(point, 10),
+      canMoveTo: (point) => this.isPlayerStepWalkable(point),
     });
     this.bit = new BitCompanion(this, px, py);
 
     this.interactionSystem = new InteractionSystem(this, this.player);
+    this.dialogueSystem = new DialogueSystem(this);
     this.createInteractables();
     this.interactionSystem.onInteract((entry) => this.handleInteract(entry));
 
@@ -77,22 +92,28 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
 
     const camera = this.cameras.main;
     camera.setBounds(0, 0, FUTURE_REGION_WORLD_WIDTH, FUTURE_REGION_WORLD_HEIGHT);
-    camera.setZoom(2);
-    camera.startFollow(this.player.sprite, true, 1, 1);
-    camera.setDeadzone(96, 64);
+    camera.setZoom(CAMERA_TUNING.ZOOM);
+    camera.startFollow(this.player.sprite, true, CAMERA_TUNING.FOLLOW_LERP, CAMERA_TUNING.FOLLOW_LERP);
+    camera.setDeadzone(CAMERA_TUNING.DEADZONE_WIDTH, CAMERA_TUNING.DEADZONE_HEIGHT);
 
     TransitionManager.fadeIn(this, 700);
     this.hud.showRegionCard(this.regionConfig.title, this.regionConfig.subtitle);
+    this.input.keyboard?.on('keydown-ESC', this.onEscReturnToTitle);
   }
 
   update(): void {
-    const panelOpen = this.infoPanelCleanup !== null;
-    if (!panelOpen) this.player.update();
+    const dialogueActive = this.dialogueSystem?.isDialogueActive() ?? false;
+    // Always update player so auto-walk / tween chaining works even if dialogue blocks new input
+    this.player.update();
 
     const pos = this.player.getPosition();
     this.bit.update(pos.x, pos.y);
-    this.interactionSystem.update(!panelOpen);
-    gameState.setPlayerPosition(pos.x, pos.y);
+    this.interactionSystem.update(!dialogueActive);
+    if (pos.x !== this.lastPlayerX || pos.y !== this.lastPlayerY) {
+      gameState.setPlayerPosition(pos.x, pos.y);
+      this.lastPlayerX = pos.x;
+      this.lastPlayerY = pos.y;
+    }
   }
 
   private renderField(): void {
@@ -112,9 +133,14 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   private renderRoute(): void {
-    const route = this.add.graphics().setDepth(1);
-    for (const rect of FUTURE_REGION_ROUTE_RECTS) {
-      route.lineStyle(1, this.regionConfig.accentColor, 0.035);
+    const routeRects = this.getRouteRects();
+    const style = ROUTE_SURFACE_STYLES[this.regionConfig.routeSurface];
+    renderRouteSurfaces(this, routeRects, style, VISUAL_REVAMP_KEYS.ROUTE_MATERIALS);
+    renderRouteStopPads(this, this.getRouteStopPads(), style);
+
+    const route = this.add.graphics().setDepth(1.3);
+    for (const rect of routeRects) {
+      route.lineStyle(2, this.regionConfig.accentColor, 0.055);
       route.beginPath();
       route.moveTo(rect.x + 16, rect.y + rect.height / 2);
       route.lineTo(rect.x + rect.width - 16, rect.y + rect.height / 2);
@@ -123,7 +149,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
 
     if (this.prefersReducedMotion()) return;
 
-    for (const rect of FUTURE_REGION_ROUTE_RECTS) {
+    for (const rect of routeRects) {
       const count = Math.max(2, Math.floor(rect.width / 220));
       for (let i = 0; i < count; i++) {
         const glint = this.add.circle(
@@ -329,11 +355,12 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
       this.addInteractable(gateway);
     }
 
+    const guidePosition = this.getGuidePosition();
     const guide = new InteractableObject(this, {
       id: 'region_guide',
       type: 'sign',
-      x: 960,
-      y: 336,
+      x: guidePosition.x,
+      y: guidePosition.y,
       prompt: '[SPACE] Listen',
       locked: false,
       spriteImageKey: this.regionConfig.guide.assetKey,
@@ -343,11 +370,12 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     });
     this.addInteractable(guide);
 
+    const shrinePosition = this.getShrinePosition();
     const shrine = new InteractableObject(this, {
       id: 'region_shrine',
       type: 'sign',
-      x: 960,
-      y: 536,
+      x: shrinePosition.x,
+      y: shrinePosition.y,
       prompt: '[SPACE] Inspect',
       locked: false,
       spriteImageKey: this.regionConfig.ambient === 'core'
@@ -360,6 +388,36 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     this.addInteractable(shrine);
 
     this.createEncounterObjects();
+  }
+
+  private getRouteStopPads(): Array<{ x: number; y: number; radius?: number }> {
+    const pads = [
+      { x: 112, y: 448, radius: 58 },
+      { ...this.getGuidePosition(), radius: 46 },
+      { ...this.getShrinePosition(), radius: 46 },
+    ];
+
+    if (this.regionConfig.next) {
+      pads.push({ x: 1784, y: 416, radius: 58 });
+    }
+
+    for (const encounter of this.regionConfig.encounters ?? []) {
+      pads.push({
+        x: encounter.position.x,
+        y: encounter.position.y,
+        radius: encounter.kind === 'boss' ? 58 : 44,
+      });
+    }
+
+    return pads;
+  }
+
+  private getGuidePosition(): { x: number; y: number } {
+    return this.regionConfig.guidePosition ?? { x: 960, y: 336 };
+  }
+
+  private getShrinePosition(): { x: number; y: number } {
+    return this.regionConfig.shrinePosition ?? { x: 960, y: 536 };
   }
 
   private createEncounterObjects(): void {
@@ -413,51 +471,38 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   private handleInteract(entry: InteractableEntry): void {
+    if (this.dialogueSystem.isDialogueActive()) return;
     if (entry.type !== 'object') return;
     const object = entry.target as InteractableObject;
     object.config.onInteract?.();
   }
 
   private startPuzzle(sceneKey: string): void {
-    this.scene.start(sceneKey, { returnScene: this.regionConfig.sceneKey });
+    TransitionManager.pixelDissolve(this, sceneKey, { returnScene: this.regionConfig.sceneKey });
   }
 
-  private showNote(title: string, body: string): void {
-    if (this.infoPanelCleanup) return;
+  private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
+    return isFutureRegionStepWalkable(point, this.getCollisionBlockers(), 0, this.getRouteRects());
+  }
 
-    const { width, height } = this.cameras.main;
-    const panelW = 680;
-    const panelH = 128;
-    const panelX = Math.round(width / 2 - panelW / 2);
-    const panelY = height - panelH - 40;
-    const panel = drawPanel(this, panelX, panelY, panelW, panelH, {
-      depth: 5000,
-      scrollFactor: 0,
-      inner: this.regionConfig.panelColor,
-    });
-    const titleText = this.add.text(panelX + 32, panelY + 24, title, {
-      fontSize: '12px',
-      fontFamily: FONTS.RETRO,
-      color: '#f8fafc',
-    }).setDepth(5001).setScrollFactor(0);
-    const bodyText = this.add.text(panelX + 32, panelY + 56, body, {
-      fontSize: '12px',
-      fontFamily: FONTS.MONO,
-      color: '#f8fafc',
-      wordWrap: { width: panelW - 64 },
-      lineSpacing: 5,
-    }).setDepth(5001).setScrollFactor(0);
+  private getCollisionBlockers(): FutureRegionCollisionBlocker[] {
+    return [
+      ...this.interactables.map((object) => object.getPosition()),
+      ...this.encounterObjects.map((object) => object.getPosition()),
+    ];
+  }
 
-    const close = () => {
-      panel.destroy();
-      titleText.destroy();
-      bodyText.destroy();
-      this.infoPanelCleanup = null;
+  private getRouteRects(): FutureRegionRouteRect[] {
+    return this.regionConfig.routeRects ?? FUTURE_REGION_ROUTE_RECTS;
+  }
+
+  private showNote(speaker: string, body: string | string[]): void {
+    if (this.dialogueSystem.isDialogueActive()) return;
+    const tree: DialogueTree = {
+      startNodeId: 'note',
+      nodes: [{ id: 'note', speaker, text: body }],
     };
-
-    this.infoPanelCleanup = close;
-    this.input.keyboard?.once('keydown-SPACE', close);
-    this.input.keyboard?.once('keydown-ENTER', close);
+    this.dialogueSystem.startDialogue(tree, `field_${speaker.toLowerCase().replace(/\s+/g, '_')}`);
   }
 
   private prefersReducedMotion(): boolean {
@@ -467,8 +512,8 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   shutdown(): void {
-    this.infoPanelCleanup?.();
-    this.infoPanelCleanup = null;
+    this.input.keyboard?.off('keydown-ESC', this.onEscReturnToTitle);
+    this.dialogueSystem?.destroy();
     this.interactionSystem?.destroy();
     this.hud?.destroy();
     for (const object of this.interactables) object.destroy();

@@ -6,9 +6,11 @@
 import Phaser from 'phaser';
 import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
 import { TransitionManager } from '../core/TransitionManager';
+import { drawPanel } from '../ui/panel';
 import { JuiceSystem } from '../systems/JuiceSystem';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
+import { a11yManager } from '../core/A11yManager';
 import { CONCEPT_BRIDGE_DATA, type ConceptBridgeContent } from '../data/dialogue/concept_bridge_content';
 import type { ConceptBridgeData } from '../data/types';
 
@@ -52,22 +54,23 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.tweens.add({ targets: fadeIn, alpha: 0, duration: 500, onComplete: () => fadeIn.destroy() });
 
     // Background
-    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 0.98).setOrigin(0);
+    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0);
 
-    // Subtle dot-grid gives the dark void a digital texture (one-time draw, not in update)
-    const grid = this.add.graphics();
-    grid.fillStyle(0x88c070, 0.05);
-    for (let gx = 40; gx < width; gx += 40) {
-      for (let gy = 40; gy < height; gy += 40) {
-        grid.fillCircle(gx, gy, 1);
-      }
+    // Subtle dot-grid gives the dark void a digital texture (optimized as TileSprite)
+    if (!this.textures.exists('bg-dot')) {
+      const g = this.make.graphics({ x: 0, y: 0 });
+      g.fillStyle(0x346856, 1);
+      g.fillRect(0, 0, 2, 2);
+      g.generateTexture('bg-dot', 32, 32);
+      g.destroy();
     }
+    this.add.tileSprite(0, 0, width, height, 'bg-dot').setOrigin(0);
 
     // Persistent header bar — stays visible across all section transitions
     const headerBg = this.add.graphics();
-    headerBg.fillStyle(COLORS.FRAME_BG, 0.9);
+    headerBg.fillStyle(COLORS.FRAME_BG, 1);
     headerBg.fillRect(0, 0, width, HEADER_H);
-    headerBg.lineStyle(1, 0x88c070, 0.45);
+    headerBg.lineStyle(2, COLORS.FRAME_BORDER, 1);
     headerBg.beginPath();
     headerBg.moveTo(0, HEADER_H);
     headerBg.lineTo(width, HEADER_H);
@@ -92,11 +95,13 @@ export class ConceptBridgeScene extends Phaser.Scene {
     // Persistent content panel — fills the space below the header
     const panelW = width - PANEL_MARGIN * 2;
     const panelH = height - PANEL_Y - 48;
-    const panelBg = this.add.graphics();
-    panelBg.fillStyle(COLORS.FRAME_BG, 0.38);
-    panelBg.fillRoundedRect(PANEL_MARGIN, PANEL_Y, panelW, panelH, 4);
-    panelBg.lineStyle(1, COLORS.FRAME_BORDER_LIGHT, 0.28);
-    panelBg.strokeRoundedRect(PANEL_MARGIN, PANEL_Y, panelW, panelH, 4);
+    drawPanel(this, PANEL_MARGIN, PANEL_Y, panelW, panelH, {
+      depth: 0,
+      fill: COLORS.FRAME_BG,
+      frame: COLORS.FRAME_BORDER,
+      inner: COLORS.FRAME_BORDER_LIGHT,
+      alpha: 1,
+    });
 
     // Section container — cleared and repopulated on each navigation
     this.sectionContainer = this.add.container(0, 0);
@@ -150,11 +155,26 @@ export class ConceptBridgeScene extends Phaser.Scene {
     const section = SECTIONS[index];
 
     switch (section) {
-      case 'story_recap':    this.renderStoryRecap(width, height);    break;
-      case 'pattern_reveal': this.renderPatternReveal(width, height); break;
-      case 'pseudocode':     this.renderPseudocode(width, height);    break;
-      case 'mini_forge':     this.renderMiniForge(width, height);     break;
-      case 'codex_unlock':   this.renderCodexUnlock(width, height);   break;
+      case 'story_recap':
+        this.renderStoryRecap(width, height);
+        a11yManager.announce(`Story Recap. ${this.content.sections.storyRecap.join(' ')}`);
+        break;
+      case 'pattern_reveal':
+        this.renderPatternReveal(width, height);
+        a11yManager.announce(`Pattern Reveal: ${this.content.sections.patternReveal.title}. ${this.content.sections.patternReveal.explanation.join(' ')}`);
+        break;
+      case 'pseudocode':
+        this.renderPseudocode(width, height);
+        a11yManager.announce(`Pseudocode. ${this.content.sections.pseudocode.code}. ${this.content.sections.pseudocode.explanation}`);
+        break;
+      case 'mini_forge':
+        this.renderMiniForge(width, height);
+        a11yManager.announce(`Mini-Forge Challenge. ${this.content.sections.miniForge.question}. Options: ${this.content.sections.miniForge.options.join(', ')}`);
+        break;
+      case 'codex_unlock':
+        this.renderCodexUnlock(width, height);
+        a11yManager.announce(`Codex Entry Unlocked: ${this.content.sections.codexEntryId.replace(/_/g, ' ')}`);
+        break;
     }
   }
 
@@ -200,34 +220,73 @@ export class ConceptBridgeScene extends Phaser.Scene {
   }
 
   private renderPseudocode(width: number, height: number): void {
-    const { code, explanation } = this.content.sections.pseudocode;
+    const { code, python, js, explanation } = this.content.sections.pseudocode;
 
     const title = this.add.text(width / 2, CONTENT_START_Y, 'Pseudocode', {
       fontSize: '16px', fontFamily: FONTS.RETRO, color: '#f97316',
     }).setOrigin(0.5);
     this.sectionContainer.add(title);
 
-    const codeLines = code.split('\n');
-    const codeBlockH = codeLines.length * 20 + 32;
+    const tabs = [
+      { name: 'Pseudo', val: code },
+      { name: 'Python', val: python },
+      { name: 'JS', val: js }
+    ];
+    let currentTab = 0;
+
     const codeBg = this.add.graphics();
-    codeBg.fillStyle(0x0d1117, 0.92);
-    codeBg.fillRoundedRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH, 4);
-    codeBg.lineStyle(1, 0x30363d, 1);
-    codeBg.strokeRoundedRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH, 4);
     this.sectionContainer.add(codeBg);
 
-    const codeText = this.add.text(PANEL_MARGIN + 32, BODY_START_Y + 4, code, {
+    const codeText = this.add.text(PANEL_MARGIN + 32, BODY_START_Y + 28, '', {
       fontSize: '11px', fontFamily: FONTS.MONO, color: '#c9d1d9',
       lineSpacing: 4,
     });
     this.sectionContainer.add(codeText);
 
-    const expText = this.add.text(width / 2, BODY_START_Y + codeBlockH + 16, explanation, {
+    const expText = this.add.text(width / 2, 0, explanation, {
       fontSize: '12px', fontFamily: FONTS.MONO, color: '#9ca3af',
       wordWrap: { width: width - 360 }, align: 'center',
     }).setOrigin(0.5, 0);
     this.sectionContainer.add(expText);
 
+    const tabTexts: Phaser.GameObjects.Text[] = [];
+    const drawCode = () => {
+      const activeCode = tabs[currentTab].val;
+      codeText.setText(activeCode);
+
+      const codeLines = activeCode.split('\n');
+      const codeBlockH = codeLines.length * 20 + 44;
+
+      codeBg.clear();
+      codeBg.fillStyle(0x0d1117, 0.92);
+      codeBg.fillRoundedRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH, 4);
+      codeBg.lineStyle(1, 0x30363d, 1);
+      codeBg.strokeRoundedRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH, 4);
+
+      tabTexts.forEach(t => t.destroy());
+      tabTexts.length = 0;
+
+      let tabX = PANEL_MARGIN + 32;
+      tabs.forEach((tab, index) => {
+        const t = this.add.text(tabX, BODY_START_Y + 4, tab.name, {
+          fontSize: '10px', fontFamily: FONTS.RETRO,
+          color: index === currentTab ? '#f97316' : '#6b7280',
+        }).setInteractive({ useHandCursor: true });
+
+        t.on('pointerdown', () => {
+          currentTab = index;
+          drawCode();
+        });
+
+        tabTexts.push(t);
+        this.sectionContainer.add(t);
+        tabX += t.width + 24;
+      });
+
+      expText.setY(BODY_START_Y + codeBlockH + 16);
+    };
+
+    drawCode();
     this.addNavHint(width, height);
   }
 

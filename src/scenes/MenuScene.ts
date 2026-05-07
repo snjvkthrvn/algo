@@ -11,6 +11,8 @@ import { audioManager } from '../core/AudioManager';
 import { TransitionManager } from '../core/TransitionManager';
 import { moveMenuSelection } from '../input/MenuNavigation';
 import { drawPanel } from '../ui/panel';
+import { a11yManager } from '../core/A11yManager';
+import type { TitleMenuLaunchData } from './titleNavigation';
 
 // Persists for the entire browser session — scramble plays once only
 let menuTitleAssembled = false;
@@ -40,16 +42,28 @@ export class MenuScene extends Phaser.Scene {
   private saveSummaryText: Phaser.GameObjects.Text | null = null;
   private selectedMenuIndex = 0;
   private closeSettingsModal: (() => void) | null = null;
+  private closeConfirmModal: (() => void) | null = null;
+  private preferResume = false;
 
   private readonly onMenuUp = () => this.moveSelectedMenuItem(-1);
   private readonly onMenuW = () => this.moveSelectedMenuItem(-1);
   private readonly onMenuDown = () => this.moveSelectedMenuItem(1);
   private readonly onMenuS = () => this.moveSelectedMenuItem(1);
   private readonly onMenuActivate = () => this.activateSelectedMenuItem();
-  private readonly onMenuEsc = () => this.closeSettingsModal?.();
+  private readonly onMenuEsc = () => {
+    if (this.closeConfirmModal) {
+      this.closeConfirmModal();
+      return;
+    }
+    this.closeSettingsModal?.();
+  };
 
   constructor() {
     super({ key: SCENE_KEYS.MENU });
+  }
+
+  init(data: TitleMenuLaunchData = {}): void {
+    this.preferResume = data.preferResume === true;
   }
 
   create(): void {
@@ -77,11 +91,6 @@ export class MenuScene extends Phaser.Scene {
     orn.fillRect(ox - ps / 2, oy - ps / 2 - ps * 2, ps, ps);
     orn.fillRect(ox - ps / 2, oy - ps / 2 + ps * 2, ps, ps);
 
-    // Subtle composition frame
-    const compFrame = this.add.graphics();
-    compFrame.lineStyle(1, 0x88c070, 0.16);
-    compFrame.strokeRect(Math.round(width / 2 - 264), 160, 528, 312);
-
     const titleText = this.add.text(width / 2, 184, menuTitleAssembled ? 'ALGORITHMIA' : '', {
       fontSize: '40px',
       fontFamily: FONTS.RETRO,
@@ -106,11 +115,17 @@ export class MenuScene extends Phaser.Scene {
     line.strokePath();
 
     // Menu items — built but rendered invisible for slide-up entrance
-    this.menuItems = [{ text: 'NEW GAME', callback: () => this.startNewGame() }];
-    if (saveLoadManager.hasSave()) {
+    const hasSave = saveLoadManager.hasSave();
+    this.menuItems = [];
+    if (hasSave && this.preferResume) {
+      this.menuItems.push({ text: 'RESUME', callback: () => this.continueGame() });
+    }
+    this.menuItems.push({ text: 'NEW GAME', callback: () => this.startNewGame() });
+    if (hasSave && !this.preferResume) {
       this.menuItems.push({ text: 'CONTINUE', callback: () => this.continueGame() });
     }
     this.menuItems.push({ text: 'SETTINGS', callback: () => this.openSettings() });
+    this.menuItems.push({ text: 'DEBUG SELECT', callback: () => TransitionManager.swirl(this, SCENE_KEYS.DEBUG_SELECT) });
 
     this.menuTexts = [];
     this.menuItems.forEach((item, index) => {
@@ -144,6 +159,7 @@ export class MenuScene extends Phaser.Scene {
     this.registerKeyboardMenuControls();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.closeSettingsModal?.();
+      this.closeConfirmModal?.();
       this.unregisterKeyboardMenuControls();
     });
 
@@ -299,7 +315,9 @@ export class MenuScene extends Phaser.Scene {
     const solvedLabel = solvedCount === 1 ? 'PUZZLE' : 'PUZZLES';
     const finalY = 478;
 
-    this.saveSummaryText = this.add.text(width / 2, menuTitleAssembled ? finalY : finalY + 28, `CONTINUE: ${regionName.toUpperCase()} | ${solvedCount} ${solvedLabel}`, {
+    const summaryLabel = this.preferResume ? 'RESUME' : 'CONTINUE';
+
+    this.saveSummaryText = this.add.text(width / 2, menuTitleAssembled ? finalY : finalY + 28, `${summaryLabel}: ${regionName.toUpperCase()} | ${solvedCount} ${solvedLabel}`, {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
       color: '#e0f8d0',
@@ -331,7 +349,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private moveSelectedMenuItem(direction: -1 | 1): void {
-    if (this.closeSettingsModal) return;
+    if (this.closeSettingsModal || this.closeConfirmModal) return;
     this.selectedMenuIndex = moveMenuSelection(this.selectedMenuIndex, direction, this.menuItems.length);
     audioManager.playTone(220, 50, 'square');
     this.renderMenuSelection();
@@ -343,6 +361,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private activateSelectedMenuItem(): void {
+    if (this.closeConfirmModal) return;
     if (this.closeSettingsModal) {
       this.closeSettingsModal();
       return;
@@ -361,11 +380,116 @@ export class MenuScene extends Phaser.Scene {
       text.setBackgroundColor(selected ? '#e0f8d0' : 'transparent');
       text.setPadding(selected ? 6 : 0, selected ? 4 : 0, selected ? 6 : 0, selected ? 4 : 0);
     });
+
+    if (menuTitleAssembled && this.menuItems.length > 0) {
+      a11yManager.announce(this.menuItems[this.selectedMenuIndex].text);
+    }
   }
 
   private startNewGame(): void {
+    if (saveLoadManager.hasSave()) {
+      this.openOverwriteConfirm();
+      return;
+    }
+    this.beginNewGame();
+  }
+
+  private beginNewGame(): void {
     gameState.resetState();
+    saveLoadManager.deleteSave();
     TransitionManager.swirl(this, SCENE_KEYS.PROLOGUE);
+  }
+
+  private openOverwriteConfirm(): void {
+    if (this.closeConfirmModal) return;
+
+    const { width, height } = this.cameras.main;
+    const PANEL_W = 480;
+    const PANEL_H = 220;
+    const panelX = Math.round(width / 2 - PANEL_W / 2);
+    const panelY = Math.round(height / 2 - PANEL_H / 2);
+
+    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.72).setOrigin(0).setDepth(100);
+    const panel = drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
+      depth: 101,
+      scrollFactor: 0,
+      inner: 0x346856,
+    });
+
+    const title = this.add.text(width / 2, panelY + 32, 'OVERWRITE SAVE?', {
+      fontSize: '14px',
+      fontFamily: FONTS.RETRO,
+      color: '#081820',
+    }).setOrigin(0.5, 0).setDepth(102);
+
+    const body = this.add.text(width / 2, panelY + 72, 'Starting a new game will erase\nyour existing save permanently.', {
+      fontSize: '10px',
+      fontFamily: FONTS.RETRO,
+      color: '#081820',
+      align: 'center',
+      lineSpacing: 6,
+    }).setOrigin(0.5, 0).setDepth(102);
+
+    const choices = ['CANCEL', 'OVERWRITE'];
+    let selected = 0;
+
+    const choiceTexts = choices.map((label, i) =>
+      this.add.text(panelX + (i === 0 ? 96 : PANEL_W - 96), panelY + PANEL_H - 56, label, {
+        fontSize: '12px',
+        fontFamily: FONTS.RETRO,
+        color: '#081820',
+      }).setOrigin(0.5).setDepth(102).setInteractive({ useHandCursor: true }),
+    );
+
+    const renderSelection = () => {
+      choiceTexts.forEach((text, i) => {
+        const isSelected = i === selected;
+        text.setText(`${isSelected ? '> ' : '  '}${choices[i]}${isSelected ? ' <' : '  '}`);
+        text.setColor(isSelected ? '#081820' : '#346856');
+        text.setBackgroundColor(isSelected ? '#e0f8d0' : 'transparent');
+        text.setPadding(isSelected ? 6 : 0, isSelected ? 4 : 0, isSelected ? 6 : 0, isSelected ? 4 : 0);
+      });
+    };
+    renderSelection();
+
+    const move = (dir: -1 | 1) => {
+      selected = (selected + dir + choices.length) % choices.length;
+      audioManager.playTone(220, 50, 'square');
+      renderSelection();
+    };
+    const onLeft = () => move(-1);
+    const onRight = () => move(1);
+    const onActivate = () => {
+      audioManager.playClickTone();
+      const wasOverwrite = selected === 1;
+      this.closeConfirmModal?.();
+      if (wasOverwrite) this.beginNewGame();
+    };
+
+    this.input.keyboard?.on('keydown-LEFT', onLeft);
+    this.input.keyboard?.on('keydown-RIGHT', onRight);
+    this.input.keyboard?.on('keydown-A', onLeft);
+    this.input.keyboard?.on('keydown-D', onRight);
+    this.input.keyboard?.on('keydown-ENTER', onActivate);
+    this.input.keyboard?.on('keydown-SPACE', onActivate);
+
+    choiceTexts.forEach((text, i) => {
+      text.on('pointerover', () => { selected = i; renderSelection(); });
+      text.on('pointerdown', () => { selected = i; onActivate(); });
+    });
+
+    const allObjects = [overlay, panel, title, body, ...choiceTexts];
+
+    this.closeConfirmModal = () => {
+      this.input.keyboard?.off('keydown-LEFT', onLeft);
+      this.input.keyboard?.off('keydown-RIGHT', onRight);
+      this.input.keyboard?.off('keydown-A', onLeft);
+      this.input.keyboard?.off('keydown-D', onRight);
+      this.input.keyboard?.off('keydown-ENTER', onActivate);
+      this.input.keyboard?.off('keydown-SPACE', onActivate);
+      for (const obj of allObjects) obj.destroy();
+      this.closeConfirmModal = null;
+    };
   }
 
   private continueGame(): void {

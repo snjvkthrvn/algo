@@ -6,11 +6,13 @@
 import Phaser from 'phaser';
 import { PROLOGUE_SHEET_KEYS } from '../config/assets';
 import { PlayerState } from '../data/types';
+import { audioManager } from '../core/AudioManager';
+import { JuiceSystem } from '../systems/JuiceSystem';
 
-const PLAYER_SPRITE_SCALE = 0.2;
+const PLAYER_SPRITE_SCALE = 0.25;
 export const PLAYER_GRID_STEP = 32;
-const PLAYER_STEP_DURATION_MS = 150;
-const PLAYER_WALK_FRAME_RATE = 18;
+const PLAYER_STEP_DURATION_MS = 120;
+const PLAYER_WALK_FRAME_RATE = 20;
 
 type FacingDirection = 'down' | 'up' | 'left' | 'right';
 
@@ -29,6 +31,9 @@ export class Player {
   private facingDirection: FacingDirection = 'down';
   private movementTween: Phaser.Tweens.Tween | null = null;
   private canMoveTo: (position: { x: number; y: number }) => boolean;
+  private autoWalkTarget: { x: number; y: number } | null = null;
+  private autoWalkCallback: (() => void) | null = null;
+  private nextMoveBuffer: FacingDirection | null = null; // buffers input during tween for responsive chaining
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: PlayerOptions = {}) {
     this.scene = scene;
@@ -62,6 +67,12 @@ export class Player {
     }
   }
 
+  walkTo(x: number, y: number, onComplete?: () => void): void {
+    this.autoWalkTarget = { x, y };
+    this.autoWalkCallback = onComplete || null;
+    this.state = PlayerState.IDLE;
+  }
+
   update(): void {
     if (this.state === PlayerState.FROZEN || this.state === PlayerState.INTERACTING) {
       this.stopMovementTween();
@@ -70,12 +81,37 @@ export class Player {
     }
 
     if (this.movementTween) {
+      // Buffer latest direction for immediate chaining on step complete (feels responsive)
+      const buffered = this.resolveMoveDirection();
+      if (buffered) this.nextMoveBuffer = buffered;
       return;
     }
 
-    const direction = this.resolveMoveDirection();
+    let direction = this.nextMoveBuffer ?? this.resolveMoveDirection();
+    this.nextMoveBuffer = null;
+
+    if (this.autoWalkTarget) {
+      const dx = this.autoWalkTarget.x - this.sprite.x;
+      const dy = this.autoWalkTarget.y - this.sprite.y;
+
+      if (Math.abs(dx) < PLAYER_GRID_STEP && Math.abs(dy) < PLAYER_GRID_STEP) {
+        this.autoWalkTarget = null;
+        if (this.autoWalkCallback) {
+          const cb = this.autoWalkCallback;
+          this.autoWalkCallback = null;
+          cb();
+        }
+      } else {
+        if (Math.abs(dx) > Math.abs(dy)) {
+          direction = dx > 0 ? 'right' : 'left';
+        } else {
+          direction = dy > 0 ? 'down' : 'up';
+        }
+      }
+    }
+
     if (!direction) {
-      if (this.state !== PlayerState.IDLE) {
+      if (this.state === PlayerState.WALKING) {
         this.state = PlayerState.IDLE;
         this.playIdleAnimation();
       }
@@ -194,7 +230,7 @@ export class Player {
       x: target.x,
       y: target.y,
       duration: PLAYER_STEP_DURATION_MS,
-      ease: 'Linear',
+      ease: 'Quad.easeOut', // natural deceleration for weighty, less mechanical steps
       onComplete: () => {
         this.sprite.setPosition(target.x, target.y);
         this.body.reset(target.x, target.y);
@@ -204,6 +240,13 @@ export class Player {
           this.state = PlayerState.IDLE;
           this.playIdleAnimation();
         }
+
+        // Production juice & SFX: micro-shake + footstep particles + soft tone for weighty, satisfying steps
+        JuiceSystem.cameraShake(this.scene, 50, 0.0015);
+        JuiceSystem.burst(this.scene, target.x, target.y + 10, 0x346856, 5, 16);
+        audioManager.playTone(160, 55, 'sawtooth');
+
+        // Buffer will be picked up on the very next update() frame (imperceptible delay, robust)
       },
     });
   }

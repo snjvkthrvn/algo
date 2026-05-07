@@ -31,7 +31,7 @@ describe('GameStateManager', () => {
       const settings = gameState.getSettings();
       expect(settings.musicVolume).toBe(0.7);
       expect(settings.sfxVolume).toBe(0.8);
-      expect(settings.textSpeed).toBe(30);
+      expect(settings.textSpeed).toBe(45);
     });
   });
 
