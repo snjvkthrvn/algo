@@ -1,5 +1,6 @@
 import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { SCENE_KEYS } from '../../config/constants';
+import { JuiceSystem } from '../../systems/JuiceSystem';
 import {
   FERRY_DOCK_ROUNDS,
   PRIORITY_DOCK_ROUNDS,
