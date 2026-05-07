@@ -5,7 +5,7 @@ import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { BitHint } from '../../entities/BitHint';
-import { BUBBLE_SORT_START, isSortedAscending, swapAdjacent } from '../../data/puzzles/arrayPlainsPuzzleLogic';
+import { BUBBLE_SORT_START, getSortingEducationalTooltip, isSortedAscending, swapAdjacent } from '../../data/puzzles/arrayPlainsPuzzleLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 
 interface SortTile {
@@ -73,6 +73,17 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       color: '#fbbf24',
       stroke: '#000000',
       strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(20);
+
+    // Educational tooltip for O(n log n) comparisons - immersive learning
+    this.add.text(width / 2, 130, getSortingEducationalTooltip(), {
+      fontSize: '9px',
+      fontFamily: FONTS.MONO,
+      color: '#081820',
+      backgroundColor: '#e0f8d0',
+      padding: { x: 8, y: 4 },
+      align: 'center',
+      wordWrap: { width: 420 },
     }).setOrigin(0.5).setDepth(20);
 
     for (let i = 0; i < this.values.length; i++) {
