@@ -122,9 +122,73 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
   }
 
   private createHashMotif(): Phaser.GameObjects.GameObject[] {
-    return [-84, -42, 42, 84].map((x, index) =>
-      this.add.rectangle(x, -14, 28, 28, index % 2 === 0 ? this.theme.accentColor : this.theme.secondaryAccentColor, 0.78)
-        .setStrokeStyle(2, 0x081820, 0.7));
+    const buckets = [-84, -42, 42, 84].map((x, index) => {
+      const bucket = this.add.rectangle(x, -14, 28, 28, index % 2 === 0 ? this.theme.accentColor : this.theme.secondaryAccentColor, 0.78)
+        .setStrokeStyle(2, 0x081820, 0.7)
+        .setData('bucketIndex', index);
+      bucket.setInteractive({ useHandCursor: true });
+      bucket.on('pointerover', () => {
+        bucket.setStrokeStyle(3, 0xe0f8d0, 1);
+        this.showHashTooltip(bucket, index);
+      });
+      bucket.on('pointerout', () => {
+        bucket.setStrokeStyle(2, 0x081820, 0.7);
+        this.hideHashTooltip();
+      });
+      return bucket;
+    });
+    const items = [
+      this.add.circle(-78, -20, 5, 0x081820, 0.9),
+      this.add.circle(-38, -8, 5, 0x081820, 0.9),
+      this.add.circle(46, -20, 5, 0x081820, 0.9),
+      this.add.circle(86, -8, 5, 0x081820, 0.9),
+      this.add.circle(-38, -20, 5, 0x081820, 0.9),
+    ];
+    return [...buckets, ...items];
+  }
+
+  private hashTooltip?: Phaser.GameObjects.Text;
+
+  private showHashTooltip(bucket: Phaser.GameObjects.Rectangle, index: number): void {
+    this.hideHashTooltip();
+    const labels = ['key % 4 = 0', 'key % 4 = 1', 'key % 4 = 2', 'key % 4 = 3'];
+    const { x, y } = bucket;
+    this.hashTooltip = this.add.text(x, y + 28, labels[index], {
+      fontSize: '8px',
+      fontFamily: FONTS.RETRO,
+      color: '#081820',
+      backgroundColor: '#e0f8d0',
+      padding: { x: 4, y: 2 },
+    }).setOrigin(0.5);
+  }
+
+  private hideHashTooltip(): void {
+    this.hashTooltip?.destroy();
+    this.hashTooltip = undefined;
+  }
+
+  private highlightHashBucket(): void {
+    if (this.theme.motif !== 'hash' || !this.marker) return;
+    const buckets = this.marker.list.filter((obj): obj is Phaser.GameObjects.Rectangle =>
+      obj instanceof Phaser.GameObjects.Rectangle && obj.getData('bucketIndex') !== undefined
+    );
+    if (buckets.length === 0) return;
+    const target = buckets[Math.floor(Math.random() * buckets.length)];
+    const orig = target.fillColor;
+    target.setFillStyle(0xe0f8d0, 1);
+    if (!this.prefersReducedMotion()) {
+      this.tweens.add({
+        targets: target,
+        scaleX: 1.25,
+        scaleY: 1.25,
+        duration: 120,
+        yoyo: true,
+        ease: 'Back.easeOut',
+        onComplete: () => target.setFillStyle(orig, 0.78),
+      });
+    } else {
+      this.time.delayedCall(220, () => target.setFillStyle(orig, 0.78));
+    }
   }
 
   private createStackMotif(): Phaser.GameObjects.GameObject[] {
@@ -273,6 +337,7 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
     }
 
     this.onCorrectAnswer(round.success);
+    this.highlightHashBucket();
     this.roundIndex++;
 
     if (this.roundIndex >= this.rounds.length) {
