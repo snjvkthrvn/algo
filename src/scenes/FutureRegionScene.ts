@@ -21,6 +21,7 @@ import {
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { HUDManager } from '../systems/HUDManager';
 import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
+import { JuiceSystem } from '../systems/JuiceSystem';
 import {
   ROUTE_SURFACE_STYLES,
   renderRouteStopPads,
@@ -186,6 +187,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     }
     if (this.regionConfig.ambient === 'data') {
       this.createGraphPulse();
+      JuiceSystem.futureHook(this, 'data', 520, 296);
       return;
     }
     if (this.regionConfig.ambient === 'core') {
@@ -313,11 +315,10 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
       imageOriginY: 0.86,
       initialState: 'unlocked',
       onInteract: () => {
-        this.scene.launch(this.regionConfig.back.sceneKey, {
+        TransitionManager.swirl(this, this.regionConfig.back.sceneKey, {
           spawnX: this.regionConfig.back.spawnX,
           spawnY: this.regionConfig.back.spawnY,
         });
-        this.scene.stop(this.regionConfig.sceneKey);
       },
     });
     this.addInteractable(back);
@@ -345,11 +346,10 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
             return;
           }
 
-          this.scene.launch(next.sceneKey, {
+          TransitionManager.swirl(this, next.sceneKey, {
             spawnX: next.spawnX,
             spawnY: next.spawnY,
           });
-          this.scene.stop(this.regionConfig.sceneKey);
         },
       });
       this.addInteractable(gateway);
