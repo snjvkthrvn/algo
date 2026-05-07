@@ -4,6 +4,7 @@ export interface TwinRiversChoiceRound {
   options: readonly string[];
   correctIndex: number;
   success: string;
+  education?: string;
 }
 
 export const MIRROR_WALK_ROUNDS: TwinRiversChoiceRound[] = [
@@ -13,6 +14,7 @@ export const MIRROR_WALK_ROUNDS: TwinRiversChoiceRound[] = [
     options: ['move both inward', 'move blue only', 'move orange only'],
     correctIndex: 0,
     success: 'Both halves close the distance together.',
+    education: 'This demonstrates queue symmetry: both pointers move together to maintain balance, like dual pointers in a sliding window.',
   },
   {
     title: 'Mirror Step 2',

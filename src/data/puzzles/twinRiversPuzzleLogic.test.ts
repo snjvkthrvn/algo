@@ -30,4 +30,10 @@ describe('Twin Rivers puzzle logic', () => {
     expect(isCorrectChoice(round, round.correctIndex)).toBe(true);
     expect(isCorrectChoice(round, (round.correctIndex + 1) % round.options.length)).toBe(false);
   });
+
+  it('provides educational explanations for queue/flow concepts', () => {
+    const round = MIRROR_WALK_ROUNDS[0];
+    expect(round.education).toBeDefined();
+    expect(round.education).toContain('queue');
+  });
 });
