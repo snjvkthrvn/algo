@@ -1,9 +1,5 @@
-import Phaser from 'phaser';
-import { BasePuzzleScene } from './BasePuzzleScene';
 import { VISUAL_REVAMP_KEYS } from '../../config/assets';
-import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { audioManager } from '../../core/AudioManager';
-import { createChoiceButton } from '../../ui/ChoiceButton';
+import { SCENE_KEYS } from '../../config/constants';
 import {
   ANAGRAM_GARDEN_ROUNDS,
   ARCHIVIST_ROUNDS,
@@ -13,162 +9,28 @@ import {
   isCorrectHashChoice,
   type HashHighlandsChoiceRound,
 } from '../../data/puzzles/hashHighlandsPuzzleLogic';
+import { ScriptedChoiceScene, type ScriptedChoiceTheme } from './ScriptedChoiceScene';
 
-abstract class HashHighlandsChoiceScene extends BasePuzzleScene {
-  private roundIndex = 0;
-  private mistakes = 0;
-  private roundText!: Phaser.GameObjects.Text;
-  private promptText!: Phaser.GameObjects.Text;
-  private optionContainer!: Phaser.GameObjects.Container;
-  private memoryMarker!: Phaser.GameObjects.Container;
+const HASH_HIGHLANDS_THEME: ScriptedChoiceTheme = {
+  markerLabel: 'BIT CACHE',
+  panelColor: 0x4a3821,
+  optionStrokeColor: 0x4a3821,
+  accentColor: 0xfbbf24,
+  secondaryAccentColor: 0x5ab7d4,
+  wrongMessage: 'That name does not open this place.',
+  hintLead: 'Use the stable name or signature instead of replaying the whole search.',
+  motif: 'hash',
+};
 
-  protected abstract rounds: HashHighlandsChoiceRound[];
-
-  private readonly onChoiceKey = (event: KeyboardEvent) => {
-    const index = Number.parseInt(event.key, 10) - 1;
-    const round = this.rounds[this.roundIndex];
-    if (!round || index < 0 || index >= round.options.length) return;
-    this.choose(index);
-  };
-
-  create(): void {
-    super.create();
-    this.createMemoryMarker();
-    this.createChoiceUi();
-    this.renderRound();
-    this.input.keyboard?.on('keydown', this.onChoiceKey);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.input.keyboard?.off('keydown', this.onChoiceKey);
-    });
-  }
+abstract class HashHighlandsChoiceScene extends ScriptedChoiceScene<HashHighlandsChoiceRound> {
+  protected theme = HASH_HIGHLANDS_THEME;
 
   protected getPuzzleFrameFillAlpha(): number {
     return 0.03;
   }
 
-  private createMemoryMarker(): void {
-    const { width, height } = this.cameras.main;
-    this.memoryMarker = this.add.container(width / 2, height / 2 + 48);
-
-    const tray = this.add.rectangle(0, 0, 240, 72, 0x3f2d18, 0.88)
-      .setStrokeStyle(3, 0xe0f8d0, 0.86);
-    const bit = this.add.text(0, -2, 'BIT CACHE', {
-      fontSize: '10px',
-      fontFamily: FONTS.RETRO,
-      color: '#e0f8d0',
-    }).setOrigin(0.5);
-    const slots = [-84, -42, 42, 84].map((x, index) => {
-      const slot = this.add.rectangle(x, 0, 28, 28, index % 2 === 0 ? 0xfbbf24 : 0x5ab7d4, 0.78)
-        .setStrokeStyle(2, 0x081820, 0.7);
-      return slot;
-    });
-
-    this.memoryMarker.add([tray, ...slots, bit]);
-
-    if (!this.prefersReducedMotion()) {
-      this.tweens.add({
-        targets: slots,
-        alpha: 0.35,
-        duration: 900,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        delay: 120,
-      });
-    }
-  }
-
-  private createChoiceUi(): void {
-    const { width, height } = this.cameras.main;
-
-    this.roundText = this.add.text(width / 2, 156, '', {
-      fontSize: '12px',
-      fontFamily: FONTS.RETRO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
-      padding: { x: 14, y: 8 },
-    }).setOrigin(0.5);
-
-    this.promptText = this.add.text(width / 2, 206, '', {
-      fontSize: '13px',
-      fontFamily: FONTS.MONO,
-      color: '#e0f8d0',
-      backgroundColor: '#4a3821',
-      align: 'center',
-      wordWrap: { width: 780 },
-      padding: { x: 12, y: 7 },
-    }).setOrigin(0.5);
-
-    this.optionContainer = this.add.container(0, height - 128);
-  }
-
-  private renderRound(): void {
-    const round = this.rounds[this.roundIndex];
-    this.roundText.setText(round.title);
-    this.promptText.setText(round.prompt);
-    this.optionContainer.removeAll(true);
-
-    const { width } = this.cameras.main;
-    const startX = width / 2 - 300;
-    round.options.forEach((option, index) => {
-      const x = startX + index * 300;
-      const button = createChoiceButton(this, x, 0, index, option, {
-        strokeColor: 0x4a3821,
-        wrapWidth: 208,
-        onChoose: () => this.choose(index),
-      });
-      this.optionContainer.add(button);
-    });
-  }
-
-  private choose(index: number): void {
-    const round = this.rounds[this.roundIndex];
-    if (!isCorrectHashChoice(round, index)) {
-      this.mistakes++;
-      this.attempts++;
-      audioManager.playWrongTone();
-      this.showMessage('That name does not open this place.', COLORS.WARNING);
-      return;
-    }
-
-    audioManager.playCorrectTone();
-    this.showMessage(round.success, COLORS.SUCCESS);
-    this.roundIndex++;
-
-    if (this.roundIndex >= this.rounds.length) {
-      this.time.delayedCall(700, () => this.complete());
-      return;
-    }
-
-    this.tweens.add({
-      targets: this.memoryMarker,
-      scaleX: 1.1,
-      scaleY: 1.1,
-      duration: 160,
-      yoyo: true,
-      ease: 'Sine.easeInOut',
-      onComplete: () => this.renderRound(),
-    });
-  }
-
-  private complete(): void {
-    const stars = this.mistakes === 0 ? 3 : this.mistakes <= 2 ? 2 : 1;
-    this.onPuzzleComplete(stars);
-  }
-
-  protected displayHint(hintNumber: number): void {
-    const round = this.rounds[this.roundIndex];
-    const hints = [
-      'Use the stable name or signature instead of replaying the whole search.',
-      `This step wants: ${round.options[round.correctIndex]}.`,
-    ];
-    this.showMessage(hints[hintNumber - 1] ?? hints[0], COLORS.GOLD_ACCENT);
-  }
-
-  private prefersReducedMotion(): boolean {
-    return typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  protected isCorrectChoice(round: HashHighlandsChoiceRound, choiceIndex: number): boolean {
+    return isCorrectHashChoice(round, choiceIndex);
   }
 }
 

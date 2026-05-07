@@ -57,6 +57,7 @@ type GameWindow = Window & {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const SHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'screenshots');
+const runtimeErrorsByPage = new WeakMap<Page, string[]>();
 
 /** Block until Phaser reports the named scene as active. */
 async function waitForScene(page: Page, key: string, timeout = 15_000) {
@@ -368,10 +369,25 @@ test.describe('Prologue region – visual audit', () => {
 
   // Every test starts with a fresh page load at the main menu.
   test.beforeEach(async ({ page }) => {
+    const runtimeErrors: string[] = [];
+    runtimeErrorsByPage.set(page, runtimeErrors);
+    page.on('pageerror', (error) => {
+      runtimeErrors.push(`pageerror: ${error.message}`);
+    });
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        runtimeErrors.push(`console.error: ${msg.text()}`);
+      }
+    });
+
     await page.goto('/');
     await waitForScene(page, 'MenuScene');
     // Wait for the menu fade-in tween to complete (500 ms game-time ≈ 900 ms real).
     await page.waitForTimeout(1_000);
+  });
+
+  test.afterEach(async ({ page }) => {
+    expect(runtimeErrorsByPage.get(page) ?? []).toEqual([]);
   });
 
   // ── Menu ──────────────────────────────────────────────────────────────────
