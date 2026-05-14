@@ -19,6 +19,9 @@ archive/
 !public/assets/visual_revamp/regions/archive/
 !public/assets/visual_revamp/regions/archive/**
 
+# Local/generated source art kept outside the production asset manifest
+art_sources/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -61,6 +64,12 @@ test-results/
 public/brainstorm/
 
 # Visual audit screenshots (transient, regenerable)
+/qa_*.png
+/qa_*/
+/freeze_screenshot_*.png
+/watcher_freeze_*.png
+/capture-*.js
+/tests/audit-screenshots/
 /audit-*.png
 /prologue-*.png
 /polish-*.png
