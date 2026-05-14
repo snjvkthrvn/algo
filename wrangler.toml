@@ -16,10 +16,10 @@ compatibility_date = "2026-05-14"
 # The Vite build emits to dist/, including:
 #   - dist/index.html
 #   - dist/assets/* (JS bundle + game art)
-#   - dist/_headers, dist/_redirects (copied from public/ by Vite)
+#   - dist/_headers (copied from public/ by Vite)
 directory = "./dist"
 
 # Serve dist/index.html for any path that doesn't match a file in dist/.
-# Required because the game is a single-page Phaser app — deep links should
+# Required because the game is a single-page Phaser app; deep links should
 # still load the canvas instead of a 404.
 not_found_handling = "single-page-application"

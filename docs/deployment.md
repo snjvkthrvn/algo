@@ -1,26 +1,31 @@
 # Deployment Runbook
 
-Target for the first public build: Cloudflare Pages serving the static Vite build.
+Target for the first public build: Cloudflare serving the static Vite build via Workers Static Assets.
 
-## Cloudflare Pages
+## Cloudflare Workers Static Assets
 
-Use these project settings:
+Use these project settings in the dashboard:
 
 | Setting | Value |
 | --- | --- |
-| Framework preset | Vite or None |
+| Framework preset | None (auto-detection picks "Vite" and forces a Vite-6 requirement we don't want) |
 | Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
 | Build output directory | `dist` |
 | Node version | Cloudflare default, or the active local LTS used for the release |
+
+The repo declares the deploy contract in `wrangler.toml`:
+
+- `[assets] directory = "./dist"` points at the Vite build output.
+- `not_found_handling = "single-page-application"` is the canonical SPA fallback declaration. Do not also add a Pages-style `public/_redirects` rule like `/* /index.html 200`; Workers Static Assets rejects it as an infinite-loop hazard. The wrangler.toml setting is the right place.
 
 Files under `public/` are copied into `dist/` by Vite. The launch build includes:
 
 - `public/_headers` for security headers and correctness-first no-cache responses.
-- `public/_redirects` for a single-page-app fallback to `index.html`.
 
 ## HTTPS And Domain
 
-Cloudflare Pages provides HTTPS for the generated `*.pages.dev` URL. For a custom domain, add the domain in the Pages dashboard and complete the DNS records Cloudflare gives for that project.
+Cloudflare provides HTTPS for the generated Worker URL. For a custom domain, add the Worker custom domain or route in Cloudflare and complete the DNS records Cloudflare gives for that project.
 
 Before launch, verify the live URL:
 
