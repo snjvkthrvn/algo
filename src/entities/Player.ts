@@ -6,13 +6,11 @@
 import Phaser from 'phaser';
 import { PROLOGUE_SHEET_KEYS } from '../config/assets';
 import { PlayerState } from '../data/types';
-import { audioManager } from '../core/AudioManager';
-import { JuiceSystem } from '../systems/JuiceSystem';
 
 const PLAYER_SPRITE_SCALE = 0.25;
 export const PLAYER_GRID_STEP = 32;
-const PLAYER_STEP_DURATION_MS = 120;
-const PLAYER_WALK_FRAME_RATE = 20;
+const PLAYER_STEP_DURATION_MS = 160;
+const PLAYER_WALK_FRAME_RATE = 25; // 4 frames per 160ms step, full 8-frame cycle over 2 chained tiles
 
 type FacingDirection = 'down' | 'up' | 'left' | 'right';
 
@@ -26,6 +24,7 @@ export class Player {
   state: PlayerState = PlayerState.IDLE;
   lastSafePosition: { x: number; y: number };
   private scene: Phaser.Scene;
+  private shadow: Phaser.GameObjects.Ellipse;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd?: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private facingDirection: FacingDirection = 'down';
@@ -34,6 +33,7 @@ export class Player {
   private autoWalkTarget: { x: number; y: number } | null = null;
   private autoWalkCallback: (() => void) | null = null;
   private nextMoveBuffer: FacingDirection | null = null; // buffers input during tween for responsive chaining
+  private walkStepElapsedMs = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: PlayerOptions = {}) {
     this.scene = scene;
@@ -41,6 +41,7 @@ export class Player {
     this.canMoveTo = options.canMoveTo ?? (() => true);
 
     this.createAnimations();
+    this.shadow = scene.add.ellipse(x, y + 14, 20, 7, 0x000000, 0.28).setDepth(4.8);
     this.sprite = scene.add
       .sprite(x, y, PROLOGUE_SHEET_KEYS.PLAYER, 0)
       .setDepth(5)
@@ -73,7 +74,9 @@ export class Player {
     this.state = PlayerState.IDLE;
   }
 
-  update(): void {
+  update(_time: number, _delta: number): void {
+    this.shadow.setPosition(this.sprite.x, this.sprite.y + 14);
+
     if (this.state === PlayerState.FROZEN || this.state === PlayerState.INTERACTING) {
       this.stopMovementTween();
       this.playIdleAnimation();
@@ -81,6 +84,8 @@ export class Player {
     }
 
     if (this.movementTween) {
+      this.walkStepElapsedMs = Math.min(PLAYER_STEP_DURATION_MS, this.walkStepElapsedMs + _delta);
+      this.applyWalkPolish();
       // Buffer latest direction for immediate chaining on step complete (feels responsive)
       const buffered = this.resolveMoveDirection();
       if (buffered) this.nextMoveBuffer = buffered;
@@ -157,13 +162,13 @@ export class Player {
 
   private createAnimations(): void {
     this.createAnimationIfMissing('player-idle-down', 0, 0, 1);
-    this.createAnimationIfMissing('player-idle-left', 4, 4, 1);
-    this.createAnimationIfMissing('player-idle-right', 8, 8, 1);
-    this.createAnimationIfMissing('player-idle-up', 12, 12, 1);
-    this.createAnimationIfMissing('player-walk-down', 0, 3, PLAYER_WALK_FRAME_RATE, -1);
-    this.createAnimationIfMissing('player-walk-left', 4, 7, PLAYER_WALK_FRAME_RATE, -1);
-    this.createAnimationIfMissing('player-walk-right', 8, 11, PLAYER_WALK_FRAME_RATE, -1);
-    this.createAnimationIfMissing('player-walk-up', 12, 15, PLAYER_WALK_FRAME_RATE, -1);
+    this.createAnimationIfMissing('player-idle-left', 8, 8, 1);
+    this.createAnimationIfMissing('player-idle-right', 16, 16, 1);
+    this.createAnimationIfMissing('player-idle-up', 24, 24, 1);
+    this.createAnimationIfMissing('player-walk-down', 0, 7, PLAYER_WALK_FRAME_RATE, -1);
+    this.createAnimationIfMissing('player-walk-left', 8, 15, PLAYER_WALK_FRAME_RATE, -1);
+    this.createAnimationIfMissing('player-walk-right', 16, 23, PLAYER_WALK_FRAME_RATE, -1);
+    this.createAnimationIfMissing('player-walk-up', 24, 31, PLAYER_WALK_FRAME_RATE, -1);
   }
 
   private createAnimationIfMissing(
@@ -223,6 +228,7 @@ export class Player {
     }
 
     this.state = PlayerState.WALKING;
+    this.walkStepElapsedMs = 0;
     this.updateSpriteAnimation(offset.x, offset.y);
 
     this.movementTween = this.scene.tweens.add({
@@ -230,21 +236,31 @@ export class Player {
       x: target.x,
       y: target.y,
       duration: PLAYER_STEP_DURATION_MS,
-      ease: 'Quad.easeOut', // natural deceleration for weighty, less mechanical steps
+      ease: 'Linear', // Linear movement removes start/stop stutter for smooth contiguous tile steps
+      onUpdate: () => {
+        this.body.reset(this.sprite.x, this.sprite.y);
+      },
       onComplete: () => {
         this.sprite.setPosition(target.x, target.y);
+        this.sprite.setScale(PLAYER_SPRITE_SCALE);
         this.body.reset(target.x, target.y);
         this.movementTween = null;
 
+        // Only fall back to idle when there's no input or auto-walk pending.
+        // Otherwise leaving the animation as walk-{dir} lets `update()`'s next
+        // beginTileStep call the same anim with `ignoreIfPlaying=true`, so the
+        // walk cycle plays continuously across chained steps instead of
+        // restarting from frame 0 every 120ms.
         if (this.state === PlayerState.WALKING) {
-          this.state = PlayerState.IDLE;
-          this.playIdleAnimation();
+          const stillMoving =
+            this.autoWalkTarget !== null ||
+            this.nextMoveBuffer !== null ||
+            this.resolveMoveDirection() !== null;
+          if (!stillMoving) {
+            this.state = PlayerState.IDLE;
+            this.playIdleAnimation();
+          }
         }
-
-        // Production juice & SFX: micro-shake + footstep particles + soft tone for weighty, satisfying steps
-        JuiceSystem.cameraShake(this.scene, 50, 0.0015);
-        JuiceSystem.burst(this.scene, target.x, target.y + 10, 0x346856, 5, 16);
-        audioManager.playTone(160, 55, 'sawtooth');
 
         // Buffer will be picked up on the very next update() frame (imperceptible delay, robust)
       },
@@ -256,6 +272,15 @@ export class Player {
     if (direction === 'right') return { x: PLAYER_GRID_STEP, y: 0 };
     if (direction === 'up') return { x: 0, y: -PLAYER_GRID_STEP };
     return { x: 0, y: PLAYER_GRID_STEP };
+  }
+
+  private applyWalkPolish(): void {
+    const phase = Math.min(1, this.walkStepElapsedMs / PLAYER_STEP_DURATION_MS);
+    const lift = Math.sin(phase * Math.PI);
+    this.sprite.setScale(
+      PLAYER_SPRITE_SCALE * (1 + lift * 0.018),
+      PLAYER_SPRITE_SCALE * (1 - lift * 0.012)
+    );
   }
 
   private resolveMoveDirection(): FacingDirection | null {
@@ -288,12 +313,18 @@ export class Player {
   }
 
   private stopMovementTween(): void {
-    this.movementTween?.stop();
+    if (!this.movementTween) return;
+    this.movementTween.stop();
     this.movementTween = null;
+    this.nextMoveBuffer = null;
+    this.walkStepElapsedMs = 0;
+    this.sprite.setScale(PLAYER_SPRITE_SCALE);
+    this.body.reset(this.sprite.x, this.sprite.y);
   }
 
   destroy(): void {
     this.stopMovementTween();
+    this.shadow.destroy();
     this.sprite.destroy();
   }
 }

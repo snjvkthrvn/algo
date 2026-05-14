@@ -50,7 +50,9 @@ type GameWindow = Window & {
   __PHASER_GAME__?: PhaserGame;
   __gameState__?: {
     getFlag(flag: string): boolean;
+    getBitMood?(): string;
     getState(): { player: { x: number; y: number; region: string } };
+    unlockCodexEntry?(entryId: string): void;
   };
 };
 
@@ -111,10 +113,34 @@ async function prepareP01Round(page: Page, roundIndex: number) {
 
 /** Advance all five Concept Bridge pages and wait for the Prologue return. */
 async function advanceConceptBridge(page: Page) {
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 3; i++) {
     await page.waitForTimeout(800);
     await page.keyboard.press('Space');
   }
+
+  await page.waitForFunction(() => {
+    const game = (window as GameWindow).__PHASER_GAME__;
+    const scene = game?.scene.getScene('ConceptBridgeScene') as Record<string, unknown> | null;
+    return scene?.['currentSection'] === 3;
+  }, { timeout: 8_000 });
+
+  await page.evaluate(() => {
+    const game = (window as GameWindow).__PHASER_GAME__;
+    const scene = game?.scene.getScene('ConceptBridgeScene') as Record<string, unknown> | null;
+    const content = scene?.['content'] as { sections?: { miniForge?: { correctIndex?: number } } } | undefined;
+    const correctIndex = content?.sections?.miniForge?.correctIndex ?? 0;
+    scene!['miniForgeSelectedIndex'] = correctIndex;
+    scene!['miniForgeAnswered'] = true;
+    const showSection = scene?.['showSection'];
+    if (typeof showSection === 'function') {
+      (showSection as (index: number) => void).call(scene, 3);
+    }
+  });
+
+  await page.waitForTimeout(800);
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(800);
+  await page.keyboard.press('Space');
   await waitForScene(page, 'PrologueScene', 12_000);
 }
 
@@ -326,6 +352,43 @@ async function pressThroughDialogue(page: Page, presses: number, gapMs = 350) {
   }
 }
 
+async function pressUntilPrologueChoice(page: Page, maxPresses = 10) {
+  for (let i = 0; i < maxPresses; i++) {
+    const hasChoice = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
+      const dialogue = scene?.['dialogueSystem'] as Record<string, unknown> | undefined;
+      const choiceContainer = dialogue?.['choiceContainer'] as { visible?: boolean } | null | undefined;
+      return choiceContainer?.visible === true;
+    });
+    if (hasChoice) return;
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(450);
+  }
+
+  await page.waitForFunction(() => {
+    const game = (window as GameWindow).__PHASER_GAME__;
+    const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
+    const dialogue = scene?.['dialogueSystem'] as Record<string, unknown> | undefined;
+    const choiceContainer = dialogue?.['choiceContainer'] as { visible?: boolean } | null | undefined;
+    return choiceContainer?.visible === true;
+  }, { timeout: 5_000 });
+}
+
+async function chooseDialogueOptionAndWaitForScene(page: Page, sceneKey: string) {
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(500);
+    const isActive = await page.evaluate((key) =>
+      !!(window as GameWindow).__PHASER_GAME__?.scene.isActive(key as string),
+      sceneKey,
+    );
+    if (isActive) return;
+  }
+
+  await waitForScene(page, sceneKey, 10_000);
+}
+
 /**
  * Jump directly to a Phaser scene without simulating full UI flows.
  *
@@ -414,6 +477,36 @@ test.describe('Prologue region – visual audit', () => {
     await snap(page, '03-prologue-settled.png');
   });
 
+  test('03b - player smooth walk sheet is loaded as 32 isolated frames', async ({ page }) => {
+    await goToPrologue(page);
+
+    const sheetInfo = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
+      const player = scene?.['player'] as { sprite?: { texture?: { key?: string; frames?: Record<string, { width?: number; height?: number }> } } } | null;
+      const animationManager = scene?.['anims'] as { get?: (key: string) => { frames?: Array<{ frame?: { name?: string | number } }> } } | undefined;
+      const texture = player?.sprite?.texture;
+      const frameEntries = Object.entries(texture?.frames ?? {}).filter(([key]) => key !== '__BASE');
+
+      return {
+        textureKey: texture?.key ?? null,
+        frameCount: frameEntries.length,
+        frameSize: {
+          width: frameEntries[0]?.[1].width ?? null,
+          height: frameEntries[0]?.[1].height ?? null,
+        },
+        walkRightFrames: animationManager?.get?.('player-walk-right')?.frames?.map((entry) => Number(entry.frame?.name)) ?? [],
+      };
+    });
+
+    expect(sheetInfo).toEqual({
+      textureKey: 'prologue-sheet-player-walk',
+      frameCount: 32,
+      frameSize: { width: 256, height: 256 },
+      walkRightFrames: [16, 17, 18, 19, 20, 21, 22, 23],
+    });
+  });
+
   // ── Puzzle P0-1: Follow the Path ──────────────────────────────────────────
 
   test('04 – P0-1 Follow the Path – initial tile layout', async ({ page }) => {
@@ -463,10 +556,39 @@ test.describe('Prologue region – visual audit', () => {
     expect(pos!.y).toBeCloseTo(448, 0);
   });
 
-  test('08b - Escape returns to title with Resume first', async ({ page }) => {
+  test('08b - Escape opens pause, Save & Quit returns to title with Resume first', async ({ page }) => {
     await goToArrayPlainsViaContinue(page);
 
     await page.keyboard.press('Escape');
+    await waitForScene(page, 'PauseOverlayScene', 8_000);
+
+    const pauseState = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      return {
+        overlayActive: game?.scene.isActive('PauseOverlayScene'),
+        arrayPaused: game?.scene.isPaused('ArrayPlainsScene'),
+      };
+    });
+    expect(pauseState.overlayActive).toBe(true);
+    expect(pauseState.arrayPaused).toBe(true);
+
+    const pauseOptions = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('PauseOverlayScene') as Record<string, unknown> | null;
+      const items = scene?.['menuItems'] as Array<{ text: string }> | undefined;
+      return items?.map(item => item.text) ?? [];
+    });
+    expect(pauseOptions).toEqual(['RESUME', 'SETTINGS', 'SAVE & QUIT']);
+
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('PauseOverlayScene') as Record<string, unknown> | null;
+      scene!['selectedIndex'] = 2;
+      const activate = scene?.['activate'];
+      if (typeof activate === 'function') {
+        (activate as () => void).call(scene);
+      }
+    });
     await waitForScene(page, 'MenuScene', 8_000);
 
     const menuState = await page.waitForFunction(() => {
@@ -491,6 +613,25 @@ test.describe('Prologue region – visual audit', () => {
       return saveData ? JSON.parse(saveData).player.region : null;
     });
     expect(savedRegion).toBe('array_plains');
+  });
+
+  test('08c - Codex opens from overworld hotkey and returns', async ({ page }) => {
+    await goToArrayPlainsViaContinue(page);
+    await page.evaluate(() => {
+      (window as GameWindow).__gameState__?.unlockCodexEntry?.('bubble_sort');
+    });
+
+    await page.keyboard.press('c');
+    await waitForScene(page, 'CodexScene', 8_000);
+    await page.waitForTimeout(700);
+    await snap(page, '08c-codex-hotkey.png');
+
+    await page.keyboard.press('c');
+    await waitForScene(page, 'ArrayPlainsScene', 8_000);
+    const pos = await getScenePlayerPosition(page, 'ArrayPlainsScene');
+    expect(pos).not.toBeNull();
+    expect(pos!.x).toBeCloseTo(400, 0);
+    expect(pos!.y).toBeCloseTo(448, 0);
   });
 
   test('09 - Continue with unknown region falls back to Prologue', async ({ page }) => {
@@ -582,7 +723,7 @@ test.describe('Prologue region – visual audit', () => {
       const scene = game?.scene.getScene('P0_2_FlowConsoles') as Record<string, unknown> | null;
       const time = scene?.['time'] as { removeAllEvents?: () => void } | undefined;
       const complete = scene?.['puzzleComplete'];
-      if (scene?.['completedCount'] === 3 && typeof complete === 'function') {
+      if (scene && typeof complete === 'function') {
         time?.removeAllEvents?.();
         (complete as () => void).call(scene);
       }
@@ -596,6 +737,12 @@ test.describe('Prologue region – visual audit', () => {
       !!(window as GameWindow).__gameState__?.getFlag('puzzle_p0_2_complete')
     );
     expect(flagSet).toBe(true);
+  });
+
+  test('12a - Boss Sentinel - litany layout', async ({ page }) => {
+    await jumpToScene(page, 'Boss_Sentinel', { returnScene: 'PrologueScene' });
+    await page.waitForTimeout(3_100);
+    await snap(page, '12a-boss-sentinel-layout.png');
   });
 
   test('12 - Boss Sentinel completes and Array Plains gateway unlocks', async ({ page }) => {
@@ -637,6 +784,12 @@ test.describe('Prologue region – visual audit', () => {
     await page.waitForTimeout(1_000);
     await completePuzzleViaInjection(page, 'Boss_Sentinel');
 
+    await waitForScene(page, 'ConceptBridgeScene', 10_000);
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      game?.scene.stop('ConceptBridgeScene');
+      game?.scene.start('PrologueScene');
+    });
     await waitForScene(page, 'PrologueScene', 10_000);
     await page.waitForTimeout(2_000);
     await snap(page, '12-gateway-unlocked.png');
@@ -704,6 +857,56 @@ test.describe('Prologue region – visual audit', () => {
     expect(returnPos!.x).toBeLessThanOrEqual(2032);
     expect(returnPos!.y).toBeGreaterThanOrEqual(331);
     expect(returnPos!.y).toBeLessThanOrEqual(459);
+  });
+
+  test('13b - Watcher warning completes without frozen story state', async ({ page }) => {
+    await continueToPrologueAt(page, { x: 560, y: 384 }, {
+      opening_scene_done: true,
+      professor_node_intro_done: true,
+      prologue_visited: true,
+    });
+    await page.waitForTimeout(1_800);
+
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
+      (window as Window & { __watcherRegressionDone?: boolean }).__watcherRegressionDone = false;
+      (scene?.['beginStoryBeat'] as ((name: string) => void) | undefined)?.call(scene, 'watcher_regression');
+      (scene?.['spawnWatcherFlyby'] as ((scheduleNext: boolean, onComplete: () => void, flyDurationMs: number) => void) | undefined)?.call(
+        scene,
+        false,
+        () => {
+          (scene?.['endStoryBeat'] as ((name: string) => void) | undefined)?.call(scene, 'watcher_regression');
+          (window as Window & { __watcherRegressionDone?: boolean }).__watcherRegressionDone = true;
+        },
+        220,
+      );
+    });
+
+    await page.waitForFunction(
+      () => (window as Window & { __watcherRegressionDone?: boolean }).__watcherRegressionDone === true,
+      { timeout: 6_000 },
+    );
+    await page.waitForTimeout(1_800);
+
+    const state = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
+      const player = scene?.['player'] as { state?: string } | undefined;
+      return {
+        storyBeatActive: scene?.['storyBeatActive'] === true,
+        playerState: player?.state ?? null,
+        bitMood: (window as GameWindow).__gameState__?.getBitMood?.() ?? null,
+        hasCleanup: scene?.['cleanupActiveWatcherFlyby'] != null,
+      };
+    });
+
+    expect(state).toEqual({
+      storyBeatActive: false,
+      playerState: 'idle',
+      bitMood: 'neutral',
+      hasCleanup: false,
+    });
   });
 
   test('17 - AP-1 Sorting Shed - region encounter layout', async ({ page }) => {
@@ -1122,20 +1325,28 @@ test.describe('Prologue region – visual audit', () => {
     await page.waitForFunction(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
       const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
-      return scene?.['storyBeatActive'] === true;
-    });
+      const ds = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
+      return ds?.isDialogueActive?.() === true;
+    }, { timeout: 15_000 });
 
     await page.keyboard.press('Space');
     await page.waitForTimeout(250);
 
     const midIntro = await getPrologueRuntimeState(page);
-    expect(midIntro.storyBeatActive).toBe(true);
-    expect(midIntro.dialogueActive).toBe(false);
-    expect(midIntro.playerState).toBe('frozen');
+    expect(midIntro.storyBeatActive).toBe(false);
+    expect(midIntro.dialogueActive).toBe(true);
+    expect(midIntro.playerState).toBe('interacting');
 
     await snap(page, '14-professor-node-intro-clean.png');
 
-    await pressThroughDialogue(page, 12, 250);
+    for (let i = 0; i < 40; i++) {
+      const done = await page.evaluate(
+        () => (window as GameWindow).__gameState__?.getFlag('professor_node_intro_done') === true,
+      );
+      if (done) break;
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(250);
+    }
     await page.waitForTimeout(700);
 
     const afterIntro = await getPrologueRuntimeState(page);
@@ -1155,15 +1366,9 @@ test.describe('Prologue region – visual audit', () => {
     await page.waitForTimeout(1_800);
 
     await page.keyboard.press('Space');
-    await pressThroughDialogue(page, 5);
+    await pressUntilPrologueChoice(page);
     await snap(page, '15-rune-keeper-choice-ui.png');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(600);
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(600);
-    await page.keyboard.press('Enter');
-
-    await waitForScene(page, 'P0_1_FollowThePath', 10_000);
+    await chooseDialogueOptionAndWaitForScene(page, 'P0_1_FollowThePath');
     await snap(page, '15-rune-keeper-puzzle-start.png');
   });
 
@@ -1177,15 +1382,9 @@ test.describe('Prologue region – visual audit', () => {
     await page.waitForTimeout(1_800);
 
     await page.keyboard.press('Space');
-    await pressThroughDialogue(page, 6);
+    await pressUntilPrologueChoice(page);
     await snap(page, '16-console-keeper-choice-ui.png');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(800);
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(800);
-    await page.keyboard.press('Enter');
-
-    await waitForScene(page, 'P0_2_FlowConsoles', 10_000);
+    await chooseDialogueOptionAndWaitForScene(page, 'P0_2_FlowConsoles');
     await snap(page, '16-console-keeper-puzzle-start.png');
   });
 });

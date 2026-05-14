@@ -5,6 +5,8 @@
  * Keep the teaching flow aligned to FEEL -> NAME -> USE.
  */
 
+import type { ConceptBridgeData } from '../types';
+
 export interface ConceptBridgeContent {
   puzzleId: string;
   sections: {
@@ -359,4 +361,294 @@ function fetch(index) {
       codexEntryId: 'two_sum',
     },
   },
+
+  tr_1: {
+    puzzleId: 'tr_1',
+    sections: {
+      storyRecap: [
+        'Mirror Walk asked you to reverse a row without guessing.',
+        'You held the left and right ends at the same time, swapped them, and moved both pointers inward.',
+        'The row changed because you performed the algorithm step by step.',
+      ],
+      patternReveal: {
+        title: 'Two-Pointer Reverse',
+        explanation: [
+          'A reverse can be done in place with two pointers.',
+          'The left pointer starts at the first value. The right pointer starts at the last value.',
+          'Each swap fixes two positions, so the work is complete when the pointers meet or cross.',
+        ],
+      },
+      pseudocode: {
+        code: `function reverse(row):
+    L = 0
+    R = row.length - 1
+    while L < R:
+        swap(row[L], row[R])
+        L = L + 1
+        R = R - 1`,
+        python: `def reverse(row):
+    left = 0
+    right = len(row) - 1
+    while left < right:
+        row[left], row[right] = row[right], row[left]
+        left += 1
+        right -= 1`,
+        js: `function reverse(row) {
+    let left = 0;
+    let right = row.length - 1;
+    while (left < right) {
+        [row[left], row[right]] = [row[right], row[left]];
+        left++;
+        right--;
+    }
+}`,
+        explanation: 'This matches the puzzle exactly: swap the two pointed values, then move both pointers toward the center.',
+      },
+      miniForge: {
+        question: 'How many swaps does it take to reverse 7 values with two pointers?',
+        options: ['2', '3', '6', '7'],
+        correctIndex: 1,
+        explanation: 'A reverse needs floor(n / 2) swaps. floor(7 / 2) is 3.',
+      },
+      codexEntryId: 'two_pointer_reverse',
+    },
+  },
+
+  tr_2: {
+    puzzleId: 'tr_2',
+    sections: {
+      storyRecap: [
+        'Pointer Bridge gave you a sorted row and a target.',
+        'When the sum was too small, raising the left pointer was the only useful move.',
+        'When the sum was too large, lowering the right pointer was the only useful move.',
+      ],
+      patternReveal: {
+        title: 'Sorted Two-Sum',
+        explanation: [
+          'Sorted values make two-sum directional.',
+          'Moving the left pointer right increases the sum.',
+          'Moving the right pointer left decreases the sum.',
+          'That is why the algorithm can discard many impossible pairs at once.',
+        ],
+      },
+      pseudocode: {
+        code: `function twoSumSorted(row, target):
+    L = 0
+    R = row.length - 1
+    while L < R:
+        sum = row[L] + row[R]
+        if sum == target: return [L, R]
+        if sum < target: L = L + 1
+        else: R = R - 1`,
+        python: `def two_sum_sorted(row, target):
+    left = 0
+    right = len(row) - 1
+    while left < right:
+        total = row[left] + row[right]
+        if total == target:
+            return left, right
+        if total < target:
+            left += 1
+        else:
+            right -= 1`,
+        js: `function twoSumSorted(row, target) {
+    let left = 0;
+    let right = row.length - 1;
+    while (left < right) {
+        const sum = row[left] + row[right];
+        if (sum === target) return [left, right];
+        if (sum < target) left++;
+        else right--;
+    }
+}`,
+        explanation: 'The sorted row turns each comparison into a forced pointer move instead of a guess.',
+      },
+      miniForge: {
+        question: 'In a sorted two-sum row, current sum is 12 and target is 15. What should move?',
+        options: ['Move L right', 'Move R left', 'Lock the pair', 'Restart'],
+        correctIndex: 0,
+        explanation: 'The sum is too small, so the left pointer moves right to reach a larger value.',
+      },
+      codexEntryId: 'sorted_two_sum',
+    },
+  },
+
+  tr_3: {
+    puzzleId: 'tr_3',
+    sections: {
+      storyRecap: [
+        'Fixed Window Dock kept the window size constant.',
+        'Sliding right removed one old value and added one new value.',
+        'You tracked the richest slice by remembering the best sum seen so far.',
+      ],
+      patternReveal: {
+        title: 'Fixed Sliding Window',
+        explanation: [
+          'A fixed sliding window keeps the same width while moving across a row.',
+          'The efficient update subtracts the value that leaves and adds the value that enters.',
+          'That avoids recounting the whole window every time.',
+        ],
+      },
+      pseudocode: {
+        code: `function maxFixedWindow(row, k):
+    sum = total(row[0..k-1])
+    best = sum
+    for start from 1 to row.length - k:
+        sum = sum - row[start - 1]
+        sum = sum + row[start + k - 1]
+        best = max(best, sum)`,
+        python: `def max_fixed_window(row, k):
+    total = sum(row[:k])
+    best = total
+    for start in range(1, len(row) - k + 1):
+        total -= row[start - 1]
+        total += row[start + k - 1]
+        best = max(best, total)
+    return best`,
+        js: `function maxFixedWindow(row, k) {
+    let total = row.slice(0, k).reduce((a, b) => a + b, 0);
+    let best = total;
+    for (let start = 1; start <= row.length - k; start++) {
+        total -= row[start - 1];
+        total += row[start + k - 1];
+        best = Math.max(best, total);
+    }
+    return best;
+}`,
+        explanation: 'The puzzle showed the same rolling update: one value leaves, one value enters, and best remembers the maximum.',
+      },
+      miniForge: {
+        question: 'A size-3 window has sum 10. It slides right: 2 leaves and 7 enters. What is the new sum?',
+        options: ['5', '10', '15', '19'],
+        correctIndex: 2,
+        explanation: '10 - 2 + 7 = 15.',
+      },
+      codexEntryId: 'fixed_sliding_window',
+    },
+  },
+
+  tr_4: {
+    puzzleId: 'tr_4',
+    sections: {
+      storyRecap: [
+        'Current Rider gave you a living window instead of a fixed width.',
+        'You extended right while the window stayed unique.',
+        'When a duplicate appeared, you shrank from the left until the constraint was true again.',
+      ],
+      patternReveal: {
+        title: 'Variable Sliding Window',
+        explanation: [
+          'A variable sliding window grows and shrinks to preserve a rule.',
+          'For longest unique substring, the rule is no repeated value inside the window.',
+          'The best answer is the longest valid window ever seen.',
+        ],
+      },
+      pseudocode: {
+        code: `function longestUnique(row):
+    L = 0
+    best = 0
+    seen = map()
+    for R from 0 to row.length - 1:
+        while row[R] already inside L..R:
+            L = L + 1
+        best = max(best, R - L + 1)`,
+        python: `def longest_unique(row):
+    left = 0
+    best = 0
+    seen = {}
+    for right, value in enumerate(row):
+        if value in seen and seen[value] >= left:
+            left = seen[value] + 1
+        seen[value] = right
+        best = max(best, right - left + 1)
+    return best`,
+        js: `function longestUnique(row) {
+    let left = 0;
+    let best = 0;
+    const seen = new Map();
+    for (let right = 0; right < row.length; right++) {
+        const value = row[right];
+        if (seen.has(value) && seen.get(value) >= left) {
+            left = seen.get(value) + 1;
+        }
+        seen.set(value, right);
+        best = Math.max(best, right - left + 1);
+    }
+    return best;
+}`,
+        explanation: 'The scene used Q and E to make this visible: extend to test the rule, shrink to restore it, and remember the best valid length.',
+      },
+      miniForge: {
+        question: 'In the window [A, B, C, A], which action restores the no-duplicates rule?',
+        options: ['Shrink from the left', 'Lock immediately', 'Extend right forever', 'Sort the window'],
+        correctIndex: 0,
+        explanation: 'The duplicate A is inside the window, so the left side must shrink until the duplicate is gone.',
+      },
+      codexEntryId: 'variable_sliding_window',
+    },
+  },
 };
+
+export function getConceptBridgeContent(data: ConceptBridgeData): ConceptBridgeContent {
+  return CONCEPT_BRIDGE_DATA[data.puzzleId] ?? buildFallbackConceptBridgeContent(data);
+}
+
+function buildFallbackConceptBridgeContent(data: ConceptBridgeData): ConceptBridgeContent {
+  const puzzleName = data.puzzleName || data.puzzleId;
+  const concept = data.concept || 'Algorithm Pattern';
+  const codexEntryId = `concept_${toSnakeCase(concept) || toSnakeCase(puzzleName) || 'algorithm_pattern'}`;
+
+  return {
+    puzzleId: data.puzzleId,
+    sections: {
+      storyRecap: [
+        `${puzzleName} asked you to apply ${concept} inside the region's puzzle shell.`,
+        'The important part was not the answer label. It was recognizing the rule that made one move better than the others.',
+        'This bridge keeps the completion path stable until this region receives a bespoke first-principles bridge.',
+      ],
+      patternReveal: {
+        title: concept,
+        explanation: [
+          `${concept} is the reusable idea behind the puzzle you just cleared.`,
+          'Look for the state that changes, the condition that decides the next move, and the memory the algorithm carries forward.',
+          'Those three pieces are enough to turn a puzzle action into a program step.',
+        ],
+      },
+      pseudocode: {
+        code: `function solveWithPattern(state):
+    while not complete(state):
+        action = choose_action_from_rule(state)
+        state = apply(action, state)
+    return state`,
+        python: `def solve_with_pattern(state):
+    while not complete(state):
+        action = choose_action_from_rule(state)
+        state = apply(action, state)
+    return state`,
+        js: `function solveWithPattern(state) {
+    while (!complete(state)) {
+        const action = chooseActionFromRule(state);
+        state = apply(action, state);
+    }
+    return state;
+}`,
+        explanation: `${concept} is the rule that chooses the next action from the current state.`,
+      },
+      miniForge: {
+        question: `What should guide your next move in a ${concept} puzzle?`,
+        options: ['The current state and rule', 'Random guessing', 'Only the art style', 'The last key pressed'],
+        correctIndex: 0,
+        explanation: 'Algorithms choose actions from state plus rule. Guessing is what the puzzle is teaching you to replace.',
+      },
+      codexEntryId,
+    },
+  };
+}
+
+function toSnakeCase(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}

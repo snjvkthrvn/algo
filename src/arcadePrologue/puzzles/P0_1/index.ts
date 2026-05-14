@@ -1,0 +1,1 @@
+export { FollowThePathScene } from './scene';

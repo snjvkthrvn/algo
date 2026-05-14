@@ -31,7 +31,7 @@ export class DialogueBox {
   private readonly BOX_HEIGHT = 160;
   private readonly INNER_PAD_X = 32;
   private readonly INNER_PAD_Y = 16;
-  private readonly PORTRAIT_RESERVE = 128;
+  private readonly PORTRAIT_RESERVE = 112;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -41,9 +41,10 @@ export class DialogueBox {
 
     const textX = this.BOX_X + this.INNER_PAD_X;
     const speakerY = this.BOX_Y + this.INNER_PAD_Y;
-    const bodyY = speakerY + 32;
+    // Smaller speaker label sets visual hierarchy; body sits below with more breathing room.
+    const bodyY = speakerY + 28;
     const wrapWidth = this.BOX_WIDTH - this.INNER_PAD_X * 2 - this.PORTRAIT_RESERVE;
-    const portraitX = this.BOX_X + this.BOX_WIDTH - 32 - 48;
+    const portraitX = this.BOX_X + this.BOX_WIDTH - 32 - 40;
     const portraitY = this.BOX_Y + this.BOX_HEIGHT / 2;
 
     this.container = scene.add.container(0, 0).setDepth(5000).setScrollFactor(0);
@@ -62,18 +63,19 @@ export class DialogueBox {
     this.portraitFrame = scene.add
       .image(portraitX, portraitY, 'prologue-ui-portrait_active')
       .setOrigin(0.5)
-      .setDisplaySize(96, 96);
+      .setDisplaySize(80, 80);
     this.container.add(this.portraitFrame);
 
+    // Speaker label: smaller and muted-green so the eye reads "who" before "what" without competing weight.
     this.speakerText = scene.add.text(textX, speakerY, '', {
-      fontSize: '24px',
+      fontSize: '14px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: '#346856',
     });
     this.container.add(this.speakerText);
 
     this.contentText = scene.add.text(textX, bodyY, '', {
-      fontSize: '24px',
+      fontSize: '20px',
       fontFamily: FONTS.RETRO,
       color: '#081820',
       wordWrap: { width: wrapWidth },
@@ -101,23 +103,33 @@ export class DialogueBox {
   }
 
   show(speaker: string, text: string, onComplete?: () => void): void {
+    this.typewriterTimer?.destroy();
+    this.typewriterTimer = null;
     this.container.setVisible(true);
     this.speakerText.setText(speaker);
     this.fullText = text;
     this.currentCharIndex = 0;
     this.contentText.setText('');
     this.continuePrompt.setVisible(false);
-    this.isTyping = true;
     this.onCompleteCallback = onComplete || null;
 
+    if (text.length === 0) {
+      this.isTyping = false;
+      this.continuePrompt.setVisible(true);
+      a11yManager.announce(`${speaker} continues.`, true);
+      return;
+    }
+
+    this.isTyping = true;
     a11yManager.announce(`${speaker} says: ${text}`, true);
 
-    const speed = gameState.getSettings().textSpeed;
+    const settings = gameState.getSettings();
+    const speed = Math.max(1, settings.textSpeed || 30);
     const delay = Math.max(10, Math.floor(1000 / speed));
 
     this.typewriterTimer = this.scene.time.addEvent({
       delay,
-      repeat: text.length - 1,
+      repeat: Math.max(0, text.length - 1),
       callback: () => {
         this.currentCharIndex++;
         this.contentText.setText(this.fullText.substring(0, this.currentCharIndex));

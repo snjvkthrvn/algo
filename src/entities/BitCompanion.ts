@@ -14,6 +14,13 @@ import { gameState } from '../core/GameStateManager';
 import { BitStage, BitMood } from '../data/types';
 import { VISUAL_REVAMP_KEYS } from '../config/assets';
 import { COLORS } from '../config/constants';
+import {
+  BitGuide,
+  colorableFromFillStyle,
+  colorableFromTint,
+  type BitGuideTarget,
+  type ColorableTarget,
+} from '../ui/BitGuide';
 
 // Offset from player center where Bit hovers
 const FOLLOW_OFFSET_X = 38;
@@ -56,6 +63,7 @@ export class BitCompanion {
   private reactionTween: Phaser.Tweens.Tween | null = null;
   private stage: BitStage;
   private mood: BitMood;
+  private guide: BitGuide;
 
   constructor(scene: Phaser.Scene, playerX: number, playerY: number) {
     this.scene = scene;
@@ -67,21 +75,50 @@ export class BitCompanion {
     this.container = scene.add.container(this.currentX, this.currentY);
     this.container.setDepth(10); // above terrain, below UI
 
+    this.guide = new BitGuide(this.makeGuideTarget());
+
     this.buildParticles();
     this.registerEvents();
   }
 
+  private makeGuideTarget(): BitGuideTarget {
+    return {
+      scene: this.scene,
+      tweenAnchor: this.container,
+      colorables: this.collectColorables(),
+      baseColor: STAGE_COLORS[this.stage],
+    };
+  }
+
+  private collectColorables(): ColorableTarget[] {
+    const colorables: ColorableTarget[] = this.dots.map((d) =>
+      colorableFromFillStyle(d.dot, STAGE_COLORS[this.stage], 0.82),
+    );
+    if (this.sparkImage) {
+      colorables.push(colorableFromTint(this.sparkImage));
+    }
+    return colorables;
+  }
+
+  private rebuildGuide(): void {
+    this.guide?.destroy();
+    this.guide = new BitGuide(this.makeGuideTarget());
+  }
+
   // ─── Public API ────────────────────────────────────────────────────────────
 
-  update(playerX: number, playerY: number): void {
-    this.orbitAngle += ORBIT_SPEED;
+  update(playerX: number, playerY: number, delta: number = 16.67): void {
+    const dt = delta / 16.67;
+    this.orbitAngle += ORBIT_SPEED * dt;
 
     // Smooth follow with a gentle orbit wobble on top
     const targetX = playerX + FOLLOW_OFFSET_X + Math.cos(this.orbitAngle) * ORBIT_RADIUS;
     const targetY = playerY + FOLLOW_OFFSET_Y + Math.sin(this.orbitAngle * 0.7) * (ORBIT_RADIUS * 0.5);
 
-    this.currentX += (targetX - this.currentX) * FOLLOW_LERP;
-    this.currentY += (targetY - this.currentY) * FOLLOW_LERP;
+    const lerpFactor = 1 - Math.pow(1 - FOLLOW_LERP, dt);
+
+    this.currentX += (targetX - this.currentX) * lerpFactor;
+    this.currentY += (targetY - this.currentY) * lerpFactor;
 
     this.container.setPosition(this.currentX, this.currentY);
   }
@@ -89,6 +126,7 @@ export class BitCompanion {
   destroy(): void {
     this.removeEvents();
     this.stopReactionTween();
+    this.guide?.destroy();
     this.container.destroy();
   }
 
@@ -128,6 +166,8 @@ export class BitCompanion {
       const glow = this.scene.add.ellipse(0, 0, 36, 36, 0xffffff, 0.08);
       this.container.addAt(glow, 0); // behind everything
     }
+
+    this.rebuildGuide();
   }
 
   private getStageImageKey(stage: BitStage): string {
@@ -195,75 +235,13 @@ export class BitCompanion {
   }
 
   // ─── Mood Reactions ────────────────────────────────────────────────────────
+  // Mood signals delegate to BitGuide so the overworld and puzzle Bit speak
+  // the same visual language. Stage-specific evolution stays below.
 
-  private playExcited(): void {
-    this.stopReactionTween();
-    this.reactionTween = this.scene.tweens.add({
-      targets: this.container,
-      scaleX: 1.4,
-      scaleY: 1.4,
-      duration: 120,
-      yoyo: true,
-      repeat: 2,
-      ease: 'Quad.easeOut',
-      onComplete: () => { this.container.setScale(1); },
-    });
-  }
-
-  private playScared(): void {
-    this.stopReactionTween();
-    const startX = this.container.x;
-    this.reactionTween = this.scene.tweens.add({
-      targets: this.container,
-      x: startX + 4,
-      duration: 40,
-      yoyo: true,
-      repeat: 5,
-      ease: 'Linear',
-      onComplete: () => { this.container.setPosition(this.currentX, this.currentY); },
-    });
-    // Tint all dots red-ish during fear
-    this.dots.forEach(d => d.dot.setFillStyle(COLORS.ERROR));
-    this.sparkImage?.setTint(COLORS.ERROR);
-    this.scene.time.delayedCall(600, () => {
-      this.dots.forEach(d => d.dot.setFillStyle(STAGE_COLORS[this.stage]));
-      this.sparkImage?.clearTint();
-    });
-  }
-
-  private playHintWarm(): void {
-    this.stopReactionTween();
-    this.reactionTween = this.scene.tweens.add({
-      targets: this.container,
-      alpha: 1,
-      scaleX: 1.15,
-      scaleY: 1.15,
-      duration: 300,
-      yoyo: true,
-      repeat: 1,
-      ease: 'Sine.easeInOut',
-      onComplete: () => { this.container.setScale(1).setAlpha(1); },
-    });
-    this.dots.forEach(d => d.dot.setFillStyle(COLORS.ORANGE_ACCENT));
-    this.sparkImage?.setTint(COLORS.ORANGE_ACCENT);
-    this.scene.time.delayedCall(700, () => {
-      this.dots.forEach(d => d.dot.setFillStyle(STAGE_COLORS[this.stage]));
-      this.sparkImage?.clearTint();
-    });
-  }
-
-  private playHintCold(): void {
-    this.stopReactionTween();
-    this.reactionTween = this.scene.tweens.add({
-      targets: this.container,
-      alpha: 0.35,
-      duration: 400,
-      yoyo: true,
-      repeat: 1,
-      ease: 'Sine.easeInOut',
-      onComplete: () => { this.container.setAlpha(1); },
-    });
-  }
+  private playExcited(): void { this.guide.celebrate(); }
+  private playScared():  void { this.guide.scared(); }
+  private playHintWarm(): void { this.guide.warm(); }
+  private playHintCold(): void { this.guide.cold(); }
 
   private playEvolve(toStage: BitStage): void {
     this.stopReactionTween();

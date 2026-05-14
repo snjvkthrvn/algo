@@ -19,8 +19,8 @@ Date: 2026-04-30
 
 ## Recommended Next Steps
 
-- Add a pause/menu overlay in playable regions with Resume, Settings, Return To Title, and Clear Save.
-- Add a small progress ledger per region so players can see which encounters are complete before facing the boss.
-- Add region-specific music or ambience instead of reusing the prologue BGM everywhere.
-- Split asset loading by region after deployment smoke testing; the current global preload is reliable but will keep growing.
-- Add a final end-state after Protocol Omega so The Core has a clear completion moment and credits/continue behavior.
+- [x] Add a pause/menu overlay in playable regions with Resume, Settings, Return To Title, and Clear Save. *(Implemented via PauseOverlayScene)*
+- [ ] Add a small progress ledger per region so players can see which encounters are complete before facing the boss.
+- [ ] Add region-specific music or ambience instead of reusing the prologue BGM everywhere.
+- [ ] Split asset loading by region after deployment smoke testing; the current global preload is reliable but will keep growing.
+- [x] Add a final end-state after Protocol Omega so The Core has a clear completion moment and credits/continue behavior. *(Implemented via EndGameScene)*

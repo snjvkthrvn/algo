@@ -112,7 +112,72 @@ export const JuiceSystem = {
   },
 
   cameraShake(scene: Phaser.Scene, duration: number = 90, intensity: number = 0.004): void {
-    if (!scene?.cameras?.main) return; // defensive for tests / headless / scenes without camera
+    if (!scene?.cameras?.main) return;
     scene.cameras.main.shake(duration, intensity);
+  },
+
+  // BST insert: rising node + branch growth
+  bstInsert(scene: Phaser.Scene, x: number, y: number, depth: number = 0): void {
+    if (!scene?.add?.circle || !scene?.tweens) return;
+    const color = depth < 3 ? 0x22c55e : 0xfbbf24;
+    const node = scene.add.circle(x, y - 20, 8, color, 0.9).setDepth(5000);
+    scene.tweens.add({ targets: node, y, duration: 280, ease: 'Back.easeOut' });
+    JuiceSystem.burst(scene, x, y, color, 6, 30);
+  },
+
+  // BST delete: shrink + fade with depth hint
+  bstDelete(scene: Phaser.Scene, x: number, y: number): void {
+    if (!scene?.add?.circle || !scene?.tweens) return;
+    const node = scene.add.circle(x, y, 9, 0xef4444, 0.8).setDepth(5000);
+    scene.tweens.add({ targets: node, scale: 0, alpha: 0, duration: 220, onComplete: () => node.destroy() });
+    JuiceSystem.wrongBurst(scene, x, y);
+  },
+
+  // Depth hint label pulse
+  depthHint(scene: Phaser.Scene, x: number, y: number, depth: number): void {
+    if (!scene?.add?.text || !scene?.tweens) return;
+    const t = scene.add.text(x, y - 28, `d=${depth}`, { fontSize: '12px', color: '#a3e635' }).setDepth(6000).setOrigin(0.5);
+    scene.tweens.add({ targets: t, alpha: 0, y: y - 42, duration: 900, onComplete: () => t.destroy() });
+  },
+
+  // FIFO flow particles for canals
+  fifoFlow(scene: Phaser.Scene, x: number, y: number, forward = true): void {
+    if (!scene?.add?.circle || !scene?.tweens) return;
+    const p = scene.add.circle(x, y, 3, 0x67e8f9, 0.7).setDepth(4500);
+    const dx = forward ? 48 : -48;
+    scene.tweens.add({ targets: p, x: x + dx, alpha: 0, duration: 420, ease: 'Linear', onComplete: () => p.destroy() });
+  },
+
+  // Enqueue feedback
+  enqueueFeedback(scene: Phaser.Scene, x: number, y: number): void {
+    JuiceSystem.correctBurst(scene, x, y);
+    scene.cameras?.main?.flash?.(60, 0x67e8f9, 0.08);
+  },
+
+  // Dequeue feedback
+  dequeueFeedback(scene: Phaser.Scene, x: number, y: number): void {
+    JuiceSystem.burst(scene, x, y, 0xf472b6, 9, 28);
+  },
+
+  // Graph node/edge highlight + path viz
+  highlightNode(scene: Phaser.Scene, x: number, y: number, color = 0x67e8f9): void {
+    if (!scene?.add?.circle || !scene?.tweens) return;
+    const ring = scene.add.circle(x, y, 14, color, 0.3).setDepth(4999).setStrokeStyle(2, color);
+    scene.tweens.add({ targets: ring, scale: 1.6, alpha: 0, duration: 380, onComplete: () => ring.destroy() });
+  },
+
+  pathViz(scene: Phaser.Scene, points: {x:number,y:number}[]): void {
+    if (!scene?.add?.graphics || points.length < 2) return;
+    const g = scene.add.graphics().setDepth(4500).lineStyle(3, 0xfbbf24, 0.7);
+    g.beginPath(); g.moveTo(points[0].x, points[0].y);
+    for (let i=1; i<points.length; i++) g.lineTo(points[i].x, points[i].y);
+    g.strokePath();
+    scene.time?.delayedCall(650, () => g.destroy());
+  },
+
+  // Future-proof hook: register custom anim
+  futureHook(scene: Phaser.Scene, type: string, x: number, y: number): void {
+    if (type === 'pulse') JuiceSystem.burst(scene, x, y, 0x22c55e, 8, 22);
+    else if (type === 'data') JuiceSystem.highlightNode(scene, x, y, 0xa78bfa);
   },
 };

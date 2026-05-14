@@ -30,8 +30,10 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
   private mistakes = 0;
   private roundText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
+  private previewText!: Phaser.GameObjects.Text;
   private optionContainer!: Phaser.GameObjects.Container;
   private marker!: Phaser.GameObjects.Container;
+  private isTransitioning = false;
 
   protected abstract rounds: readonly T[];
   protected abstract theme: ScriptedChoiceTheme;
@@ -122,9 +124,73 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
   }
 
   private createHashMotif(): Phaser.GameObjects.GameObject[] {
-    return [-84, -42, 42, 84].map((x, index) =>
-      this.add.rectangle(x, -14, 28, 28, index % 2 === 0 ? this.theme.accentColor : this.theme.secondaryAccentColor, 0.78)
-        .setStrokeStyle(2, 0x081820, 0.7));
+    const buckets = [-84, -42, 42, 84].map((x, index) => {
+      const bucket = this.add.rectangle(x, -14, 28, 28, index % 2 === 0 ? this.theme.accentColor : this.theme.secondaryAccentColor, 0.78)
+        .setStrokeStyle(2, 0x081820, 0.7)
+        .setData('bucketIndex', index);
+      bucket.setInteractive({ useHandCursor: true });
+      bucket.on('pointerover', () => {
+        bucket.setStrokeStyle(3, 0xe0f8d0, 1);
+        this.showHashTooltip(bucket, index);
+      });
+      bucket.on('pointerout', () => {
+        bucket.setStrokeStyle(2, 0x081820, 0.7);
+        this.hideHashTooltip();
+      });
+      return bucket;
+    });
+    const items = [
+      this.add.circle(-78, -20, 5, 0x081820, 0.9),
+      this.add.circle(-38, -8, 5, 0x081820, 0.9),
+      this.add.circle(46, -20, 5, 0x081820, 0.9),
+      this.add.circle(86, -8, 5, 0x081820, 0.9),
+      this.add.circle(-38, -20, 5, 0x081820, 0.9),
+    ];
+    return [...buckets, ...items];
+  }
+
+  private hashTooltip?: Phaser.GameObjects.Text;
+
+  private showHashTooltip(bucket: Phaser.GameObjects.Rectangle, index: number): void {
+    this.hideHashTooltip();
+    const labels = ['key % 4 = 0', 'key % 4 = 1', 'key % 4 = 2', 'key % 4 = 3'];
+    const { x, y } = bucket;
+    this.hashTooltip = this.add.text(x, y + 28, labels[index], {
+      fontSize: '8px',
+      fontFamily: FONTS.RETRO,
+      color: '#081820',
+      backgroundColor: '#e0f8d0',
+      padding: { x: 4, y: 2 },
+    }).setOrigin(0.5);
+  }
+
+  private hideHashTooltip(): void {
+    this.hashTooltip?.destroy();
+    this.hashTooltip = undefined;
+  }
+
+  private highlightHashBucket(): void {
+    if (this.theme.motif !== 'hash' || !this.marker) return;
+    const buckets = this.marker.list.filter((obj): obj is Phaser.GameObjects.Rectangle =>
+      obj instanceof Phaser.GameObjects.Rectangle && obj.getData('bucketIndex') !== undefined
+    );
+    if (buckets.length === 0) return;
+    const target = buckets[Math.floor(Math.random() * buckets.length)];
+    const orig = target.fillColor;
+    target.setFillStyle(0xe0f8d0, 1);
+    if (!this.prefersReducedMotion()) {
+      this.tweens.add({
+        targets: target,
+        scaleX: 1.25,
+        scaleY: 1.25,
+        duration: 120,
+        yoyo: true,
+        ease: 'Back.easeOut',
+        onComplete: () => target.setFillStyle(orig, 0.78),
+      });
+    } else {
+      this.time.delayedCall(220, () => target.setFillStyle(orig, 0.78));
+    }
   }
 
   private createStackMotif(): Phaser.GameObjects.GameObject[] {
@@ -243,6 +309,16 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
     }).setOrigin(0.5);
 
     this.optionContainer = this.add.container(0, height - 128);
+
+    this.previewText = this.add.text(width / 2, height / 2 + 130, '', {
+      fontSize: '10px',
+      fontFamily: FONTS.RETRO,
+      color: '#fbbf24',
+      backgroundColor: '#081820',
+      align: 'center',
+      wordWrap: { width: 720 },
+      padding: { x: 10, y: 6 },
+    }).setOrigin(0.5).setAlpha(0);
   }
 
   private renderRound(): void {
@@ -255,24 +331,35 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
     const startX = width / 2 - 300;
     round.options.forEach((option, index) => {
       const x = startX + index * 300;
-      const button = createChoiceButton(this, x, 0, index, option, {
+      const handle = createChoiceButton(this, x, 0, index, option, {
         strokeColor: this.theme.optionStrokeColor,
         wrapWidth: 210,
+        onPreviewStart: () => this.previewChoice(index),
+        onPreviewEnd: () => this.clearChoicePreview(),
         onChoose: () => this.choose(index),
       });
-      this.optionContainer.add(button);
+      this.optionContainer.add(handle.container);
+      handle.reveal(120 + index * 80);
     });
   }
 
   private choose(index: number): void {
+    if (this.isTransitioning) return;
     const round = this.rounds[this.roundIndex];
+    if (!round) return;
     if (!this.isCorrectChoice(round, index)) {
+      this.isTransitioning = true;
       this.mistakes++;
       this.onWrongAnswer(this.theme.wrongMessage);
+      this.time.delayedCall(600, () => {
+        this.isTransitioning = false;
+      });
       return;
     }
 
+    this.isTransitioning = true;
     this.onCorrectAnswer(round.success);
+    this.highlightHashBucket();
     this.roundIndex++;
 
     if (this.roundIndex >= this.rounds.length) {
@@ -287,20 +374,55 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
       duration: 160,
       yoyo: true,
       ease: 'Sine.easeInOut',
-      onComplete: () => this.renderRound(),
+      onComplete: () => {
+        this.renderRound();
+        this.isTransitioning = false;
+      },
     });
   }
 
+  private previewChoice(index: number): void {
+    if (this.isTransitioning) return;
+    if (this.mistakes === 0) return;
+    const action = this.getPreviewAction(index);
+    this.previewText.setText(`PREVIEW ${index + 1}: ${action}`);
+    this.previewText.setAlpha(1);
+    this.tweens.killTweensOf(this.marker);
+    this.marker.setScale(1.04);
+  }
+
+  private clearChoicePreview(): void {
+    if (!this.previewText || this.isTransitioning) return;
+    this.previewText.setAlpha(0);
+    this.tweens.killTweensOf(this.marker);
+    this.marker.setScale(1);
+  }
+
+  private getPreviewAction(index: number): string {
+    const labels: Record<Motif, string[]> = {
+      river: ['moves the left pointer', 'moves the right pointer', 'locks a pair', 'resets the current'],
+      hash: ['routes by key % bucket count', 'tests a collision bucket', 'stores the keyed value', 'retrieves from memory'],
+      stack: ['touches the top frame first', 'pushes a new frame', 'pops the recent frame', 'checks the base case'],
+      queue: ['serves the front item', 'enqueues at the back', 'prioritizes without losing order', 'rotates the next turn'],
+      tree: ['compares at the root', 'branches left or right', 'visits a child node', 'balances by depth'],
+      graph: ['lights a neighbor edge', 'marks a visited node', 'tests for a cycle', 'connects a component'],
+      core: ['updates a subproblem cell', 'reuses cached state', 'chooses the recurrence', 'combines earlier patterns'],
+    };
+    const actions = labels[this.theme.motif];
+    return actions[index % actions.length];
+  }
+
   private complete(): void {
-    const stars = this.mistakes === 0 ? 3 : this.mistakes <= 2 ? 2 : 1;
+    const stars = this.mistakes === 0 && this.hintsUsed === 0 ? 3
+      : this.mistakes <= 2 && this.hintsUsed <= 1 ? 2
+        : 1;
     this.onPuzzleComplete(stars);
   }
 
   protected displayHint(hintNumber: number): void {
-    const round = this.rounds[this.roundIndex];
     const hints = [
       this.theme.hintLead,
-      `This step wants: ${round.options[round.correctIndex]}.`,
+      'Trace the state change first: reject any option that breaks the invariant named in the prompt.',
     ];
     this.showMessage(hints[hintNumber - 1] ?? hints[0], COLORS.GOLD_ACCENT);
   }

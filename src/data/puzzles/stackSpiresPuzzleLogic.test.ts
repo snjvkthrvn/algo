@@ -6,6 +6,10 @@ import {
   SCROLL_STACK_ROUNDS,
   TOWER_OF_MEMORY_ROUNDS,
   isCorrectStackChoice,
+  createLifoStack,
+  pushWithAnim,
+  popWithAnim,
+  getLifoHint,
 } from './stackSpiresPuzzleLogic';
 
 describe('Stack Spires puzzle logic', () => {
@@ -39,5 +43,22 @@ describe('Stack Spires puzzle logic', () => {
 
     expect(isCorrectStackChoice(round, round.correctIndex)).toBe(true);
     expect(isCorrectStackChoice(round, (round.correctIndex + 1) % round.options.length)).toBe(false);
+  });
+
+  it('models LIFO stack height tween and particles for push/pop', () => {
+    const s = createLifoStack();
+    expect(s.height).toBe(0);
+    const pushAnim = pushWithAnim(s, 'A');
+    expect(pushAnim.height).toBe(1);
+    expect(pushAnim.tween).toMatchObject({ from: 0, to: 1, type: 'height' });
+    expect(pushAnim.particles).toBe('push-spark');
+    const popAnim = popWithAnim(s);
+    expect(popAnim.height).toBe(0);
+    expect(popAnim.reverse).toBe(true);
+  });
+
+  it('provides LIFO educational hint overlay text', () => {
+    expect(getLifoHint('push')).toContain('top');
+    expect(getLifoHint('undo')).toContain('reverse');
   });
 });

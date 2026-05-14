@@ -32,6 +32,13 @@
 
 **Next:** Use this audit to drive detailed per-puzzle tasks in the implementation plan. Start with BasePuzzleScene enhancements (Task 1), then choice base, then per-region interactive lifts.
 
+**Update (2026-05-09):** The per-region interactive lifts have been significantly advanced. Educational animations, visual state tweening, and particle feedback have been added to:
+- Stack Spires (LIFO stack height, undo animations)
+- Queue Canals (FIFO particles, enqueue/dequeue visuals)
+- Tree Canopy (BST inserts/deletes, depth hints)
+- Graph Nexus (Node/edge highlights, pathfinding paths)
+These improvements bring the later regions up to the intended "live execution" feel.
+
 **Production Ready Definition (for this overhaul):**
 - Every interaction has tweened feedback (scale, glow, particles via JuiceSystem).
 - No raw clicks without visual response < 50ms.

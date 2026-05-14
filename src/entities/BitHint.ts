@@ -1,52 +1,63 @@
 /**
- * BitHint - Lightweight companion hint display for puzzle scenes.
+ * BitHint - Lightweight Bit avatar for puzzle scenes.
  *
- * PrologueScene sleeps when puzzles run (full scene transition), so
- * the full BitCompanion isn't available. This is a self-contained
- * visual hint dot that puzzle scenes instantiate directly.
- *
- * Bit hovers near correct elements (WARM = orange glow),
- * dims when the player moves the wrong direction (COLD = blue-grey),
- * and celebrates on puzzle completion.
+ * PrologueScene sleeps when a puzzle runs (full scene transition), so the
+ * full BitCompanion isn't available. BitHint is a self-contained avatar
+ * the puzzle can place at a fixed point. All visual signaling delegates to
+ * BitGuide so the puzzle's "warm/cold/celebrate" reads identically to the
+ * overworld companion's "warm/cold/celebrate."
  */
 
 import Phaser from 'phaser';
-import { gameState } from '../core/GameStateManager';
-import { BitMood } from '../data/types';
 import { COLORS } from '../config/constants';
+import {
+  BitGuide,
+  BIT_GUIDE_COLORS,
+  colorableFromFillStyle,
+  type BitGuideTarget,
+} from '../ui/BitGuide';
 
-const WARM_COLOR = COLORS.ORANGE_ACCENT;
-const COLD_COLOR = 0x4b6cb7;
-const NEUTRAL_COLOR = COLORS.CYAN_GLOW;
+const NEUTRAL_COLOR = BIT_GUIDE_COLORS.neutral;
+const DOT_BASE_ALPHA = 0.9;
+const GLOW_BASE_ALPHA = 0.2;
 
 export class BitHint {
   private scene: Phaser.Scene;
+  private container: Phaser.GameObjects.Container;
   private dot: Phaser.GameObjects.Ellipse;
   private glow: Phaser.GameObjects.Ellipse;
-  private currentTween: Phaser.Tweens.Tween | null = null;
   private floatTween: Phaser.Tweens.Tween | null = null;
+  private guide: BitGuide;
 
   constructor(scene: Phaser.Scene, startX: number, startY: number) {
     this.scene = scene;
 
-    // Outer glow ring
-    this.glow = scene.add.ellipse(startX, startY, 22, 22, NEUTRAL_COLOR, 0.2);
-    this.glow.setDepth(50);
+    this.container = scene.add.container(startX, startY).setDepth(50);
 
-    // Inner dot
-    this.dot = scene.add.ellipse(startX, startY, 10, 10, NEUTRAL_COLOR, 0.9);
-    this.dot.setDepth(51);
+    this.glow = scene.add.ellipse(0, 0, 22, 22, NEUTRAL_COLOR, GLOW_BASE_ALPHA);
+    this.dot = scene.add.ellipse(0, 0, 10, 10, NEUTRAL_COLOR, DOT_BASE_ALPHA);
+    this.container.add([this.glow, this.dot]);
 
+    const target: BitGuideTarget = {
+      scene,
+      tweenAnchor: this.container,
+      colorables: [
+        colorableFromFillStyle(this.dot, NEUTRAL_COLOR, DOT_BASE_ALPHA),
+        colorableFromFillStyle(this.glow, NEUTRAL_COLOR, GLOW_BASE_ALPHA),
+      ],
+      baseColor: NEUTRAL_COLOR,
+    };
+
+    this.guide = new BitGuide(target);
     this.startFloat();
   }
 
-  // ─── Hint States ────────────────────────────────────────────────────────────
+  // ─── Public API (preserved for puzzle scenes) ────────────────────────────────
 
-  /** Move Bit to hover near a world position (e.g., a tile during pattern display). */
+  /** Move the avatar to a world position; pure motion, no signal. */
   moveTo(x: number, y: number, duration: number = 300): void {
-    this.stopCurrentTween();
     this.scene.tweens.add({
-      targets: [this.dot, this.glow],
+      targets: this.container,
       x,
       y,
       duration,
@@ -54,76 +65,30 @@ export class BitHint {
     });
   }
 
-  /** Warm signal — player is on the right track. Orange pulse. */
-  showWarm(): void {
-    this.stopCurrentTween();
-    this.dot.setFillStyle(WARM_COLOR, 0.95);
-    this.glow.setFillStyle(WARM_COLOR, 0.25);
-    this.currentTween = this.scene.tweens.add({
-      targets: this.glow,
-      scaleX: 1.6,
-      scaleY: 1.6,
-      alpha: 0.1,
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-    gameState.setBitMood(BitMood.HINT_WARM);
-  }
-
-  /** Cold signal — player is moving away from the solution. Blue-grey dim. */
-  showCold(): void {
-    this.stopCurrentTween();
-    this.dot.setFillStyle(COLD_COLOR, 0.5);
-    this.glow.setFillStyle(COLD_COLOR, 0.1);
-    this.currentTween = this.scene.tweens.add({
-      targets: this.dot,
-      alpha: 0.4,
-      duration: 600,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-    gameState.setBitMood(BitMood.HINT_COLD);
-  }
-
-  /** Reset to neutral appearance. */
+  showWarm(): void { this.guide.warm(); }
+  showCold(): void { this.guide.cold(); }
   showNeutral(): void {
-    this.stopCurrentTween();
-    this.dot.setFillStyle(NEUTRAL_COLOR, 0.9).setAlpha(1);
-    this.glow.setFillStyle(NEUTRAL_COLOR, 0.2).setAlpha(1).setScale(1);
-    gameState.setBitMood(BitMood.NEUTRAL);
+    this.guide.neutral();
     this.startFloat();
   }
+  celebrate(onDone?: () => void): void { this.guide.celebrate(onDone); }
+  scared(): void { this.guide.scared(); }
 
-  /** Celebration burst on puzzle complete. */
-  celebrate(): void {
-    this.stopCurrentTween();
-    this.dot.setFillStyle(0xffffff, 1);
-    this.glow.setFillStyle(COLORS.GOLD_ACCENT, 0.4);
+  /** Walk Bit through an ordered list of waypoints (sequence-guide). */
+  sequence(waypoints: ReadonlyArray<{ x: number; y: number }>, onArrive?: (i: number) => void): void {
+    this.guide.sequenceGuide(waypoints, { onArrive });
+  }
 
-    this.currentTween = this.scene.tweens.add({
-      targets: [this.dot, this.glow],
-      scaleX: 2.0,
-      scaleY: 2.0,
-      duration: 200,
-      yoyo: true,
-      repeat: 3,
-      ease: 'Back.easeOut',
-      onComplete: () => {
-        this.dot.setFillStyle(NEUTRAL_COLOR, 0.9).setScale(1);
-        this.glow.setFillStyle(NEUTRAL_COLOR, 0.2).setScale(1);
-        gameState.setBitMood(BitMood.EXCITED);
-      },
-    });
+  /** Arc Bit from one world point to another (mapping-guide). */
+  mapping(from: { x: number; y: number }, to: { x: number; y: number }, onArrive?: () => void): void {
+    this.guide.mappingGuide(from, to, { onArrive });
   }
 
   destroy(): void {
-    this.stopCurrentTween();
     this.floatTween?.stop();
-    this.dot.destroy();
-    this.glow.destroy();
+    this.guide.destroy();
+    this.container.destroy();
+    void COLORS; // referenced via BIT_GUIDE_COLORS
   }
 
   // ─── Internal ───────────────────────────────────────────────────────────────
@@ -131,21 +96,12 @@ export class BitHint {
   private startFloat(): void {
     this.floatTween?.stop();
     this.floatTween = this.scene.tweens.add({
-      targets: [this.dot, this.glow],
+      targets: this.container,
       y: `+=${3}`,
       duration: 900,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
-  }
-
-  private stopCurrentTween(): void {
-    this.floatTween?.stop();
-    this.floatTween = null;
-    if (this.currentTween) {
-      this.currentTween.stop();
-      this.currentTween = null;
-    }
   }
 }

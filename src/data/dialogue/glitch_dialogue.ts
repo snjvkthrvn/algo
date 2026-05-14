@@ -10,10 +10,14 @@ export interface GlitchLine {
 }
 
 export const GLITCH_DIALOGUE: Record<number, GlitchLine[]> = {
+  // Scene 0-5: Glitch is caught failing at the consoles after the player has
+  // already earned the rune shard. Surprise + brute-force confession + dash off.
   1: [
-    { text: "Oh. A Spark. How... quaint." },
-    { text: "I've solved this whole region already. Brute-forced every path." },
-    { text: "Enjoy your little companion. You'll need it." },
+    { text: "Wha— don't look at me like that. The shapes are confusing." },
+    { text: "Wait. You got a SHARD already? From the tile thing?" },
+    { text: "Took me FOREVER. I just kept trying every tile until one stuck." },
+    { text: "Whatever. I had a strategy here too — try every shard in every console, eventually one fits." },
+    { text: "Bet I beat you to the gate." },
   ],
   2: [
     { text: "You beat the Sentinel too?" },
@@ -30,8 +34,8 @@ export const GLITCH_DIALOGUE: Record<number, GlitchLine[]> = {
 };
 
 export const GLITCH_EXIT_LINES: string[] = [
+  "I MEANT to do that!",
   "Don't follow me.",
   "I'm not impressed.",
-  "See you never.",
   "Whatever.",
 ];

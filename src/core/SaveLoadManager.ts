@@ -101,7 +101,48 @@ class SaveLoadManagerClass {
     if (!Array.isArray(state.shardsCollected)) {
       state.shardsCollected = [];
     }
+    if (!state.flags || typeof state.flags !== 'object') {
+      state.flags = {};
+    }
+    if (!state.npcStates || typeof state.npcStates !== 'object') {
+      state.npcStates = {};
+    }
+    // Retro-fire the chain for older saves: if puzzles are already complete but the
+    // newer gate flags were never set (because the gate logic didn't exist when the
+    // save was made), set them here so the player isn't softlocked at the next portal.
+    this.backfillRegionGates(state);
     state.saveVersion = CURRENT_VERSION;
+  }
+
+  /** Open boss gate / next-gateway flags for any region whose puzzles are already complete. */
+  private backfillRegionGates(state: GameState): void {
+    const flags = state.flags;
+    const puzzleDone = (id: string): boolean =>
+      Boolean(state.puzzleResults?.[id] || flags[`puzzle_${id}_complete`]);
+
+    const chain: Array<{
+      puzzles: string[];
+      bossGate: string;
+      bossId: string;
+      nextGateway: string;
+    }> = [
+      { puzzles: ['tr_1', 'tr_2', 'tr_3', 'tr_4'], bossGate: 'mirror_serpent_gate_open', bossId: 'boss_mirror_serpent', nextGateway: 'hash_highlands_gateway_open' },
+      { puzzles: ['hh_1', 'hh_2', 'hh_3', 'hh_4'], bossGate: 'archivist_gate_open', bossId: 'boss_archivist', nextGateway: 'stack_spires_gateway_open' },
+      { puzzles: ['ss_1', 'ss_2', 'ss_3', 'ss_4'], bossGate: 'recursion_gate_open', bossId: 'boss_recursion', nextGateway: 'queue_canals_gateway_open' },
+      { puzzles: ['qc_1', 'qc_2', 'qc_3', 'qc_4'], bossGate: 'reconciler_gate_open', bossId: 'boss_reconciler', nextGateway: 'tree_canopy_gateway_open' },
+      { puzzles: ['tc_1', 'tc_2', 'tc_3', 'tc_4'], bossGate: 'pattern_gate_open', bossId: 'boss_pattern', nextGateway: 'graph_nexus_gateway_open' },
+      { puzzles: ['gn_1', 'gn_2', 'gn_3', 'gn_4'], bossGate: 'echo_gate_open', bossId: 'boss_echo', nextGateway: 'core_gateway_open' },
+      { puzzles: ['core_1', 'core_2', 'core_3', 'core_4'], bossGate: 'protocol_omega_gate_open', bossId: 'boss_protocol_omega', nextGateway: 'game_complete' },
+    ];
+
+    for (const entry of chain) {
+      if (entry.puzzles.every(puzzleDone) && !flags[entry.bossGate]) {
+        flags[entry.bossGate] = true;
+      }
+      if (puzzleDone(entry.bossId) && !flags[entry.nextGateway]) {
+        flags[entry.nextGateway] = true;
+      }
+    }
   }
 }
 

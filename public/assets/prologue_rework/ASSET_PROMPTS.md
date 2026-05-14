@@ -1,6 +1,6 @@
 # Prologue Route In The Void Asset Prompts
 
-Generated with the built-in ImageGen tool. Do not use the CLI fallback for these assets.
+Generated with the built-in ImageGen tool. Do not use the CLI fallback for these assets. Note: UI prompts here follow the GameBoy-mythic aesthetic, which applies universally across all 9 regions of Algorithmia.
 
 ## Shared constraints
 

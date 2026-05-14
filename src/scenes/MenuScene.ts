@@ -4,7 +4,7 @@
 
 import Phaser from 'phaser';
 import { VISUAL_REVAMP_KEYS } from '../config/assets';
-import { COLORS, FONTS, REGION_DISPLAY_NAMES, SCENE_BY_REGION, SCENE_KEYS } from '../config/constants';
+import { COLORS, FONTS, REGIONS, REGION_DISPLAY_NAMES, SCENE_BY_REGION, SCENE_KEYS } from '../config/constants';
 import { saveLoadManager } from '../core/SaveLoadManager';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
@@ -12,12 +12,21 @@ import { TransitionManager } from '../core/TransitionManager';
 import { moveMenuSelection } from '../input/MenuNavigation';
 import { drawPanel } from '../ui/panel';
 import { a11yManager } from '../core/A11yManager';
+import {
+  REGION_PRESENTATION,
+  getRegionPresentation,
+  getRegionProgress,
+} from '../data/regionPresentation';
 import type { TitleMenuLaunchData } from './titleNavigation';
 
 // Persists for the entire browser session — scramble plays once only
 let menuTitleAssembled = false;
 
 const GLYPHS = '0123456789#%&*!?<>=+~^@$';
+const JOURNEY_STRIP_Y = 286;
+const MENU_START_Y = 330;
+const MENU_ROW_SPACING = 42;
+const SAVE_SUMMARY_Y = 478;
 
 interface Star {
   x: number;
@@ -36,7 +45,7 @@ interface MenuItem {
 
 export class MenuScene extends Phaser.Scene {
   private stars: Star[] = [];
-  private starGraphics!: Phaser.GameObjects.Graphics;
+  private starObjects: Phaser.GameObjects.Arc[] = [];
   private menuItems: MenuItem[] = [];
   private menuTexts: Phaser.GameObjects.Text[] = [];
   private saveSummaryText: Phaser.GameObjects.Text | null = null;
@@ -113,6 +122,7 @@ export class MenuScene extends Phaser.Scene {
     line.moveTo(width / 2 - 200, 264);
     line.lineTo(width / 2 + 200, 264);
     line.strokePath();
+    this.createJourneyStrip(width);
 
     // Menu items — built but rendered invisible for slide-up entrance
     const hasSave = saveLoadManager.hasSave();
@@ -125,11 +135,10 @@ export class MenuScene extends Phaser.Scene {
       this.menuItems.push({ text: 'CONTINUE', callback: () => this.continueGame() });
     }
     this.menuItems.push({ text: 'SETTINGS', callback: () => this.openSettings() });
-    this.menuItems.push({ text: 'DEBUG SELECT', callback: () => TransitionManager.swirl(this, SCENE_KEYS.DEBUG_SELECT) });
 
     this.menuTexts = [];
     this.menuItems.forEach((item, index) => {
-      const finalY = 320 + index * 48;
+      const finalY = MENU_START_Y + index * MENU_ROW_SPACING;
       const text = this.add.text(width / 2, menuTitleAssembled ? finalY : finalY + 32, item.text, {
         fontSize: '16px',
         fontFamily: FONTS.RETRO,
@@ -196,15 +205,15 @@ export class MenuScene extends Phaser.Scene {
       .setDepth(-2);
 
     this.createStarfield(width, height);
-    this.starGraphics.setDepth(-1);
   }
 
-  update(_time: number, _delta: number): void {
+  update(_time: number, delta: number): void {
     const { width, height } = this.cameras.main;
-    this.starGraphics.clear();
-    for (const star of this.stars) {
-      star.x += star.vx;
-      star.y += star.vy;
+    const dt = delta / 16.67;
+    for (let i = 0; i < this.stars.length; i++) {
+      const star = this.stars[i];
+      star.x += star.vx * dt;
+      star.y += star.vy * dt;
       if (star.x < 0) star.x += width;
       if (star.x > width) star.x -= width;
       if (star.y < 0) star.y += height;
@@ -212,14 +221,13 @@ export class MenuScene extends Phaser.Scene {
 
       star.alpha += Math.sin(this.time.now * star.speed * 0.001) * 0.01;
       star.alpha = Math.max(0.1, Math.min(0.8, star.alpha));
-      this.starGraphics.fillStyle(0xffffff, star.alpha);
-      this.starGraphics.fillCircle(star.x, star.y, star.radius);
+      this.starObjects[i].setPosition(star.x, star.y).setAlpha(star.alpha);
     }
   }
 
   private createStarfield(width: number, height: number): void {
-    this.starGraphics = this.add.graphics();
     this.stars = [];
+    this.starObjects = [];
 
     // Three layers: small faint, small mid, large bright
     const layers: { count: number; radius: number; speed: number; maxAlpha: number }[] = [
@@ -232,7 +240,7 @@ export class MenuScene extends Phaser.Scene {
       for (let i = 0; i < layer.count; i++) {
         const angle = Math.random() * Math.PI * 2;
         const driftSpeed = 0.02 + Math.random() * 0.04;
-        this.stars.push({
+        const star: Star = {
           x: Math.random() * width,
           y: Math.random() * height,
           vx: Math.cos(angle) * driftSpeed,
@@ -240,7 +248,11 @@ export class MenuScene extends Phaser.Scene {
           alpha: Math.random() * layer.maxAlpha + 0.1,
           speed: Math.random() * (layer.speed - 0.3) + 0.3,
           radius: layer.radius,
-        });
+        };
+        this.stars.push(star);
+        this.starObjects.push(
+          this.add.circle(star.x, star.y, star.radius, 0xffffff, star.alpha).setDepth(-1)
+        );
       }
     }
   }
@@ -283,7 +295,7 @@ export class MenuScene extends Phaser.Scene {
 
   private slideInMenuItems(): void {
     this.menuTexts.forEach((text, i) => {
-      const finalY = 320 + i * 48;
+      const finalY = MENU_START_Y + i * MENU_ROW_SPACING;
       this.tweens.add({
         targets: text,
         y: finalY,
@@ -297,7 +309,7 @@ export class MenuScene extends Phaser.Scene {
     if (this.saveSummaryText) {
       this.tweens.add({
         targets: this.saveSummaryText,
-        y: 478,
+        y: SAVE_SUMMARY_Y,
         alpha: 1,
         duration: 320,
         delay: this.menuTexts.length * 70 + 90,
@@ -313,7 +325,7 @@ export class MenuScene extends Phaser.Scene {
     const regionName = REGION_DISPLAY_NAMES[savedState.player.region] ?? savedState.player.region.split('_').join(' ');
     const solvedCount = Object.keys(savedState.puzzleResults).length;
     const solvedLabel = solvedCount === 1 ? 'PUZZLE' : 'PUZZLES';
-    const finalY = 478;
+    const finalY = SAVE_SUMMARY_Y;
 
     const summaryLabel = this.preferResume ? 'RESUME' : 'CONTINUE';
 
@@ -324,6 +336,44 @@ export class MenuScene extends Phaser.Scene {
       backgroundColor: '#081820',
       padding: { x: 10, y: 6 },
     }).setOrigin(0.5).setAlpha(menuTitleAssembled ? 1 : 0);
+  }
+
+  private createJourneyStrip(width: number): void {
+    const savedState = saveLoadManager.getSavedState();
+    const currentRegionId = savedState?.player.region ?? REGIONS.PROLOGUE;
+    const progress = getRegionProgress(currentRegionId);
+    const current = getRegionPresentation(currentRegionId) ?? REGION_PRESENTATION[0];
+    const centerX = Math.round(width / 2);
+    const y = JOURNEY_STRIP_Y;
+    const dotSpacing = 34;
+    const startX = Math.round(centerX - ((REGION_PRESENTATION.length - 1) * dotSpacing) / 2);
+
+    const rail = this.add.graphics().setDepth(3);
+    rail.lineStyle(1, 0xe0f8d0, 0.34);
+    rail.beginPath();
+    rail.moveTo(startX, y);
+    rail.lineTo(startX + (REGION_PRESENTATION.length - 1) * dotSpacing, y);
+    rail.strokePath();
+
+    REGION_PRESENTATION.forEach((region, index) => {
+      const x = startX + index * dotSpacing;
+      const active = progress.current === index + 1;
+      const visited = progress.current > index + 1;
+      const fill = active ? region.accentColor : visited ? 0x88c070 : 0xe0f8d0;
+
+      rail.fillStyle(fill, active || visited ? 0.95 : 0.42);
+      rail.fillCircle(x, y, active ? 4 : 3);
+      rail.lineStyle(1, 0x081820, 0.86);
+      rail.strokeCircle(x, y, active ? 6 : 4);
+    });
+
+    this.add.text(centerX, y + 14, `${progress.label} ${current.shortTitle.toUpperCase()} - ${current.actLabel.toUpperCase()}`, {
+      fontSize: '7px',
+      fontFamily: FONTS.RETRO,
+      color: '#e0f8d0',
+      backgroundColor: '#081820',
+      padding: { x: 8, y: 4 },
+    }).setOrigin(0.5, 0).setDepth(4);
   }
 
   private registerKeyboardMenuControls(): void {

@@ -73,13 +73,18 @@ import {
 import { ConceptBridgeScene } from '../scenes/ConceptBridgeScene';
 import { CodexScene } from '../scenes/CodexScene';
 import { CRTScene } from '../scenes/CRTScene';
+import { EndGameScene } from '../scenes/EndGameScene';
 import { PauseOverlayScene } from '../scenes/PauseOverlayScene';
+import { UIScene as PrologueRunUIScene } from '../arcadePrologue/scenes/UIScene';
+
+const BASE_WIDTH = 1280;
+const BASE_HEIGHT = 720;
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: 1280,
-  height: 720,
+  width: BASE_WIDTH,
+  height: BASE_HEIGHT,
   backgroundColor: '#0a0a1a',
 
   dom: {
@@ -104,6 +109,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     CRTScene,
     MenuScene,
     DebugSelectScene,
+    PrologueRunUIScene,
     PrologueScene,
     ArrayPlainsScene,
     TwinRiversScene,
@@ -158,6 +164,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     Boss_ProtocolOmega,
     ConceptBridgeScene,
     CodexScene,
+    EndGameScene,
     PauseOverlayScene,
   ],
 

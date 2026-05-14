@@ -26,12 +26,14 @@ import {
 } from '../systems/RouteSurfaceRenderer';
 import type { DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
-import { saveAndReturnToTitle } from './titleNavigation';
+import { openPauseOverlay } from './titleNavigation';
+import { ObjectPool } from '../utils/ObjectPool';
 
 export class TwinRiversScene extends Phaser.Scene {
   private player!: Player;
   private bit!: BitCompanion;
   private hud!: HUDManager;
+  private hasShutdown = false;
   private interactionSystem!: InteractionSystem;
   private dialogueSystem!: DialogueSystem;
   private returnGateway: InteractableObject | null = null;
@@ -41,13 +43,20 @@ export class TwinRiversScene extends Phaser.Scene {
   private labelObjects: Phaser.GameObjects.Text[] = [];
   private lastPlayerX: number = NaN;
   private lastPlayerY: number = NaN;
+  private interactablePool!: ObjectPool<InteractableObject>;
+  private interactionEnabledTime = 0;
 
   // Overworld sequence puzzle
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];
+  private readonly pointerSequence = [0, 3, 1, 2];
   private currentSequenceIndex = 0;
   private sequenceSolved = false;
 
-  private readonly onEscReturnToTitle = () => saveAndReturnToTitle(this);
+  private readonly onEscPause = () => {
+    if (this.dialogueSystem?.isDialogueActive()) return;
+    openPauseOverlay(this, SCENE_KEYS.TWIN_RIVERS);
+  };
+  private readonly onOpenCodex = () => this.openCodex();
 
   constructor() {
     super({ key: SCENE_KEYS.TWIN_RIVERS });
@@ -60,6 +69,7 @@ export class TwinRiversScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.hasShutdown = false;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
     audioManager.setScene(this);
 
@@ -83,6 +93,13 @@ export class TwinRiversScene extends Phaser.Scene {
     });
     this.bit = new BitCompanion(this, px, py);
 
+    if (!this.interactablePool) {
+      this.interactablePool = new ObjectPool(
+        (cfg) => new InteractableObject(this, cfg),
+        (obj, cfg) => obj.reset(cfg)
+      );
+    }
+
     this.interactionSystem = new InteractionSystem(this, this.player);
     this.dialogueSystem = new DialogueSystem(this);
     this.createInteractables();
@@ -99,8 +116,10 @@ export class TwinRiversScene extends Phaser.Scene {
     camera.setDeadzone(CAMERA_TUNING.DEADZONE_WIDTH, CAMERA_TUNING.DEADZONE_HEIGHT);
 
     TransitionManager.fadeIn(this, 700);
+    this.interactionEnabledTime = this.time.now + 700;
     this.hud.showRegionCard('Twin Rivers', 'Where two paths learn to move as one.');
-    this.input.keyboard?.on('keydown-ESC', this.onEscReturnToTitle);
+    this.input.keyboard?.on('keydown-ESC', this.onEscPause);
+    this.input.keyboard?.on('keydown-C', this.onOpenCodex);
   }
 
   private createSequencePuzzle(): void {
@@ -123,21 +142,56 @@ export class TwinRiversScene extends Phaser.Scene {
       tile.setData('active', false);
       this.sequenceTiles.push(tile);
     }
+
+    this.add.text(startX + spacing * 1.5, startY - 58, 'OUTSIDE-IN POINTER WALK', {
+      fontSize: '10px',
+      fontFamily: FONTS.RETRO,
+      color: '#e0f8d0',
+      backgroundColor: '#162536',
+      padding: { left: 6, right: 6, top: 3, bottom: 3 },
+    }).setOrigin(0.5).setDepth(2.4);
   }
 
-  update(): void {
+  update(time: number, delta: number): void {
     const dialogueActive = this.dialogueSystem?.isDialogueActive() ?? false;
-    if (!dialogueActive) this.player.update();
+    if (!dialogueActive) this.player.update(time, delta);
 
     const pos = this.player.getPosition();
-    this.bit.update(pos.x, pos.y);
-    this.interactionSystem.update(!dialogueActive);
+    this.bit.update(pos.x, pos.y, delta);
+    const canInteract = !dialogueActive && this.time.now >= this.interactionEnabledTime;
+    this.interactionSystem.update(canInteract);
     if (pos.x !== this.lastPlayerX || pos.y !== this.lastPlayerY) {
       gameState.setPlayerPosition(pos.x, pos.y);
       this.lastPlayerX = pos.x;
       this.lastPlayerY = pos.y;
       this.checkSequencePuzzle(pos.x, pos.y);
     }
+
+    this.syncTwinRiversObjectiveHint();
+  }
+
+  private syncTwinRiversObjectiveHint(): void {
+    if (this.hasShutdown) return;
+
+    const riverIds = ['tr_1', 'tr_2', 'tr_3', 'tr_4'] as const;
+    const done = riverIds.filter((id) => gameState.isPuzzleCompleted(id)).length;
+
+    let line = '';
+    if (!this.sequenceSolved) {
+      line =
+        'Objective: Walk the outside-in pointer order on the tiles — 0, then 3, 1, 2.';
+    } else if (done < 4) {
+      line = `Objective: Clear the four river trials (${done}/4), then face the Mirror Serpent.`;
+    } else if (!gameState.isPuzzleCompleted('boss_mirror_serpent')) {
+      line = 'Objective: Challenge the Mirror Serpent beyond the deep-water gate.';
+    } else if (!gameState.getFlag('hash_highlands_gateway_open')) {
+      line = 'Objective: Finish the serpent — the mountain gate opens when the waters settle.';
+    } else {
+      line =
+        'Objective: Continue to Hash Highlands eastward, replay trials, or return to Array Plains.';
+    }
+
+    this.hud.setObjectiveHint(line);
   }
 
   private checkSequencePuzzle(px: number, py: number): void {
@@ -151,7 +205,7 @@ export class TwinRiversScene extends Phaser.Scene {
         if (!tile.getData('active')) {
           tile.setData('active', true);
 
-          if (i === this.currentSequenceIndex) {
+          if (i === this.pointerSequence[this.currentSequenceIndex]) {
             // Correct step
             tile.setFillStyle(COLORS.SUCCESS, 0.8);
             audioManager.playTone(300 + i * 50, 100, 'sine');
@@ -161,17 +215,17 @@ export class TwinRiversScene extends Phaser.Scene {
               this.sequenceSolved = true;
               audioManager.playCorrectTone();
               this.cameras.main.shake(200, 0.005);
-              this.showFieldNote('System', 'River sequence complete.');
+              this.showFieldNote('System', 'Outside pointers met in the middle. Twin traversal complete.');
 
               // Light them all up
               this.sequenceTiles.forEach(t => t.setFillStyle(COLORS.GOLD_ACCENT, 0.9));
             }
-          } else if (i > this.currentSequenceIndex) {
+          } else {
             // Out of order
             audioManager.playWrongTone();
             this.currentSequenceIndex = 0;
             this.sequenceTiles.forEach(t => {
-              t.setData('active', false);
+              if (t !== tile) t.setData('active', false);
               t.setFillStyle(0x1a1a2e, 0.8);
             });
             tile.setFillStyle(COLORS.ERROR, 0.8);
@@ -243,7 +297,7 @@ export class TwinRiversScene extends Phaser.Scene {
   }
 
   private createInteractables(): void {
-    this.returnGateway = new InteractableObject(this, {
+    this.returnGateway = this.interactablePool.acquire({
       id: 'array_plains_gateway',
       type: 'portal',
       x: TWIN_RIVERS_CONFIG.exitPoints[0].position.x,
@@ -263,7 +317,7 @@ export class TwinRiversScene extends Phaser.Scene {
     this.interactionSystem.addObject(this.returnGateway);
 
     const nextExit = TWIN_RIVERS_CONFIG.exitPoints[1];
-    this.nextGateway = new InteractableObject(this, {
+    this.nextGateway = this.interactablePool.acquire({
       id: 'hash_highlands_gateway',
       type: 'portal',
       x: nextExit.position.x,
@@ -282,7 +336,7 @@ export class TwinRiversScene extends Phaser.Scene {
     });
     this.interactionSystem.addObject(this.nextGateway);
 
-    this.guide = new InteractableObject(this, {
+    this.guide = this.interactablePool.acquire({
       id: 'river_guide',
       type: 'sign',
       x: TWIN_RIVERS_CONFIG.npcs[0].position.x,
@@ -316,7 +370,7 @@ export class TwinRiversScene extends Phaser.Scene {
       if (!meta) continue;
 
       const completed = gameState.isPuzzleCompleted(puzzle.id);
-      const object = new InteractableObject(this, {
+      const object = this.interactablePool.acquire({
         id: puzzle.id,
         type: puzzle.id === 'boss_mirror_serpent' ? 'portal' : 'sign',
         x: puzzle.position.x,
@@ -380,6 +434,11 @@ export class TwinRiversScene extends Phaser.Scene {
     TransitionManager.pixelDissolve(this, sceneKey, { returnScene: SCENE_KEYS.TWIN_RIVERS });
   }
 
+  private openCodex(): void {
+    if (this.dialogueSystem?.isDialogueActive()) return;
+    TransitionManager.fade(this, SCENE_KEYS.CODEX, { returnScene: SCENE_KEYS.TWIN_RIVERS }, 260);
+  }
+
   private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
     return isTwinRiversStepWalkable(point, this.getCollisionBlockers(), 0);
   }
@@ -409,17 +468,19 @@ export class TwinRiversScene extends Phaser.Scene {
   }
 
   shutdown(): void {
-    this.input.keyboard?.off('keydown-ESC', this.onEscReturnToTitle);
+    this.hasShutdown = true;
+    this.input.keyboard?.off('keydown-ESC', this.onEscPause);
+    this.input.keyboard?.off('keydown-C', this.onOpenCodex);
     this.dialogueSystem?.destroy();
     this.interactionSystem?.destroy();
     this.hud?.destroy();
-    this.returnGateway?.destroy();
+    this.interactablePool.release(this.returnGateway!);
+    this.interactablePool.release(this.nextGateway!);
+    this.interactablePool.release(this.guide!);
     this.returnGateway = null;
-    this.nextGateway?.destroy();
     this.nextGateway = null;
-    this.guide?.destroy();
     this.guide = null;
-    for (const object of this.puzzleObjects) object.destroy();
+    for (const object of this.puzzleObjects) this.interactablePool.release(object);
     this.puzzleObjects = [];
     for (const label of this.labelObjects) label.destroy();
     this.labelObjects = [];

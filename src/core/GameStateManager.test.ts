@@ -133,6 +133,19 @@ describe('GameStateManager', () => {
     });
   });
 
+  describe('companion mood', () => {
+    it('does not re-emit BIT_MOOD_CHANGE when the mood is unchanged', () => {
+      const callback = vi.fn();
+      eventBus.on(GameEvents.BIT_MOOD_CHANGE, callback);
+
+      gameState.setBitMood(BitMood.SCARED);
+      gameState.setBitMood(BitMood.SCARED);
+
+      expect(gameState.getBitMood()).toBe(BitMood.SCARED);
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('flags', () => {
     it('should set and get flags', () => {
       gameState.setFlag('boss_gate_open', true);

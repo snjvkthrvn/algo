@@ -3,9 +3,11 @@
  */
 
 import Phaser from 'phaser';
-import { COLORS } from '../config/constants';
+import { COLORS, FONTS } from '../config/constants';
 import { PROLOGUE_REWORK_KEYS, PROLOGUE_SHEET_KEYS, VISUAL_REVAMP_KEYS } from '../config/assets';
 import type { NPCConfig } from '../data/types';
+
+export type { NPCConfig };
 
 const STATIC_NPC_SCALES: Record<string, number> = {
   [PROLOGUE_REWORK_KEYS.PROFESSOR_NODE]: 0.22,
@@ -46,7 +48,7 @@ export class NPC {
     // Name tag
     this.nameTag = scene.add.text(x, y - 46, config.name, {
       fontSize: '10px',
-      fontFamily: '"Press Start 2P", monospace',
+      fontFamily: FONTS.RETRO,
       color: '#9ca3af',
       stroke: '#000000',
       strokeThickness: 3,
@@ -192,5 +194,15 @@ export class NPC {
     this.sprite.destroy();
     this.glowGraphics.destroy();
     this.nameTag.destroy();
+  }
+
+  reset(config: NPCConfig): void {
+    this.config = config;
+    const { x, y } = config.defaultPosition;
+    this.sprite.setPosition(x, y);
+    this.sprite.setActive(true).setVisible(true);
+    this.glowGraphics.setPosition(x, y).setAlpha(0).setVisible(true);
+    this.nameTag.setText(config.name).setPosition(x, y - 46).setVisible(false);
+    this.isHighlighted = false;
   }
 }
