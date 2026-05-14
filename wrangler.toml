@@ -1,0 +1,25 @@
+# Cloudflare Workers configuration for the Algorithmia static game.
+#
+# The game has no server-side code — it's pure client-side Phaser. This config
+# tells `wrangler deploy` to upload the Vite build output (`dist/`) as static
+# assets served via Cloudflare's CDN. No Worker entrypoint script is needed.
+#
+# This avoids the Vite-6 requirement that triggers when wrangler auto-detects a
+# Vite project and tries to use the Cloudflare Vite plugin pipeline. Algorithmia
+# stays on Vite 5; the build still produces a flat `dist/` directory; wrangler
+# just uploads it.
+
+name = "algo"
+compatibility_date = "2026-05-14"
+
+[assets]
+# The Vite build emits to dist/, including:
+#   - dist/index.html
+#   - dist/assets/* (JS bundle + game art)
+#   - dist/_headers, dist/_redirects (copied from public/ by Vite)
+directory = "./dist"
+
+# Serve dist/index.html for any path that doesn't match a file in dist/.
+# Required because the game is a single-page Phaser app — deep links should
+# still load the canvas instead of a 404.
+not_found_handling = "single-page-application"
