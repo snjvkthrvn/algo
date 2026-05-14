@@ -28,6 +28,7 @@ import type { DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
 import { openPauseOverlay } from './titleNavigation';
 import { ObjectPool } from '../utils/ObjectPool';
+import { drawPanel } from '../ui/panel';
 
 export class TwinRiversScene extends Phaser.Scene {
   private player!: Player;
@@ -45,6 +46,9 @@ export class TwinRiversScene extends Phaser.Scene {
   private lastPlayerY: number = NaN;
   private interactablePool!: ObjectPool<InteractableObject>;
   private interactionEnabledTime = 0;
+  private closeBetaGateModal: (() => void) | null = null;
+  private twinRiversClosureStarted = false;
+  private twinRiversClosureInProgress = false;
 
   // Overworld sequence puzzle
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];
@@ -53,6 +57,11 @@ export class TwinRiversScene extends Phaser.Scene {
   private sequenceSolved = false;
 
   private readonly onEscPause = () => {
+    if (this.closeBetaGateModal) {
+      this.closeBetaGateModal();
+      return;
+    }
+    if (this.twinRiversClosureInProgress) return;
     if (this.dialogueSystem?.isDialogueActive()) return;
     openPauseOverlay(this, SCENE_KEYS.TWIN_RIVERS);
   };
@@ -154,11 +163,13 @@ export class TwinRiversScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     const dialogueActive = this.dialogueSystem?.isDialogueActive() ?? false;
-    if (!dialogueActive) this.player.update(time, delta);
+    const modalActive = this.closeBetaGateModal !== null;
+    const inputBlocked = dialogueActive || modalActive || this.twinRiversClosureInProgress;
+    if (!inputBlocked) this.player.update(time, delta);
 
     const pos = this.player.getPosition();
     this.bit.update(pos.x, pos.y, delta);
-    const canInteract = !dialogueActive && this.time.now >= this.interactionEnabledTime;
+    const canInteract = !inputBlocked && this.time.now >= this.interactionEnabledTime;
     this.interactionSystem.update(canInteract);
     if (pos.x !== this.lastPlayerX || pos.y !== this.lastPlayerY) {
       gameState.setPlayerPosition(pos.x, pos.y);
@@ -168,6 +179,91 @@ export class TwinRiversScene extends Phaser.Scene {
     }
 
     this.syncTwinRiversObjectiveHint();
+    this.maybeStartTwinRiversClosure(dialogueActive);
+  }
+
+  private maybeStartTwinRiversClosure(dialogueActive: boolean): void {
+    if (this.twinRiversClosureStarted) return;
+    if (this.hasShutdown || dialogueActive || this.closeBetaGateModal) return;
+    if (this.time.now < this.interactionEnabledTime) return;
+    if (gameState.getFlag('twin_rivers_closure_done')) return;
+    if (!gameState.getFlag('hash_highlands_gateway_open')) return;
+    if (!gameState.isPuzzleCompleted('boss_mirror_serpent')) return;
+
+    this.twinRiversClosureStarted = true;
+    this.twinRiversClosureInProgress = true;
+    // Flag is set in the dialogue's onEnd callback, not here. If the player
+    // navigates away mid-cinematic the flag stays unset so the beat replays
+    // on re-entry — they shouldn't permanently lose the polished ending.
+    this.playTwinRiversClosureBeat();
+  }
+
+  private playTwinRiversClosureBeat(): void {
+    const camera = this.cameras.main;
+    const playerSprite = this.player.sprite;
+    const gatewayPos = this.nextGateway?.getPosition();
+
+    this.player.freeze();
+    audioManager.playCorrectTone();
+    this.hud.setObjectiveHint('Objective: Twin Rivers is complete. The polished arc ends at the mountain gate.');
+
+    if (gatewayPos && !this.prefersReducedMotion()) {
+      camera.stopFollow();
+      camera.pan(gatewayPos.x, gatewayPos.y, 640, 'Sine.easeInOut', true);
+      this.time.delayedCall(220, () => {
+        for (let i = 0; i < 3; i++) {
+          const ring = this.add.circle(gatewayPos.x, gatewayPos.y, 42 + i * 12, COLORS.CYAN_GLOW, 0)
+            .setStrokeStyle(3, COLORS.CYAN_GLOW, 0.62 - i * 0.12)
+            .setDepth(4);
+          this.tweens.add({
+            targets: ring,
+            radius: ring.radius + 24,
+            alpha: 0,
+            duration: 760,
+            delay: i * 110,
+            ease: 'Sine.easeOut',
+            onComplete: () => ring.destroy(),
+          });
+        }
+      });
+    } else {
+      camera.flash(220, 6, 182, 212);
+    }
+
+    this.time.delayedCall(this.prefersReducedMotion() ? 260 : 920, () => {
+      this.startTwinRiversClosureDialogue(() => {
+        this.twinRiversClosureInProgress = false;
+        if (!this.hasShutdown) {
+          this.player.unfreeze();
+          camera.startFollow(playerSprite, true, CAMERA_TUNING.FOLLOW_LERP, CAMERA_TUNING.FOLLOW_LERP);
+          this.hud.setObjectiveHint('Objective: Turn back for credits, step east into beta, or replay any river trial.');
+        }
+      });
+    });
+  }
+
+  private startTwinRiversClosureDialogue(onEnd: () => void): void {
+    const tree: DialogueTree = {
+      startNodeId: 'complete',
+      nodes: [
+        {
+          id: 'complete',
+          speaker: 'River Guide',
+          text: [
+            'Twin Rivers is complete. The Mirror Serpent has folded back into the current.',
+            'The path from the first chamber through these waters is now a whole polished arc.',
+            'Beyond the mountain gate is beta ground. You can step forward, replay trials, or turn back and let the preview close here.',
+            'Thanks for playing this demo of Algorithmia: The Path of Logic.',
+          ],
+        },
+      ],
+    };
+
+    this.dialogueSystem.startDialogue(tree, 'twin_rivers_closure', () => {
+      // Commit the persistent flag only after the player actually saw the dialogue.
+      gameState.setFlag('twin_rivers_closure_done', true);
+      onEnd();
+    });
   }
 
   private syncTwinRiversObjectiveHint(): void {
@@ -177,7 +273,13 @@ export class TwinRiversScene extends Phaser.Scene {
     const done = riverIds.filter((id) => gameState.isPuzzleCompleted(id)).length;
 
     let line = '';
-    if (!this.sequenceSolved) {
+    if (this.twinRiversClosureInProgress) {
+      line = 'Objective: Twin Rivers is complete. The polished arc ends at the mountain gate.';
+    } else if (gameState.getFlag('twin_rivers_closure_done')) {
+      line = 'Objective: Turn back for credits, step east into beta, or replay any river trial.';
+    } else if (gameState.isPuzzleCompleted('boss_mirror_serpent') && gameState.getFlag('hash_highlands_gateway_open')) {
+      line = 'Objective: Twin Rivers is complete. The polished arc ends at the mountain gate.';
+    } else if (!this.sequenceSolved) {
       line =
         'Objective: Walk the outside-in pointer order on the tiles — 0, then 3, 1, 2.';
     } else if (done < 4) {
@@ -317,22 +419,23 @@ export class TwinRiversScene extends Phaser.Scene {
     this.interactionSystem.addObject(this.returnGateway);
 
     const nextExit = TWIN_RIVERS_CONFIG.exitPoints[1];
+    const hashHighlandsOpen = gameState.getFlag('hash_highlands_gateway_open');
     this.nextGateway = this.interactablePool.acquire({
       id: 'hash_highlands_gateway',
       type: 'portal',
       x: nextExit.position.x,
       y: nextExit.position.y,
-      prompt: '[SPACE] Hash Highlands',
-      locked: false,
+      prompt: hashHighlandsOpen ? '[SPACE] Hash Highlands' : '[LOCKED] Defeat Mirror Serpent',
+      locked: !hashHighlandsOpen,
+      spriteImageKey: VISUAL_REVAMP_KEYS.PORTAL_MOUNTAIN,
       imageByState: {
         unlocked: VISUAL_REVAMP_KEYS.PORTAL_MOUNTAIN,
+        locked: VISUAL_REVAMP_KEYS.PORTAL_MOUNTAIN,
       },
       imageScale: 0.24,
       imageOriginY: 0.86,
-      initialState: 'unlocked',
-      onInteract: () => {
-        TransitionManager.swirl(this, SCENE_KEYS.HASH_HIGHLANDS, { spawnX: 192, spawnY: 448 });
-      },
+      initialState: hashHighlandsOpen ? 'unlocked' : 'locked',
+      onInteract: () => this.enterHashHighlands(),
     });
     this.interactionSystem.addObject(this.nextGateway);
 
@@ -424,6 +527,7 @@ export class TwinRiversScene extends Phaser.Scene {
   }
 
   private handleInteract(entry: InteractableEntry): void {
+    if (this.closeBetaGateModal) return;
     if (this.dialogueSystem.isDialogueActive()) return;
     if (entry.type !== 'object') return;
     const object = entry.target as InteractableObject;
@@ -435,6 +539,8 @@ export class TwinRiversScene extends Phaser.Scene {
   }
 
   private openCodex(): void {
+    if (this.twinRiversClosureInProgress) return;
+    if (this.closeBetaGateModal) return;
     if (this.dialogueSystem?.isDialogueActive()) return;
     TransitionManager.fade(this, SCENE_KEYS.CODEX, { returnScene: SCENE_KEYS.TWIN_RIVERS }, 260);
   }
@@ -450,6 +556,163 @@ export class TwinRiversScene extends Phaser.Scene {
     if (this.guide) blockers.push(this.guide.getPosition());
     for (const object of this.puzzleObjects) blockers.push(object.getPosition());
     return blockers;
+  }
+
+  private enterHashHighlands(): void {
+    if (!gameState.getFlag('hash_highlands_gateway_open')) {
+      audioManager.playWrongTone();
+      this.showFieldNote('River Guide', 'The mountain road opens after the Mirror Serpent is defeated.');
+      return;
+    }
+
+    const transit = () =>
+      TransitionManager.swirl(this, SCENE_KEYS.HASH_HIGHLANDS, { spawnX: 192, spawnY: 448 });
+
+    if (gameState.getFlag('beta_warning_seen')) {
+      transit();
+      return;
+    }
+
+    this.openBetaGateModal(transit);
+  }
+
+  /**
+   * In-universe warning that the regions past Twin Rivers are beta content.
+   * Shown once per save (gated by the `beta_warning_seen` flag) regardless of choice —
+   * either picking "Turn Back" or "Walk Anyway" sets the flag so the player isn't
+   * nagged on subsequent crossings.
+   */
+  private openBetaGateModal(onContinue: () => void): void {
+    if (this.closeBetaGateModal) return;
+
+    const { width, height } = this.cameras.main;
+    const PANEL_W = 560;
+    const PANEL_H = 320;
+    const panelX = Math.round(width / 2 - PANEL_W / 2);
+    const panelY = Math.round(height / 2 - PANEL_H / 2);
+
+    const overlay = this.add
+      .rectangle(0, 0, width, height, 0x000000, 0.74)
+      .setOrigin(0)
+      .setDepth(100)
+      .setScrollFactor(0);
+
+    const panel = drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
+      depth: 101,
+      scrollFactor: 0,
+      inner: COLORS.FRAME_BORDER_LIGHT,
+    });
+
+    const title = this.add
+      .text(width / 2, panelY + 28, 'AN UNSTABLE THRESHOLD', {
+        fontSize: '16px',
+        fontFamily: FONTS.RETRO,
+        color: '#081820',
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(102)
+      .setScrollFactor(0);
+
+    const body = this.add
+      .text(
+        width / 2,
+        panelY + 72,
+        'Beyond this gate, the world is still being woven.\n\n' +
+          'Paths flicker. Walls forget where they stand.\n' +
+          'The trials waiting in the mountain and beyond\n' +
+          'are not yet complete — some hold, others do not.\n\n' +
+          'None of what lies past this gate is required of you.\n' +
+          'The path you have walked is whole here.\n\n' +
+          'Choose freely, traveler.',
+        {
+          fontSize: '10px',
+          fontFamily: FONTS.RETRO,
+          color: '#081820',
+          align: 'center',
+          lineSpacing: 4,
+        },
+      )
+      .setOrigin(0.5, 0)
+      .setDepth(102)
+      .setScrollFactor(0);
+
+    const choices = ['TURN BACK', 'WALK ANYWAY'];
+    let selected = 0;
+
+    const choiceTexts = choices.map((label, i) =>
+      this.add
+        .text(
+          panelX + (i === 0 ? 128 : PANEL_W - 128),
+          panelY + PANEL_H - 56,
+          label,
+          {
+            fontSize: '12px',
+            fontFamily: FONTS.RETRO,
+            color: '#081820',
+          },
+        )
+        .setOrigin(0.5)
+        .setDepth(102)
+        .setScrollFactor(0)
+        .setInteractive({ useHandCursor: true }),
+    );
+
+    const renderSelection = () => {
+      choiceTexts.forEach((text, i) => {
+        const isSelected = i === selected;
+        text.setText(`${isSelected ? '> ' : '  '}${choices[i]}${isSelected ? ' <' : '  '}`);
+        text.setColor(isSelected ? '#081820' : '#346856');
+        text.setBackgroundColor(isSelected ? '#e0f8d0' : 'transparent');
+        text.setPadding(isSelected ? 6 : 0, isSelected ? 4 : 0, isSelected ? 6 : 0, isSelected ? 4 : 0);
+      });
+    };
+    renderSelection();
+
+    const move = (dir: -1 | 1) => {
+      selected = (selected + dir + choices.length) % choices.length;
+      audioManager.playTone(220, 50, 'square');
+      renderSelection();
+    };
+    const onLeft = () => move(-1);
+    const onRight = () => move(1);
+    const onActivate = () => {
+      audioManager.playClickTone();
+      const walked = selected === 1;
+      this.closeBetaGateModal?.();
+      gameState.setFlag('beta_warning_seen', true);
+      if (walked) onContinue();
+    };
+
+    this.input.keyboard?.on('keydown-LEFT', onLeft);
+    this.input.keyboard?.on('keydown-RIGHT', onRight);
+    this.input.keyboard?.on('keydown-A', onLeft);
+    this.input.keyboard?.on('keydown-D', onRight);
+    this.input.keyboard?.on('keydown-ENTER', onActivate);
+    this.input.keyboard?.on('keydown-SPACE', onActivate);
+
+    choiceTexts.forEach((text, i) => {
+      text.on('pointerover', () => {
+        selected = i;
+        renderSelection();
+      });
+      text.on('pointerdown', () => {
+        selected = i;
+        onActivate();
+      });
+    });
+
+    const allObjects = [overlay, panel, title, body, ...choiceTexts];
+
+    this.closeBetaGateModal = () => {
+      this.input.keyboard?.off('keydown-LEFT', onLeft);
+      this.input.keyboard?.off('keydown-RIGHT', onRight);
+      this.input.keyboard?.off('keydown-A', onLeft);
+      this.input.keyboard?.off('keydown-D', onRight);
+      this.input.keyboard?.off('keydown-ENTER', onActivate);
+      this.input.keyboard?.off('keydown-SPACE', onActivate);
+      for (const obj of allObjects) obj.destroy();
+      this.closeBetaGateModal = null;
+    };
   }
 
   private showFieldNote(speaker: string, body: string | string[]): void {

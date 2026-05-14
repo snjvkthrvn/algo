@@ -21,12 +21,14 @@ import { JuiceSystem } from '../../systems/JuiceSystem';
 import { drawPanel } from '../../ui/panel';
 import { BitHint } from '../../entities/BitHint';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
+import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
 import {
   INDEXING_ROUNDS,
   starsFromMistakesAndHints,
   type IndexingRound,
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
+import { buildIndexingPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 
 interface Basket {
@@ -59,6 +61,7 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
   private softTimeBudgetMs = 0;
   private obscureTimer: Phaser.Time.TimerEvent | null = null;
   private labelsObscured = false;
+  private preview: PuzzlePreviewSidePanel | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_2 });
@@ -81,6 +84,9 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     const { width } = this.cameras.main;
     this.buildRoundBadge(width);
     this.buildRequestPanel(width);
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
+    this.preview.setTitle('INDEX PREVIEW');
+    this.preview.show();
 
     this.startRound(0).catch(() => undefined);
 
@@ -89,6 +95,8 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
       this.bitHint = null;
       this.softTimer?.destroy();
       this.obscureTimer?.destroy();
+      this.preview?.destroy();
+      this.preview = null;
     });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -293,6 +301,7 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
   private nextRequest(): void {
     const round = INDEXING_ROUNDS[this.roundIndex];
     const request = round.requests[this.requestIndex];
+    this.refreshPreview();
 
     // Reset basket visuals from previous request.
     for (const basket of this.baskets) {
@@ -334,6 +343,19 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     if (round.obscureLabels) {
       this.obscureTimer = this.time.delayedCall(round.obscureAfterMs, () => this.obscureLabels());
     }
+  }
+
+  private refreshPreview(): void {
+    if (!this.preview) return;
+    const round = INDEXING_ROUNDS[this.roundIndex];
+    const preview = buildIndexingPreview({
+      basketCount: round.basketCount,
+      request: round.requests[this.requestIndex] ?? null,
+      requestNumber: Math.min(this.requestIndex + 1, round.requests.length),
+      totalRequests: round.requests.length,
+    });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
   }
 
   private obscureLabels(): void {

@@ -14,15 +14,16 @@ import { a11yManager } from '../core/A11yManager';
 import { getConceptBridgeContent, type ConceptBridgeContent } from '../data/dialogue/concept_bridge_content';
 import type { ConceptBridgeData } from '../data/types';
 
-type Section = 'story_recap' | 'pattern_reveal' | 'pseudocode' | 'mini_forge' | 'codex_unlock';
-const SECTIONS: Section[] = ['story_recap', 'pattern_reveal', 'pseudocode', 'mini_forge', 'codex_unlock'];
+type Section = 'story_recap' | 'pattern_reveal' | 'pseudocode' | 'mini_forge' | 'real_world' | 'codex_unlock';
+const SECTIONS: Section[] = ['story_recap', 'pattern_reveal', 'pseudocode', 'mini_forge', 'real_world', 'codex_unlock'];
 
-// Layout constants — all multiples of 8
+// Layout constants — all multiples of 8 for crisp pixel-snap
 const HEADER_H = 88;
 const PANEL_MARGIN = 144;
 const PANEL_Y = HEADER_H + 8;
 const CONTENT_START_Y = PANEL_Y + 40;   // section title baseline
-const BODY_START_Y = CONTENT_START_Y + 52; // body text baseline
+const BODY_START_Y = CONTENT_START_Y + 48; // body text baseline
+const BODY_WRAP_INSET = 320;            // word-wrap inset from viewport width
 
 export class ConceptBridgeScene extends Phaser.Scene {
   private puzzleData!: ConceptBridgeData;
@@ -114,10 +115,43 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.createDots(width, height);
 
     this.input.keyboard?.on('keydown-RIGHT', () => this.nextSection());
+    this.input.keyboard?.on('keydown-D', () => this.nextSection());
     this.input.keyboard?.on('keydown-SPACE', () => this.nextSection());
+    this.input.keyboard?.on('keydown-ENTER', () => this.nextSection());
     this.input.keyboard?.on('keydown-LEFT', () => this.prevSection());
+    this.input.keyboard?.on('keydown-A', () => this.prevSection());
+
+    // Number keys 1-4 pick a Mini-Forge answer while on that section.
+    // Without these, keyboard-only players have no way to pass the Forge.
+    this.input.keyboard?.on('keydown-ONE', () => this.handleMiniForgeKeyPick(0));
+    this.input.keyboard?.on('keydown-TWO', () => this.handleMiniForgeKeyPick(1));
+    this.input.keyboard?.on('keydown-THREE', () => this.handleMiniForgeKeyPick(2));
+    this.input.keyboard?.on('keydown-FOUR', () => this.handleMiniForgeKeyPick(3));
 
     this.showSection(0);
+  }
+
+  /** Shared selection logic for both pointerdown and keyboard inputs on the Mini-Forge. */
+  private chooseMiniForgeOption(index: number): void {
+    if (this.miniForgeAnswered) return;
+    const forge = this.content.sections.miniForge;
+    if (index < 0 || index >= forge.options.length) return;
+
+    this.miniForgeSelectedIndex = index;
+    if (index === forge.correctIndex) {
+      this.miniForgeAnswered = true;
+      audioManager.playCorrectTone();
+    } else {
+      audioManager.playWrongTone();
+    }
+    this.showSection(this.currentSection);
+  }
+
+  /** Keyboard entry point for Mini-Forge — only acts when on that section. */
+  private handleMiniForgeKeyPick(index: number): void {
+    if (SECTIONS[this.currentSection] !== 'mini_forge') return;
+    if (this.time.now < this.sectionReadyAt) return;
+    this.chooseMiniForgeOption(index);
   }
 
   private createDots(width: number, height: number): void {
@@ -175,6 +209,10 @@ export class ConceptBridgeScene extends Phaser.Scene {
         this.renderMiniForge(width, height);
         a11yManager.announce(`Mini-Forge Challenge. ${this.content.sections.miniForge.question}. Options: ${this.content.sections.miniForge.options.join(', ')}`);
         break;
+      case 'real_world':
+        this.renderRealWorld(width, height);
+        a11yManager.announce(`Real-world usage. ${this.content.sections.realWorld.join(' ')}`);
+        break;
       case 'codex_unlock':
         this.renderCodexUnlock(width, height);
         a11yManager.announce(`Codex Entry Unlocked: ${this.content.sections.codexEntryId.replace(/_/g, ' ')}`);
@@ -192,8 +230,8 @@ export class ConceptBridgeScene extends Phaser.Scene {
     let y = BODY_START_Y;
     for (const line of lines) {
       const text = this.add.text(width / 2, y, line, {
-        fontSize: '13px', fontFamily: FONTS.MONO, color: '#d1d5db',
-        wordWrap: { width: width - 360 }, align: 'center', lineSpacing: 6,
+        fontSize: '13px', fontFamily: FONTS.MONO, color: '#e0f8d0',
+        wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center', lineSpacing: 6,
       }).setOrigin(0.5, 0);
       this.sectionContainer.add(text);
       y += text.height + 24;
@@ -213,8 +251,8 @@ export class ConceptBridgeScene extends Phaser.Scene {
     let y = BODY_START_Y;
     for (const line of explanation) {
       const text = this.add.text(width / 2, y, line, {
-        fontSize: '13px', fontFamily: FONTS.MONO, color: '#d1d5db',
-        wordWrap: { width: width - 360 }, align: 'center', lineSpacing: 6,
+        fontSize: '13px', fontFamily: FONTS.MONO, color: '#e0f8d0',
+        wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center', lineSpacing: 6,
       }).setOrigin(0.5, 0);
       this.sectionContainer.add(text);
       y += text.height + 20;
@@ -241,15 +279,15 @@ export class ConceptBridgeScene extends Phaser.Scene {
     const codeBg = this.add.graphics();
     this.sectionContainer.add(codeBg);
 
-    const codeText = this.add.text(PANEL_MARGIN + 32, BODY_START_Y + 28, '', {
-      fontSize: '11px', fontFamily: FONTS.MONO, color: '#c9d1d9',
+    const codeText = this.add.text(PANEL_MARGIN + 32, BODY_START_Y + 24, '', {
+      fontSize: '11px', fontFamily: FONTS.MONO, color: '#e0f8d0',
       lineSpacing: 4,
     });
     this.sectionContainer.add(codeText);
 
     const expText = this.add.text(width / 2, 0, explanation, {
-      fontSize: '12px', fontFamily: FONTS.MONO, color: '#9ca3af',
-      wordWrap: { width: width - 360 }, align: 'center',
+      fontSize: '12px', fontFamily: FONTS.MONO, color: '#88c070',
+      wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center',
     }).setOrigin(0.5, 0);
     this.sectionContainer.add(expText);
 
@@ -261,20 +299,21 @@ export class ConceptBridgeScene extends Phaser.Scene {
       const codeLines = activeCode.split('\n');
       const codeBlockH = codeLines.length * 20 + 44;
 
+      // Sharp pixel chrome — no rounded corners, GB palette
       codeBg.clear();
-      codeBg.fillStyle(0x0d1117, 0.92);
-      codeBg.fillRoundedRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH, 4);
-      codeBg.lineStyle(1, 0x30363d, 1);
-      codeBg.strokeRoundedRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH, 4);
+      codeBg.fillStyle(0x081820, 0.94);
+      codeBg.fillRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH);
+      codeBg.lineStyle(1, 0x346856, 1);
+      codeBg.strokeRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH);
 
       tabTexts.forEach(t => t.destroy());
       tabTexts.length = 0;
 
       let tabX = PANEL_MARGIN + 32;
       tabs.forEach((tab, index) => {
-        const t = this.add.text(tabX, BODY_START_Y + 4, tab.name, {
+        const t = this.add.text(tabX, BODY_START_Y, tab.name, {
           fontSize: '10px', fontFamily: FONTS.RETRO,
-          color: index === currentTab ? '#f97316' : '#6b7280',
+          color: index === currentTab ? '#fbbf24' : '#346856',
         }).setInteractive({ useHandCursor: true });
 
         t.on('pointerdown', () => {
@@ -303,18 +342,18 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.sectionContainer.add(title);
 
     const qText = this.add.text(width / 2, BODY_START_Y, question, {
-      fontSize: '12px', fontFamily: FONTS.MONO, color: '#d1d5db',
-      wordWrap: { width: width - 360 }, align: 'center',
+      fontSize: '12px', fontFamily: FONTS.MONO, color: '#e0f8d0',
+      wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center',
     }).setOrigin(0.5, 0);
     this.sectionContainer.add(qText);
 
     const startY = BODY_START_Y + qText.height + 32;
 
-    const feedbackText = this.add.text(width / 2, startY + options.length * 48 + 20, '', {
+    const feedbackText = this.add.text(width / 2, startY + options.length * 48 + 24, '', {
       fontSize: '12px',
       fontFamily: FONTS.MONO,
       color: '#fbbf24',
-      wordWrap: { width: width - 360 },
+      wordWrap: { width: width - BODY_WRAP_INSET },
       align: 'center',
     }).setOrigin(0.5, 0);
 
@@ -322,8 +361,8 @@ export class ConceptBridgeScene extends Phaser.Scene {
       const y = startY + i * 48;
       const isSelected = this.miniForgeSelectedIndex === i;
       const isCorrect = i === correctIndex;
-      const bg = this.add.rectangle(width / 2, y, 520, 36, 0x1a1a2e, 0.85);
-      bg.setStrokeStyle(1, 0x4a4a6a);
+      const bg = this.add.rectangle(width / 2, y, 520, 36, 0x081820, 0.88);
+      bg.setStrokeStyle(1, 0x346856);
 
       if (this.miniForgeAnswered && isCorrect) {
         bg.setFillStyle(0x22c55e, 0.28);
@@ -333,7 +372,8 @@ export class ConceptBridgeScene extends Phaser.Scene {
         bg.setStrokeStyle(2, 0xef4444);
       }
 
-      const optText = this.add.text(width / 2, y, option, {
+      // Numbered prefix tells keyboard players which key picks this option
+      const optText = this.add.text(width / 2, y, `[${i + 1}]  ${option}`, {
         fontSize: '11px',
         fontFamily: FONTS.MONO,
         color: this.miniForgeAnswered && isCorrect ? '#e0f8d0' : '#9ca3af',
@@ -348,24 +388,11 @@ export class ConceptBridgeScene extends Phaser.Scene {
 
         bg.on('pointerout', () => {
           const stillSelected = this.miniForgeSelectedIndex === i;
-          bg.setStrokeStyle(stillSelected ? 2 : 1, stillSelected ? 0xef4444 : 0x4a4a6a);
-          optText.setColor('#9ca3af');
+          bg.setStrokeStyle(stillSelected ? 2 : 1, stillSelected ? 0xef4444 : 0x346856);
+          optText.setColor('#88c070');
         });
 
-        bg.on('pointerdown', () => {
-          this.miniForgeSelectedIndex = i;
-          if (isCorrect) {
-            this.miniForgeAnswered = true;
-            audioManager.playCorrectTone();
-            this.showSection(this.currentSection);
-            return;
-          }
-
-          audioManager.playWrongTone();
-          bg.setFillStyle(0xef4444, 0.22);
-          bg.setStrokeStyle(2, 0xef4444);
-          feedbackText.setText('That breaks the invariant. Try another option before continuing.');
-        });
+        bg.on('pointerdown', () => this.chooseMiniForgeOption(i));
       }
 
       this.sectionContainer.add([bg, optText]);
@@ -377,6 +404,36 @@ export class ConceptBridgeScene extends Phaser.Scene {
       feedbackText.setText('That breaks the invariant. Try another option before continuing.');
     }
     this.sectionContainer.add(feedbackText);
+
+    this.addNavHint(width, height);
+  }
+
+  private renderRealWorld(width: number, height: number): void {
+    const title = this.add.text(width / 2, CONTENT_START_Y, 'Real-World Usage', {
+      fontSize: '16px', fontFamily: FONTS.RETRO, color: '#06b6d4',
+    }).setOrigin(0.5);
+    this.sectionContainer.add(title);
+
+    const subtitle = this.add.text(width / 2, CONTENT_START_Y + 24, 'Where this pattern shows up in software you already use:', {
+      fontSize: '11px', fontFamily: FONTS.MONO, color: '#88c070',
+      wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center',
+    }).setOrigin(0.5, 0);
+    this.sectionContainer.add(subtitle);
+
+    let y = BODY_START_Y + 24;
+    for (const line of this.content.sections.realWorld) {
+      // Bullet glyph + body text, left-aligned inside the panel
+      const bullet = this.add.text(PANEL_MARGIN + 48, y, '▸', {
+        fontSize: '12px', fontFamily: FONTS.RETRO, color: '#06b6d4',
+      });
+      const text = this.add.text(PANEL_MARGIN + 72, y, line, {
+        fontSize: '12px', fontFamily: FONTS.MONO, color: '#e0f8d0',
+        wordWrap: { width: width - PANEL_MARGIN * 2 - 96 },
+        lineSpacing: 4,
+      });
+      this.sectionContainer.add([bullet, text]);
+      y += text.height + 18;
+    }
 
     this.addNavHint(width, height);
   }
@@ -441,11 +498,19 @@ export class ConceptBridgeScene extends Phaser.Scene {
       `Hints: ${this.puzzleData.hintsUsed}`,
     ];
     const statsText = this.add.text(width / 2, titleY + 128, stats.join('   |   '), {
-      fontSize: '10px', fontFamily: FONTS.MONO, color: '#9ca3af',
+      fontSize: '10px', fontFamily: FONTS.MONO, color: '#88c070',
     }).setOrigin(0.5);
     statsText.setAlpha(0);
     this.tweens.add({ targets: statsText, alpha: 1, duration: 500, delay: 600 });
     this.sectionContainer.add(statsText);
+
+    // Onboarding hint — tells the player HOW to revisit the Codex they just unlocked.
+    const codexHint = this.add.text(width / 2, titleY + 168, 'Press [C] in the overworld to revisit your Codex anytime.', {
+      fontSize: '9px', fontFamily: FONTS.RETRO, color: '#06b6d4',
+    }).setOrigin(0.5);
+    codexHint.setAlpha(0);
+    this.tweens.add({ targets: codexHint, alpha: 0.85, duration: 500, delay: 800 });
+    this.sectionContainer.add(codexHint);
 
     const cont = this.add.text(width / 2, height - 56, 'Press SPACE to continue', {
       fontSize: '10px', fontFamily: FONTS.RETRO, color: '#88c070',
@@ -457,7 +522,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
   private addNavHint(width: number, height: number): void {
     const current = SECTIONS[this.currentSection];
     const text = current === 'mini_forge' && !this.miniForgeAnswered
-      ? 'Choose the Mini-Forge answer to continue'
+      ? 'Press [1]-[4] or click an option to answer'
       : this.currentSection < SECTIONS.length - 1
       ? '▶ SPACE or RIGHT to continue'
       : '▶ SPACE to finish';

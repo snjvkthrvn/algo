@@ -53,6 +53,7 @@ npm install
 npm run dev        # http://localhost:3000 (see vite.config.ts)
 npm run test       # Vitest watch
 npm run test:run   # Vitest single run
+npm run test:browsers:prod  # build + production browser smoke matrix
 npm run build      # tsc + vite build → dist/
 ```
 
@@ -121,12 +122,20 @@ docs/            # story and design notes
 
 ```bash
 npm run test:run
+npm run test:browsers:prod
 ```
 
 Vitest covers core systems, prologue data, puzzle logic, UI helpers, and related modules. Playwright covers visual/regression flows against the running game.
+
+Deployment and browser-support runbooks live in [`docs/deployment.md`](docs/deployment.md) and [`docs/browser-support.md`](docs/browser-support.md).
 
 ---
 
 ## License
 
-Add a `LICENSE` file when you are ready to publish terms for this project.
+MIT — see [`LICENSE`](LICENSE).
+
+## Privacy and credits
+
+- [`PRIVACY.md`](PRIVACY.md) — what data the game collects (nothing leaves your browser in v1.0).
+- [`CREDITS.md`](CREDITS.md) — open-source dependencies, AI tooling used during development, and visual inspirations.

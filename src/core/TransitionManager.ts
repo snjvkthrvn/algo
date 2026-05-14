@@ -137,10 +137,102 @@ export class TransitionManager {
   }
 
   /**
-   * Pixel dissolve transition — fills screen with 32px tiles in random order, then cuts.
-   * Reads as a GB-era power-off rather than a generic fade.
+   * Pixel dissolve transition — RGB-split glitch frame, then 32px tiles fill the screen in
+   * random order, then cuts. Reads as a "rupture" when stepping into a focused puzzle state.
    */
   static pixelDissolve(scene: Phaser.Scene, targetScene: string, data?: object): void {
+    const { width, height } = scene.cameras.main;
+
+    // Glitch frame — two color slices kick apart and snap back, selling the rupture
+    const sliceR = scene.add.rectangle(0, 0, width, height, 0xff0044, 0.18).setOrigin(0).setDepth(9998);
+    const sliceC = scene.add.rectangle(0, 0, width, height, 0x06b6d4, 0.18).setOrigin(0).setDepth(9999);
+    scene.tweens.add({ targets: sliceR, x: -8, duration: 60, yoyo: true });
+    scene.tweens.add({
+      targets: sliceC,
+      x: 8,
+      duration: 60,
+      yoyo: true,
+      onComplete: () => {
+        sliceR.destroy();
+        sliceC.destroy();
+      },
+    });
+
+    scene.time.delayedCall(140, () => {
+      TransitionManager.runTileFill(scene, 0x081820, () => scene.scene.start(targetScene, data));
+    });
+  }
+
+  /**
+   * Cinematic boot transition — typewriter status line + pixel dissolve.
+   * For the Menu → Game handoff: emphasizes "you are entering the world".
+   */
+  static cinematicBoot(
+    scene: Phaser.Scene,
+    targetScene: string,
+    data?: object,
+    statusLine: string = 'BOOTING WORLD'
+  ): void {
+    const { width, height } = scene.cameras.main;
+
+    const flash = scene.add.rectangle(0, 0, width, height, 0xe0f8d0, 0).setOrigin(0).setDepth(10000);
+    scene.tweens.add({
+      targets: flash,
+      alpha: 0.55,
+      duration: 90,
+      yoyo: true,
+      onComplete: () => flash.destroy(),
+    });
+
+    const overlay = scene.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0).setDepth(10001);
+    scene.tweens.add({ targets: overlay, alpha: 0.92, duration: 280, ease: 'Power2.easeIn' });
+
+    scene.time.delayedCall(220, () => {
+      const status = scene.add.text(width / 2, height / 2, '> ', {
+        fontSize: '14px',
+        fontFamily: 'monospace, "Courier New", "Press Start 2P"',
+        color: '#88c070',
+      }).setOrigin(0.5).setDepth(10002);
+      const cursor = scene.add.rectangle(0, height / 2, 8, 14, 0x88c070, 1).setOrigin(0, 0.5).setDepth(10002);
+      const reposition = () => {
+        cursor.x = status.x + status.width / 2 + 2;
+      };
+
+      let i = 0;
+      const typer = scene.time.addEvent({
+        delay: 32,
+        repeat: statusLine.length - 1,
+        callback: () => {
+          i++;
+          status.setText(`> ${statusLine.substring(0, i)}`);
+          reposition();
+        },
+      });
+      reposition();
+
+      const cursorBlink = scene.tweens.add({
+        targets: cursor,
+        alpha: 0.25,
+        duration: 320,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Power0',
+      });
+
+      scene.time.delayedCall(820, () => {
+        typer.remove();
+        cursorBlink.stop();
+        cursor.destroy();
+        TransitionManager.runTileFill(scene, 0x000000, () => {
+          status.destroy();
+          overlay.destroy();
+          scene.scene.start(targetScene, data);
+        });
+      });
+    });
+  }
+
+  private static runTileFill(scene: Phaser.Scene, fillColor: number, onComplete: () => void): void {
     const { width, height } = scene.cameras.main;
     const TILE = 32;
     const cols = Math.ceil(width / TILE);
@@ -153,14 +245,13 @@ export class TransitionManager {
       }
     }
 
-    // Fisher-Yates shuffle
     for (let i = tiles.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
     }
 
-    const g = scene.add.graphics().setDepth(10000);
-    g.fillStyle(0x081820, 1);
+    const g = scene.add.graphics().setDepth(10010);
+    g.fillStyle(fillColor, 1);
 
     const chunkSize = Math.ceil(tiles.length / 16);
     let tick = 0;
@@ -179,7 +270,7 @@ export class TransitionManager {
           timer.remove();
           scene.time.delayedCall(60, () => {
             g.destroy();
-            scene.scene.start(targetScene, data);
+            onComplete();
           });
         }
       },

@@ -6,6 +6,8 @@
  */
 
 export interface GlitchLine {
+  /** Optional speaker override — used to attribute narrator asides without breaking voice. */
+  speaker?: string;
   text: string;
 }
 
@@ -28,8 +30,8 @@ export const GLITCH_DIALOGUE: Record<number, GlitchLine[]> = {
   3: [
     { text: "Your Bit looks different. It's grown." },
     { text: "Mine never does that. I keep starting over." },
-    { text: "How do you get it to change? Nevermind. I figured it out myself anyway." },
-    { text: "(They did not figure it out.)" },
+    { text: "How do you get it to change? Never mind. I figured it out myself anyway." },
+    { speaker: 'Narrator', text: "(They did not figure it out.)" },
   ],
 };
 

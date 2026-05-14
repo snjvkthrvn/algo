@@ -1015,7 +1015,8 @@ export class PrologueScene extends Phaser.Scene {
       [
         { speaker: 'System', text: '> Signal detected. Core process: ACTIVE.' },
         { speaker: 'System', text: "> You're back in the Chamber of Flow." },
-        { speaker: 'System', text: '> [W][A][S][D] move. [SPACE] interact.' },
+        { speaker: 'System', text: '> [W][A][S][D] or arrow keys to move. [SPACE] to interact.' },
+        { speaker: 'System', text: '> [ESC] pauses. [C] opens your Codex once you have earned an entry.' },
       ],
       () => {
         gameState.setFlag('opening_scene_done', true);
@@ -1090,10 +1091,12 @@ export class PrologueScene extends Phaser.Scene {
     this.deferredGlitchEncounter = null;
     this.beginStoryBeat();
 
+    // Narrator-attributed lines (parenthetical asides) render in a muted color so the
+    // 4th-wall break reads as commentary rather than something Glitch says aloud.
     const dialogueLines = GLITCH_DIALOGUE[encounterNumber].map((l) => ({
-      speaker: 'Glitch',
+      speaker: l.speaker ?? 'Glitch',
       text: l.text,
-      speakerColor: '#8b5cf6',
+      speakerColor: l.speaker === 'Narrator' ? '#7a7aaa' : '#8b5cf6',
     }));
     const exitLine = GLITCH_EXIT_LINES[encounterNumber % GLITCH_EXIT_LINES.length];
     const lines = [

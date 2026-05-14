@@ -24,6 +24,7 @@ import { JuiceSystem } from '../../systems/JuiceSystem';
 import { drawPanel } from '../../ui/panel';
 import { BitHint } from '../../entities/BitHint';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
+import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
 import {
   HASH_ROUNDS,
@@ -31,6 +32,7 @@ import {
   type FallingCrop,
   type HashRound,
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
+import { buildHashRoutingPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 
 /** Bucket fill colours used for chip backgrounds — one per crop family. */
@@ -103,6 +105,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
   private statusPill!: Phaser.GameObjects.Text;
   private missedCount = 0;
   private routedCount = 0;
+  private preview: PuzzlePreviewSidePanel | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_3 });
@@ -128,6 +131,9 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     this.buildRoundBadge(width);
     this.buildFormulaPill(width);
     this.buildStatusPill(width);
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: 24 });
+    this.preview.setTitle('HASH PREVIEW');
+    this.preview.show();
 
     this.bitHint = new BitHint(this, 90, 260);
     this.bitHint.showNeutral();
@@ -141,6 +147,8 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       this.bitHint?.destroy();
       this.bitHint = null;
       this.spawnTimer?.destroy();
+      this.preview?.destroy();
+      this.preview = null;
     });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -192,6 +200,29 @@ export class P1_3_HashHopper extends BasePuzzleScene {
 
   private updateStatusPill(round: HashRound): void {
     this.statusPill.setText(`ROUTED ${this.routedCount}/${round.stream.length}\nMISSED ${this.missedCount}`);
+    this.refreshPreview();
+  }
+
+  private refreshPreview(): void {
+    if (!this.preview) return;
+    const round = HASH_ROUNDS[this.roundIndex];
+    const crop = this.nextPreviewCrop();
+    const preview = buildHashRoutingPreview({
+      crop,
+      bucketCount: round?.bucketCount ?? 4,
+      routed: this.routedCount,
+      missed: this.missedCount,
+      total: round?.stream.length ?? 0,
+    });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
+  }
+
+  private nextPreviewCrop(): FallingCrop | null {
+    const lowest = this.activeCrops
+      .filter((crop) => !crop.routed && !crop.dragging)
+      .sort((a, b) => b.container.y - a.container.y)[0];
+    return lowest?.crop ?? this.spawnQueue[0] ?? null;
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -213,6 +244,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
 
     this.layoutBuckets(round);
     this.spawnQueue = [...round.stream];
+    this.refreshPreview();
 
     const subtitle = round.hasCollisions
       ? `${round.label}  ·  expect collisions — two keys can hash to one bucket`
@@ -330,6 +362,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       : Phaser.Math.Between(120, width - 120);
 
     this.activeCrops.push(this.createFallingCrop(crop, startX, round.fallMs));
+    this.refreshPreview();
   }
 
   private createFallingCrop(crop: FallingCrop, startX: number, fallMs: number): ActiveCrop {
@@ -448,6 +481,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
         // Crop hit the floor without being routed.
         this.handleMiss(active);
         this.activeCrops.splice(i, 1);
+        this.refreshPreview();
       }
     }
   }
@@ -545,6 +579,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
 
     const idx = this.activeCrops.indexOf(active);
     if (idx >= 0) this.activeCrops.splice(idx, 1);
+    this.refreshPreview();
 
     this.maybeFinishRound();
   }

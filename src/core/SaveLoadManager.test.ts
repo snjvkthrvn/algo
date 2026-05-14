@@ -36,9 +36,17 @@ describe('SaveLoadManager', () => {
 
       expect(result).toBe(true);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'algorithmia_save_v1',
+        'algorithmia_save_v2',
         expect.any(String)
       );
+    });
+
+    it('should write the current save schema version', () => {
+      saveLoadManager.save();
+
+      const savedJson = localStorageMock.setItem.mock.calls[0][1];
+      const parsed = JSON.parse(savedJson);
+      expect(parsed.saveVersion).toBe(2);
     });
 
     it('should serialize state as JSON', () => {
@@ -76,15 +84,98 @@ describe('SaveLoadManager', () => {
     });
 
     it('should return false for invalid JSON', () => {
-      localStorageMock.setItem('algorithmia_save_v1', 'not-json');
+      localStorageMock.setItem('algorithmia_save_v2', 'not-json');
       const result = saveLoadManager.load();
       expect(result).toBe(false);
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('algorithmia_save_v2');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('algorithmia_save_v1');
+      expect(saveLoadManager.consumeRecoveryNotice()).toBe('CORRUPT SAVE CLEARED');
+      expect(saveLoadManager.consumeRecoveryNotice()).toBeNull();
     });
 
     it('should return false for invalid save structure', () => {
-      localStorageMock.setItem('algorithmia_save_v1', JSON.stringify({ invalid: true }));
+      localStorageMock.setItem('algorithmia_save_v2', JSON.stringify({ invalid: true }));
       const result = saveLoadManager.load();
       expect(result).toBe(false);
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('algorithmia_save_v2');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('algorithmia_save_v1');
+    });
+
+    it('should upgrade a legacy v1 save into the current schema', () => {
+      localStorageMock.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 512, y: 384, region: 'twin_rivers' },
+        puzzleResults: {
+          tr_1: { stars: 3, time: 18, attempts: 0, hintsUsed: 0 },
+        },
+        codexEntries: ['two_pointer_reverse'],
+        settings: { musicVolume: 0.2, sfxVolume: 0.4, textSpeed: 30 },
+        saveVersion: 1,
+        playTime: 100,
+      }));
+
+      const result = saveLoadManager.load();
+
+      expect(result).toBe(true);
+      const state = gameState.getState();
+      expect(state.saveVersion).toBe(2);
+      expect(state.player.region).toBe('twin_rivers');
+      expect(state.companion.stage).toBe('spark');
+      expect(state.rival.encountered).toBe(false);
+      expect(state.shardsCollected).toEqual([]);
+      expect(state.flags).toEqual({});
+      expect(state.npcStates).toEqual({});
+      expect(state.codexEntries).toContain('two_pointer_reverse');
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('algorithmia_save_v2', expect.any(String));
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('algorithmia_save_v1');
+    });
+
+    it('should backfill missing puzzle counters in old saves', () => {
+      localStorageMock.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 512, y: 384, region: 'array_plains' },
+        puzzleResults: {
+          ap_1: { stars: 3, time: 24 },
+        },
+        codexEntries: [],
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 45 },
+        saveVersion: 1,
+        playTime: 100,
+      }));
+
+      const result = saveLoadManager.load();
+
+      expect(result).toBe(true);
+      expect(gameState.getState().puzzleResults.ap_1).toEqual({
+        stars: 3,
+        time: 24,
+        attempts: 0,
+        hintsUsed: 0,
+      });
+    });
+
+    it('should drop one malformed puzzle result instead of deleting the whole save', () => {
+      localStorageMock.setItem('algorithmia_save_v1', JSON.stringify({
+        player: { x: 512, y: 384, region: 'array_plains' },
+        puzzleResults: {
+          ap_1: { stars: 3, time: 24, attempts: 0, hintsUsed: 0 },
+          ap_2: { stars: 2 },
+        },
+        codexEntries: ['bubble_sort'],
+        flags: { beta_warning_seen: true },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 45 },
+        saveVersion: 1,
+        playTime: 100,
+      }));
+
+      const result = saveLoadManager.load();
+
+      expect(result).toBe(true);
+      const state = gameState.getState();
+      expect(state.puzzleResults.ap_1.stars).toBe(3);
+      expect(state.puzzleResults.ap_2).toBeUndefined();
+      expect(state.codexEntries).toContain('bubble_sort');
+      expect(state.flags.beta_warning_seen).toBe(true);
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('algorithmia_save_v1');
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('algorithmia_save_v2', expect.any(String));
     });
   });
 
@@ -99,8 +190,10 @@ describe('SaveLoadManager', () => {
     });
 
     it('should return false for corrupt save data', () => {
-      localStorageMock.setItem('algorithmia_save_v1', 'not-json');
+      localStorageMock.setItem('algorithmia_save_v2', 'not-json');
       expect(saveLoadManager.hasSave()).toBe(false);
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('algorithmia_save_v2');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('algorithmia_save_v1');
     });
   });
 
@@ -151,6 +244,62 @@ describe('SaveLoadManager', () => {
       expect(savedState?.flags.mirror_serpent_gate_open).toBe(true);
       expect(savedState?.flags.hash_highlands_gateway_open).toBe(true);
     });
+
+    it('should backfill Prologue gates from older save puzzle results', () => {
+      const oldSave = {
+        player: { x: 320, y: 400, region: 'prologue' },
+        companion: { stage: 'spark', mood: 'neutral' },
+        rival: { encountered: false, encounterStage: 0 },
+        shardsCollected: [],
+        puzzleResults: {
+          p0_1: { stars: 3, time: 20, attempts: 0, hintsUsed: 0 },
+          p0_2: { stars: 3, time: 20, attempts: 0, hintsUsed: 0 },
+          boss_sentinel: { stars: 3, time: 45, attempts: 0, hintsUsed: 0 },
+        },
+        codexEntries: [],
+        npcStates: {},
+        flags: {},
+        settings: { musicVolume: 0.5, sfxVolume: 0.5, textSpeed: 30 },
+        saveVersion: 1,
+        playTime: 0,
+      };
+
+      localStorageMock.setItem('algorithmia_save_v1', JSON.stringify(oldSave));
+
+      const savedState = saveLoadManager.getSavedState();
+
+      expect(savedState?.flags.boss_gate_open).toBe(true);
+      expect(savedState?.flags.gateway_open).toBe(true);
+    });
+
+    it('should backfill Array Plains gates from older save puzzle results', () => {
+      const oldSave = {
+        player: { x: 560, y: 384, region: 'array_plains' },
+        companion: { stage: 'byte', mood: 'neutral' },
+        rival: { encountered: true, encounterStage: 2 },
+        shardsCollected: [],
+        puzzleResults: {
+          ap_1: { stars: 3, time: 20, attempts: 0, hintsUsed: 0 },
+          ap_2: { stars: 3, time: 20, attempts: 0, hintsUsed: 0 },
+          ap_3: { stars: 3, time: 20, attempts: 0, hintsUsed: 0 },
+          ap_4: { stars: 3, time: 20, attempts: 0, hintsUsed: 0 },
+          boss_shuffler: { stars: 3, time: 60, attempts: 0, hintsUsed: 0 },
+        },
+        codexEntries: [],
+        npcStates: {},
+        flags: {},
+        settings: { musicVolume: 0.5, sfxVolume: 0.5, textSpeed: 30 },
+        saveVersion: 1,
+        playTime: 0,
+      };
+
+      localStorageMock.setItem('algorithmia_save_v1', JSON.stringify(oldSave));
+
+      const savedState = saveLoadManager.getSavedState();
+
+      expect(savedState?.flags.shuffler_gate_open).toBe(true);
+      expect(savedState?.flags.twin_rivers_gateway_open).toBe(true);
+    });
   });
 
   describe('deleteSave', () => {
@@ -199,6 +348,44 @@ describe('SaveLoadManager', () => {
       expect(state.flags.boss_gate_open).toBe(true);
       expect(state.settings.musicVolume).toBe(0.3);
       expect(state.settings.textSpeed).toBe(60);
+    });
+  });
+
+  describe('autosave hooks', () => {
+    it('should persist state-only changes like the beta gate warning flag', async () => {
+      saveLoadManager.registerAutoSave();
+      gameState.setPlayerLocation('twin_rivers', 192, 448);
+      await Promise.resolve();
+      localStorageMock.setItem.mockClear();
+
+      gameState.setFlag('beta_warning_seen', true);
+      await Promise.resolve();
+
+      const lastSetItemCall = localStorageMock.setItem.mock.calls[localStorageMock.setItem.mock.calls.length - 1];
+      const savedJson = lastSetItemCall?.[1];
+      expect(savedJson).toBeDefined();
+      const parsed = JSON.parse(savedJson as string);
+      expect(parsed.player.region).toBe('twin_rivers');
+      expect(parsed.flags.beta_warning_seen).toBe(true);
+    });
+
+    it('should save after puzzle-complete side effects finish', async () => {
+      saveLoadManager.registerAutoSave();
+      eventBus.on('puzzle:complete', () => {
+        gameState.setFlag('progression_side_effect_done', true);
+        gameState.unlockCodexEntry('side_effect_codex');
+      });
+
+      gameState.setPuzzleResult('tr_1', { stars: 3, time: 22, attempts: 0, hintsUsed: 0 });
+      await Promise.resolve();
+
+      const lastSetItemCall = localStorageMock.setItem.mock.calls[localStorageMock.setItem.mock.calls.length - 1];
+      const savedJson = lastSetItemCall?.[1];
+      expect(savedJson).toBeDefined();
+      const parsed = JSON.parse(savedJson as string);
+      expect(parsed.puzzleResults.tr_1.stars).toBe(3);
+      expect(parsed.flags.progression_side_effect_done).toBe(true);
+      expect(parsed.codexEntries).toContain('side_effect_codex');
     });
   });
 });

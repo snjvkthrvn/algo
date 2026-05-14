@@ -34,7 +34,7 @@ export const P0_2_CONFIG: PuzzleConfig = {
     controls: {
       input: ['mouse_click', 'number_keys_1_3', 'E_key', 'Enter_key', 'Space_key'],
       actions: ['pickup_shard', 'place_shard'],
-      instructions: 'Click or press 1-3 to pick a shard, then press 1-3 to place it on a console',
+      instructions: 'Click a shard (or press 1, 2, or 3) to pick it up. Then click a console (or press 1, 2, or 3 again) to place it.',
     },
     victoryCriteria: {
       type: 'all_shards_placed',
