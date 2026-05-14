@@ -7,7 +7,7 @@
  */
 
 import Phaser from 'phaser';
-import { COLORS, FONTS } from '../config/constants';
+import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
 import {
   REGION_PRESENTATION,
   getRegionPresentationByTitle,
@@ -18,6 +18,7 @@ import { a11yManager } from '../core/A11yManager';
 import { gameState } from '../core/GameStateManager';
 import { eventBus, GameEvents } from '../core/EventBus';
 import { BitStage } from '../data/types';
+import { progressionSystem } from './ProgressionSystem';
 
 const BIT_STAGE_GLYPH: Record<BitStage, string> = {
   [BitStage.SPARK]: '*',
@@ -40,6 +41,8 @@ const BIT_STAGE_LABEL: Record<BitStage, string> = {
 export class HUDManager {
   private scene: Phaser.Scene;
   private regionText: Phaser.GameObjects.Text;
+  private encountersText!: Phaser.GameObjects.Text;
+  private activeRegionId: string | null = null;
   private container: Phaser.GameObjects.Container;
   private cardTween: Phaser.Tweens.Tween | null = null;
   private cardObjects: Phaser.GameObjects.GameObject[] = [];
@@ -62,12 +65,22 @@ export class HUDManager {
     this.regionText = scene.add.text(24, 16, '', {
       fontSize: '12px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
+      color: COLOR_HEX.TEXT_LIGHT,
+      backgroundColor: COLOR_HEX.TEXT_DARK,
       padding: { x: 8, y: 8 },
     });
     this.regionText.setAlpha(0);
     this.container.add(this.regionText);
+
+    this.encountersText = scene.add.text(24, 46, '', {
+      fontSize: '8px',
+      fontFamily: FONTS.RETRO,
+      color: COLOR_HEX.TEXT_LIGHT,
+      backgroundColor: COLOR_HEX.TEXT_DARK,
+      padding: { x: 8, y: 4 },
+    });
+    this.encountersText.setAlpha(0);
+    this.container.add(this.encountersText);
 
     this.createCompanionStatus(scene);
     this.createObjectiveHint(scene);
@@ -75,6 +88,7 @@ export class HUDManager {
 
     eventBus.on(GameEvents.BIT_EVOLVE, this.handleBitEvolve);
     eventBus.on(GameEvents.SHARD_COLLECTED, this.handleShardCollected);
+    eventBus.on(GameEvents.PUZZLE_COMPLETE, this.handlePuzzleComplete);
     this.scene.scale.on(Phaser.Scale.Events.RESIZE, this.handleScaleResize, this);
     this.layoutHud();
   }
@@ -98,6 +112,9 @@ export class HUDManager {
 
     this.controlsStripText.setPosition(midX, snap8(height - 12));
     this.regionText.setPosition(snap8(24), snap8(16));
+    if (this.encountersText?.active) {
+      this.encountersText.setPosition(snap8(24), snap8(46));
+    }
   }
 
   private prefersReducedMotion(): boolean {
@@ -116,16 +133,16 @@ export class HUDManager {
     this.bitStatusText = scene.add.text(x, y, '', {
       fontSize: '10px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
+      color: COLOR_HEX.TEXT_LIGHT,
+      backgroundColor: COLOR_HEX.TEXT_DARK,
       padding: { x: 8, y: 6 },
     }).setOrigin(1, 0).setAlpha(0.85);
 
     this.shardStatusText = scene.add.text(x, y + 32, '', {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
-      color: '#e0f8d0',
-      backgroundColor: '#346856',
+      color: COLOR_HEX.TEXT_LIGHT,
+      backgroundColor: COLOR_HEX.WARNING,
       padding: { x: 6, y: 4 },
     }).setOrigin(1, 0).setAlpha(0.8);
 
@@ -141,8 +158,8 @@ export class HUDManager {
       .text(width / 2, height - 56, '', {
         fontSize: '9px',
         fontFamily: FONTS.RETRO,
-        color: '#e0f8d0',
-        backgroundColor: '#081820',
+        color: COLOR_HEX.TEXT_LIGHT,
+        backgroundColor: COLOR_HEX.TEXT_DARK,
         padding: { x: 8, y: 5 },
         align: 'center',
         wordWrap: { width: Math.min(520, width - 64), useAdvancedWrap: true },
@@ -176,12 +193,48 @@ export class HUDManager {
       {
         fontSize: '8px',
         fontFamily: FONTS.RETRO,
-        color: '#e0f8d0',
-        backgroundColor: '#081820',
+        color: COLOR_HEX.TEXT_LIGHT,
+        backgroundColor: COLOR_HEX.TEXT_DARK,
         padding: { x: 8, y: 5 },
       }
     ).setOrigin(0.5, 1).setAlpha(0.86);
     this.container.add(this.controlsStripText);
+  }
+
+  private readonly handlePuzzleComplete = () => {
+    this.refreshEncountersText();
+    if (this.encountersText.active && this.encountersText.text && !this.prefersReducedMotion()) {
+      this.scene.tweens.killTweensOf(this.encountersText);
+      this.encountersText.setAlpha(0.8);
+      this.scene.tweens.add({
+        targets: this.encountersText,
+        alpha: 0.6,
+        duration: 1000,
+        delay: 2000,
+      });
+    }
+  };
+
+  private refreshEncountersText(): void {
+    if (!this.encountersText?.active || !this.activeRegionId) {
+      if (this.encountersText) this.encountersText.setText('');
+      return;
+    }
+
+    const progress = progressionSystem.getRegionEncounterProgress(this.activeRegionId);
+    if (!progress) {
+      this.encountersText.setText('');
+      return;
+    }
+
+    let ledger = '';
+    for (let i = 0; i < progress.total - 1; i++) {
+      ledger += i < Math.min(progress.completed, progress.total - 1) ? '[x]' : '[ ]';
+    }
+    const bossCompleted = progress.completed === progress.total;
+    ledger += bossCompleted ? '[x]' : '[B]';
+
+    this.encountersText.setText(`ENCOUNTERS: ${ledger}`);
   }
 
   private refreshBitStatus(): void {
@@ -206,20 +259,29 @@ export class HUDManager {
     const progress = getRegionProgress(presentation?.id);
     const label = presentation ? `${progress.label} ${presentation.shortTitle}` : name;
 
+    this.activeRegionId = presentation?.id ?? null;
+    this.refreshEncountersText();
+
     this.regionText.setText(label);
     this.scene.tweens.killTweensOf(this.regionText);
+    this.scene.tweens.killTweensOf(this.encountersText);
 
     if (this.prefersReducedMotion()) {
       this.regionText.setAlpha(0.65);
+      if (this.encountersText.text) this.encountersText.setAlpha(0.65);
       a11yManager.announce(label, false);
       return;
     }
 
     this.regionText.setAlpha(0);
+    if (this.encountersText.text) this.encountersText.setAlpha(0);
+
+    const targets: Phaser.GameObjects.GameObject[] = [this.regionText];
+    if (this.encountersText.text) targets.push(this.encountersText);
 
     // Attention pillar: fade only on region entry; suppress during puzzle flow
     this.scene.tweens.add({
-      targets: this.regionText,
+      targets,
       alpha: 0.8,
       duration: 1000,
       hold: 3000,
@@ -230,13 +292,19 @@ export class HUDManager {
   showRegionCard(name: string, subtitle: string): void {
     this.destroyCard();
     this.scene.tweens.killTweensOf(this.regionText);
+    this.scene.tweens.killTweensOf(this.encountersText);
+
     const presentation = getRegionPresentationByTitle(name);
     const progress = getRegionProgress(presentation?.id);
     const persistentLabel = presentation ? `${progress.label} ${presentation.shortTitle}` : name;
 
+    this.activeRegionId = presentation?.id ?? null;
+    this.refreshEncountersText();
+
     if (this.prefersReducedMotion()) {
       this.regionText.setText(persistentLabel);
       this.regionText.setAlpha(0.65);
+      if (this.encountersText.text) this.encountersText.setAlpha(0.65);
       const sub = subtitle.trim();
       a11yManager.announce(sub ? `${name}. ${sub}` : name, false);
       return;
@@ -253,19 +321,25 @@ export class HUDManager {
     const cardBg = drawPanel(this.scene, cardX, cardY, cardW, cardH, {
       depth: 3001,
       scrollFactor: 0,
-      inner: 0x346856,
+      fill: COLORS.ERROR,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.SUCCESS,
+      shadow: true,
+      shadowAlpha: 0.26,
+      accent,
+      accentSide: 'top',
     });
 
     const titleText = this.scene.add.text(width / 2, cardY + 18, name, {
       fontSize: '16px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(3002);
 
     const subText = this.scene.add.text(width / 2, cardY + 48, subtitle, {
       fontSize: '10px',
       fontFamily: FONTS.RETRO,
-      color: '#346856',
+      color: COLOR_HEX.TEXT_MUTED,
       align: 'center',
       wordWrap: { width: cardW - 48, useAdvancedWrap: true },
       lineSpacing: 6,
@@ -277,15 +351,15 @@ export class HUDManager {
     const actText = this.scene.add.text(width / 2, cardY + 76, actLabel, {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
-      backgroundColor: '#88c070',
+      color: COLOR_HEX.TEXT_DARK,
+      backgroundColor: COLOR_HEX.CYAN_GLOW,
       padding: { x: 8, y: 4 },
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(3002);
 
-    const hintText = this.scene.add.text(width / 2, cardY + 106, 'SPACE INTERACT  |  C CODEX  |  M MUTE  |  ESC PAUSE', {
+    const hintText = this.scene.add.text(width / 2, cardY + 106, 'SPACE ACT  |  C CODEX  |  M MUTE  |  ESC PAUSE', {
       fontSize: '7px',
       fontFamily: FONTS.RETRO,
-      color: '#346856',
+      color: COLOR_HEX.TEXT_MUTED,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(3002);
 
     const rail = this.createJourneyRail(width / 2, cardY + cardH - 12, progress.current, accent);
@@ -306,6 +380,7 @@ export class HUDManager {
       yoyo: true,
       onComplete: () => {
         this.regionText.setAlpha(0.6);
+        if (this.encountersText.text) this.encountersText.setAlpha(0.6);
         this.destroyCard();
       },
     });
@@ -319,7 +394,7 @@ export class HUDManager {
     const startX = Math.round(centerX - ((REGION_PRESENTATION.length - 1) * dotSpacing) / 2);
     const rail = this.scene.add.graphics().setDepth(3002).setScrollFactor(0);
 
-    rail.lineStyle(1, 0x346856, 0.36);
+    rail.lineStyle(1, COLORS.FRAME_BORDER_LIGHT, 0.36);
     rail.beginPath();
     rail.moveTo(startX, y);
     rail.lineTo(startX + (REGION_PRESENTATION.length - 1) * dotSpacing, y);
@@ -329,12 +404,12 @@ export class HUDManager {
       const x = startX + index * dotSpacing;
       const isCurrent = current === index + 1;
       const isPast = current > index + 1;
-      const fill = isCurrent ? accent : isPast ? 0x88c070 : 0xe0f8d0;
+      const fill = isCurrent ? accent : isPast ? COLORS.SUCCESS : COLORS.TEXT_LIGHT;
       const radius = isCurrent ? 4 : 3;
 
       rail.fillStyle(fill, isCurrent || isPast ? 1 : 0.52);
       rail.fillCircle(x, y, radius);
-      rail.lineStyle(1, 0x081820, 0.72);
+      rail.lineStyle(1, COLORS.ERROR, 0.72);
       rail.strokeCircle(x, y, radius + 1);
     });
 
@@ -356,6 +431,7 @@ export class HUDManager {
     this.scene.scale.off(Phaser.Scale.Events.RESIZE, this.handleScaleResize, this);
     eventBus.off(GameEvents.BIT_EVOLVE, this.handleBitEvolve);
     eventBus.off(GameEvents.SHARD_COLLECTED, this.handleShardCollected);
+    eventBus.off(GameEvents.PUZZLE_COMPLETE, this.handlePuzzleComplete);
     this.destroyCard();
     this.container.destroy();
   }

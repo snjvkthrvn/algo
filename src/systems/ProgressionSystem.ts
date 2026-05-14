@@ -254,6 +254,40 @@ class ProgressionSystemClass {
   isGameComplete(): boolean {
     return gameState.getFlag('game_complete');
   }
+
+  getRegionEncounterProgress(regionId: string): { completed: number; total: number } | null {
+    if (regionId === 'prologue') {
+      const p = this.getPrologueProgress();
+      return { completed: p.puzzles, total: p.total };
+    }
+    if (regionId === 'array_plains') {
+      const p = this.getArrayPlainsProgress();
+      return { completed: p.puzzles, total: p.total };
+    }
+
+    const regionMap: Record<string, number> = {
+      'twin_rivers': 0,
+      'hash_highlands': 1,
+      'stack_spires': 2,
+      'queue_canals': 3,
+      'tree_canopy': 4,
+      'graph_nexus': 5,
+      'core': 6,
+    };
+    
+    const index = regionMap[regionId];
+    if (index !== undefined) {
+      const entry = REGION_CHAIN[index];
+      let completed = 0;
+      entry.puzzleIds.forEach(id => {
+        if (gameState.getFlag(`puzzle_${id}_complete`)) completed++;
+      });
+      if (gameState.getFlag(`puzzle_${entry.bossPuzzleId}_complete`)) completed++;
+      return { completed, total: entry.puzzleIds.length + 1 };
+    }
+
+    return null;
+  }
 }
 
 /** Singleton: registers EventBus listeners once for the entire session. */
