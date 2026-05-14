@@ -28,7 +28,8 @@ import {
 } from '../systems/RouteSurfaceRenderer';
 import type { DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
-import { saveAndReturnToTitle } from './titleNavigation';
+import { ObjectPool } from '../utils/ObjectPool';
+import { openPauseOverlay } from './titleNavigation';
 
 export class ArrayPlainsScene extends Phaser.Scene {
   private player!: Player;
@@ -36,6 +37,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
   private interactionSystem!: InteractionSystem;
   private dialogueSystem!: DialogueSystem;
   private hud!: HUDManager;
+  private hasShutdown = false;
   private returnGateway: InteractableObject | null = null;
   private twinRiversGateway: InteractableObject | null = null;
   private shufflerGate: InteractableObject | null = null;
@@ -44,13 +46,19 @@ export class ArrayPlainsScene extends Phaser.Scene {
   private labelObjects: Phaser.GameObjects.Text[] = [];
   private lastPlayerX: number = NaN;
   private lastPlayerY: number = NaN;
+  private interactablePool!: ObjectPool<InteractableObject>;
+  private interactionEnabledTime = 0;
 
   // Overworld sequence puzzle
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];
   private currentSequenceIndex = 0;
   private sequenceSolved = false;
 
-  private readonly onEscReturnToTitle = () => saveAndReturnToTitle(this);
+  private readonly onEscPause = () => {
+    if (this.dialogueSystem?.isDialogueActive()) return;
+    openPauseOverlay(this, SCENE_KEYS.ARRAY_PLAINS);
+  };
+  private readonly onOpenCodex = () => this.openCodex();
 
   constructor() {
     super({ key: SCENE_KEYS.ARRAY_PLAINS });
@@ -63,6 +71,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.hasShutdown = false;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
     audioManager.setScene(this);
 
@@ -86,6 +95,13 @@ export class ArrayPlainsScene extends Phaser.Scene {
     });
     this.bit = new BitCompanion(this, px, py);
 
+    if (!this.interactablePool) {
+      this.interactablePool = new ObjectPool(
+        (cfg) => new InteractableObject(this, cfg),
+        (obj, cfg) => obj.reset(cfg)
+      );
+    }
+
     this.interactionSystem = new InteractionSystem(this, this.player);
     this.dialogueSystem = new DialogueSystem(this);
     this.createInteractables();
@@ -103,8 +119,10 @@ export class ArrayPlainsScene extends Phaser.Scene {
     camera.setDeadzone(CAMERA_TUNING.DEADZONE_WIDTH, CAMERA_TUNING.DEADZONE_HEIGHT);
 
     TransitionManager.fadeIn(this, 700);
+    this.interactionEnabledTime = this.time.now + 700;
     this.hud.showRegionCard('Array Plains', 'Where order becomes addressable.');
-    this.input.keyboard?.on('keydown-ESC', this.onEscReturnToTitle);
+    this.input.keyboard?.on('keydown-ESC', this.onEscPause);
+    this.input.keyboard?.on('keydown-C', this.onOpenCodex);
   }
 
   private createSequencePuzzle(): void {
@@ -130,21 +148,48 @@ export class ArrayPlainsScene extends Phaser.Scene {
     }
   }
 
-  update(): void {
+  update(time: number, delta: number): void {
     const dialogueActive = this.dialogueSystem?.isDialogueActive() ?? false;
     if (!dialogueActive) {
-      this.player.update();
+      this.player.update(time, delta);
     }
 
     const pos = this.player.getPosition();
-    this.bit.update(pos.x, pos.y);
-    this.interactionSystem.update(!dialogueActive);
+    this.bit.update(pos.x, pos.y, delta);
+    const canInteract = !dialogueActive && this.time.now >= this.interactionEnabledTime;
+    this.interactionSystem.update(canInteract);
     if (pos.x !== this.lastPlayerX || pos.y !== this.lastPlayerY) {
       gameState.setPlayerPosition(pos.x, pos.y);
       this.lastPlayerX = pos.x;
       this.lastPlayerY = pos.y;
       this.checkSequencePuzzle(pos.x, pos.y);
     }
+
+    this.syncArrayPlainsObjectiveHint();
+  }
+
+  private syncArrayPlainsObjectiveHint(): void {
+    if (this.hasShutdown) return;
+
+    let line = '';
+    if (!this.sequenceSolved) {
+      line =
+        'Objective: Step on the index tiles in order — 0, then 1, 2, 3 — along the lit path.';
+    } else {
+      const farmersDone = ['ap_1', 'ap_2', 'ap_3', 'ap_4'].filter((id) =>
+        gameState.isPuzzleCompleted(id),
+      ).length;
+      if (farmersDone < 4) {
+        line = `Objective: Restore all four field shrines (${farmersDone}/4). The Shuffler gate opens when every field is done.`;
+      } else if (!gameState.isPuzzleCompleted('boss_shuffler')) {
+        line = 'Objective: Enter the Shuffler Domain and win the trial.';
+      } else {
+        line =
+          'Objective: Cross east to Twin Rivers, replay shrines, or take the void gate back to the Chamber.';
+      }
+    }
+
+    this.hud.setObjectiveHint(line);
   }
 
   private checkSequencePuzzle(px: number, py: number): void {
@@ -178,7 +223,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
             audioManager.playWrongTone();
             this.currentSequenceIndex = 0;
             this.sequenceTiles.forEach(t => {
-              t.setData('active', false);
+              if (t !== tile) t.setData('active', false);
               t.setFillStyle(0x1a1a2e, 0.8);
             });
             tile.setFillStyle(COLORS.ERROR, 0.8);
@@ -266,12 +311,12 @@ export class ArrayPlainsScene extends Phaser.Scene {
         y: puzzle.position.y,
         radius: puzzle.id === 'boss_shuffler' ? 58 : 44,
       })),
-      { x: 560, y: 480, radius: 54 },
+      { x: 560, y: 480, radius: 54 }, // sequence puzzle span centre
     ];
   }
 
   private createInteractables(): void {
-    this.returnGateway = new InteractableObject(this, {
+    this.returnGateway = this.interactablePool.acquire({
       id: 'prologue_gateway',
       type: 'portal',
       x: ARRAY_PLAINS_CONFIG.exitPoints[0].position.x,
@@ -290,7 +335,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
     });
     this.interactionSystem.addObject(this.returnGateway);
 
-    this.twinRiversGateway = new InteractableObject(this, {
+    this.twinRiversGateway = this.interactablePool.acquire({
       id: 'twin_rivers_gateway',
       type: 'portal',
       x: ARRAY_PLAINS_CONFIG.exitPoints[1].position.x,
@@ -315,7 +360,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
     });
     this.interactionSystem.addObject(this.twinRiversGateway);
 
-    const guide = new InteractableObject(this, {
+    const guide = this.interactablePool.acquire({
       id: 'array_guide',
       type: 'sign',
       x: ARRAY_PLAINS_CONFIG.npcs[0].position.x,
@@ -331,7 +376,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
     this.interactionSystem.addObject(guide);
 
     ARRAY_PLAINS_CONFIG.interactables.forEach((marker, index) => {
-      const object = new InteractableObject(this, {
+      const object = this.interactablePool.acquire({
         id: marker.id,
         type: 'sign',
         x: marker.position.x,
@@ -373,7 +418,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
       if (!meta) continue;
 
       const completed = gameState.isPuzzleCompleted(puzzle.id);
-      const object = new InteractableObject(this, {
+      const object = this.interactablePool.acquire({
         id: puzzle.id,
         type: 'sign',
         x: puzzle.position.x,
@@ -391,8 +436,8 @@ export class ArrayPlainsScene extends Phaser.Scene {
       const label = this.add.text(puzzle.position.x, puzzle.position.y - 42, meta.title, {
         fontSize: '8px',
         fontFamily: FONTS.RETRO,
-        color: completed ? '#22c55e' : '#e0f8d0',
-        backgroundColor: '#081820',
+        color: completed ? '#e0f8d0' : '#081820',
+        backgroundColor: completed ? '#346856' : '#e0f8d0',
         padding: { x: 4, y: 3 },
       }).setOrigin(0.5).setDepth(5);
       this.labelObjects.push(label);
@@ -401,7 +446,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
     const boss = ARRAY_PLAINS_CONFIG.puzzles.find((puzzle) => puzzle.id === 'boss_shuffler');
     if (!boss) return;
 
-    this.shufflerGate = new InteractableObject(this, {
+    this.shufflerGate = this.interactablePool.acquire({
       id: 'boss_shuffler',
       type: 'gate',
       x: boss.position.x,
@@ -483,6 +528,11 @@ export class ArrayPlainsScene extends Phaser.Scene {
     TransitionManager.pixelDissolve(this, sceneKey, { returnScene: SCENE_KEYS.ARRAY_PLAINS });
   }
 
+  private openCodex(): void {
+    if (this.dialogueSystem?.isDialogueActive()) return;
+    TransitionManager.fade(this, SCENE_KEYS.CODEX, { returnScene: SCENE_KEYS.ARRAY_PLAINS }, 260);
+  }
+
   private onGateOpen(data: unknown): void {
     const gateId = (data as { gateId?: string }).gateId;
     if (gateId === 'shuffler_gate') {
@@ -524,24 +574,23 @@ export class ArrayPlainsScene extends Phaser.Scene {
   }
 
   shutdown(): void {
+    this.hasShutdown = true;
     eventBus.off('progression:gate-open', this.onGateOpen, this);
-    this.input.keyboard?.off('keydown-ESC', this.onEscReturnToTitle);
+    this.input.keyboard?.off('keydown-ESC', this.onEscPause);
+    this.input.keyboard?.off('keydown-C', this.onOpenCodex);
 
     this.dialogueSystem?.destroy();
     this.interactionSystem?.destroy();
     this.hud?.destroy();
 
-    this.returnGateway?.destroy();
-    this.returnGateway = null;
+    if (this.returnGateway) { this.interactablePool.release(this.returnGateway); this.returnGateway = null; }
+    if (this.twinRiversGateway) { this.interactablePool.release(this.twinRiversGateway); this.twinRiversGateway = null; }
+    if (this.shufflerGate) { this.interactablePool.release(this.shufflerGate); this.shufflerGate = null; }
 
-    this.twinRiversGateway?.destroy();
-    this.twinRiversGateway = null;
-    this.shufflerGate = null;
-
-    for (const object of this.markerObjects) object.destroy();
+    for (const object of this.markerObjects) this.interactablePool.release(object);
     this.markerObjects = [];
 
-    for (const object of this.puzzleObjects) object.destroy();
+    for (const object of this.puzzleObjects) this.interactablePool.release(object);
     this.puzzleObjects = [];
 
     for (const label of this.labelObjects) label.destroy();

@@ -5,12 +5,18 @@
 
 import Phaser from 'phaser';
 import { SCENE_KEYS } from '../config/constants';
+import { a11yManager } from '../core/A11yManager';
+import { audioManager } from '../core/AudioManager';
 
 export class CRTScene extends Phaser.Scene {
   private refreshLine!: Phaser.GameObjects.Graphics;
   private flickerRect!: Phaser.GameObjects.Rectangle;
   private refreshY: number = 0;
   private nextFlicker: number = 0;
+  private readonly onToggleMute = () => {
+    const muted = audioManager.toggleMute();
+    a11yManager.announce(muted ? 'Audio muted.' : 'Audio on.', false);
+  };
 
   constructor() {
     super({ key: SCENE_KEYS.CRT_OVERLAY });
@@ -52,6 +58,11 @@ export class CRTScene extends Phaser.Scene {
     this.nextFlicker = this.time.now + 5000 + Math.random() * 5000;
 
     this.scene.bringToTop();
+
+    this.input.keyboard?.on('keydown-M', this.onToggleMute);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown-M', this.onToggleMute);
+    });
   }
 
   update(time: number, delta: number): void {

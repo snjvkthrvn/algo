@@ -122,6 +122,35 @@ describe('SaveLoadManager', () => {
       localStorageMock.setItem('algorithmia_save_v1', JSON.stringify({ invalid: true }));
       expect(saveLoadManager.getSavedState()).toBeNull();
     });
+
+    it('should backfill later-region gates from puzzle results in older saves', () => {
+      const oldSave = {
+        player: { x: 300, y: 400, region: 'twin_rivers' },
+        companion: { stage: 'byte', mood: 'neutral' },
+        rival: { encountered: true, encounterStage: 2 },
+        shardsCollected: [],
+        puzzleResults: {
+          tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          boss_mirror_serpent: { stars: 3, time: 60, attempts: 0, hintsUsed: 0 },
+        },
+        codexEntries: [],
+        npcStates: {},
+        flags: {},
+        settings: { musicVolume: 0.5, sfxVolume: 0.5, textSpeed: 30 },
+        saveVersion: 1,
+        playTime: 0,
+      };
+
+      localStorageMock.setItem('algorithmia_save_v1', JSON.stringify(oldSave));
+
+      const savedState = saveLoadManager.getSavedState();
+
+      expect(savedState?.flags.mirror_serpent_gate_open).toBe(true);
+      expect(savedState?.flags.hash_highlands_gateway_open).toBe(true);
+    });
   });
 
   describe('deleteSave', () => {

@@ -31,6 +31,9 @@ export class InteractionSystem {
     this.player = player;
     this.prompt = new InteractionPrompt(scene);
 
+    // SPACE/ENTER are shared with DialogueSystem on the same KeyboardPlugin.
+    // Gameplay scenes must skip proximity checks / tryInteract while dialogue is active.
+
     const kbd = scene.input.keyboard;
     if (kbd) {
       kbd.on('keydown-SPACE', this.onInteractKey);
@@ -119,6 +122,12 @@ export class InteractionSystem {
   private tryInteract(): void {
     if (!this.interactionsEnabled) return;
     if (!this.currentTarget) return;
+
+    // Direct check of DialogueSystem status since key events are shared.
+    // This prevents SPACE from re-opening dialogue immediately after it closes.
+    const dialogueActive = (this.scene as any).dialogueSystem?.isDialogueActive?.() ?? false;
+    if (dialogueActive) return;
+
     if (this.interactionCallback) {
       this.interactionCallback(this.currentTarget);
     }

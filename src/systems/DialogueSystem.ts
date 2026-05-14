@@ -21,6 +21,8 @@ export class DialogueSystem {
   private choiceItems: Array<{ bg: Phaser.GameObjects.Rectangle; text: Phaser.GameObjects.Text }> = [];
   private validChoices: DialogueChoice[] = [];
   private selectedChoiceIndex: number = 0;
+  private choiceConfirmReadyAt: number = 0;
+  private choiceNeedsIntent: boolean = true;
   private endCooldown: boolean = false;
   private activationTime: number = 0;
   private destroyed: boolean = false;
@@ -53,6 +55,13 @@ export class DialogueSystem {
   }
 
   startDialogue(tree: DialogueTree, npcId: string, onEnd?: () => void): void {
+    console.log(`[DialogueSystem] Starting: ${npcId} (node: ${tree.startNodeId})`);
+    // Replacing in-flight dialogue runs the previous onEnd so interaction/movement
+    // hooks stay paired; starting fresh without this left stale onEnd/null trees.
+    if (this.isActive) {
+      this.endDialogue();
+    }
+
     this.currentTree = tree;
     this.onDialogueEnd = onEnd || null;
     this.isActive = true;
@@ -157,6 +166,8 @@ export class DialogueSystem {
     }
 
     this.selectedChoiceIndex = 0;
+    this.choiceConfirmReadyAt = this.scene.time.now + 260;
+    this.choiceNeedsIntent = true;
 
     this.validChoices.forEach((choice, index) => {
       const y = index * 44;
@@ -176,6 +187,7 @@ export class DialogueSystem {
 
       bg.on('pointerover', () => {
         this.selectedChoiceIndex = index;
+        this.choiceNeedsIntent = false;
         this.renderChoiceSelection();
       });
 
@@ -198,6 +210,7 @@ export class DialogueSystem {
     if (!this.choiceContainer?.visible || this.validChoices.length === 0) return;
     const count = this.validChoices.length;
     this.selectedChoiceIndex = (this.selectedChoiceIndex + delta + count) % count;
+    this.choiceNeedsIntent = false;
     this.renderChoiceSelection();
   }
 
@@ -224,6 +237,8 @@ export class DialogueSystem {
     this.choiceItems = [];
     this.validChoices = [];
     this.selectedChoiceIndex = 0;
+    this.choiceConfirmReadyAt = 0;
+    this.choiceNeedsIntent = true;
   }
 
   private executeAction(action: DialogueAction): void {
@@ -246,6 +261,12 @@ export class DialogueSystem {
     // Suppress the same SPACE press that opened the dialogue via InteractionSystem.
     if (this.scene.time.now - this.activationTime < DialogueSystem.OPEN_COOLDOWN_MS) return;
     if (this.choiceContainer?.visible) {
+      if (this.scene.time.now < this.choiceConfirmReadyAt) return;
+      if (this.choiceNeedsIntent) {
+        this.choiceNeedsIntent = false;
+        this.renderChoiceSelection();
+        return;
+      }
       this.selectChoice(this.selectedChoiceIndex);
       return;
     }

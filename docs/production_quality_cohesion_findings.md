@@ -146,7 +146,7 @@ Every region should pass these checks:
 
 The current production slice covers the title, prologue puzzle rooms, Array Plains, Twin Rivers, Hash Highlands, Stack Spires, Queue Canals, Tree Canopy, Graph Nexus, and The Core. Next agents should continue from this grammar instead of restarting:
 
-1. Deepen mechanics inside the scripted choice scenes only when there is a specific gameplay target; do not replace the whole shell casually.
+1. Deepen mechanics inside the scripted choice scenes only when there is a specific gameplay target; do not replace the whole shell casually. *(Update 2026-05-09: Significant progress made here with educational animations added to Stack Spires, Queue Canals, Tree Canopy, and Graph Nexus).*
 2. Add story/NPC beats for Queue Canals through The Core if the next production pass focuses on narrative continuity.
 3. Keep every new or revised region tied to visible collision lanes and a browser screenshot checkpoint.
 4. Add deeper interactive tests only when a puzzle gains state beyond simple choice rounds.

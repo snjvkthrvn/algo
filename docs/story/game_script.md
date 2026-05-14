@@ -3302,7 +3302,7 @@ Before any concept is introduced, verify:
 - [ ] **Has the player FELT the problem before being told the name?**
 - [ ] **Does the concept build on something they already learned?**
 - [ ] **Can the player explain it to Glitch in simple words?**
-- [ ] **Does Bit react to reinforce the concept?**
+- [ ] **Does Bit react to reinforce the concept with dynamic particles/animations?**
 - [ ] **Does the Codex entry reference what the player DID, not abstract theory?**
 - [ ] **Is there a moment of "OH! THAT'S why!" — not just "I was told this"?**
 

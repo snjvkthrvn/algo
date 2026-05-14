@@ -13,6 +13,8 @@ class AudioManagerClass {
   private audioUnlocked: boolean = false;
   private pendingMusic: string | null = null;
   private audioCtx: AudioContext | null = null;
+  /** Session mute — does not change saved volume sliders in gameState. */
+  private muted = false;
 
   private getAudioContext(): AudioContext | null {
     // Prefer Phaser's context so tones share the same audio graph
@@ -95,7 +97,7 @@ class AudioManagerClass {
 
     this.scene.tweens.add({
       targets: this.currentMusic,
-      volume: settings.musicVolume,
+      volume: this.effectiveMusicVolume(settings.musicVolume),
       duration: 500,
     });
   }
@@ -128,19 +130,21 @@ class AudioManagerClass {
     if (!this.scene.cache.audio.exists(key)) return;
 
     const settings = gameState.getSettings();
-    this.scene.sound.play(key, { volume: settings.sfxVolume });
+    this.scene.sound.play(key, { volume: this.effectiveSfxVolume(settings.sfxVolume) });
   }
 
   /** Play a procedural tone using the Web Audio API. Falls back silently if unavailable. */
   playTone(frequency: number, duration: number = 100, type: OscillatorType = 'sine'): void {
     const ctx = this.getAudioContext();
     if (!ctx) return;
+    const effSfx = this.effectiveSfxVolume(gameState.getSettings().sfxVolume);
+    if (effSfx <= 0) return;
     try {
       const oscillator = ctx.createOscillator();
       const gainNode = ctx.createGain();
       oscillator.type = type;
       oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
-      gainNode.gain.setValueAtTime(Math.max(gameState.getSettings().sfxVolume * 0.3, 0.0001), ctx.currentTime);
+      gainNode.gain.setValueAtTime(Math.max(effSfx * 0.3, 0.0001), ctx.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
       oscillator.connect(gainNode);
       gainNode.connect(ctx.destination);
@@ -169,12 +173,32 @@ class AudioManagerClass {
   applyVolumeSettings(): void {
     if (!this.currentMusic) return;
     const { musicVolume } = gameState.getSettings();
+    const v = this.effectiveMusicVolume(musicVolume);
     if (this.currentMusic instanceof Phaser.Sound.WebAudioSound) {
-      this.currentMusic.setVolume(musicVolume);
+      this.currentMusic.setVolume(v);
     } else if (this.currentMusic instanceof Phaser.Sound.HTML5AudioSound) {
-      this.currentMusic.setVolume(musicVolume);
+      this.currentMusic.setVolume(v);
     }
     // NoAudioSound (no-audio environments) intentionally skipped
+  }
+
+  /** Zeroes all audio output while keeping menu volume prefs intact. */
+  toggleMute(): boolean {
+    this.muted = !this.muted;
+    this.applyVolumeSettings();
+    return this.muted;
+  }
+
+  isMuted(): boolean {
+    return this.muted;
+  }
+
+  private effectiveMusicVolume(slider: number): number {
+    return this.muted ? 0 : slider;
+  }
+
+  private effectiveSfxVolume(slider: number): number {
+    return this.muted ? 0 : slider;
   }
 }
 

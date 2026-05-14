@@ -23,3 +23,9 @@ export function saveAndReturnToTitle(
 
   TransitionManager.fade(scene, SCENE_KEYS.MENU, TITLE_MENU_RESUME_DATA, options.duration ?? 400);
 }
+
+export function openPauseOverlay(scene: Phaser.Scene, parentSceneKey: string): void {
+  if (scene.scene.isActive(SCENE_KEYS.PAUSE_OVERLAY)) return;
+  scene.scene.pause(parentSceneKey);
+  scene.scene.launch(SCENE_KEYS.PAUSE_OVERLAY, { parentSceneKey });
+}

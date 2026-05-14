@@ -8,6 +8,7 @@ import {
   isNearPrologueTileRoute,
   isPointOnPrologueTileRoute,
 } from './prologueTilemap';
+import { PROLOGUE_ANCHORS } from './prologueAnchors';
 
 export interface PlatformTile {
   dx: number;
@@ -35,10 +36,14 @@ export interface PrologueRouteLandmark {
   rotation?: number;
 }
 
-const spawnOrigin = { x: 320, y: 400 };
-const hubOrigin = { x: 900, y: 395 };
-const northOrigin = { x: 900, y: 165 };
-const southOrigin = { x: 900, y: 625 };
+// Player-relevant anchors come from PROLOGUE_ANCHORS so the walkable mask,
+// NPC placement, and proximity script triggers share one definition.
+// courtyardOrigin is a pure landmark-art position — it sits east of the
+// boss gate so the courtyard frames the gate without overlapping it.
+const spawnOrigin = PROLOGUE_ANCHORS.spawn.position;
+const hubOrigin = PROLOGUE_ANCHORS.centralHub.position;
+const northOrigin = PROLOGUE_ANCHORS.runeKeeper.position;
+const southOrigin = PROLOGUE_ANCHORS.consoleKeeper.position;
 const courtyardOrigin = { x: 1900, y: 395 };
 
 export const PROLOGUE_ROUTE_LANDMARKS: PrologueRouteLandmark[] = [
@@ -121,28 +126,28 @@ export const PROLOGUE_CONFIG: RegionConfig = {
   spawnPoint: spawnOrigin,
   exitPoints: [
     {
-      id: 'boss_gate',
-      position: { x: 1830, y: 395 },
+      id: PROLOGUE_ANCHORS.bossGate.id,
+      position: PROLOGUE_ANCHORS.bossGate.position,
       leadsTo: 'boss_sentinel',
       requiresUnlock: true,
       unlockCondition: 'boss_gate_open',
     },
     {
-      id: 'array_plains_gateway',
-      position: { x: 2000, y: 395 },
+      id: PROLOGUE_ANCHORS.arrayGateway.id,
+      position: PROLOGUE_ANCHORS.arrayGateway.position,
       leadsTo: 'array_plains',
       requiresUnlock: true,
       unlockCondition: 'gateway_open',
     },
   ],
   npcs: [
-    { id: 'professor_node', position: hubOrigin, enabled: true },
-    { id: 'rune_keeper', position: northOrigin, enabled: true },
-    { id: 'console_keeper', position: southOrigin, enabled: true },
+    { id: PROLOGUE_ANCHORS.professorNode.id, position: PROLOGUE_ANCHORS.professorNode.position, enabled: true },
+    { id: PROLOGUE_ANCHORS.runeKeeper.id, position: PROLOGUE_ANCHORS.runeKeeper.position, enabled: true },
+    { id: PROLOGUE_ANCHORS.consoleKeeper.id, position: PROLOGUE_ANCHORS.consoleKeeper.position, enabled: true },
   ],
   puzzles: [
-    { id: 'p0_1', position: { x: 900, y: 135 }, enabled: true },
-    { id: 'p0_2', position: { x: 900, y: 650 }, enabled: true },
+    { id: PROLOGUE_ANCHORS.p0_1Trigger.id, position: PROLOGUE_ANCHORS.p0_1Trigger.position, enabled: true },
+    { id: PROLOGUE_ANCHORS.p0_2Trigger.id, position: PROLOGUE_ANCHORS.p0_2Trigger.position, enabled: true },
   ],
   interactables: [],
 };

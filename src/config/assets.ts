@@ -57,6 +57,7 @@ export const VISUAL_REVAMP_KEYS = {
   PUZZLE_FRAME: 'visual-revamp-puzzle-frame',
   PUZZLE_RUNE_MEMORY_BG: 'visual-revamp-puzzle-rune-memory-bg',
   PUZZLE_FLOW_CONSOLES_BG: 'visual-revamp-puzzle-flow-consoles-bg',
+  PUZZLE_LITANY_TRIAL_BG: 'visual-revamp-puzzle-litany-trial-bg',
   PUZZLE_SORTING_SHED_BG: 'visual-revamp-puzzle-sorting-shed-bg',
   PUZZLE_INDEXING_BARN_BG: 'visual-revamp-puzzle-indexing-barn-bg',
   PUZZLE_GRAIN_HOPPER_BG: 'visual-revamp-puzzle-grain-hopper-bg',
@@ -100,7 +101,7 @@ export const VISUAL_REVAMP_KEYS = {
 } as const;
 
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
-  { key: VISUAL_REVAMP_KEYS.TITLE_BG, path: `${VISUAL_REVAMP_BASE}/title/title_panorama_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.TITLE_BG, path: `${VISUAL_REVAMP_BASE}/title/title_first_three_overhaul_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PROLOGUE_BG, path: `${VISUAL_REVAMP_BASE}/regions/prologue_chamber.png` },
   { key: VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG, path: `${VISUAL_REVAMP_BASE}/regions/array_plains_grounded_v1.png` },
   { key: VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG, path: `${VISUAL_REVAMP_BASE}/regions/twin_rivers_grounded_v1.png` },
@@ -137,8 +138,9 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PROP_WATER_BUOY, path: `${VISUAL_REVAMP_BASE}/objects/props/water_buoy.png` },
   { key: VISUAL_REVAMP_KEYS.PROP_CORE_TERMINAL, path: `${VISUAL_REVAMP_BASE}/objects/props/core_terminal.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FRAME, path: `${VISUAL_REVAMP_BASE}/ui/puzzle_encounter_frame_v2.png` },
-  { key: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/rune_memory_backdrop_v1.png` },
-  { key: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/flow_consoles_backdrop_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/rune_memory_backdrop_v2.png` },
+  { key: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/flow_consoles_backdrop_v2.png` },
+  { key: VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/litany_trial_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_SORTING_SHED_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/sorting_shed_backdrop_v2.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_INDEXING_BARN_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/indexing_barn_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_GRAIN_HOPPER_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/grain_hopper_backdrop_v1.png` },
@@ -184,13 +186,13 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
 /**
  * Prologue asset audit notes (Task 1 - Setup & Asset Audit)
  * Current state: Most rework assets exist and are substantial (>1MB sprites).
- * Identified gaps / low-quality items needing Grok regeneration:
+ * Identified gaps / low-quality items needing regeneration:
  * - Player spritesheet: missing idle breathe animation frames + foot dust particle variants.
  * - No dedicated hint bubble UI elements for educational tooltips.
  * - NPC emotes (rune-keeper, console-keeper, professor-node) lack expression variants.
  * - Array element icons (for sorting/ordering puzzles) not yet extracted as reusable sprites.
- * Planned files (placeholders added below): player_improved.png, hint_bubble.png, npc_emote.png, array_element_icon.png
- * These will be saved to public/assets/prologue_rework/ after external Grok image generation.
+ * Planned files: player_improved.png, hint_bubble.png, npc_emote.png, array_element_icon.png
+ * Register these only after external image generation produces real project files.
  * Legacy SPRITE_ASSETS (old prologue/ sheets) should be phased out once improved versions land.
  */
 export const PROLOGUE_REWORK_KEYS = {
@@ -220,11 +222,6 @@ export const PROLOGUE_REWORK_KEYS = {
   PUZZLE_CHAMBER_FRAME: 'prologue-rework-puzzle-chamber-frame',
   DIALOGUE_BOX: 'prologue-rework-dialogue-box',
   PROMPT: 'prologue-rework-prompt',
-  // --- Planned improvements (Task 1 audit) ---
-  PLAYER_IMPROVED: 'prologue-rework-player-improved',
-  HINT_BUBBLE: 'prologue-rework-hint-bubble',
-  NPC_EMOTE: 'prologue-rework-npc-emote',
-  ARRAY_ELEMENT_ICON: 'prologue-rework-array-element-icon',
 } as const;
 
 export const PROLOGUE_REWORK_IMAGE_ASSETS: AssetEntry[] = [
@@ -254,11 +251,6 @@ export const PROLOGUE_REWORK_IMAGE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME, path: `${REWORK_BASE}/ui/puzzle_chamber_frame.png` },
   { key: PROLOGUE_REWORK_KEYS.DIALOGUE_BOX, path: `${REWORK_BASE}/ui/dialogue_box.png` },
   { key: PROLOGUE_REWORK_KEYS.PROMPT, path: `${REWORK_BASE}/ui/prompt.png` },
-  // Placeholder entries for regenerated assets (Task 1)
-  { key: PROLOGUE_REWORK_KEYS.PLAYER_IMPROVED, path: `${REWORK_BASE}/characters/player_improved.png` },
-  { key: PROLOGUE_REWORK_KEYS.HINT_BUBBLE, path: `${REWORK_BASE}/ui/hint_bubble.png` },
-  { key: PROLOGUE_REWORK_KEYS.NPC_EMOTE, path: `${REWORK_BASE}/characters/npc_emote.png` },
-  { key: PROLOGUE_REWORK_KEYS.ARRAY_ELEMENT_ICON, path: `${REWORK_BASE}/objects/array_element_icon.png` },
 ];
 
 export const ARRAY_PLAINS_KEYS = {
@@ -288,7 +280,7 @@ export const PROLOGUE_SHEET_KEYS = {
 
 export const PROLOGUE_SHEET_SPRITE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_SHEET_KEYS.ROUTE_TILESET, path: `${SHEET_BASE}/environment/prologue_route_tileset_v3.png`, frameWidth: 32, frameHeight: 32 },
-  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_v2.png`, frameWidth: 256, frameHeight: 256 },
+  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_smooth_v3.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.NPCS, path: `${SHEET_BASE}/characters/imagegen_npc_idle.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.COMPANIONS, path: `${SHEET_BASE}/characters/companion_sheet.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.OBJECTS, path: `${SHEET_BASE}/objects/object_sheet.png`, frameWidth: 256, frameHeight: 256 },

@@ -23,12 +23,12 @@ type FakeKey = {
 
 type FakeBody = {
   velocity: { x: number; y: number };
-  calls: { setOffset: number; setCollideWorldBounds: number; setVelocity: number };
+  calls: { setOffset: number; setCollideWorldBounds: number; setVelocity: number; resets: Array<{ x: number; y: number }> };
   setSize: () => void;
   setOffset: () => void;
   setCollideWorldBounds: () => void;
   setVelocity: (x: number, y: number) => void;
-  reset: () => void;
+  reset: (x: number, y: number) => void;
 };
 
 type FakeDisplayObject = {
@@ -36,6 +36,7 @@ type FakeDisplayObject = {
   y: number;
   setStrokeStyle: () => FakeDisplayObject;
   setPosition: (x: number, y: number) => FakeDisplayObject;
+  setDepth: (depth: number) => FakeDisplayObject;
 };
 
 type FakeSprite = {
@@ -65,7 +66,7 @@ function createKey(): FakeKey {
 }
 
 function createDisplayObject(y = 0): FakeDisplayObject {
-  const object = {
+  const object: FakeDisplayObject = {
     x: 0,
     y,
     setStrokeStyle: () => object,
@@ -74,6 +75,7 @@ function createDisplayObject(y = 0): FakeDisplayObject {
       object.y = nextY;
       return object;
     },
+    setDepth: (_depth: number) => object,
   };
 
   return object;
@@ -92,7 +94,7 @@ function createPlayer(canMoveTo: (position: { x: number; y: number }) => boolean
   };
 
   const velocity = { x: 0, y: 0 };
-  const calls = { setOffset: 0, setCollideWorldBounds: 0, setVelocity: 0 };
+  const calls = { setOffset: 0, setCollideWorldBounds: 0, setVelocity: 0, resets: [] as Array<{ x: number; y: number }> };
   const body: FakeBody = {
     velocity,
     calls,
@@ -108,7 +110,9 @@ function createPlayer(canMoveTo: (position: { x: number; y: number }) => boolean
       velocity.x = x;
       velocity.y = y;
     },
-    reset: () => undefined,
+    reset: (x: number, y: number) => {
+      calls.resets.push({ x, y });
+    },
   };
 
   const createContainer = (x: number, y: number): FakeContainer => {
@@ -264,28 +268,32 @@ describe('Player', () => {
     expect(animationPlays[0]).toBe('player-idle-down');
   });
 
-  it('creates four-frame directional walk cycles that are fast enough for tile-step movement', () => {
+  it('creates eight-frame directional walk cycles that stay smooth across two tile steps', () => {
     const { animationConfigs } = createPlayer();
     const configByKey = new Map(animationConfigs.map((config) => [config.key, config]));
 
     expect(configByKey.get('player-idle-down')?.frames.map((frame) => frame.frame)).toEqual([0]);
-    expect(configByKey.get('player-idle-left')?.frames.map((frame) => frame.frame)).toEqual([4]);
-    expect(configByKey.get('player-idle-right')?.frames.map((frame) => frame.frame)).toEqual([8]);
-    expect(configByKey.get('player-idle-up')?.frames.map((frame) => frame.frame)).toEqual([12]);
+    expect(configByKey.get('player-idle-left')?.frames.map((frame) => frame.frame)).toEqual([8]);
+    expect(configByKey.get('player-idle-right')?.frames.map((frame) => frame.frame)).toEqual([16]);
+    expect(configByKey.get('player-idle-up')?.frames.map((frame) => frame.frame)).toEqual([24]);
 
     expect(configByKey.get('player-walk-down')).toMatchObject({
-      frameRate: 20,
+      frameRate: 25,
       repeat: -1,
       frames: [
         { key: 'prologue-sheet-player-walk', frame: 0 },
         { key: 'prologue-sheet-player-walk', frame: 1 },
         { key: 'prologue-sheet-player-walk', frame: 2 },
         { key: 'prologue-sheet-player-walk', frame: 3 },
+        { key: 'prologue-sheet-player-walk', frame: 4 },
+        { key: 'prologue-sheet-player-walk', frame: 5 },
+        { key: 'prologue-sheet-player-walk', frame: 6 },
+        { key: 'prologue-sheet-player-walk', frame: 7 },
       ],
     });
-    expect(configByKey.get('player-walk-left')?.frames.map((frame) => frame.frame)).toEqual([4, 5, 6, 7]);
-    expect(configByKey.get('player-walk-right')?.frames.map((frame) => frame.frame)).toEqual([8, 9, 10, 11]);
-    expect(configByKey.get('player-walk-up')?.frames.map((frame) => frame.frame)).toEqual([12, 13, 14, 15]);
+    expect(configByKey.get('player-walk-left')?.frames.map((frame) => frame.frame)).toEqual([8, 9, 10, 11, 12, 13, 14, 15]);
+    expect(configByKey.get('player-walk-right')?.frames.map((frame) => frame.frame)).toEqual([16, 17, 18, 19, 20, 21, 22, 23]);
+    expect(configByKey.get('player-walk-up')?.frames.map((frame) => frame.frame)).toEqual([24, 25, 26, 27, 28, 29, 30, 31]);
   });
 
   it('moves exactly one grid tile toward the newest horizontal input', () => {
@@ -296,7 +304,7 @@ describe('Player', () => {
     keys.right.isDown = true;
     keys.right.timeDown = 20;
 
-    player.update();
+    player.update(0, 16.67);
 
     expect(tweenCalls).toHaveLength(1);
     expect(tweenCalls[0].x).toBe(100 + PLAYER_GRID_STEP);
@@ -312,10 +320,31 @@ describe('Player', () => {
     keys.up.isDown = true;
     keys.up.timeDown = 10;
 
-    player.update();
+    player.update(0, 16.67);
+
+    // Release the key before the step completes so that on settle, no input
+    // remains and the player drops into the matching idle anim.
+    keys.up.isDown = false;
     completeLatestStep();
+    player.update(0, 16.67);
 
     expect(animationPlays[animationPlays.length - 1]).toBe('player-idle-up');
+  });
+
+  it('keeps the walk animation playing across chained steps so the cycle does not restart', () => {
+    const { animationPlays, completeLatestStep, keys, player } = createPlayer();
+
+    keys.right.isDown = true;
+    keys.right.timeDown = 10;
+    player.update(0, 16.67);
+
+    // After the first step settles WITH input still held, the player must
+    // remain in WALKING state. Re-resetting to idle here would replay the
+    // walk anim from frame 0 every 120ms — the bug this test guards against.
+    completeLatestStep();
+
+    const lastAnim = animationPlays[animationPlays.length - 1];
+    expect(lastAnim).toBe('player-walk-right');
   });
 
   it('does not start another tile step until the current step finishes', () => {
@@ -324,12 +353,12 @@ describe('Player', () => {
     keys.right.isDown = true;
     keys.right.timeDown = 10;
 
-    player.update();
-    player.update();
+    player.update(0, 16.67);
+    player.update(0, 16.67);
     expect(tweenCalls).toHaveLength(1);
 
     completeLatestStep();
-    player.update();
+    player.update(0, 16.67);
 
     // JuiceSystem adds particle tweens on step complete; filter to movement tweens only
     const movementTweens = tweenCalls.filter((c: any) => typeof c.x === 'number' && (c.x === 100 + PLAYER_GRID_STEP || c.x === 100 + PLAYER_GRID_STEP * 2));
@@ -343,7 +372,7 @@ describe('Player', () => {
     keys.left.isDown = true;
     keys.left.timeDown = 10;
 
-    player.update();
+    player.update(0, 16.67);
 
     expect(tweenCalls).toHaveLength(1);
     expect(tweenCalls[0].x).toBe(100 - PLAYER_GRID_STEP);
@@ -353,7 +382,9 @@ describe('Player', () => {
     expect(animationPlays[animationPlays.length - 1]).toBe('player-walk-left');
     expect(sprite.flipX).toBe(false);
 
+    keys.left.isDown = false;
     completeLatestStep();
+    player.update(0, 16.67);
 
     expect(animationPlays[animationPlays.length - 1]).toBe('player-idle-left');
     expect(sprite.flipX).toBe(false);
@@ -367,7 +398,7 @@ describe('Player', () => {
 
     keys.down.isDown = true;
     keys.down.timeDown = 5;
-    player.update();
+    player.update(0, 16.67);
     completeLatestStep();
 
     expect(sprite.flipX).toBe(false);
@@ -391,9 +422,9 @@ describe('Player', () => {
 
     keys.right.isDown = true;
     keys.right.timeDown = 10;
-    player.update();
+    player.update(0, 16.67);
     completeLatestStep();
-    player.update();
+    player.update(0, 16.67);
 
     expect(body.calls.setVelocity).toBe(baselineVelocityCalls);
   });
@@ -403,10 +434,47 @@ describe('Player', () => {
 
     keys.right.isDown = true;
     keys.right.timeDown = 10;
-    player.update();
+    player.update(0, 16.67);
 
     expect(tweenCalls).toHaveLength(0);
     expect(player.getPosition()).toEqual({ x: 100, y: 100 });
     expect(player.getFacingDirection()).toBe('right');
+  });
+
+  it('does not finish a partially completed step when movement is interrupted', () => {
+    const { body, keys, player, sprite } = createPlayer();
+
+    keys.right.isDown = true;
+    keys.right.timeDown = 10;
+    player.update(0, 16.67);
+
+    sprite.setPosition(116, 100);
+    player.freeze();
+
+    expect(player.getPosition()).toEqual({ x: 116, y: 100 });
+    expect(body.calls.resets[body.calls.resets.length - 1]).toEqual({ x: 116, y: 100 });
+  });
+
+  it('clears buffered input when movement is interrupted', () => {
+    const { keys, player, sprite, tweenCalls } = createPlayer();
+
+    keys.right.isDown = true;
+    keys.right.timeDown = 10;
+    player.update(0, 16.67);
+
+    keys.down.isDown = true;
+    keys.down.timeDown = 20;
+    player.update(0, 16.67);
+
+    keys.right.isDown = false;
+    keys.down.isDown = false;
+    sprite.setPosition(116, 100);
+
+    player.freeze();
+    player.unfreeze();
+    player.update(0, 16.67);
+
+    expect(tweenCalls).toHaveLength(1);
+    expect(player.getPosition()).toEqual({ x: 116, y: 100 });
   });
 });

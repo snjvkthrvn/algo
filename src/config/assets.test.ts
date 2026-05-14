@@ -102,7 +102,7 @@ describe('prologue spritesheet manifest', () => {
   it('uses imagegen-derived field sheets for the playable prologue cast', () => {
     const sheets = new Map(PROLOGUE_SHEET_SPRITE_ASSETS.map((asset) => [asset.key, asset.path]));
 
-    expect(sheets.get(PROLOGUE_SHEET_KEYS.PLAYER)).toBe('assets/prologue_sheets/characters/imagegen_player_walk_v2.png');
+    expect(sheets.get(PROLOGUE_SHEET_KEYS.PLAYER)).toBe('assets/prologue_sheets/characters/imagegen_player_walk_smooth_v3.png');
     expect(sheets.get(PROLOGUE_SHEET_KEYS.NPCS)).toBe('assets/prologue_sheets/characters/imagegen_npc_idle.png');
   });
 
@@ -145,6 +145,12 @@ describe('array plains asset manifest', () => {
 });
 
 describe('visual revamp asset manifest', () => {
+  it('uses the generated v2 world-map panorama for the title screen', () => {
+    const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
+
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.TITLE_BG)).toBe('assets/visual_revamp/title/title_first_three_overhaul_v1.png');
+  });
+
   it('uses grounded imagegen region backgrounds for every post-prologue overworld', () => {
     const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
 
@@ -164,6 +170,14 @@ describe('visual revamp asset manifest', () => {
       key: VISUAL_REVAMP_KEYS.ROUTE_MATERIALS,
       path: 'assets/visual_revamp/regions/grounded_route_material_reference.png',
     });
+  });
+
+  it('uses regenerated imagegen backdrops for the prologue arcade puzzle suite', () => {
+    const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
+
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG)).toBe('assets/visual_revamp/puzzles/rune_memory_backdrop_v2.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG)).toBe('assets/visual_revamp/puzzles/flow_consoles_backdrop_v2.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG)).toBe('assets/visual_revamp/puzzles/litany_trial_backdrop_v1.png');
   });
 
   it('registers the full-region visual asset set', () => {

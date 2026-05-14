@@ -1,7 +1,7 @@
 /**
  * PauseOverlayScene — global pause menu invoked from overworld scenes via ESC.
  * Pauses the parent scene so animations/timers freeze while the player is here.
- * Options: RESUME, SETTINGS, SAVE & QUIT TO TITLE.
+ * Options: RESUME, SETTINGS, SAVE & QUIT.
  */
 
 import Phaser from 'phaser';
@@ -38,7 +38,7 @@ export class PauseOverlayScene extends Phaser.Scene {
       this.closeSettingsModal();
       return;
     }
-    this.saveAndQuit();
+    this.resumeParent();
   };
 
   constructor() {
@@ -79,7 +79,7 @@ export class PauseOverlayScene extends Phaser.Scene {
     this.menuItems = [
       { text: 'RESUME', callback: () => this.resumeParent() },
       { text: 'SETTINGS', callback: () => this.openSettings() },
-      { text: 'SAVE & QUIT TO TITLE', callback: () => this.saveAndQuit() },
+      { text: 'SAVE & QUIT', callback: () => this.saveAndQuit() },
     ];
 
     this.menuTexts = this.menuItems.map((item, i) =>
@@ -163,7 +163,6 @@ export class PauseOverlayScene extends Phaser.Scene {
       stopSceneKeys: [this.parentSceneKey],
       duration: 400,
     });
-    // scene to the menu — TransitionManager.fade ends with scene.start(MENU),
   }
 
   private openSettings(): void {

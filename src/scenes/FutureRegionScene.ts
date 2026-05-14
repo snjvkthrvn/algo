@@ -15,6 +15,7 @@ import {
   isFutureRegionStepWalkable,
   isPointOnFutureRegionRoute,
   type FutureRegionCollisionBlocker,
+  type FutureRegionEncounterConfig,
   type FutureRegionRouteRect,
   type FutureRegionSceneConfig,
 } from '../data/regions/futureRegions';
@@ -29,7 +30,8 @@ import {
 } from '../systems/RouteSurfaceRenderer';
 import type { DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
-import { saveAndReturnToTitle } from './titleNavigation';
+import { openPauseOverlay } from './titleNavigation';
+import { ObjectPool } from '../utils/ObjectPool';
 
 type SpawnData = { spawnX?: number; spawnY?: number };
 
@@ -45,8 +47,16 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   private readonly labelObjects: Phaser.GameObjects.Text[] = [];
   private lastPlayerX: number = NaN;
   private lastPlayerY: number = NaN;
+  private interactionEnabledTime = 0;
+  private hasShutdown = false;
 
-  private readonly onEscReturnToTitle = () => saveAndReturnToTitle(this);
+  private readonly onEscPause = () => {
+    if (this.dialogueSystem?.isDialogueActive()) return;
+    openPauseOverlay(this, this.regionConfig.sceneKey);
+  };
+  private readonly onOpenCodex = () => this.openCodex();
+
+  private interactablePool!: ObjectPool<InteractableObject>;
 
   protected constructor(regionConfig: FutureRegionSceneConfig) {
     super({ key: regionConfig.sceneKey });
@@ -60,9 +70,10 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.hasShutdown = false;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
     audioManager.setScene(this);
-    audioManager.playMusic('prologue-bgm');
+    audioManager.playMusic(this.regionConfig.backgroundMusic ?? 'prologue-bgm');
 
     let px = gameState.getState().player.x;
     let py = gameState.getState().player.y;
@@ -83,6 +94,13 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     });
     this.bit = new BitCompanion(this, px, py);
 
+    if (!this.interactablePool) {
+      this.interactablePool = new ObjectPool(
+        (cfg) => new InteractableObject(this, cfg),
+        (obj, cfg) => obj.reset(cfg)
+      );
+    }
+
     this.interactionSystem = new InteractionSystem(this, this.player);
     this.dialogueSystem = new DialogueSystem(this);
     this.createInteractables();
@@ -98,23 +116,77 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     camera.setDeadzone(CAMERA_TUNING.DEADZONE_WIDTH, CAMERA_TUNING.DEADZONE_HEIGHT);
 
     TransitionManager.fadeIn(this, 700);
+    this.interactionEnabledTime = this.time.now + 700;
     this.hud.showRegionCard(this.regionConfig.title, this.regionConfig.subtitle);
-    this.input.keyboard?.on('keydown-ESC', this.onEscReturnToTitle);
+    this.input.keyboard?.on('keydown-ESC', this.onEscPause);
+    this.input.keyboard?.on('keydown-C', this.onOpenCodex);
   }
 
-  update(): void {
+  update(time: number, delta: number): void {
     const dialogueActive = this.dialogueSystem?.isDialogueActive() ?? false;
-    // Always update player so auto-walk / tween chaining works even if dialogue blocks new input
-    this.player.update();
+    // Freeze player input while dialogue is active so NPC beats can't be walked out of mid-line.
+    if (!dialogueActive) {
+      this.player.update(time, delta);
+    }
 
     const pos = this.player.getPosition();
-    this.bit.update(pos.x, pos.y);
-    this.interactionSystem.update(!dialogueActive);
+    this.bit.update(pos.x, pos.y, delta);
+    const canInteract = !dialogueActive && this.time.now >= this.interactionEnabledTime;
+    this.interactionSystem.update(canInteract);
     if (pos.x !== this.lastPlayerX || pos.y !== this.lastPlayerY) {
       gameState.setPlayerPosition(pos.x, pos.y);
       this.lastPlayerX = pos.x;
       this.lastPlayerY = pos.y;
     }
+
+    this.syncFutureRegionObjectiveHint();
+  }
+
+  private cleanPortalLabel(label: string): string {
+    return label.replace(/^\[SPACE\]\s*/i, '').trim();
+  }
+
+  private isEncounterLocked(encounter: FutureRegionEncounterConfig): boolean {
+    return encounter.requiresPuzzleIds?.some((id) => !gameState.isPuzzleCompleted(id)) ?? false;
+  }
+
+  private syncFutureRegionObjectiveHint(): void {
+    if (this.hasShutdown) return;
+
+    const encounters = this.regionConfig.encounters ?? [];
+    let line = '';
+
+    if (encounters.length > 0) {
+      const incomplete = encounters.find((e) => !gameState.isPuzzleCompleted(e.id));
+      if (incomplete) {
+        if (this.isEncounterLocked(incomplete)) {
+          const reqs = incomplete.requiresPuzzleIds ?? [];
+          const doneCount = reqs.filter((id) => gameState.isPuzzleCompleted(id)).length;
+          line = `Objective: Finish the four teachings (${doneCount}/4) — ${incomplete.title} unlocks afterward.`;
+        } else if (incomplete.kind === 'boss') {
+          line = `Objective: Challenge ${incomplete.title} — the regional trial.`;
+        } else {
+          line = `Objective: Complete ${incomplete.title}.`;
+        }
+      } else {
+        const next = this.regionConfig.next;
+        if (next) {
+          const nextLocked =
+            !!next.requiresPuzzleId && !gameState.isPuzzleCompleted(next.requiresPuzzleId);
+          const dest = this.cleanPortalLabel(next.label);
+          if (nextLocked) {
+            line = `Objective: Finish the trial here — the way to ${dest} is still sealed.`;
+          } else {
+            line = `Objective: When ready, continue — ${dest}.`;
+          }
+        } else {
+          line =
+            'Objective: Face Protocol Omega at the far gate — or return west through Graph Nexus to replay.';
+        }
+      }
+    }
+
+    this.hud.setObjectiveHint(line);
   }
 
   private renderField(): void {
@@ -303,7 +375,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   private createInteractables(): void {
-    const back = new InteractableObject(this, {
+    const back = this.interactablePool.acquire({
       id: 'back_gateway',
       type: 'portal',
       x: 112,
@@ -326,7 +398,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     if (this.regionConfig.next) {
       const next = this.regionConfig.next;
       const locked = !!next.requiresPuzzleId && !gameState.isPuzzleCompleted(next.requiresPuzzleId);
-      const gateway = new InteractableObject(this, {
+      const gateway = this.interactablePool.acquire({
         id: 'next_gateway',
         type: 'portal',
         x: 1784,
@@ -356,7 +428,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     }
 
     const guidePosition = this.getGuidePosition();
-    const guide = new InteractableObject(this, {
+    const guide = this.interactablePool.acquire({
       id: 'region_guide',
       type: 'sign',
       x: guidePosition.x,
@@ -371,7 +443,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     this.addInteractable(guide);
 
     const shrinePosition = this.getShrinePosition();
-    const shrine = new InteractableObject(this, {
+    const shrine = this.interactablePool.acquire({
       id: 'region_shrine',
       type: 'sign',
       x: shrinePosition.x,
@@ -425,7 +497,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
       const completed = gameState.isPuzzleCompleted(encounter.id);
       const locked = encounter.requiresPuzzleIds?.some((id) => !gameState.isPuzzleCompleted(id)) ?? false;
       const isBoss = encounter.kind === 'boss';
-      const object = new InteractableObject(this, {
+      const object = this.interactablePool.acquire({
         id: encounter.id,
         type: isBoss ? 'gate' : 'sign',
         x: encounter.position.x,
@@ -481,6 +553,11 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
     TransitionManager.pixelDissolve(this, sceneKey, { returnScene: this.regionConfig.sceneKey });
   }
 
+  private openCodex(): void {
+    if (this.dialogueSystem?.isDialogueActive()) return;
+    TransitionManager.fade(this, SCENE_KEYS.CODEX, { returnScene: this.regionConfig.sceneKey }, 260);
+  }
+
   private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
     return isFutureRegionStepWalkable(point, this.getCollisionBlockers(), 0, this.getRouteRects());
   }
@@ -512,13 +589,15 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   shutdown(): void {
-    this.input.keyboard?.off('keydown-ESC', this.onEscReturnToTitle);
+    this.hasShutdown = true;
+    this.input.keyboard?.off('keydown-ESC', this.onEscPause);
+    this.input.keyboard?.off('keydown-C', this.onOpenCodex);
     this.dialogueSystem?.destroy();
     this.interactionSystem?.destroy();
     this.hud?.destroy();
-    for (const object of this.interactables) object.destroy();
+    for (const object of this.interactables) this.interactablePool.release(object);
     this.interactables.length = 0;
-    for (const object of this.encounterObjects) object.destroy();
+    for (const object of this.encounterObjects) this.interactablePool.release(object);
     this.encounterObjects.length = 0;
     for (const label of this.labelObjects) label.destroy();
     this.labelObjects.length = 0;

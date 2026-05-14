@@ -25,7 +25,7 @@ export interface InteractableConfig {
 
 export class InteractableObject {
   sprite: Phaser.GameObjects.Container | Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
-  body: Phaser.Physics.Arcade.Body;
+  body!: Phaser.Physics.Arcade.Body;
   config: InteractableConfig;
   private scene: Phaser.Scene;
   private glowGraphics: Phaser.GameObjects.Graphics;
@@ -51,10 +51,7 @@ export class InteractableObject {
 
     // Physics — body is a position proxy (no colliders in this scene). setSize
     // auto-centers the body on the sprite; do not override with setOffset.
-    scene.physics.world.enable(this.sprite);
-    this.body = this.sprite.body as Phaser.Physics.Arcade.Body;
-    this.body.setSize(32, 32);
-    this.body.setImmovable(true);
+    this.enableBody();
   }
 
   private createVisual(
@@ -258,9 +255,46 @@ export class InteractableObject {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
+  setActive(active: boolean): this {
+    this.sprite.setActive(active);
+    this.glowGraphics.setActive(active);
+    return this;
+  }
+
+  setVisible(visible: boolean): this {
+    this.sprite.setVisible(visible);
+    this.glowGraphics.setVisible(visible);
+    return this;
+  }
+
   destroy(): void {
     this.idleTween?.stop();
-    this.sprite.destroy();
+    this.idleTween = null;
     this.glowGraphics.destroy();
+    this.body?.destroy();
+    this.sprite.destroy();
+  }
+
+  reset(config: InteractableConfig): void {
+    this.idleTween?.stop();
+    this.idleTween = null;
+    this.body?.destroy();
+    this.sprite.destroy();
+
+    this.config = config;
+    this.displayState = config.initialState ?? (config.locked ? 'locked' : 'unlocked');
+    this.sprite = this.createVisual(config);
+    this.enableBody();
+    this.refreshIdleMotion();
+
+    this.sprite.setActive(true).setVisible(true);
+    this.glowGraphics.setPosition(config.x, config.y).setAlpha(0).setActive(true).setVisible(true);
+  }
+
+  private enableBody(): void {
+    this.scene.physics.world.enable(this.sprite);
+    this.body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    this.body.setSize(32, 32);
+    this.body.setImmovable(true);
   }
 }

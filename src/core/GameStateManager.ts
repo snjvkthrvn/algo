@@ -159,6 +159,7 @@ class GameStateManagerClass {
   }
 
   setBitMood(mood: BitMood): void {
+    if (this.state.companion.mood === mood) return;
     this.state.companion.mood = mood;
     eventBus.emit(GameEvents.BIT_MOOD_CHANGE, { mood });
   }

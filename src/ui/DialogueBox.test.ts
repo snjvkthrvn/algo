@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DialogueBox } from './DialogueBox';
 
 const stub = (extra: Record<string, unknown> = {}) => {
@@ -53,5 +53,25 @@ describe('DialogueBox', () => {
     expect(imageCalls.some((call) => call.key === 'prologue-ui-portrait_active')).toBe(true);
     expect(graphicsCalls).toContain('fillRect');
     expect(graphicsCalls).toContain('strokeRect');
+  });
+
+  it('does not start a typewriter timer for empty body text', () => {
+    const addEvent = vi.fn();
+    const scene = {
+      cameras: { main: { width: 1280, height: 720 } },
+      add: {
+        container: () => stub({ add: () => undefined, destroy: () => undefined }),
+        image: () => stub(),
+        graphics: () => trackingGraphics([]),
+        text: () => stub({ setVisible: () => undefined }),
+      },
+      tweens: { add: () => undefined },
+      time: { addEvent },
+    };
+
+    const box = new DialogueBox(scene as never);
+    box.show('Guide', '', vi.fn());
+
+    expect(addEvent).not.toHaveBeenCalled();
   });
 });

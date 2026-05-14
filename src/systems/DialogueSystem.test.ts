@@ -96,4 +96,14 @@ describe('DialogueSystem opening race', () => {
 
     expect(dialogueBox.advance).toHaveBeenCalledTimes(1);
   });
+
+  it('ends the current dialogue (invoking onEnd) before starting a replacement', () => {
+    const onEndFirst = vi.fn();
+    const onEndSecond = vi.fn();
+    system.startDialogue(singleNodeTree('first'), 'npc_a', onEndFirst);
+    system.startDialogue(singleNodeTree('second'), 'npc_b', onEndSecond);
+
+    expect(onEndFirst).toHaveBeenCalledTimes(1);
+    expect(onEndSecond).not.toHaveBeenCalled();
+  });
 });

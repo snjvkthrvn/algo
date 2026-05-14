@@ -61,6 +61,22 @@ export class GlitchRival {
     });
   }
 
+  /** Tween Glitch's body to a world position. Used by scripted teaching beats. */
+  tweenTo(x: number, y: number, durationMs: number, ease: string, onComplete?: () => void): void {
+    this.scene.tweens.add({
+      targets: this.container,
+      x,
+      y,
+      duration: durationMs,
+      ease,
+      onComplete: () => onComplete?.(),
+    });
+  }
+
+  getPosition(): { x: number; y: number } {
+    return { x: this.container.x, y: this.container.y };
+  }
+
   destroy(): void {
     this.glitchTimer?.destroy();
     this.container.destroy();

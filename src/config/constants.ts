@@ -106,6 +106,8 @@ export const SCENE_KEYS = {
   BOSS_PROTOCOL_OMEGA: 'Boss_ProtocolOmega',
   CONCEPT_BRIDGE: 'ConceptBridgeScene',
   CODEX: 'CodexScene',
+  PAUSE_OVERLAY: 'PauseOverlayScene',
+  END_GAME: 'EndGameScene',
   CRT_OVERLAY: 'CRTScene',
 } as const;
 

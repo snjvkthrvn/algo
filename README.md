@@ -12,15 +12,21 @@ Algorithmia is an educational RPG in the style of classic Game Boy adventures. P
 
 Each puzzle maps to a real algorithm or data structure idea. Completing a puzzle unlocks the **Concept Bridge** — a reflection screen that names the concept and reinforces the lesson. Solved concepts are recorded in the **Codex**.
 
-### Prologue — Chamber of Flow
+### The Journey
 
-The starting region: floating platforms and “algorithms still running in the dark.”
+The game spans 9 fully playable regions, starting from the basics of sequential flow and concluding with complex dynamic programming:
 
-| Encounter | Concept |
-|-----------|---------|
-| **P0-1: Follow the Path** | Sequential processing — memorize and repeat a rune sequence |
-| **P0-2: Flow Consoles** | Key–value mapping — match shards to consoles by shape and colour |
-| **Boss: The Sentinel** | Combined recall — multi-phase sequence and pattern test |
+- **Prologue — Chamber of Flow**: The starting region: floating platforms and “algorithms still running in the dark.” (Sequences, Mapping)
+- **Array Plains**: Order & Collections (Sorting, Indexing, Hashing, Two Sum)
+- **Twin Rivers**: Dual Traversal (Two Pointers, Sliding Window)
+- **Hash Highlands**: Instant Knowledge (Hash Maps, Frequency, Memoization)
+- **Stack Spires**: Depth & Limits (Stacks, Recursion, Backtracking)
+- **Queue Canals**: Order & Fairness (Queues, BFS, Priority)
+- **Tree Canopy**: Hierarchy & Balance (BSTs, DFS)
+- **Graph Nexus**: Connections (Graphs, Pathfinding, Cycles)
+- **The Core**: The Final Answer (Dynamic Programming, Synthesis)
+
+Each region introduces concepts through environmental exploration, puzzle encounters with dynamic educational animations, and a culminating Boss challenge.
 
 Key characters: **Professor Node** (mentor), **Bit** (companion that grows as you learn), **Glitch** (rival between lessons).
 

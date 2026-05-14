@@ -26,10 +26,12 @@ import { progressionSystem } from '../../systems/ProgressionSystem';
 import { HUDManager } from '../../systems/HUDManager';
 import { TransitionManager } from '../../core/TransitionManager';
 import { audioManager } from '../../core/AudioManager';
+import { JuiceSystem } from '../../systems/JuiceSystem';
 import { gameState } from '../../core/GameStateManager';
 import { eventBus, GameEvents } from '../../core/EventBus';
 import { BitMood } from '../../data/types';
 import { GLITCH_DIALOGUE, GLITCH_EXIT_LINES } from '../../data/dialogue/glitch_dialogue';
+import { professorNodeDialogue } from '../../data/dialogue/prologue_dialogue';
 import { PROLOGUE_NPCS } from '../../data/npcs/prologue_npcs';
 import { PROLOGUE_CONFIG, PROLOGUE_ROUTE_LANDMARKS } from '../../data/regions/prologue';
 import {
@@ -42,22 +44,19 @@ import {
 import {
   createPrologueStoryFlags,
   getPendingPrologueBeat,
+  shouldTriggerNodeIntroAtPosition,
   shouldTriggerWatcherAtPosition,
 } from '../../prologue/prologueScriptState';
+import { PROLOGUE_ANCHORS, proximityRadiusPixels } from '../../data/regions/prologueAnchors';
 import { PrologueTilemapRenderer, type PrologueTilemapHandle } from '../../systems/PrologueTilemapRenderer';
 import { PrologueRouteRenderer, type PrologueRouteHandle } from '../../systems/PrologueRouteRenderer';
 import { PROLOGUE_CAMERA_TUNING } from './cameraTuning';
 import { CAMERA_TUNING } from '../../config/constants';
 import { setupUICamera } from '../../utils/uiCamera';
-import { saveAndReturnToTitle } from '../titleNavigation';
-
-const NODE_INTRO_LINES = [
-  { speaker: 'Professor Node', text: 'Ah. There you are. I was beginning to wonder.' },
-  { speaker: 'Professor Node', text: 'I am Professor Node. This is the Chamber of Flow — where the oldest algorithms still run.' },
-  { speaker: 'Professor Node', text: 'That small light beside you is Bit. It grows as you learn. Right now it is a Spark — the simplest form.' },
-  { speaker: 'Professor Node', text: 'Two lessons wait for you here. Find the Rune Keeper and the Console Keeper. They will show you the way.' },
-  { speaker: 'Professor Node', text: 'The Chamber is yours to explore. I will be here if you need me.' },
-];
+import { openPauseOverlay } from '../titleNavigation';
+import { ObjectPool } from '../../utils/ObjectPool';
+import type { NPCConfig } from '../../entities/NPC';
+import { a11yManager } from '../../core/A11yManager';
 
 export class PrologueScene extends Phaser.Scene {
   private player!: Player;
@@ -80,10 +79,17 @@ export class PrologueScene extends Phaser.Scene {
   private storyBeatActive = false;
   private inputCooldownUntil = 0;
   private cinematicCleanup: Array<() => void> = [];
+  private cleanupActiveWatcherFlyby: (() => void) | null = null;
   private hasShutdown = false;
+  private isRespawning = false;
+  private interactablePool!: ObjectPool<InteractableObject>;
+  private npcPool!: ObjectPool<NPC>;
   private onDialogueAction!: (...args: unknown[]) => void;
   private onGateOpen!: (...args: unknown[]) => void;
-  private readonly onEscReturnToTitle = () => this.returnToTitle();
+  /** Glitch encounter requested while another story beat held the scene — run on next free frame. */
+  private deferredGlitchEncounter: 1 | 2 | null = null;
+  private readonly onEscPause = () => this.openPauseMenu();
+  private readonly onOpenCodex = () => this.openCodex();
 
   constructor() {
     super({ key: SCENE_KEYS.PROLOGUE });
@@ -117,7 +123,9 @@ export class PrologueScene extends Phaser.Scene {
       .setDepth(-95)
       .setAlpha(0.46);
     const source = chamber.texture.getSourceImage() as HTMLImageElement;
-    chamber.setScale(Math.max(WORLD_WIDTH / source.width, WORLD_HEIGHT / source.height));
+    const sWidth = source.width || WORLD_WIDTH;
+    const sHeight = source.height || WORLD_HEIGHT;
+    chamber.setScale(Math.max(WORLD_WIDTH / sWidth, WORLD_HEIGHT / sHeight));
 
     // === ATMOSPHERE ===
     this.createStarfield(WORLD_WIDTH, WORLD_HEIGHT);
@@ -138,6 +146,21 @@ export class PrologueScene extends Phaser.Scene {
     // === COMPANIONS ===
     this.bit = new BitCompanion(this, state.player.x, state.player.y);
     this.glitch = new GlitchRival(this);
+
+    // === OBJECT POOLS ===
+    // Must be initialised before createNPCs() and createGates() which call acquire().
+    if (!this.interactablePool) {
+      this.interactablePool = new ObjectPool(
+        (cfg) => new InteractableObject(this, cfg),
+        (obj, cfg) => obj.reset(cfg)
+      );
+    }
+    if (!this.npcPool) {
+      this.npcPool = new ObjectPool(
+        (cfg: NPCConfig) => new NPC(this, cfg),
+        (npc, cfg: NPCConfig) => npc.reset(cfg)
+      );
+    }
 
     // === NPCS ===
     this.npcBehavior = new NPCBehaviorSystem();
@@ -240,6 +263,7 @@ export class PrologueScene extends Phaser.Scene {
 
     // === INTRO ===
     TransitionManager.fadeIn(this, 800);
+    this.inputCooldownUntil = this.time.now + 800;
     const p = gameState.getState().player;
     gameState.setPlayerLocation(REGIONS.PROLOGUE, p.x, p.y);
 
@@ -262,34 +286,37 @@ export class PrologueScene extends Phaser.Scene {
     } else {
       showRegionIntro();
     }
-    this.input.keyboard?.on('keydown-ESC', this.onEscReturnToTitle);
+    this.input.keyboard?.on('keydown-ESC', this.onEscPause);
+    this.input.keyboard?.on('keydown-C', this.onOpenCodex);
   }
 
-  update(): void {
+  update(time: number, delta: number): void {
+    this.maybeFlushDeferredGlitchEncounter();
+
     const dialogueActive = this.dialogueSystem.isDialogueActive();
     const inputCooldownActive = this.time.now < this.inputCooldownUntil;
     const inputBlocked = dialogueActive || this.storyBeatActive || inputCooldownActive;
 
-    // Trigger auto-walk to Professor Node when crossing the bridge
+    // The player walks to Professor Node themselves. The Node intro arms
+    // once they enter proximity of the central hub — no forced auto-walk.
     const pos = this.player.getPosition();
-    if (!inputBlocked && !gameState.getFlag('professor_node_intro_done') && pos.x >= 450) {
-      if (!this.storyBeatActive && getPendingPrologueBeat(this.getPrologueStoryFlags()) === 'node_intro') {
-        this.beginStoryBeat();
-        this.player.walkTo(860, pos.y, () => {
-          this.playNodeIntro();
-        });
-      }
+    if (
+      !inputBlocked &&
+      shouldTriggerNodeIntroAtPosition(
+        this.getPrologueStoryFlags(),
+        pos,
+        PROLOGUE_ANCHORS.professorNode.position,
+        proximityRadiusPixels(PROLOGUE_ANCHORS.professorNode),
+      )
+    ) {
+      this.playNodeIntro();
     }
 
-    // Update player
-    if (!inputBlocked && !this.storyBeatActive) {
-      this.player.update();
-    } else {
-      this.player.update(); // allow auto-walk tweening to continue even if input is blocked
-    }
+    // Always update player — auto-walk tweening must continue even while input is blocked.
+    this.player.update(time, delta);
 
     // Update companion — Bit always follows, even during dialogue
-    this.bit.update(pos.x, pos.y);
+    this.bit.update(pos.x, pos.y, delta);
     if (!inputBlocked) {
       this.maybeTriggerWatcherWarning(pos);
     }
@@ -304,11 +331,62 @@ export class PrologueScene extends Phaser.Scene {
     // Save player position
     gameState.setPlayerPosition(pos.x, pos.y);
 
-    // Position-triggered watcher warning — fires once when player enters puzzle lane
-    if (!inputBlocked && shouldTriggerWatcherAtPosition(this.getPrologueStoryFlags(), pos)) {
-      gameState.setFlag('watcher_warning_done', true);
-      this.handlePendingPrologueBeat();
+    this.syncPrologueObjectiveHint();
+
+    // The Watcher cinematic is fired by maybeTriggerWatcherWarning above —
+    // a second inline trigger here used to bypass the cinematic and just set
+    // the flag on the same condition, which produced two paths fighting over
+    // when watcher_warning_done is set. Removed.
+  }
+
+  /**
+   * Bottom HUD objective line for the Chamber of Flow — updates as script flags advance.
+   */
+  private syncPrologueObjectiveHint(): void {
+    if (this.hasShutdown) return;
+
+    const flags = this.getPrologueStoryFlags();
+    let line = '';
+
+    if (flags.openingSceneDone && !flags.professorNodeIntroDone) {
+      line =
+        PROLOGUE_ANCHORS.professorNode.objectiveLabel != null
+          ? `Objective: ${PROLOGUE_ANCHORS.professorNode.objectiveLabel}`
+          : 'Objective: Speak with Professor Node at the central hub.';
+    } else if (flags.professorNodeIntroDone && !flags.watcherWarningDone) {
+      line =
+        'Objective: Follow the lit tiles toward the Rune Keeper (north) or Console Keeper (south).';
+    } else if (flags.watcherWarningDone && !flags.puzzleP01Complete) {
+      line =
+        PROLOGUE_ANCHORS.runeKeeper.objectiveLabel != null
+          ? `Objective: ${PROLOGUE_ANCHORS.runeKeeper.objectiveLabel}`
+          : 'Objective: Meet the Rune Keeper.';
+    } else if (flags.puzzleP01Complete && !flags.puzzleP02Complete) {
+      line =
+        PROLOGUE_ANCHORS.consoleKeeper.objectiveLabel != null
+          ? `Objective: ${PROLOGUE_ANCHORS.consoleKeeper.objectiveLabel}`
+          : 'Objective: Meet the Console Keeper.';
+    } else if (
+      flags.puzzleP01Complete &&
+      flags.puzzleP02Complete &&
+      !progressionSystem.isBossGateOpen()
+    ) {
+      line =
+        PROLOGUE_ANCHORS.bossGate.objectiveLabel != null
+          ? `Objective: ${PROLOGUE_ANCHORS.bossGate.objectiveLabel}`
+          : 'Objective: Open both puzzle paths, then approach the Sentinel gate.';
+    } else if (progressionSystem.isBossGateOpen() && !flags.puzzleBossSentinelComplete) {
+      line = 'Objective: Defeat the Sentinel beyond the gate.';
+    } else if (flags.puzzleBossSentinelComplete && !progressionSystem.isGatewayOpen()) {
+      line = 'Objective: Reach the gateway to the Array Plains.';
+    } else if (flags.puzzleBossSentinelComplete && progressionSystem.isGatewayOpen()) {
+      line =
+        PROLOGUE_ANCHORS.arrayGateway.objectiveLabel != null
+          ? `Objective: ${PROLOGUE_ANCHORS.arrayGateway.objectiveLabel}`
+          : 'Objective: Step through the gateway to the Array Plains.';
     }
+
+    this.hud.setObjectiveHint(line);
   }
 
   private createPlatforms(): void {
@@ -356,6 +434,14 @@ export class PrologueScene extends Phaser.Scene {
     return blockers;
   }
 
+  private maybeFlushDeferredGlitchEncounter(): void {
+    if (this.deferredGlitchEncounter === null) return;
+    if (this.storyBeatActive) return;
+    const n = this.deferredGlitchEncounter;
+    this.deferredGlitchEncounter = null;
+    this.triggerGlitchEncounter(n);
+  }
+
   private maybeTriggerWatcherWarning(position: { x: number; y: number }): void {
     if (this.storyBeatActive) return;
 
@@ -367,8 +453,24 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private playWatcherWarning(): void {
-    this.beginStoryBeat();
+    this.beginStoryBeat('watcher_warning');
+    const { width, height } = this.cameras.main;
+    const hint = this.add
+      .text(width / 2, height - 96, 'Something crosses the sky.\nHold still.', {
+        fontSize: '10px',
+        fontFamily: FONTS.RETRO,
+        color: '#e0f8d0',
+        stroke: '#081820',
+        strokeThickness: 4,
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(8500);
+    a11yManager.announce('Something crosses the sky. Hold still.', true);
+
     this.spawnWatcherFlyby(false, () => {
+      hint.destroy();
       this.playCinematicSequence(
         [
           { speaker: 'Professor Node', text: 'Easy. Do not move.' },
@@ -377,18 +479,16 @@ export class PrologueScene extends Phaser.Scene {
         ],
         () => {
           gameState.setFlag('watcher_warning_done', true);
-          this.storyBeatActive = false;
-          this.player.unfreeze();
+          this.endStoryBeat('watcher_warning');
           this.scheduleWatcherFlyby(Phaser.Math.Between(60000, 120000));
-          this.handlePendingPrologueBeat();
         }
       );
-    });
+    }, 2800);
   }
 
   private createNPCs(): void {
     for (const npcConfig of PROLOGUE_NPCS) {
-      const npc = new NPC(this, npcConfig);
+      const npc = this.npcPool.acquire(npcConfig);
 
       // Check if NPC should show post-puzzle dialogue
       if (npcConfig.id === 'rune_keeper' && gameState.getFlag('puzzle_p0_1_complete')) {
@@ -410,7 +510,9 @@ export class PrologueScene extends Phaser.Scene {
   private createGates(): void {
     // Boss gate
     const bossGateOpen = gameState.getFlag('boss_gate_open');
-    this.bossGate = new InteractableObject(this, {
+    const bossGateVisuallyOpen =
+      bossGateOpen && gameState.getFlag('boss_gate_cutscene_done');
+    this.bossGate = this.interactablePool.acquire({
       id: 'boss_gate',
       type: 'gate',
       x: PROLOGUE_CONFIG.exitPoints[0].position.x,
@@ -423,7 +525,7 @@ export class PrologueScene extends Phaser.Scene {
       },
       imageScale: 0.25,
       imageOriginY: 0.84,
-      initialState: bossGateOpen ? 'unlocked' : 'locked',
+      initialState: bossGateVisuallyOpen ? 'unlocked' : 'locked',
       onInteract: () => {
         if (progressionSystem.isBossGateOpen()) {
           TransitionManager.swirl(this, SCENE_KEYS.BOSS_SENTINEL, {
@@ -438,7 +540,9 @@ export class PrologueScene extends Phaser.Scene {
 
     // Array Plains gateway
     const gatewayOpen = gameState.getFlag('gateway_open');
-    this.gateway = new InteractableObject(this, {
+    const gatewayVisuallyOpen =
+      gatewayOpen && gameState.getFlag('boss_return_cutscene_done');
+    this.gateway = this.interactablePool.acquire({
       id: 'gateway',
       type: 'portal',
       x: PROLOGUE_CONFIG.exitPoints[1].position.x,
@@ -451,7 +555,7 @@ export class PrologueScene extends Phaser.Scene {
       },
       imageScale: 0.25,
       imageOriginY: 0.86,
-      initialState: gatewayOpen ? 'unlocked' : 'locked',
+      initialState: gatewayVisuallyOpen ? 'unlocked' : 'locked',
       onInteract: () => {
         if (progressionSystem.isGatewayOpen()) {
           TransitionManager.swirl(this, SCENE_KEYS.ARRAY_PLAINS);
@@ -529,6 +633,7 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private checkVoidFall(): void {
+    if (this.isRespawning || this.storyBeatActive) return;
     const pos = this.player.getPosition();
 
     if (isPointOnPrologueTileRoute(pos, 10)) {
@@ -542,6 +647,8 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private respawnPlayer(): void {
+    if (this.isRespawning) return;
+    this.isRespawning = true;
     this.player.freeze();
 
     const { width, height } = this.cameras.main;
@@ -566,6 +673,7 @@ export class PrologueScene extends Phaser.Scene {
           onComplete: () => {
             overlay.destroy();
             this.player.unfreeze();
+            this.isRespawning = false;
           },
         });
       },
@@ -658,10 +766,18 @@ export class PrologueScene extends Phaser.Scene {
     for (const cleanup of cleanups) cleanup();
   }
 
-  private beginStoryBeat(): void {
+  private beginStoryBeat(name: string = 'unknown'): void {
+    console.log(`[PrologueScene] Beginning story beat: ${name}`);
     this.storyBeatActive = true;
     this.player.freeze();
     this.interactionSystem?.update(false);
+  }
+
+  private endStoryBeat(name: string = 'unknown'): void {
+    console.log(`[PrologueScene] Ending story beat: ${name}`);
+    this.storyBeatActive = false;
+    this.player.unfreeze();
+    this.handlePendingPrologueBeat();
   }
 
   private playCinematicSequence(
@@ -826,19 +942,26 @@ export class PrologueScene extends Phaser.Scene {
 
   private playNodeIntro(): void {
     if (gameState.getFlag('professor_node_intro_done')) return;
-
-    this.beginStoryBeat();
-    this.playCinematicSequence(NODE_INTRO_LINES, () => {
-      gameState.setFlag('professor_node_intro_done', true);
-      this.storyBeatActive = false;
-      this.player.unfreeze();
+    // The script's Node intro is interactive — three player choices ("Where am I?",
+    // "What's that little light?", "What do I do here?"). The dialogue tree at
+    // professorNodeDialogue is already authored to the script. Route through it
+    // instead of a hardcoded cinematic so the player keeps agency. The tree's
+    // intro_end node sets professor_node_intro_done via its set_flag action.
+    this.player.setInteracting(true);
+    this.dialogueSystem.startDialogue(professorNodeDialogue, 'professor_node', () => {
+      this.player.setInteracting(false);
       this.handlePendingPrologueBeat();
     });
   }
 
-  private returnToTitle(): void {
+  private openPauseMenu(): void {
     if (this.storyBeatActive || this.dialogueSystem?.isDialogueActive()) return;
-    saveAndReturnToTitle(this);
+    openPauseOverlay(this, SCENE_KEYS.PROLOGUE);
+  }
+
+  private openCodex(): void {
+    if (this.storyBeatActive || this.dialogueSystem?.isDialogueActive()) return;
+    TransitionManager.fade(this, SCENE_KEYS.CODEX, { returnScene: SCENE_KEYS.PROLOGUE }, 260);
   }
 
   private getPrologueStoryFlags(): ReturnType<typeof createPrologueStoryFlags> {
@@ -863,7 +986,7 @@ export class PrologueScene extends Phaser.Scene {
       return;
     }
     if (beat === 'node_intro') {
-      // Node intro is handled by the position-triggered auto-walk in update()
+      // Node intro is armed by player proximity to the central hub in update().
       return;
     }
     if (beat === 'watcher_warning') {
@@ -890,21 +1013,14 @@ export class PrologueScene extends Phaser.Scene {
     this.beginStoryBeat();
     this.playCinematicSequence(
       [
-        { speaker: 'System', text: '> ...' },
-        { speaker: 'System', text: '> Signal detected.' },
-        { speaker: 'System', text: '> Reconstructing memory index...' },
-        { speaker: 'System', text: '> Partial. Continuing.' },
-        { speaker: 'System', text: '> Core process: ACTIVE' },
-        { speaker: 'System', text: "> You're back." },
-        { speaker: 'System', text: '> The Chamber of Flow is still here. So is your path.' },
-        { speaker: 'System', text: '> [W][A][S][D] or [ARROWS] to Move.' },
-        { speaker: 'System', text: '> [SPACE] or [ENTER] to Interact.' },
-        { speaker: 'System', text: '> Begin.' },
+        { speaker: 'System', text: '> Signal detected. Core process: ACTIVE.' },
+        { speaker: 'System', text: "> You're back in the Chamber of Flow." },
+        { speaker: 'System', text: '> [W][A][S][D] move. [SPACE] interact.' },
       ],
       () => {
         gameState.setFlag('opening_scene_done', true);
-        this.storyBeatActive = false;
-        this.player.unfreeze();
+        this.syncPrologueObjectiveHint();
+        this.endStoryBeat('opening_scene');
         onComplete();
       }
     );
@@ -926,15 +1042,13 @@ export class PrologueScene extends Phaser.Scene {
       ],
       () => {
         gameState.setFlag('boss_gate_cutscene_done', true);
-        this.storyBeatActive = false;
-        this.player.unfreeze();
-        this.handlePendingPrologueBeat();
+        this.endStoryBeat('boss_gate');
       }
     );
   }
 
   private playBossReturnCutscene(): void {
-    this.beginStoryBeat();
+    this.beginStoryBeat('boss_return');
 
     if (this.gateway) {
       this.gateway.setLocked(false);
@@ -946,26 +1060,34 @@ export class PrologueScene extends Phaser.Scene {
     this.playCinematicSequence(
       [
         { speaker: 'Professor Node', text: 'You did it. The Chamber of Flow is complete, and your Construct has grown from Spark to Byte.' },
-        { speaker: 'Professor Node', text: 'The Array Plains gateway is open. The world is bigger now.' },
+        { speaker: 'Professor Node', text: 'I won\'t be coming with you. My place is here. But others will guide you — the Village Elder knows the ways of the Plains.' },
+        { speaker: 'Professor Node', text: 'Take this. A cache key — a small piece of structured memory.' },
+        { speaker: 'Professor Node', text: 'Knowledge is not just power in this world. It\'s protection.' },
+        { speaker: 'Professor Node', text: 'The Array Plains gateway is open. Take care of each other.' },
       ],
       () => {
         gameState.setFlag('boss_return_cutscene_pending', false);
         gameState.setFlag('boss_return_cutscene_done', true);
-        this.storyBeatActive = false;
-        this.player.unfreeze();
 
         if (gameState.getFlag('glitch_encounter_2_pending')) {
-          this.time.delayedCall(700, () => this.triggerGlitchEncounter(2));
+          this.time.delayedCall(700, () => {
+            this.endStoryBeat('boss_return_pre_glitch');
+            this.triggerGlitchEncounter(2);
+          });
           return;
         }
 
-        this.handlePendingPrologueBeat();
+        this.endStoryBeat('boss_return');
       }
     );
   }
 
   private triggerGlitchEncounter(encounterNumber: 1 | 2): void {
-    if (this.storyBeatActive) return;
+    if (this.storyBeatActive) {
+      this.deferredGlitchEncounter = encounterNumber;
+      return;
+    }
+    this.deferredGlitchEncounter = null;
     this.beginStoryBeat();
 
     const dialogueLines = GLITCH_DIALOGUE[encounterNumber].map((l) => ({
@@ -979,26 +1101,80 @@ export class PrologueScene extends Phaser.Scene {
       { speaker: 'Glitch', text: exitLine, speakerColor: '#8b5cf6' },
     ];
 
+    const playDialogueAndExit = () => {
+      this.playCinematicSequence(lines, () => {
+        if (encounterNumber === 1) {
+          gameState.setFlag('glitch_encounter_1_pending', false);
+          gameState.setFlag('glitch_encounter_1_done', true);
+          gameState.setFlag('glitch_intro_done', true);
+        } else {
+          gameState.setFlag('glitch_encounter_2_pending', false);
+          gameState.setFlag('glitch_encounter_2_done', true);
+        }
+        this.glitch.exit(() => {
+          this.cameras.main.startFollow(
+            this.player.sprite,
+            true,
+            CAMERA_TUNING.FOLLOW_LERP,
+            CAMERA_TUNING.FOLLOW_LERP,
+          );
+          this.storyBeatActive = false;
+          this.player.unfreeze();
+          this.handlePendingPrologueBeat();
+        });
+      });
+    };
+
+    if (encounterNumber === 1) {
+      // Player just learned ordered traversal in P0_1. Now they observe Glitch
+      // brute-forcing the Flow Consoles — failed insertions, sparks — so the
+      // motivation for P0_2's mapping lesson lands before the dialogue does.
+      this.playGlitchBruteForceBeat(playDialogueAndExit);
+      return;
+    }
+
     const pos = this.player.getPosition();
     const spawn = this.pickGlitchSpawnPosition(pos);
-
     this.time.delayedCall(300, () => {
-      this.glitch.spawnIn(spawn.x, spawn.y, () => {
-        this.playCinematicSequence(lines, () => {
-          if (encounterNumber === 1) {
-            gameState.setFlag('glitch_encounter_1_pending', false);
-            gameState.setFlag('glitch_encounter_1_done', true);
-            gameState.setFlag('glitch_intro_done', true);
-          } else {
-            gameState.setFlag('glitch_encounter_2_pending', false);
-            gameState.setFlag('glitch_encounter_2_done', true);
-          }
-          this.glitch.exit(() => {
-            this.storyBeatActive = false;
-            this.player.unfreeze();
-            this.handlePendingPrologueBeat();
+      this.glitch.spawnIn(spawn.x, spawn.y, playDialogueAndExit);
+    });
+  }
+
+  /**
+   * The post-P0_1 "show, don't tell" moment: Glitch attacks the consoles three
+   * times, fails each time with a wrong-burst/shake, then settles into the
+   * scripted dialogue. Camera pans to the console branch so the player can
+   * see the failure mode before being told about it.
+   */
+  private playGlitchBruteForceBeat(onDialogueReady: () => void): void {
+    const consolePos = PROLOGUE_ANCHORS.p0_2Trigger.position;
+    const branchPos = PROLOGUE_ANCHORS.consoleKeeper.position;
+    const stageX = branchPos.x - 96;
+    const stageY = branchPos.y;
+
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    cam.pan(branchPos.x, branchPos.y, 700, 'Sine.easeInOut');
+
+    this.time.delayedCall(720, () => {
+      this.glitch.spawnIn(stageX, stageY, () => {
+        let attempt = 0;
+        const tryInsertion = () => {
+          attempt += 1;
+          this.glitch.tweenTo(consolePos.x - 24, consolePos.y - 8, 220, 'Quad.easeIn', () => {
+            JuiceSystem.wrongBurst(this, consolePos.x, consolePos.y - 8);
+            JuiceSystem.cameraShake(this, 50, 0.0025);
+            audioManager.playWrongTone?.();
+            this.glitch.tweenTo(stageX, stageY, 240, 'Quad.easeOut', () => {
+              if (attempt < 3) {
+                this.time.delayedCall(220, tryInsertion);
+              } else {
+                this.time.delayedCall(360, onDialogueReady);
+              }
+            });
           });
-        });
+        };
+        tryInsertion();
       });
     });
   }
@@ -1006,8 +1182,18 @@ export class PrologueScene extends Phaser.Scene {
   shutdown(): void {
     if (this.hasShutdown) return;
     this.hasShutdown = true;
+    this.deferredGlitchEncounter = null;
+    this.cleanupActiveWatcherFlyby?.();
+    if (gameState.getBitMood() === BitMood.SCARED) {
+      gameState.setBitMood(BitMood.NEUTRAL);
+    }
+    this.storyBeatActive = false;
+    this.player?.unfreeze();
     this.runCinematicCleanup();
-    this.input.keyboard?.off('keydown-ESC', this.onEscReturnToTitle);
+    this.time.removeAllEvents();
+    this.tweens.killAll();
+    this.input.keyboard?.off('keydown-ESC', this.onEscPause);
+    this.input.keyboard?.off('keydown-C', this.onOpenCodex);
     eventBus.off('dialogue:action', this.onDialogueAction, this);
     eventBus.off('progression:gate-open', this.onGateOpen, this);
     this.safePositionTimer?.destroy();
@@ -1022,6 +1208,11 @@ export class PrologueScene extends Phaser.Scene {
     this.glitch?.destroy();
     this.player?.destroy();
     for (const npc of this.npcs) npc.destroy();
+    this.npcPool.clear();
+    this.npcs.length = 0;
+    this.bossGate?.destroy();
+    this.gateway?.destroy();
+    this.interactablePool.clear();
     this.moteEmitter = null;
     this.bossGate = null;
     this.gateway = null;
@@ -1037,7 +1228,18 @@ export class PrologueScene extends Phaser.Scene {
     this.time.delayedCall(delay, () => this.spawnWatcherFlyby());
   }
 
-  private spawnWatcherFlyby(scheduleNext = true, onComplete?: () => void): void {
+  /**
+   * @param flyDurationMs — Scripted first crossing uses a shorter pass (~2.8s) so
+   *   the frozen moment stays readable; ambient flybys keep the longer sweep.
+   */
+  private spawnWatcherFlyby(
+    scheduleNext = true,
+    onComplete?: () => void,
+    flyDurationMs = 5000,
+  ): void {
+    if (this.hasShutdown) return;
+    this.cleanupActiveWatcherFlyby?.();
+
     const cam = this.cameras.main;
     const worldView = cam.worldView;
 
@@ -1055,17 +1257,20 @@ export class PrologueScene extends Phaser.Scene {
       .setDepth(7)
       .setAlpha(0.58);
 
-    this.tweens.add({
+    const baseScaleX = watcher.scaleX;
+    const baseScaleY = watcher.scaleY;
+
+    const watcherAnim = this.tweens.add({
       targets: watcher,
       angle: { from: -4, to: 4 },
-      scaleX: 1.04,
-      scaleY: 1.04,
+      scaleX: baseScaleX * 1.04,
+      scaleY: baseScaleY * 1.04,
       duration: 1200,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
-    this.tweens.add({
+    const scanBeamAnim = this.tweens.add({
       targets: scanBeam,
       alpha: 0.15,
       scaleX: 1.2,
@@ -1079,27 +1284,63 @@ export class PrologueScene extends Phaser.Scene {
     eventBus.emit(GameEvents.WATCHER_NEARBY, { distance: 150 });
     gameState.setBitMood(BitMood.SCARED);
 
-    // Fly across
-    this.tweens.add({
-      targets: [watcher, scanBeam],
-      x: endX,
-      duration: 5000,
-      ease: 'Linear',
-      onComplete: () => {
-        watcher.destroy();
-        scanBeam.destroy();
-        // Bit recovers 1.5s after the watcher leaves
-        this.time.delayedCall(1500, () => {
+    let completed = false;
+    let recoveryTimer: Phaser.Time.TimerEvent | null = null;
+    let watchdogTimer: Phaser.Time.TimerEvent | null = null;
+    let flyTween: Phaser.Tweens.Tween | null = null;
+    let cleanupActive: () => void = () => undefined;
+
+    const cleanupVisuals = (resetBitMood: boolean): void => {
+      watcherAnim.stop();
+      scanBeamAnim.stop();
+      flyTween?.stop();
+      recoveryTimer?.destroy();
+      watchdogTimer?.destroy();
+      if (watcher.active) watcher.destroy();
+      if (scanBeam.active) scanBeam.destroy();
+      if (resetBitMood && gameState.getBitMood() === BitMood.SCARED) {
+        gameState.setBitMood(BitMood.NEUTRAL);
+      }
+    };
+
+    const finishFlyby = (recoverImmediately = false): void => {
+      if (completed || this.hasShutdown) return;
+      completed = true;
+      cleanupVisuals(recoverImmediately);
+      if (this.cleanupActiveWatcherFlyby === cleanupActive) {
+        this.cleanupActiveWatcherFlyby = null;
+      }
+      if (!recoverImmediately) {
+        recoveryTimer = this.time.delayedCall(1500, () => {
           if (gameState.getBitMood() === BitMood.SCARED) {
             gameState.setBitMood(BitMood.NEUTRAL);
           }
         });
-        // Schedule next flyby — 60–120s later
-        if (scheduleNext) {
-          this.scheduleWatcherFlyby(Phaser.Math.Between(60000, 120000));
-        }
-        onComplete?.();
-      },
+      }
+      if (scheduleNext) {
+        this.scheduleWatcherFlyby(Phaser.Math.Between(60000, 120000));
+      }
+      onComplete?.();
+    };
+
+    cleanupActive = (): void => {
+      completed = true;
+      cleanupVisuals(true);
+      if (this.cleanupActiveWatcherFlyby === cleanupActive) {
+        this.cleanupActiveWatcherFlyby = null;
+      }
+    };
+
+    this.cleanupActiveWatcherFlyby = cleanupActive;
+    watchdogTimer = this.time.delayedCall(flyDurationMs + 1200, () => finishFlyby(true));
+
+    // Fly across
+    flyTween = this.tweens.add({
+      targets: [watcher, scanBeam],
+      x: endX,
+      duration: flyDurationMs,
+      ease: 'Linear',
+      onComplete: () => finishFlyby(false),
     });
   }
 }

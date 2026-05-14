@@ -57,3 +57,18 @@ The current game is not meeting the intended quality bar. Run tests and audits f
 - Automated route coverage is strong enough to keep the game running from Prologue to The Core.
 - Passing route tests are too permissive: they mostly confirm scenes render and screenshots are captured. They do not reject shallow puzzle design, repeated layouts, weak feedback, or uninteresting later-region mechanics.
 - Highest risk area is product quality, not crash stability.
+
+---
+
+## Educational Animations and UX - 2026-05-09
+
+### Goal
+Deepen the mechanics inside the scripted choice scenes by adding educational visualizations, particles, and animations.
+
+### Progress
+- [x] **Future Regions**: Created basic future-proof animation hooks for extensibility.
+- [x] **Graph Nexus**: Added node and edge highlights along with pathfinding visualizations.
+- [x] **Queue Canals**: Added FIFO flow particles and enq/deq visual feedback to reinforce order preservation.
+- [x] **Tree Canopy**: Added BST insert/delete animations and depth hints to teach tree balance.
+- [x] **Stack Spires**: Implemented LIFO animations, visual stack height tweening, and particles via `JuiceSystem`. Added undo reverse animations.
+- [x] **UI Polish**: Resolved ChoiceButton borders and HUDManager UI elements.

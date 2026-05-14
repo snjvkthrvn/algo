@@ -5,13 +5,11 @@ import { describe, expect, it } from 'vitest';
 
 const sceneDir = dirname(fileURLToPath(import.meta.url));
 
-const laterChoiceSceneFiles = [
-  'TwinRiversChoiceScenes.ts',
+// Regions that still use the shared ScriptedChoiceScene base (multiple-choice shell).
+// Twin Rivers, Stack Spires, Tree Canopy, Queue Canals, and Graph Nexus ship as
+// first-principles interactive scenes on BasePuzzleScene instead.
+const scriptedChoiceSceneFiles = [
   'HashHighlandsChoiceScenes.ts',
-  'StackSpiresChoiceScenes.ts',
-  'QueueCanalsChoiceScenes.ts',
-  'TreeCanopyChoiceScenes.ts',
-  'GraphNexusChoiceScenes.ts',
   'CoreChoiceScenes.ts',
 ];
 
@@ -20,8 +18,8 @@ function readScene(fileName: string): string {
 }
 
 describe('later-region choice puzzle architecture', () => {
-  it('keeps choice input, rendering, hints, scoring, and animation in ScriptedChoiceScene', () => {
-    for (const fileName of laterChoiceSceneFiles) {
+  it('keeps choice input, rendering, hints, scoring, and animation in ScriptedChoiceScene for regions that still use it', () => {
+    for (const fileName of scriptedChoiceSceneFiles) {
       const source = readScene(fileName);
 
       expect(source, `${fileName} should use the shared choice scene`).toContain('ScriptedChoiceScene');

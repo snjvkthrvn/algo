@@ -6,6 +6,15 @@ import {
   sequentialAccess,
   getFloatingHint,
   mutateAndFeedback,
+  getShardTarget,
+  getShardLookupEntries,
+  createVisitProgram,
+  executeVisitInstruction,
+  getCurrentVisitInstruction,
+  getProgramTraceLineIndex,
+  getProgramTraceLines,
+  runeIdToTileIndex,
+  SEQUENCE_ROUNDS,
   ArrayPuzzleState,
 } from './prologuePuzzleLogic';
 
@@ -65,6 +74,87 @@ describe('prologuePuzzleLogic - Array Intro', () => {
       const mutated = mutateAndFeedback(state, 'swap', 0, 1);
       expect(mutated.array).toEqual(['q', 'p']);
       expect(mutated.feedback).toBeTruthy();
+    });
+  });
+
+  describe('sequence and console mappings', () => {
+    it('maps rune ids to zero-based tile indexes for Follow the Path', () => {
+      expect(SEQUENCE_ROUNDS).toHaveLength(3);
+      expect(runeIdToTileIndex('hex_1')).toBe(0);
+      expect(runeIdToTileIndex('hex_6')).toBe(5);
+    });
+
+    it('maps shard shapes to their console colors for Flow Consoles', () => {
+      expect(getShardTarget('triangle')).toBe('red');
+      expect(getShardTarget('diamond')).toBe('blue');
+      expect(getShardTarget('circle')).toBe('green');
+    });
+  });
+
+  describe('visible program-counter execution', () => {
+    it('turns a rune sequence into visit instructions with zero-based tile indexes', () => {
+      const program = createVisitProgram(['hex_2', 'hex_4', 'hex_1']);
+
+      expect(program).toEqual([
+        { op: 'visit', tileIndex: 1, label: 'visit(2)' },
+        { op: 'visit', tileIndex: 3, label: 'visit(4)' },
+        { op: 'visit', tileIndex: 0, label: 'visit(1)' },
+      ]);
+    });
+
+    it('keeps pc stable on a wrong tile and advances only on the expected tile', () => {
+      const program = createVisitProgram(['hex_2', 'hex_4']);
+
+      expect(getCurrentVisitInstruction(program, 0)?.label).toBe('visit(2)');
+
+      const wrong = executeVisitInstruction(program, 0, 0);
+      expect(wrong).toEqual({
+        correct: false,
+        pc: 0,
+        complete: false,
+        expectedTileIndex: 1,
+      });
+
+      const right = executeVisitInstruction(program, 0, 1);
+      expect(right).toEqual({
+        correct: true,
+        pc: 1,
+        complete: false,
+        expectedTileIndex: 1,
+      });
+
+      const finished = executeVisitInstruction(program, 1, 3);
+      expect(finished).toEqual({
+        correct: true,
+        pc: 2,
+        complete: true,
+        expectedTileIndex: 3,
+      });
+    });
+
+    it('provides trace lines and active trace indexes for the visible program', () => {
+      const program = createVisitProgram(['hex_1', 'hex_3']);
+
+      expect(getProgramTraceLines(program)).toEqual([
+        'pc = 0',
+        'while pc < program.length:',
+        '  [0] visit(1)',
+        '  [1] visit(3)',
+        'done',
+      ]);
+      expect(getProgramTraceLineIndex(0, program.length)).toBe(2);
+      expect(getProgramTraceLineIndex(1, program.length)).toBe(3);
+      expect(getProgramTraceLineIndex(2, program.length)).toBe(4);
+    });
+  });
+
+  describe('explicit shard lookup table', () => {
+    it('exposes every shard-to-console row for Flow Consoles trace panels', () => {
+      expect(getShardLookupEntries()).toEqual([
+        { shard: 'triangle', console: 'red', traceLine: 'target[triangle] -> red' },
+        { shard: 'diamond', console: 'blue', traceLine: 'target[diamond] -> blue' },
+        { shard: 'circle', console: 'green', traceLine: 'target[circle] -> green' },
+      ]);
     });
   });
 });

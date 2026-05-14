@@ -1,3 +1,5 @@
+import { PROLOGUE_ANCHORS, isWithinAnchorProximity } from '../data/regions/prologueAnchors';
+
 export type PrologueBeat =
   | 'opening_scene'
   | 'node_intro'
@@ -55,6 +57,30 @@ export function shouldTriggerWatcherAtPosition(
   position: { x: number; y: number },
 ): boolean {
   if (!flags.professorNodeIntroDone || flags.watcherWarningDone) return false;
+  // The Rune/Console approach bands (y ≤ 360 or y ≥ 450) overlap the Node intro
+  // proximity disk near the central hub. Without this guard, closing the
+  // Professor dialogue immediately called `playWatcherWarning`, which freezes
+  // the player for a ~5s silent flyby — felt like a hard lock.
+  if (isWithinAnchorProximity(PROLOGUE_ANCHORS.professorNode, position)) return false;
   const onPuzzleLane = position.x >= 730 && (position.y <= 360 || position.y >= 450);
   return onPuzzleLane;
+}
+
+/**
+ * The Node intro fires when the player has chosen to walk close to the
+ * central hub — never via a forced cinematic walk. The opening cinematic
+ * must complete first so movement instructions are read; after that, the
+ * player has full control until proximity arms the beat.
+ */
+export function shouldTriggerNodeIntroAtPosition(
+  flags: PrologueStoryFlags,
+  position: { x: number; y: number },
+  nodeAnchor: { x: number; y: number },
+  proximityRadiusPx: number,
+): boolean {
+  if (!flags.openingSceneDone) return false;
+  if (flags.professorNodeIntroDone) return false;
+  const dx = position.x - nodeAnchor.x;
+  const dy = position.y - nodeAnchor.y;
+  return dx * dx + dy * dy <= proximityRadiusPx * proximityRadiusPx;
 }

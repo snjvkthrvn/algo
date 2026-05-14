@@ -16,6 +16,7 @@ import { TransitionManager } from '../../core/TransitionManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { a11yManager } from '../../core/A11yManager';
 import type { ConceptBridgeData } from '../../data/types';
+import { PARCHMENT_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
 
 export abstract class BasePuzzleScene extends Phaser.Scene {
   // UI Elements
@@ -37,7 +38,9 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   protected maxHints: number = 3;
   protected returnScene: string = SCENE_KEYS.PROLOGUE;
 
-  private readonly onPuzzleEsc = () => this.exitPuzzle();
+  private exitConfirmUntil = 0;
+  private isExitingPuzzle = false;
+  private readonly onPuzzleEsc = () => this.requestExitPuzzle();
   private readonly onPuzzleH = () => this.showHint();
   private readonly onPuzzleR = () => this.restartPuzzle();
 
@@ -104,6 +107,36 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.createControlButtons(width);
     this.createStarRatingContainer(width);
     this.addStatusIndicator(width, height);
+    this.createPuzzleControlsStrip(width, height);
+  }
+
+  /** Bottom bar — matches overworld legend; M mute is registered on the CRT overlay scene. */
+  protected createPuzzleControlsStrip(width: number, height: number): void {
+    const stripW = Math.min(width - 96, 720);
+    const stripH = 26;
+    drawPanel(this, width / 2 - stripW / 2, height - stripH - 8, stripW, stripH, {
+      depth: 4999,
+      fill: COLORS.ERROR,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.SUCCESS,
+      alpha: 0.78,
+    });
+
+    this.add
+      .text(
+        width / 2,
+        height - 14,
+        'SPACE INTERACT  |  H HINT  |  R RESTART  |  ESC EXIT  |  M MUTE',
+        {
+          fontSize: '7px',
+          fontFamily: FONTS.RETRO,
+          color: colorToHex(COLORS.SUCCESS),
+        },
+      )
+      .setOrigin(0.5, 1)
+      .setAlpha(0.9)
+      .setDepth(5000)
+      .setScrollFactor(0);
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -111,10 +144,16 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   protected getPuzzleFrameFillAlpha(): number {
-    return 1;
+    return this.getPuzzleTheme().frameFillAlpha;
+  }
+
+  /** Override to use a different chrome palette (e.g., the prologue chamber). */
+  protected getPuzzleTheme(): PuzzleTheme {
+    return PARCHMENT_PUZZLE_THEME;
   }
 
   protected createPuzzleFrame(width: number, height: number): void {
+    const theme = this.getPuzzleTheme();
     const padding = 40;
     const frameWidth = width - padding * 2;
     const frameHeight = height - padding * 2;
@@ -127,15 +166,15 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     // Keep the generated encounter art visible while giving primitive puzzle
     // objects a shared readable surface.
-    this.puzzleFrame.fillStyle(0xe0f8d0, this.getPuzzleFrameFillAlpha());
+    this.puzzleFrame.fillStyle(theme.frameFill, this.getPuzzleFrameFillAlpha());
     this.puzzleFrame.fillRoundedRect(padding, padding, frameWidth, frameHeight, 8);
 
     // Outer border
-    this.puzzleFrame.lineStyle(3, 0x081820, 0.9);
+    this.puzzleFrame.lineStyle(3, theme.frameOuterStroke, theme.frameOuterStrokeAlpha);
     this.puzzleFrame.strokeRoundedRect(padding, padding, frameWidth, frameHeight, 8);
 
     // Inner border
-    this.puzzleFrame.lineStyle(1, 0x346856, 0.78);
+    this.puzzleFrame.lineStyle(1, theme.frameInnerStroke, theme.frameInnerStrokeAlpha);
     this.puzzleFrame.strokeRoundedRect(padding + 6, padding + 6, frameWidth - 12, frameHeight - 12, 6);
 
     this.puzzleFrame.setAlpha(0);
@@ -183,8 +222,9 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   private addScanlines(width: number, height: number, padding: number): void {
+    const theme = this.getPuzzleTheme();
     const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.08);
+    g.fillStyle(0x000000, theme.scanlineAlpha);
     for (let scanY = padding + 2; scanY < height - padding; scanY += 4) {
       g.fillRect(padding + 1, scanY, width - padding * 2 - 2, 1);
     }
@@ -194,6 +234,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   private addCornerAccents(width: number, height: number, padding: number): void {
+    const accent = this.getPuzzleTheme().cornerAccent;
     const arm = 22;
     const corners: { x: number; y: number; hDir: number; vDir: number }[] = [
       { x: padding, y: padding, hDir: 1, vDir: 1 },
@@ -203,7 +244,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     ];
     corners.forEach(({ x, y, hDir, vDir }, i) => {
       const g = this.add.graphics();
-      g.lineStyle(3, COLORS.CYAN_GLOW, 1);
+      g.lineStyle(3, accent, 1);
       g.beginPath();
       g.moveTo(x + hDir * arm, y);
       g.lineTo(x, y);
@@ -216,38 +257,38 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   protected createTitleArea(width: number): void {
+    const theme = this.getPuzzleTheme();
     this.titleText = this.add.text(width / 2, 75, this.puzzleName, {
       fontSize: '24px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
-      stroke: '#e0f8d0',
+      color: theme.titleColor,
+      stroke: theme.titleStroke,
       strokeThickness: 2,
     }).setOrigin(0.5).setAlpha(0);
 
-    // Instruction starts slightly left and slides into place.
-    // Color matches title (#081820) for ~14:1 contrast on the cream panel — the
-    // win condition reads at a glance instead of fading into the chrome.
+    // Instruction text uses the theme's body color so contrast holds on either
+    // the cream parchment surface or the dark chamber surface.
     this.instructionText = this.add.text(width / 2 - 80, 115, this.puzzleDescription, {
       fontSize: '14px',
       fontFamily: FONTS.MONO,
-      color: '#081820',
+      color: theme.bodyColor,
       align: 'center',
       wordWrap: { width: width - 200 },
     }).setOrigin(0.5).setAlpha(0);
 
     const titlePanel = drawPanel(this, width / 2 - 368, 48, 736, 86, {
       depth: 0,
-      fill: 0xe0f8d0,
-      frame: 0x081820,
-      inner: 0x346856,
-      alpha: 0.94,
+      fill: theme.titlePanelFill,
+      frame: theme.titlePanelFrame,
+      inner: theme.titlePanelInner,
+      alpha: theme.titlePanelAlpha,
     });
     titlePanel.setAlpha(0);
 
     this.uiContainer.add([titlePanel, this.titleText, this.instructionText]);
 
     // Glitch-reveal the title after the frame starts fading in.
-    this.time.delayedCall(180, () => this.glitchReveal(this.titleText, '#081820'));
+    this.time.delayedCall(180, () => this.glitchReveal(this.titleText, theme.titleColor));
 
     this.tweens.add({
       targets: titlePanel,
@@ -385,7 +426,21 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     return false;
   }
 
+  protected requestExitPuzzle(): void {
+    const now = this.time.now;
+    if (now > this.exitConfirmUntil) {
+      this.exitConfirmUntil = now + 1600;
+      audioManager.playTone(220, 100, 'square');
+      this.showMessage('Press ESC again to exit puzzle.', COLORS.WARNING);
+      return;
+    }
+
+    this.exitPuzzle();
+  }
+
   protected exitPuzzle(): void {
+    if (this.isExitingPuzzle) return;
+    this.isExitingPuzzle = true;
     TransitionManager.pixelDissolve(this, this.returnScene);
   }
 
@@ -420,6 +475,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   protected onPuzzleComplete(stars: number): void {
     const timeSpent = Math.floor((Date.now() - this.startTime) / 1000);
     const { width, height } = this.cameras.main;
+    const alreadyCompleted = gameState.isPuzzleCompleted(this.puzzleId);
 
     showStarRating(this, this.starContainer, stars);
     this.showMessage('PUZZLE COMPLETE!', COLORS.SUCCESS);
@@ -460,7 +516,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       targets: fadeOverlay,
       alpha: 1,
       duration: 500,
-      delay: 2000,
+      delay: alreadyCompleted ? 800 : 1600,
       onComplete: () => {
         fadeOverlay.destroy();
         const bridgeData: ConceptBridgeData = {

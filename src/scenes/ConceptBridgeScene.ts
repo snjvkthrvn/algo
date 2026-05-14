@@ -11,7 +11,7 @@ import { JuiceSystem } from '../systems/JuiceSystem';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
 import { a11yManager } from '../core/A11yManager';
-import { CONCEPT_BRIDGE_DATA, type ConceptBridgeContent } from '../data/dialogue/concept_bridge_content';
+import { getConceptBridgeContent, type ConceptBridgeContent } from '../data/dialogue/concept_bridge_content';
 import type { ConceptBridgeData } from '../data/types';
 
 type Section = 'story_recap' | 'pattern_reveal' | 'pseudocode' | 'mini_forge' | 'codex_unlock';
@@ -31,7 +31,9 @@ export class ConceptBridgeScene extends Phaser.Scene {
   private sectionContainer!: Phaser.GameObjects.Container;
   private dots: Phaser.GameObjects.Arc[] = [];
   private miniForgeAnswered: boolean = false;
+  private miniForgeSelectedIndex: number | null = null;
   private codexUnlockPlayed: boolean = false;
+  private sectionReadyAt: number = 0;
 
   constructor() {
     super({ key: SCENE_KEYS.CONCEPT_BRIDGE });
@@ -39,10 +41,12 @@ export class ConceptBridgeScene extends Phaser.Scene {
 
   init(data: ConceptBridgeData): void {
     this.puzzleData = data;
-    this.content = CONCEPT_BRIDGE_DATA[data.puzzleId];
+    this.content = getConceptBridgeContent(data);
     this.currentSection = 0;
     this.miniForgeAnswered = false;
+    this.miniForgeSelectedIndex = null;
     this.codexUnlockPlayed = false;
+    this.sectionReadyAt = 0;
   }
 
   create(): void {
@@ -112,7 +116,6 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-RIGHT', () => this.nextSection());
     this.input.keyboard?.on('keydown-SPACE', () => this.nextSection());
     this.input.keyboard?.on('keydown-LEFT', () => this.prevSection());
-    this.input.on('pointerdown', () => this.nextSection());
 
     this.showSection(0);
   }
@@ -135,6 +138,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
   private showSection(index: number): void {
     this.sectionContainer.removeAll(true);
     this.currentSection = index;
+    this.sectionReadyAt = this.time.now + 300;
 
     // Slide-in entrance: container descends from 16px above and fades in
     this.sectionContainer.setAlpha(0);
@@ -306,53 +310,73 @@ export class ConceptBridgeScene extends Phaser.Scene {
 
     const startY = BODY_START_Y + qText.height + 32;
 
-    if (!this.miniForgeAnswered) {
-      options.forEach((option, i) => {
-        const y = startY + i * 48;
-        const bg = this.add.rectangle(width / 2, y, 520, 36, 0x1a1a2e, 0.85);
-        bg.setStrokeStyle(1, 0x4a4a6a);
+    const feedbackText = this.add.text(width / 2, startY + options.length * 48 + 20, '', {
+      fontSize: '12px',
+      fontFamily: FONTS.MONO,
+      color: '#fbbf24',
+      wordWrap: { width: width - 360 },
+      align: 'center',
+    }).setOrigin(0.5, 0);
+
+    options.forEach((option, i) => {
+      const y = startY + i * 48;
+      const isSelected = this.miniForgeSelectedIndex === i;
+      const isCorrect = i === correctIndex;
+      const bg = this.add.rectangle(width / 2, y, 520, 36, 0x1a1a2e, 0.85);
+      bg.setStrokeStyle(1, 0x4a4a6a);
+
+      if (this.miniForgeAnswered && isCorrect) {
+        bg.setFillStyle(0x22c55e, 0.28);
+        bg.setStrokeStyle(2, 0x22c55e);
+      } else if (!this.miniForgeAnswered && isSelected) {
+        bg.setFillStyle(0xef4444, 0.22);
+        bg.setStrokeStyle(2, 0xef4444);
+      }
+
+      const optText = this.add.text(width / 2, y, option, {
+        fontSize: '11px',
+        fontFamily: FONTS.MONO,
+        color: this.miniForgeAnswered && isCorrect ? '#e0f8d0' : '#9ca3af',
+      }).setOrigin(0.5);
+
+      if (!this.miniForgeAnswered) {
         bg.setInteractive({ useHandCursor: true });
-
-        const optText = this.add.text(width / 2, y, option, {
-          fontSize: '11px', fontFamily: FONTS.MONO, color: '#9ca3af',
-        }).setOrigin(0.5);
-
         bg.on('pointerover', () => {
           bg.setStrokeStyle(2, 0x88c070);
           optText.setColor('#e0f8d0');
         });
 
         bg.on('pointerout', () => {
-          bg.setStrokeStyle(1, 0x4a4a6a);
+          const stillSelected = this.miniForgeSelectedIndex === i;
+          bg.setStrokeStyle(stillSelected ? 2 : 1, stillSelected ? 0xef4444 : 0x4a4a6a);
           optText.setColor('#9ca3af');
         });
 
         bg.on('pointerdown', () => {
-          this.miniForgeAnswered = true;
-          const correct = i === correctIndex;
-
-          if (correct) {
-            bg.setFillStyle(0x22c55e, 0.28);
-            bg.setStrokeStyle(2, 0x22c55e);
+          this.miniForgeSelectedIndex = i;
+          if (isCorrect) {
+            this.miniForgeAnswered = true;
             audioManager.playCorrectTone();
-          } else {
-            bg.setFillStyle(0xef4444, 0.28);
-            bg.setStrokeStyle(2, 0xef4444);
-            audioManager.playWrongTone();
+            this.showSection(this.currentSection);
+            return;
           }
 
-          this.time.delayedCall(500, () => {
-            const expText = this.add.text(width / 2, startY + options.length * 48 + 20, explanation, {
-              fontSize: '12px', fontFamily: FONTS.MONO, color: '#fbbf24',
-              wordWrap: { width: width - 360 }, align: 'center',
-            }).setOrigin(0.5, 0);
-            this.sectionContainer.add(expText);
-          });
+          audioManager.playWrongTone();
+          bg.setFillStyle(0xef4444, 0.22);
+          bg.setStrokeStyle(2, 0xef4444);
+          feedbackText.setText('That breaks the invariant. Try another option before continuing.');
         });
+      }
 
-        this.sectionContainer.add([bg, optText]);
-      });
+      this.sectionContainer.add([bg, optText]);
+    });
+
+    if (this.miniForgeAnswered) {
+      feedbackText.setText(explanation);
+    } else if (this.miniForgeSelectedIndex !== null) {
+      feedbackText.setText('That breaks the invariant. Try another option before continuing.');
     }
+    this.sectionContainer.add(feedbackText);
 
     this.addNavHint(width, height);
   }
@@ -431,8 +455,11 @@ export class ConceptBridgeScene extends Phaser.Scene {
   }
 
   private addNavHint(width: number, height: number): void {
-    const text = this.currentSection < SECTIONS.length - 1
-      ? '▶ SPACE or click to continue'
+    const current = SECTIONS[this.currentSection];
+    const text = current === 'mini_forge' && !this.miniForgeAnswered
+      ? 'Choose the Mini-Forge answer to continue'
+      : this.currentSection < SECTIONS.length - 1
+      ? '▶ SPACE or RIGHT to continue'
       : '▶ SPACE to finish';
 
     const hint = this.add.text(width / 2, height - 48, text, {
@@ -452,11 +479,22 @@ export class ConceptBridgeScene extends Phaser.Scene {
   }
 
   private nextSection(): void {
+    if (this.time.now < this.sectionReadyAt) return;
+    if (SECTIONS[this.currentSection] === 'mini_forge' && !this.miniForgeAnswered) {
+      audioManager.playWrongTone();
+      this.cameras.main.shake(80, 0.0015);
+      return;
+    }
+
     if (this.currentSection < SECTIONS.length - 1) {
       this.currentSection++;
       this.showSection(this.currentSection);
     } else {
-      TransitionManager.fade(this, this.puzzleData.returnScene ?? SCENE_KEYS.PROLOGUE);
+      // Final boss falls -> route into the ending instead of back to the Core overworld.
+      const target = gameState.getFlag('endgame_pending')
+        ? SCENE_KEYS.END_GAME
+        : (this.puzzleData.returnScene ?? SCENE_KEYS.PROLOGUE);
+      TransitionManager.fade(this, target);
     }
   }
 

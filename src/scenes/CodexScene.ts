@@ -3,11 +3,13 @@
  * Full-screen dark UI with sidebar (entry list) and content panel.
  */
 
+import { VISUAL_REVAMP_KEYS } from '../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
 import { CODEX_ENTRIES } from '../data/codex/entries';
 import type { CodexSection } from '../data/types';
+import { drawPanel } from '../ui/panel';
 
 export class CodexScene extends Phaser.Scene {
   private contentContainer!: Phaser.GameObjects.Container;
@@ -37,18 +39,36 @@ export class CodexScene extends Phaser.Scene {
     audioManager.setScene(this);
 
     // Background
-    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 0.98).setOrigin(0);
+    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0);
+    if (this.textures.exists(VISUAL_REVAMP_KEYS.TITLE_BG)) {
+      const bg = this.add.image(width / 2, height / 2, VISUAL_REVAMP_KEYS.TITLE_BG).setOrigin(0.5).setAlpha(0.18);
+      const source = bg.texture.getSourceImage() as HTMLImageElement;
+      bg.setScale(Math.max(width / source.width, height / source.height));
+    }
+    this.add.rectangle(0, 0, width, height, 0x081820, 0.72).setOrigin(0);
 
     // Title
+    drawPanel(this, 20, 16, width - 40, 54, {
+      depth: 1,
+      fill: COLORS.FRAME_BG,
+      frame: COLORS.FRAME_BORDER,
+      inner: COLORS.FRAME_BORDER_LIGHT,
+    });
+
     this.add.text(width / 2, 30, 'CODEX', {
-      fontSize: '20px', fontFamily: FONTS.RETRO, color: '#e0f8d0',
-      stroke: '#081820', strokeThickness: 4,
-    }).setOrigin(0.5);
+      fontSize: '18px', fontFamily: FONTS.RETRO, color: '#081820',
+    }).setOrigin(0.5, 0).setDepth(2);
+
+    this.add.text(width / 2, 54, 'ESC / C CLOSE', {
+      fontSize: '8px', fontFamily: FONTS.RETRO, color: '#346856',
+    }).setOrigin(0.5, 0).setDepth(2);
 
     // Close button
-    const closeBtn = this.add.text(width - 30, 20, 'X', {
-      fontSize: '16px', fontFamily: FONTS.RETRO, color: '#ef4444',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const closeBtn = this.add.text(width - 54, 31, 'X', {
+      fontSize: '14px', fontFamily: FONTS.RETRO, color: '#081820',
+      backgroundColor: '#e0f8d0',
+      padding: { x: 6, y: 4 },
+    }).setOrigin(0.5).setDepth(3).setInteractive({ useHandCursor: true });
 
     closeBtn.on('pointerdown', () => this.exitCodex());
     this.input.keyboard?.on('keydown-ESC', () => this.exitCodex());
@@ -56,17 +76,26 @@ export class CodexScene extends Phaser.Scene {
 
     // Sidebar (left 30%)
     const sidebarWidth = width * 0.3;
-    const sidebarBg = this.add.graphics();
-    sidebarBg.fillStyle(0x111122, 0.8);
-    sidebarBg.fillRect(20, 60, sidebarWidth - 20, height - 80);
-    sidebarBg.lineStyle(1, 0x333355, 0.5);
-    sidebarBg.strokeRect(20, 60, sidebarWidth - 20, height - 80);
+    drawPanel(this, 20, 84, sidebarWidth - 28, height - 112, {
+      depth: 1,
+      fill: COLORS.FRAME_BG,
+      frame: COLORS.FRAME_BORDER,
+      inner: COLORS.FRAME_BORDER_LIGHT,
+      alpha: 0.96,
+    });
 
     // Sidebar entries
     this.createSidebar(sidebarWidth);
 
     // Content panel (right 70%)
-    this.contentContainer = this.add.container(sidebarWidth + 20, 60);
+    drawPanel(this, sidebarWidth + 12, 84, width - sidebarWidth - 32, height - 112, {
+      depth: 1,
+      fill: COLORS.FRAME_BG,
+      frame: COLORS.FRAME_BORDER,
+      inner: COLORS.FRAME_BORDER_LIGHT,
+      alpha: 0.96,
+    });
+    this.contentContainer = this.add.container(sidebarWidth + 28, 100).setDepth(2);
 
     // Show first unlocked entry
     const firstUnlocked = CODEX_ENTRIES.findIndex((e) => gameState.isCodexUnlocked(e.id));
@@ -78,25 +107,25 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private createSidebar(sidebarWidth: number): void {
-    let y = 75;
+    let y = 106;
 
     for (let i = 0; i < CODEX_ENTRIES.length; i++) {
       const entry = CODEX_ENTRIES[i];
       const unlocked = gameState.isCodexUnlocked(entry.id);
 
-      const container = this.add.container(30, y);
+      const container = this.add.container(30, y).setDepth(2);
 
-      const bg = this.add.rectangle(0, 0, sidebarWidth - 40, 36, 0x1a1a2e, 0.6);
+      const bg = this.add.rectangle(0, 0, sidebarWidth - 52, 36, unlocked ? 0xe0f8d0 : 0x88c070, unlocked ? 0.98 : 0.34);
       bg.setOrigin(0, 0.5);
       if (unlocked) {
-        bg.setStrokeStyle(1, 0x333355);
+        bg.setStrokeStyle(1, 0x081820);
         bg.setInteractive({ useHandCursor: true });
       }
       container.add(bg);
 
       const text = this.add.text(10, 0, unlocked ? entry.algorithmName : '???', {
         fontSize: '10px', fontFamily: FONTS.RETRO,
-        color: unlocked ? '#9ca3af' : '#333355',
+        color: unlocked ? '#081820' : '#346856',
       }).setOrigin(0, 0.5);
       container.add(text);
 
@@ -106,13 +135,13 @@ export class CodexScene extends Phaser.Scene {
         container.add(dot);
 
         bg.on('pointerover', () => {
-          bg.setFillStyle(0x2a2a4a, 0.8);
-          text.setColor('#06b6d4');
+          bg.setFillStyle(0x88c070, 1);
+          text.setColor('#081820');
         });
 
         bg.on('pointerout', () => {
-          bg.setFillStyle(0x1a1a2e, 0.6);
-          text.setColor(this.selectedIndex === i ? '#06b6d4' : '#9ca3af');
+          bg.setFillStyle(0xe0f8d0, 0.98);
+          text.setColor(this.selectedIndex === i ? '#081820' : '#346856');
         });
 
         bg.on('pointerdown', () => {
@@ -137,18 +166,19 @@ export class CodexScene extends Phaser.Scene {
 
     // Entry title
     const title = this.add.text(10, 10, entry.algorithmName, {
-      fontSize: '16px', fontFamily: FONTS.RETRO, color: '#e0f8d0',
+      fontSize: '14px', fontFamily: FONTS.RETRO, color: '#081820',
+      wordWrap: { width: contentWidth - 48, useAdvancedWrap: true },
     });
     this.contentContainer.add(title);
 
     // Difficulty
-    const diffText = this.add.text(10, 40, `Difficulty: ${entry.difficulty}`, {
-      fontSize: '10px', fontFamily: FONTS.MONO, color: '#4a4a6a',
+    const diffText = this.add.text(10, title.y + title.height + 10, `Difficulty: ${entry.difficulty}`, {
+      fontSize: '10px', fontFamily: FONTS.MONO, color: '#346856',
     });
     this.contentContainer.add(diffText);
 
     // Sections
-    let y = 70;
+    let y = diffText.y + diffText.height + 24;
     for (const section of entry.sections) {
       y = this.renderCodexSection(section, y, contentWidth);
     }
@@ -169,7 +199,7 @@ export class CodexScene extends Phaser.Scene {
     const contentLines = Array.isArray(section.content) ? section.content : [section.content];
     for (const line of contentLines) {
       const text = this.add.text(10, y, line, {
-        fontSize: '11px', fontFamily: FONTS.MONO, color: '#c9d1d9',
+        fontSize: '11px', fontFamily: FONTS.MONO, color: '#081820',
         wordWrap: { width: maxWidth - 40 }, lineSpacing: 3,
       });
       this.contentContainer.add(text);
@@ -182,19 +212,21 @@ export class CodexScene extends Phaser.Scene {
 
   private getSectionColor(type: string): string {
     switch (type) {
-      case 'what_you_felt': return '#8b5cf6';
-      case 'plain_explanation': return '#88c070';
+      case 'what_you_felt': return '#346856';
+      case 'plain_explanation': return '#081820';
       case 'pattern_steps': return '#22c55e';
       case 'real_world': return '#f97316';
-      case 'unlocked_ability': return '#fbbf24';
-      default: return '#9ca3af';
+      case 'unlocked_ability': return '#b7791f';
+      default: return '#346856';
     }
   }
 
   private showEmptyState(): void {
     const { width, height } = this.cameras.main;
-    const text = this.add.text(width * 0.65, height / 2, 'No entries unlocked yet.\nComplete puzzles to fill the Codex.', {
-      fontSize: '12px', fontFamily: FONTS.MONO, color: '#4a4a6a',
+    const sidebarWidth = width * 0.3;
+    const contentWidth = width - sidebarWidth - 64;
+    const text = this.add.text(contentWidth / 2, height / 2 - 120, 'No entries unlocked yet.\nComplete puzzles to fill the Codex.', {
+      fontSize: '12px', fontFamily: FONTS.MONO, color: '#081820',
       align: 'center',
     }).setOrigin(0.5);
     this.contentContainer.add(text);

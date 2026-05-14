@@ -32,6 +32,8 @@ export interface FutureRegionSceneConfig {
   title: string;
   subtitle: string;
   backgroundKey: string;
+  /** Audio cache key for this region's background music. Falls back to 'prologue-bgm' if missing. */
+  backgroundMusic?: string;
   routeSurface: FutureRegionRouteSurface;
   routeRects?: FutureRegionRouteRect[];
   accentColor: number;
@@ -75,11 +77,11 @@ export interface FutureRegionEncounterConfig {
 }
 
 export const FUTURE_REGION_ROUTE_RECTS: FutureRegionRouteRect[] = [
-  { id: 'entry_lane', x: 80, y: 392, width: 360, height: 112 },
-  { id: 'main_span', x: 392, y: 352, width: 1160, height: 160 },
+  { id: 'entry_lane', x: 80, y: 400, width: 360, height: 80 },
+  { id: 'main_span', x: 392, y: 368, width: 1160, height: 112 },
   { id: 'upper_overlook', x: 704, y: 248, width: 456, height: 128 },
-  { id: 'lower_clearing', x: 704, y: 504, width: 456, height: 96 },
-  { id: 'exit_lane', x: 1488, y: 352, width: 344, height: 144 },
+  { id: 'lower_clearing', x: 704, y: 464, width: 456, height: 136 },
+  { id: 'exit_lane', x: 1488, y: 368, width: 344, height: 112 },
 ];
 
 export const CORE_REGION_ROUTE_RECTS: FutureRegionRouteRect[] = [
@@ -152,6 +154,7 @@ export const FUTURE_REGION_SCENE_CONFIGS: Record<string, FutureRegionSceneConfig
     title: 'Hash Highlands',
     subtitle: 'Where keys climb into buckets.',
     backgroundKey: VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG,
+    backgroundMusic: 'hash-highlands-bgm',
     routeSurface: 'highland',
     accentColor: 0xfbbf24,
     panelColor: 0x4a3821,
@@ -224,6 +227,7 @@ export const FUTURE_REGION_SCENE_CONFIGS: Record<string, FutureRegionSceneConfig
     title: 'Stack Spires',
     subtitle: 'Where last-in paths rise and return.',
     backgroundKey: VISUAL_REVAMP_KEYS.STACK_SPIRES_BG,
+    backgroundMusic: 'stack-spires-bgm',
     routeSurface: 'spire',
     accentColor: 0x9be8ff,
     panelColor: 0x263247,
@@ -296,6 +300,7 @@ export const FUTURE_REGION_SCENE_CONFIGS: Record<string, FutureRegionSceneConfig
     title: 'Queue Canals',
     subtitle: 'Where the first current leaves first.',
     backgroundKey: VISUAL_REVAMP_KEYS.QUEUE_CANALS_BG,
+    backgroundMusic: 'queue-canals-bgm',
     routeSurface: 'canal',
     accentColor: 0x5ab7d4,
     panelColor: 0x16465c,
@@ -368,6 +373,7 @@ export const FUTURE_REGION_SCENE_CONFIGS: Record<string, FutureRegionSceneConfig
     title: 'Tree Canopy',
     subtitle: 'Where branches split into structure.',
     backgroundKey: VISUAL_REVAMP_KEYS.TREE_CANOPY_BG,
+    backgroundMusic: 'tree-canopy-bgm',
     routeSurface: 'root',
     accentColor: 0x22c55e,
     panelColor: 0x1f4b32,
@@ -440,6 +446,7 @@ export const FUTURE_REGION_SCENE_CONFIGS: Record<string, FutureRegionSceneConfig
     title: 'Graph Nexus',
     subtitle: 'Where every node knows its neighbor.',
     backgroundKey: VISUAL_REVAMP_KEYS.GRAPH_NEXUS_BG,
+    backgroundMusic: 'graph-nexus-bgm',
     routeSurface: 'graph',
     accentColor: 0x38bdf8,
     panelColor: 0x203457,
@@ -512,6 +519,7 @@ export const FUTURE_REGION_SCENE_CONFIGS: Record<string, FutureRegionSceneConfig
     title: 'The Core',
     subtitle: 'Where the path resolves.',
     backgroundKey: VISUAL_REVAMP_KEYS.CORE_BG,
+    backgroundMusic: 'core-bgm',
     routeSurface: 'core',
     routeRects: CORE_REGION_ROUTE_RECTS,
     accentColor: 0xf97316,
