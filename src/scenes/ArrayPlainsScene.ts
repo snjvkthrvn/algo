@@ -6,8 +6,10 @@ import { eventBus } from '../core/EventBus';
 import { gameState } from '../core/GameStateManager';
 import { TransitionManager } from '../core/TransitionManager';
 import { BitCompanion } from '../entities/BitCompanion';
+import { GlitchRival } from '../entities/GlitchRival';
 import { InteractableObject } from '../entities/InteractableObject';
 import { Player } from '../entities/Player';
+import { GLITCH_DIALOGUE, GLITCH_EXIT_LINES } from '../data/dialogue/glitch_dialogue';
 import {
   ARRAY_PLAINS_CONFIG,
   ARRAY_PLAINS_ROUTE_RECTS,
@@ -53,6 +55,11 @@ export class ArrayPlainsScene extends Phaser.Scene {
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];
   private currentSequenceIndex = 0;
   private sequenceSolved = false;
+
+  // Glitch cameo (Stage 3 — first AP visit after Sentinel)
+  private glitch: GlitchRival | null = null;
+  private glitchSpawnPos = { x: 768, y: 384 };
+  private glitchProximityTriggered = false;
 
   private readonly onEscPause = () => {
     if (this.dialogueSystem?.isDialogueActive()) return;
@@ -105,7 +112,10 @@ export class ArrayPlainsScene extends Phaser.Scene {
     this.interactionSystem = new InteractionSystem(this, this.player);
     this.dialogueSystem = new DialogueSystem(this);
     this.createInteractables();
+    this.createFarmerNPCs();
+    this.renderPortalHaloes();
     this.createSequencePuzzle();
+    this.maybeSpawnGlitchCameo();
     this.interactionSystem.onInteract((entry) => this.handleInteract(entry));
     eventBus.on('progression:gate-open', this.onGateOpen, this);
 
@@ -163,9 +173,149 @@ export class ArrayPlainsScene extends Phaser.Scene {
       this.lastPlayerX = pos.x;
       this.lastPlayerY = pos.y;
       this.checkSequencePuzzle(pos.x, pos.y);
+      this.maybeTriggerGlitchDialogue(pos.x, pos.y);
     }
 
     this.syncArrayPlainsObjectiveHint();
+  }
+
+  /**
+   * Place 4 named farmer NPCs alongside their puzzle shrines. Each farmer's intro
+   * line frames the algorithmic problem; their post-puzzle thanks line ties the
+   * felt experience back to the concept name (matches the FEEL → NAME teaching arc).
+   *
+   * Uses PROP_FIELD_SIGN as a placeholder sprite — bespoke farmer sprites are
+   * queued as a follow-up imagegen pass once concurrent Codex work clears.
+   */
+  private createFarmerNPCs(): void {
+    const farmers: Array<{
+      farmerId: string;
+      puzzleId: string;
+      name: string;
+      intro: string;
+      thanks: string;
+    }> = [
+      {
+        farmerId: 'farmer_sorter',
+        puzzleId: 'ap_1',
+        name: 'Sorting Farmer',
+        intro: 'My furrows are tangled. Compare each pair of neighbors — swap the ones in the wrong order. Eventually the row settles.',
+        thanks: 'Sorted! Compare and swap. Simple, but the field knows the order now.',
+      },
+      {
+        farmerId: 'farmer_basket',
+        puzzleId: 'ap_2',
+        name: 'Basket Keeper',
+        intro: 'I keep losing my tools. If I just knew the basket number, I could go straight to it instead of rummaging.',
+        thanks: 'Right to the slot. Index is everything once you know the address.',
+      },
+      {
+        farmerId: 'farmer_crop',
+        puzzleId: 'ap_3',
+        name: 'Crop Sorter',
+        intro: 'A hundred crops, only four bins. There must be a rule that sends every crop to the same place every time.',
+        thanks: 'Every crop hashed to its bin. The formula did the thinking for us.',
+      },
+      {
+        farmerId: 'farmer_tile',
+        puzzleId: 'ap_4',
+        name: 'Tile Worker',
+        intro: "These tiles come in pairs that sum to my target. For any tile I pick, the only partner that fits is the complement.",
+        thanks: 'Pairs found, target met. Knowing the complement saved the search.',
+      },
+    ];
+
+    for (const farmer of farmers) {
+      const puzzle = ARRAY_PLAINS_CONFIG.puzzles.find((p) => p.id === farmer.puzzleId);
+      if (!puzzle) continue;
+      const x = puzzle.position.x - 64;
+      const y = puzzle.position.y + 12;
+
+      const obj = this.interactablePool.acquire({
+        id: farmer.farmerId,
+        type: 'sign',
+        x,
+        y,
+        prompt: `[SPACE] Speak with ${farmer.name}`,
+        locked: false,
+        spriteImageKey: VISUAL_REVAMP_KEYS.PROP_FIELD_SIGN,
+        imageScale: 0.13,
+        imageOriginY: 0.86,
+        onInteract: () => {
+          const completed = gameState.isPuzzleCompleted(farmer.puzzleId);
+          this.showFieldNote(farmer.name, completed ? farmer.thanks : farmer.intro);
+        },
+      });
+      this.markerObjects.push(obj);
+      this.interactionSystem.addObject(obj);
+
+      // Name plaque so the farmer's identity is unmistakable even with placeholder sprite
+      this.labelObjects.push(
+        this.add.text(x, y - 60, farmer.name.toUpperCase(), {
+          fontSize: '8px',
+          fontFamily: FONTS.RETRO,
+          color: '#e0f8d0',
+          backgroundColor: '#346856',
+          padding: { x: 4, y: 3 },
+        }).setOrigin(0.5).setDepth(5),
+      );
+    }
+  }
+
+  /**
+   * Stage 3 Glitch encounter. Fires once per save, only after the Sentinel boss
+   * has been defeated (Bit has visibly evolved by then, which is what triggers
+   * Glitch's dialogue beat about Bit "looking different").
+   */
+  private maybeSpawnGlitchCameo(): void {
+    if (!gameState.isPuzzleCompleted('boss_sentinel')) return;
+    if (gameState.getFlag('glitch_encounter_3_done')) return;
+    if (this.glitch) return;
+
+    this.glitch = new GlitchRival(this);
+    this.glitch.spawnIn(this.glitchSpawnPos.x, this.glitchSpawnPos.y, () => {
+      // Glitch idles in the field; trigger fires when the player walks close.
+    });
+  }
+
+  /** Proximity check — opens the Stage 3 dialogue when the player walks near Glitch. */
+  private maybeTriggerGlitchDialogue(px: number, py: number): void {
+    if (!this.glitch || this.glitchProximityTriggered) return;
+    if (this.dialogueSystem.isDialogueActive()) return;
+    const dist = Phaser.Math.Distance.Between(px, py, this.glitchSpawnPos.x, this.glitchSpawnPos.y);
+    if (dist > 96) return;
+
+    this.glitchProximityTriggered = true;
+
+    const lines = GLITCH_DIALOGUE[3];
+    const exitLine = GLITCH_EXIT_LINES[2 % GLITCH_EXIT_LINES.length];
+
+    // Per-line nodes so the Narrator aside reads in its own attributed bubble
+    // instead of being misattributed to Glitch.
+    const tree: DialogueTree = {
+      startNodeId: 'glitch_ap_0',
+      nodes: [
+        ...lines.map((l, i) => ({
+          id: `glitch_ap_${i}`,
+          speaker: l.speaker ?? 'Glitch',
+          text: l.text,
+          nextNodeId: `glitch_ap_${i + 1}`,
+        })),
+        {
+          id: `glitch_ap_${lines.length}`,
+          speaker: 'Glitch',
+          text: exitLine,
+        },
+      ],
+    };
+
+    this.dialogueSystem.startDialogue(tree, 'glitch_ap_encounter', () => {
+      this.glitch?.exit(() => {
+        this.glitch?.destroy();
+        this.glitch = null;
+      });
+      gameState.setFlag('glitch_encounter_3_done', true);
+    });
   }
 
   private syncArrayPlainsObjectiveHint(): void {
@@ -343,7 +493,9 @@ export class ArrayPlainsScene extends Phaser.Scene {
       prompt: progressionSystem.isTwinRiversGatewayOpen() ? '[SPACE] Twin Rivers' : '[LOCKED] Defeat Shuffler',
       locked: !progressionSystem.isTwinRiversGatewayOpen(),
       imageByState: {
-        locked: VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
+        // Same water-portal sprite either way — the halo + LOCKED label conveys state,
+        // so the gate doesn't visually masquerade as a stone boss door when locked.
+        locked: VISUAL_REVAMP_KEYS.PORTAL_WATER,
         unlocked: VISUAL_REVAMP_KEYS.PORTAL_WATER,
       },
       imageScale: 0.24,
@@ -355,7 +507,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
           return;
         }
 
-        this.showFieldNote('Twin Rivers Gate', 'The water-road is locked until the Shuffler settles.');
+        this.showFieldNote('Notice', 'The water-road to Twin Rivers is locked until the Shuffler settles.');
       },
     });
     this.interactionSystem.addObject(this.twinRiversGateway);
@@ -374,6 +526,40 @@ export class ArrayPlainsScene extends Phaser.Scene {
     });
     this.markerObjects.push(guide);
     this.interactionSystem.addObject(guide);
+
+    // Village Elder — first NPC encountered after stepping through the prologue gateway.
+    // Position sits on the main east-bound route, just past the spawn point.
+    const villageElder = this.interactablePool.acquire({
+      id: 'village_elder',
+      type: 'sign',
+      x: 320,
+      y: 384,
+      prompt: '[SPACE] Speak with Elder',
+      locked: false,
+      spriteImageKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
+      imageScale: 0.14,
+      imageOriginY: 0.86,
+      onInteract: () => this.showFieldNote('Village Elder', [
+        'A graduate of the Flow Chamber! Welcome, young seeker.',
+        'Array Plains — where data grows in rows and every element finds its index. Or... it used to.',
+        "A chaotic force called the Shuffler has been terrorizing our farmers. Everything's out of order. Tiles scrambled. Tools misplaced. Crops in the wrong bins. Nobody can find anything.",
+        'Four farmers need help. Each faces a different kind of disorder. Help them all, and the path to the Shuffler opens.',
+        'Array Plains believes in you.',
+      ]),
+    });
+    this.markerObjects.push(villageElder);
+    this.interactionSystem.addObject(villageElder);
+
+    // Name plaque above the Elder so they read as a named character, not generic NPC art
+    this.labelObjects.push(
+      this.add.text(320, 384 - 152, 'VILLAGE ELDER', {
+        fontSize: '8px',
+        fontFamily: FONTS.RETRO,
+        color: '#e0f8d0',
+        backgroundColor: '#346856',
+        padding: { x: 5, y: 3 },
+      }).setOrigin(0.5).setDepth(5),
+    );
 
     ARRAY_PLAINS_CONFIG.interactables.forEach((marker, index) => {
       const object = this.interactablePool.acquire({
@@ -467,7 +653,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
         }
 
         const progress = progressionSystem.getArrayPlainsProgress();
-        this.showFieldNote('Shuffler Domain', `${progress.puzzles}/4 farmer puzzles complete. Restore every field first.`);
+        this.showFieldNote('Notice', `Shuffler's Domain is sealed. ${progress.puzzles}/4 farmer puzzles complete — restore every field first.`);
       },
     });
     this.puzzleObjects.push(this.shufflerGate);
@@ -481,6 +667,91 @@ export class ArrayPlainsScene extends Phaser.Scene {
       padding: { x: 4, y: 3 },
     }).setOrigin(0.5).setDepth(5);
     this.labelObjects.push(bossLabel);
+  }
+
+  private renderPortalHaloes(): void {
+    const twinRiversOpen = progressionSystem.isTwinRiversGatewayOpen();
+    const portals: Array<{
+      x: number;
+      y: number;
+      label: string;
+      color: number;
+      locked: boolean;
+    }> = [
+      {
+        x: ARRAY_PLAINS_CONFIG.exitPoints[0].position.x,
+        y: ARRAY_PLAINS_CONFIG.exitPoints[0].position.y,
+        label: '← PROLOGUE',
+        color: 0x88c070,
+        locked: false,
+      },
+      {
+        x: ARRAY_PLAINS_CONFIG.exitPoints[1].position.x,
+        y: ARRAY_PLAINS_CONFIG.exitPoints[1].position.y,
+        label: twinRiversOpen ? 'TWIN RIVERS →' : 'TWIN RIVERS — LOCKED',
+        color: twinRiversOpen ? COLORS.CYAN_GLOW : COLORS.FRAME_BORDER_LIGHT,
+        locked: !twinRiversOpen,
+      },
+    ];
+
+    const reducedMotion = this.prefersReducedMotion();
+
+    for (const portal of portals) {
+      const baseY = portal.y + 12;
+      const alpha = portal.locked ? 0.32 : 0.78;
+
+      // Outer ground glow — large, dim ellipse to anchor the portal in the world
+      const outerRing = this.add.graphics().setDepth(1.8);
+      outerRing.lineStyle(2, portal.color, alpha * 0.5);
+      outerRing.strokeEllipse(portal.x, baseY, 104, 40);
+      outerRing.fillStyle(portal.color, alpha * 0.12);
+      outerRing.fillEllipse(portal.x, baseY, 104, 40);
+
+      // Inner crisp ring — pixel-snapped accent
+      const innerRing = this.add.graphics().setDepth(1.9);
+      innerRing.lineStyle(1, portal.color, alpha);
+      innerRing.strokeEllipse(portal.x, baseY, 64, 24);
+
+      // Breathing pulse — only when motion is allowed
+      if (!reducedMotion) {
+        this.tweens.add({
+          targets: outerRing,
+          alpha: alpha * 0.35,
+          duration: 1400,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
+
+      // Destination plaque — sits well above the portal art (origin 0.86 means sprite is mostly above y)
+      this.add.text(portal.x, portal.y - 176, portal.label, {
+        fontSize: '9px',
+        fontFamily: FONTS.RETRO,
+        color: portal.locked ? '#7a7aaa' : '#e0f8d0',
+        backgroundColor: '#081820',
+        padding: { x: 6, y: 3 },
+      }).setOrigin(0.5).setDepth(5);
+
+      // Orbiting motes — small pulsing dots ringing the base; only on unlocked portals
+      if (!portal.locked && !reducedMotion) {
+        for (let i = 0; i < 5; i++) {
+          const angle = (Math.PI * 2 * i) / 5;
+          const mx = portal.x + Math.cos(angle) * 30;
+          const my = baseY + Math.sin(angle) * 11;
+          const mote = this.add.circle(mx, my, 1.6, portal.color, 0.85).setDepth(1.95);
+          this.tweens.add({
+            targets: mote,
+            alpha: 0.12,
+            duration: 1100 + i * 180,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+            delay: i * 90,
+          });
+        }
+      }
+    }
   }
 
   private createFieldAmbient(): void {
@@ -596,6 +867,8 @@ export class ArrayPlainsScene extends Phaser.Scene {
     for (const label of this.labelObjects) label.destroy();
     this.labelObjects = [];
 
+    this.glitch?.destroy();
+    this.glitch = null;
     this.bit?.destroy();
     this.player?.destroy();
   }

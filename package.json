@@ -2,6 +2,7 @@
   "name": "algorithmia-game",
   "private": true,
   "version": "1.0.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +12,8 @@
     "test:run": "vitest run",
     "test:visual": "playwright test",
     "test:visual:ui": "playwright test --ui",
-    "test:visual:headed": "playwright test --headed"
+    "test:visual:headed": "playwright test --headed",
+    "test:browsers:prod": "playwright test --config=playwright.browser.config.ts"
   },
   "dependencies": {
     "phaser": "^3.80.1"

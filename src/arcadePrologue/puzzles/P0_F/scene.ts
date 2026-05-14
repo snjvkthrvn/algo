@@ -36,6 +36,8 @@ import { scorePopup } from '../../ui/popups';
 import { hexColorToNumber, sparkle } from '../../ui/particles';
 import { comboMilestone } from '../../game/milestone';
 import { SCENE_KEYS } from '../../../config/constants';
+import { buildSentinelPreview } from '../../../data/puzzles/puzzlePreviewLogic';
+import { PuzzlePreviewSidePanel } from '../../../ui/PuzzlePreviewSidePanel';
 
 const LITANY_TIMER_MS = 80000;
 const LITANY_TIME_BONUS = 1200;
@@ -62,6 +64,10 @@ export class TheLitanyScene extends Phaser.Scene {
   private unbindInput?: () => void;
   private returnScene: string = SCENE_KEYS.PROLOGUE;
   private startedAt = Date.now();
+  private litanyState: LitanyState = 'idle';
+  private currentFork: string | null = null;
+  private currentForkChoices: string[] = [];
+  private preview: PuzzlePreviewSidePanel | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.BOSS_SENTINEL });
@@ -91,6 +97,9 @@ export class TheLitanyScene extends Phaser.Scene {
       eyebrow: 'PROLOGUE FINALE  \u00b7  CONVERGENCE',
       footerHint: 'Click a fork as the pulse arrives   \u00b7   [M] reduce motion',
     });
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -8 });
+    this.preview.setTitle('SENTINEL PREVIEW');
+    this.preview.show();
 
     this.unbindInput = bindLitanyInput(this, {
       onReplay: () => {},
@@ -103,6 +112,8 @@ export class TheLitanyScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       escape?.removeAllListeners();
       this.unbindInput?.();
+      this.preview?.destroy();
+      this.preview = null;
     });
 
     void this.runFinale();
@@ -130,6 +141,7 @@ export class TheLitanyScene extends Phaser.Scene {
     this.forks = forkKeySet(LITANY_ROUND);
     this.altarSet = new Set(altarKeys(LITANY_ROUND));
     this.repaint();
+    this.refreshPreview();
   }
 
   private async firePulse(): Promise<void> {
@@ -156,10 +168,13 @@ export class TheLitanyScene extends Phaser.Scene {
     await this.celebrate();
   }
 
-  private async decideAtFork(_current: string, choices: string[]): Promise<string | null> {
+  private async decideAtFork(current: string, choices: string[]): Promise<string | null> {
     if (!this.board) return null;
     const rings = highlightChoices(this, this.board, choices);
     const handlers = new Map<string, () => void>();
+    this.currentFork = current;
+    this.currentForkChoices = [...choices];
+    this.refreshPreview();
 
     return new Promise<string | null>((resolve) => {
       let resolved = false;
@@ -171,6 +186,9 @@ export class TheLitanyScene extends Phaser.Scene {
         });
         clearHighlights(this, rings);
         timer.remove();
+        this.currentFork = null;
+        this.currentForkChoices = [];
+        this.refreshPreview();
         resolve(next);
       };
 
@@ -305,9 +323,23 @@ export class TheLitanyScene extends Phaser.Scene {
   }
 
   private setState(next: LitanyState): void {
+    this.litanyState = next;
     this.hud.setState(LITANY_LABEL[next] ?? '');
     if (next === 'flowing') this.atmosphere.setMood('preview');
     else this.atmosphere.setMood('normal');
+    this.refreshPreview();
+  }
+
+  private refreshPreview(): void {
+    if (!this.preview) return;
+    const preview = buildSentinelPreview({
+      phase: this.litanyState,
+      altars: this.round ? altarKeys(this.round) : [],
+      currentFork: this.currentFork,
+      choices: this.currentForkChoices,
+    });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
   }
 
   private wait(ms: number): Promise<void> {

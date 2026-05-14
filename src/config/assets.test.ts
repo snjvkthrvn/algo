@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   IMAGE_ASSETS,
+  BOOT_IMAGE_ASSETS,
   ARRAY_PLAINS_IMAGE_ASSETS,
   ARRAY_PLAINS_KEYS,
   TWIN_RIVERS_IMAGE_ASSETS,
@@ -195,6 +196,23 @@ describe('visual revamp asset manifest', () => {
     for (const key of Object.values(VISUAL_REVAMP_KEYS)) {
       expect(loadedKeys.has(key), key).toBe(true);
     }
+  });
+
+  it('keeps the boot preload scoped to the first-three-region launch surface', () => {
+    const bootKeys = new Set(BOOT_IMAGE_ASSETS.map((asset) => asset.key));
+
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.TITLE_BG)).toBe(true);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.PROLOGUE_BG)).toBe(true);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe(true);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe(true);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG)).toBe(true);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_MIRROR_SERPENT_BG)).toBe(true);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_HASH_ARCHIVIST_BG)).toBe(true);
+
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.STACK_SPIRES_BG)).toBe(false);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_STACK_SCROLL_STACK_BG)).toBe(false);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_CORE_PROTOCOL_OMEGA_BG)).toBe(false);
+    expect(BOOT_IMAGE_ASSETS.length).toBeLessThan(IMAGE_ASSETS.length);
   });
 });
 

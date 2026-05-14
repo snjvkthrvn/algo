@@ -459,6 +459,35 @@ test.describe('Prologue region – visual audit', () => {
     await snap(page, '01-menu.png');
   });
 
+  test('01b - corrupt save is cleared with a title-screen notice', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v1', 'not-json');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+
+    const recovery = await page.waitForFunction(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('MenuScene') as Record<string, unknown> | null;
+      const children = scene?.['children'] as { list?: unknown[] } | undefined;
+      const texts = children?.list
+        ?.map((child) => (child as { text?: unknown }).text)
+        .filter((text): text is string => typeof text === 'string') ?? [];
+      if (!texts.includes('CORRUPT SAVE CLEARED')) return null;
+      return {
+        v1SaveData: localStorage.getItem('algorithmia_save_v1'),
+        v2SaveData: localStorage.getItem('algorithmia_save_v2'),
+        menuItems: (scene?.['menuItems'] as Array<{ text: string }> | undefined)?.map((item) => item.text) ?? [],
+      };
+    }, { timeout: 5_000 });
+
+    const result = await recovery.jsonValue();
+    expect(result.v1SaveData).toBeNull();
+    expect(result.v2SaveData).toBeNull();
+    expect(result.menuItems).not.toContain('CONTINUE');
+    expect(result.menuItems).not.toContain('RESUME');
+  });
+
   // ── Prologue overworld ────────────────────────────────────────────────────
 
   test('02 – prologue overworld – region card visible', async ({ page }) => {
@@ -609,7 +638,7 @@ test.describe('Prologue region – visual audit', () => {
     expect(selectedIndex).toBe(0);
 
     const savedRegion = await page.evaluate(() => {
-      const saveData = localStorage.getItem('algorithmia_save_v1');
+      const saveData = localStorage.getItem('algorithmia_save_v2') ?? localStorage.getItem('algorithmia_save_v1');
       return saveData ? JSON.parse(saveData).player.region : null;
     });
     expect(savedRegion).toBe('array_plains');
@@ -1002,6 +1031,208 @@ test.describe('Prologue region – visual audit', () => {
     await snap(page, '27-mirror-serpent-layout.png');
   });
 
+  test('27a - Twin Rivers - Hash Highlands gateway stays locked until Mirror Serpent', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v2', JSON.stringify({
+        player: { x: 1696, y: 384, region: 'twin_rivers' },
+        companion: { stage: 'branch', mood: 'neutral' },
+        rival: { encountered: true, encounterStage: 3 },
+        shardsCollected: ['array_plains_logic_shard'],
+        puzzleResults: {
+          tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+        },
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+          gateway_open: true,
+          twin_rivers_gateway_open: true,
+          mirror_serpent_gate_open: true,
+          beta_warning_seen: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
+        saveVersion: 2,
+        playTime: 0,
+      }));
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+    await clickMenuItem(page, 'CONTINUE');
+    await waitForScene(page, 'TwinRiversScene', 10_000);
+
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
+      const enter = scene?.['enterHashHighlands'];
+      if (typeof enter === 'function') {
+        (enter as () => void).call(scene);
+      }
+    });
+    await page.waitForTimeout(1_200);
+
+    const activeScenes = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      return {
+        twinRivers: game?.scene.isActive('TwinRiversScene') ?? false,
+        hashHighlands: game?.scene.isActive('HashHighlandsScene') ?? false,
+      };
+    });
+    expect(activeScenes.twinRivers).toBe(true);
+    expect(activeScenes.hashHighlands).toBe(false);
+  });
+
+  test('27b - Twin Rivers - post-Mirror-Serpent closure beat', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v2', JSON.stringify({
+        player: { x: 1696, y: 384, region: 'twin_rivers' },
+        companion: { stage: 'branch', mood: 'neutral' },
+        rival: { encountered: true, encounterStage: 3 },
+        shardsCollected: ['array_plains_logic_shard', 'twin_rivers_logic_shard'],
+        puzzleResults: {
+          tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          boss_mirror_serpent: { stars: 3, time: 55, attempts: 0, hintsUsed: 0 },
+        },
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+          gateway_open: true,
+          twin_rivers_gateway_open: true,
+          mirror_serpent_gate_open: true,
+          puzzle_boss_mirror_serpent_complete: true,
+          hash_highlands_gateway_open: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
+        saveVersion: 2,
+        playTime: 0,
+      }));
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+    await clickMenuItem(page, 'CONTINUE');
+    await waitForScene(page, 'TwinRiversScene', 10_000);
+
+    const closure = await page.waitForFunction(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
+      const ds = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
+      const currentNode = ds ? (ds as Record<string, unknown>)['currentNode'] as { speaker?: string; text?: string | string[] } | null : null;
+      if (ds?.isDialogueActive?.() !== true || currentNode?.speaker !== 'River Guide') return null;
+      const text = Array.isArray(currentNode.text) ? currentNode.text.join('\n') : currentNode.text ?? '';
+      if (!text.includes('Twin Rivers is complete')) return null;
+      return {
+        closureDone: (window as GameWindow).__gameState__?.getFlag('twin_rivers_closure_done'),
+        hashGate: (window as GameWindow).__gameState__?.getFlag('hash_highlands_gateway_open'),
+        text,
+      };
+    }, { timeout: 8_000 });
+
+    const result = await closure.jsonValue();
+    expect(result.closureDone).toBe(true);
+    expect(result.hashGate).toBe(true);
+    expect(result.text).toContain('Thanks for playing this demo');
+    await page.waitForTimeout(250);
+    const inProgressObjective = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
+      const hud = scene?.['hud'] as Record<string, unknown> | undefined;
+      return hud?.['objectiveTextCache'] as string | undefined;
+    });
+    expect(inProgressObjective).toContain('polished arc ends');
+    await page.waitForTimeout(1_000);
+    await snap(page, '27b-twin-rivers-closure.png');
+
+    for (let i = 0; i < 10; i++) {
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(340);
+    }
+
+    await page.waitForFunction(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
+      const ds = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
+      return ds?.isDialogueActive?.() === false;
+    }, { timeout: 8_000 });
+
+    const objective = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
+      const hud = scene?.['hud'] as Record<string, unknown> | undefined;
+      return hud?.['objectiveTextCache'] as string | undefined;
+    });
+    expect(objective).toContain('Turn back for credits');
+  });
+
+  test('27c - Twin Rivers - closure pan locks player movement', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem('algorithmia_save_v2', JSON.stringify({
+        player: { x: 1504, y: 384, region: 'twin_rivers' },
+        companion: { stage: 'branch', mood: 'neutral' },
+        rival: { encountered: true, encounterStage: 3 },
+        shardsCollected: ['array_plains_logic_shard', 'twin_rivers_logic_shard'],
+        puzzleResults: {
+          tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          boss_mirror_serpent: { stars: 3, time: 55, attempts: 0, hintsUsed: 0 },
+        },
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+          gateway_open: true,
+          twin_rivers_gateway_open: true,
+          mirror_serpent_gate_open: true,
+          puzzle_boss_mirror_serpent_complete: true,
+          hash_highlands_gateway_open: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
+        saveVersion: 2,
+        playTime: 0,
+      }));
+    });
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForScene(page, 'MenuScene');
+    await page.waitForTimeout(1_000);
+    await clickMenuItem(page, 'CONTINUE');
+    await waitForScene(page, 'TwinRiversScene', 10_000);
+
+    const beforeHandle = await page.waitForFunction(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
+      const ds = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
+      const player = scene?.['player'] as { getPosition?: () => { x: number; y: number } } | undefined;
+      if (scene?.['twinRiversClosureInProgress'] !== true || ds?.isDialogueActive?.() === true) return null;
+      return player?.getPosition?.() ?? null;
+    }, { timeout: 8_000, polling: 50 });
+    const before = await beforeHandle.jsonValue();
+
+    await page.keyboard.down('D');
+    await page.waitForTimeout(450);
+    await page.keyboard.up('D');
+    await page.waitForTimeout(250);
+
+    const after = await getScenePlayerPosition(page, 'TwinRiversScene');
+    expect(after).not.toBeNull();
+    expect(Math.abs(after!.x - before.x)).toBeLessThan(1);
+    expect(Math.abs(after!.y - before.y)).toBeLessThan(1);
+  });
+
   test('28 - Hash Highlands - Continue from save', async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem('algorithmia_save_v1', JSON.stringify({
@@ -1018,6 +1249,7 @@ test.describe('Prologue region – visual audit', () => {
           gateway_open: true,
           twin_rivers_gateway_open: true,
           puzzle_boss_mirror_serpent_complete: true,
+          twin_rivers_closure_done: true,
         },
         settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
         saveVersion: 1,

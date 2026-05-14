@@ -81,7 +81,7 @@ const BASE_WIDTH = 1280;
 const BASE_HEIGHT = 720;
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
-  type: Phaser.AUTO,
+  type: Phaser.CANVAS,
   parent: 'game-container',
   width: BASE_WIDTH,
   height: BASE_HEIGHT,

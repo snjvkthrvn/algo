@@ -52,6 +52,7 @@ export class MenuScene extends Phaser.Scene {
   private selectedMenuIndex = 0;
   private closeSettingsModal: (() => void) | null = null;
   private closeConfirmModal: (() => void) | null = null;
+  private closeDesktopSplash: (() => void) | null = null;
   private preferResume = false;
 
   private readonly onMenuUp = () => this.moveSelectedMenuItem(-1);
@@ -60,6 +61,10 @@ export class MenuScene extends Phaser.Scene {
   private readonly onMenuS = () => this.moveSelectedMenuItem(1);
   private readonly onMenuActivate = () => this.activateSelectedMenuItem();
   private readonly onMenuEsc = () => {
+    if (this.closeDesktopSplash) {
+      this.closeDesktopSplash();
+      return;
+    }
     if (this.closeConfirmModal) {
       this.closeConfirmModal();
       return;
@@ -126,6 +131,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Menu items — built but rendered invisible for slide-up entrance
     const hasSave = saveLoadManager.hasSave();
+    const recoveryNotice = saveLoadManager.consumeRecoveryNotice();
     this.menuItems = [];
     if (hasSave && this.preferResume) {
       this.menuItems.push({ text: 'RESUME', callback: () => this.continueGame() });
@@ -184,9 +190,103 @@ export class MenuScene extends Phaser.Scene {
       color: '#7a7aaa',
     }).setOrigin(0.5);
 
+    if (recoveryNotice) {
+      this.time.delayedCall(menuTitleAssembled ? 200 : 900, () => this.showMenuNotice(recoveryNotice));
+    }
+
     if (!menuTitleAssembled) {
       this.animateTitleAssembly(titleText);
     }
+
+    // Mobile/tablet users see a one-time desktop-recommended notice. Algorithmia
+    // is keyboard-first; touch users can still proceed but should know.
+    this.maybeShowDesktopSplash();
+  }
+
+  /** Show a one-time "desktop recommended" splash on viewports under 1024px wide. */
+  private maybeShowDesktopSplash(): void {
+    const isSmallViewport = typeof window !== 'undefined' && window.innerWidth < 1024;
+    if (!isSmallViewport) return;
+
+    let dismissed = false;
+    try {
+      dismissed = window.localStorage?.getItem('desktop_splash_dismissed') === '1';
+    } catch {
+      // localStorage may be disabled (private browsing); just show the splash
+    }
+    if (dismissed) return;
+
+    const { width, height } = this.cameras.main;
+    const PANEL_W = 560;
+    const PANEL_H = 320;
+    const panelX = Math.round(width / 2 - PANEL_W / 2);
+    const panelY = Math.round(height / 2 - PANEL_H / 2);
+
+    const overlay = this.add
+      .rectangle(0, 0, width, height, 0x000000, 0.82)
+      .setOrigin(0)
+      .setDepth(200);
+    const panel = drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
+      depth: 201,
+      scrollFactor: 0,
+      inner: COLORS.FRAME_BORDER_LIGHT,
+    });
+    const title = this.add
+      .text(width / 2, panelY + 28, 'DESKTOP RECOMMENDED', {
+        fontSize: '16px',
+        fontFamily: FONTS.RETRO,
+        color: '#081820',
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(202);
+    const body = this.add
+      .text(
+        width / 2,
+        panelY + 76,
+        "Algorithmia is a keyboard-driven adventure.\n\n" +
+          "Touch controls aren't supported in this preview.\n" +
+          'You can still continue, but the experience\n' +
+          'will be smoother on a desktop or laptop.\n\n' +
+          'A physical keyboard is required for most puzzles.',
+        {
+          fontSize: '11px',
+          fontFamily: FONTS.RETRO,
+          color: '#081820',
+          align: 'center',
+          lineSpacing: 5,
+        },
+      )
+      .setOrigin(0.5, 0)
+      .setDepth(202);
+    const button = this.add
+      .text(width / 2, panelY + PANEL_H - 56, '> GOT IT — CONTINUE <', {
+        fontSize: '12px',
+        fontFamily: FONTS.RETRO,
+        color: '#081820',
+        backgroundColor: '#e0f8d0',
+        padding: { x: 12, y: 6 },
+      })
+      .setOrigin(0.5)
+      .setDepth(202)
+      .setInteractive({ useHandCursor: true });
+
+    const dismiss = () => {
+      audioManager.playClickTone();
+      this.closeDesktopSplash?.();
+    };
+    button.on('pointerdown', dismiss);
+
+    const allObjects = [overlay, panel, title, body, button];
+
+    this.closeDesktopSplash = () => {
+      try {
+        window.localStorage?.setItem('desktop_splash_dismissed', '1');
+      } catch {
+        // ignore — best effort persistence
+      }
+      for (const obj of allObjects) obj.destroy();
+      this.closeDesktopSplash = null;
+    };
   }
 
   private createTitleBackdrop(width: number, height: number): void {
@@ -411,6 +511,10 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private activateSelectedMenuItem(): void {
+    if (this.closeDesktopSplash) {
+      this.closeDesktopSplash();
+      return;
+    }
     if (this.closeConfirmModal) return;
     if (this.closeSettingsModal) {
       this.closeSettingsModal();
@@ -446,8 +550,12 @@ export class MenuScene extends Phaser.Scene {
 
   private beginNewGame(): void {
     gameState.resetState();
+    // resetState fires STATE_CHANGED → autosave microtask. Suppress that tick
+    // so the just-reset (empty) state isn't persisted between deleteSave()
+    // and the Prologue's first auto-save.
+    saveLoadManager.suppressNextAutoSave();
     saveLoadManager.deleteSave();
-    TransitionManager.swirl(this, SCENE_KEYS.PROLOGUE);
+    TransitionManager.cinematicBoot(this, SCENE_KEYS.PROLOGUE, undefined, 'BOOTING WORLD');
   }
 
   private openOverwriteConfirm(): void {
@@ -549,14 +657,16 @@ export class MenuScene extends Phaser.Scene {
       if (!sceneKey) {
         console.warn(`[Continue] Unknown saved region "${state.player.region}", falling back to Prologue`);
       }
-      TransitionManager.fade(this, sceneKey ?? SCENE_KEYS.PROLOGUE, {
-        spawnX: state.player.x,
-        spawnY: state.player.y,
-      });
+      TransitionManager.cinematicBoot(
+        this,
+        sceneKey ?? SCENE_KEYS.PROLOGUE,
+        { spawnX: state.player.x, spawnY: state.player.y },
+        'RESUMING SESSION',
+      );
       return;
     }
 
-    this.showMenuNotice('SAVE COULD NOT BE LOADED');
+    this.showMenuNotice(saveLoadManager.consumeRecoveryNotice() ?? 'SAVE COULD NOT BE LOADED');
   }
 
   private showMenuNotice(text: string): void {

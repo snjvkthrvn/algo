@@ -18,12 +18,14 @@ import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { RiverRow } from '../../ui/RiverRow';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
+import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import {
   isSortedAscending,
   swapAdjacent,
   hashBucket,
   isTwoSumPair,
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
+import { buildShufflerPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 
 type ShufflerPhase = 'bubble' | 'hash' | 'pair' | 'won';
@@ -61,6 +63,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
   private detailText!: Phaser.GameObjects.Text;
   private row!: RiverRow;
   private actionLocked = false;
+  private preview: PuzzlePreviewSidePanel | null = null;
 
   // Bubble phase
   private bubbleValues: number[] = [];
@@ -140,7 +143,15 @@ export class Boss_Shuffler extends BasePuzzleScene {
       align: 'center',
     }).setOrigin(0.5).setDepth(20);
 
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -8 });
+    this.preview.setTitle('SHUFFLER PREVIEW');
+    this.preview.show();
+
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.onKey(event));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.preview?.destroy();
+      this.preview = null;
+    });
 
     this.startBubblePhase();
   }
@@ -161,6 +172,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.detailText.setText('press 1-4 to swap a tile with its right neighbor');
     this.cycleRow(this.bubbleValues);
     this.startChaosTimer();
+    this.refreshPreview();
   }
 
   private startChaosTimer(): void {
@@ -202,6 +214,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     JuiceSystem.cameraShake(this, 100, 0.0035);
     audioManager.playWrongTone();
     this.statusText.setText('The Shuffler twisted the row!');
+    this.refreshPreview();
   }
 
   private async tryBubbleSwap(leftIndex: number): Promise<void> {
@@ -217,6 +230,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     if (!wasUseful) this.mistakes++;
 
     this.actionLocked = false;
+    this.refreshPreview();
     if (isSortedAscending(this.bubbleValues)) {
       this.completeBubblePhase();
     }
@@ -241,6 +255,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.statusText.setText('Compute index % 4 and slam the bucket key.');
     this.cycleHashBuckets();
     this.queueNextHashCrop();
+    this.refreshPreview();
   }
 
   private cycleHashBuckets(): void {
@@ -264,6 +279,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.hashTimeLeft = 5;
     this.detailText.setText(`${this.hashCrop.crop}: index ${this.hashCrop.letterIndex}   -   bucket = ?`);
     this.detailText.setColor('#fbbf24');
+    this.refreshPreview();
 
     this.hashTimer?.destroy();
     this.hashTimer = this.time.addEvent({
@@ -302,6 +318,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
       this.detailText.setColor('#ef4444');
     }
     this.hashRoundIdx++;
+    this.refreshPreview();
     this.time.delayedCall(900, () => this.queueNextHashCrop());
   }
 
@@ -318,6 +335,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.hashRoundIdx++;
     this.hashTimer?.destroy();
     this.hashTimer = null;
+    this.refreshPreview();
     this.time.delayedCall(900, () => this.queueNextHashCrop());
   }
 
@@ -338,6 +356,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.statusText.setText('Pick two tiles whose values reach the target.');
     if (this.row) this.row.destroy();
     this.queueNextPairRound();
+    this.refreshPreview();
   }
 
   private queueNextPairRound(): void {
@@ -351,6 +370,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.detailText.setText(`TARGET = ${round.target}`);
     this.detailText.setColor('#fbbf24');
     this.renderPairTiles();
+    this.refreshPreview();
   }
 
   private renderPairTiles(): void {
@@ -387,6 +407,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     const tile = this.pairTiles[index];
     const box = tile.list[1] as Phaser.GameObjects.Rectangle;
     box.setStrokeStyle(3, COLORS.CYAN_GLOW, 1);
+    this.refreshPreview();
 
     if (this.pairSelected.length === 2) {
       const round = PAIR_ROUNDS[this.pairRoundIdx];
@@ -419,13 +440,50 @@ export class Boss_Shuffler extends BasePuzzleScene {
           this.pairSelected = [];
           this.detailText.setText(`TARGET = ${round.target}`);
           this.detailText.setColor('#fbbf24');
+          this.refreshPreview();
         });
       }
     }
   }
 
+  private refreshPreview(): void {
+    if (!this.preview) return;
+    const selectedValues = this.pairSelected
+      .map((index) => this.pairValues[index])
+      .filter((value): value is number => value !== undefined);
+
+    const preview = this.phase === 'bubble'
+      ? buildShufflerPreview({
+        phase: 'bubble',
+        values: this.bubbleValues,
+        nextChaosIn: this.nextChaosIn,
+        swaps: this.bubbleSwaps,
+      })
+      : this.phase === 'hash'
+        ? buildShufflerPreview({
+          phase: 'hash',
+          crop: this.hashCrop,
+          bucketCount: 4,
+          roundNumber: Math.min(this.hashRoundIdx + 1, HASH_ROUNDS.length),
+          totalRounds: HASH_ROUNDS.length,
+        })
+        : this.phase === 'pair'
+          ? buildShufflerPreview({
+            phase: 'pair',
+            values: this.pairValues,
+            target: PAIR_ROUNDS[this.pairRoundIdx]?.target ?? 0,
+            selectedValues,
+            roundNumber: Math.min(this.pairRoundIdx + 1, PAIR_ROUNDS.length),
+            totalRounds: PAIR_ROUNDS.length,
+          })
+          : buildShufflerPreview({ phase: 'won' });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
+  }
+
   private completePairPhase(): void {
     this.phase = 'won';
+    this.refreshPreview();
     this.cameras.main.flash(420, 224, 248, 208);
     const stars = this.mistakes <= 1 ? 3 : this.mistakes <= 4 ? 2 : 1;
     this.onPuzzleComplete(stars);

@@ -26,6 +26,7 @@ import { JuiceSystem } from '../../systems/JuiceSystem';
 import { BitHint } from '../../entities/BitHint';
 import { drawPanel } from '../../ui/panel';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
+import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
 import {
   BUBBLE_SORT_ROUNDS,
@@ -34,6 +35,7 @@ import {
   starsFromMistakesAndHints,
   swapAdjacent,
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
+import { buildBubbleSortPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 
 interface SortTile {
@@ -71,10 +73,12 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   private bitHint: BitHint | null = null;
   private statusStrip!: Phaser.GameObjects.Text;
   private currentSwaps = 0;
+  private lastPreviewAction = 'none';
   private pseudoText!: Phaser.GameObjects.Text;
   private currentSweepLine = 0;
   private groundLine!: Phaser.GameObjects.Graphics;
   private rowY = 0;
+  private preview: PuzzlePreviewSidePanel | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_1 });
@@ -92,12 +96,17 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     this.buildGroundLine(width);
     this.buildTopStrip(width);
     this.buildPseudocodePanel(width);
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
+    this.preview.setTitle('SORT PREVIEW');
+    this.preview.show();
 
     this.startRound(0).catch(() => undefined);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.bitHint?.destroy();
       this.bitHint = null;
+      this.preview?.destroy();
+      this.preview = null;
     });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -179,6 +188,21 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     this.statusStrip.setText(
       `ROUND ${this.roundIndex + 1}/3 · ${round.label}   ·   SWAPS ${this.currentSwaps} / OPTIMAL ${round.optimalSwaps}`,
     );
+    this.refreshPreview();
+  }
+
+  private refreshPreview(): void {
+    if (!this.preview) return;
+    const round = BUBBLE_SORT_ROUNDS[this.roundIndex];
+    const preview = buildBubbleSortPreview({
+      values: this.values,
+      compareIndex: firstInversionIndex(this.values),
+      swaps: this.currentSwaps,
+      optimalSwaps: round.optimalSwaps,
+      lastAction: this.lastPreviewAction,
+    });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -190,6 +214,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     const round = BUBBLE_SORT_ROUNDS[idx];
     this.values = [...round.values];
     this.currentSwaps = 0;
+    this.lastPreviewAction = 'round start';
     this.currentSweepLine = 0;
     this.isResolving = true; // unblocked after banner
     this.actionLocked = false;
@@ -399,6 +424,8 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     const tileY = leftTile.container.y;
 
     if (!wasUseful) {
+      this.lastPreviewAction = `no swap at i=${leftIndex}`;
+      this.refreshPreview();
       audioManager.playTone(180, 110, 'square');
       this.currentSweepLine = 1;
       this.updatePseudocode(false);
@@ -417,6 +444,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
 
     this.values = swapAdjacent(this.values, leftIndex);
     this.currentSwaps++;
+    this.lastPreviewAction = `swapped i=${leftIndex} -> ${this.values.join(', ')}`;
     this.updateStatusStrip();
 
     this.tiles[leftIndex] = rightTile;

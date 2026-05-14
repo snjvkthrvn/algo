@@ -19,6 +19,13 @@ import { JuiceSystem } from '../../systems/JuiceSystem';
 import { RiverRow } from '../../ui/RiverRow';
 import { AlgorithmTrace } from '../../ui/AlgorithmTrace';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
+import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
+import {
+  buildCurrentRiderPreview,
+  buildFixedWindowPreview,
+  buildMirrorSerpentPreview,
+  buildPointerBridgePreview,
+} from '../../data/puzzles/puzzlePreviewLogic';
 import {
   MIRROR_WALK_ROUNDS,
   POINTER_BRIDGE_ROUNDS,
@@ -53,6 +60,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   private row!: RiverRow;
   private trace!: AlgorithmTrace;
   private statusText!: Phaser.GameObjects.Text;
+  private preview!: PuzzlePreviewSidePanel;
   private actionLocked = false;
   private roundCompleting = false;
   private swappedThisPair = false;
@@ -111,12 +119,51 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       color: '#88c070',
     }).setOrigin(0.5).setDepth(20);
 
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -16 });
+    this.preview.setTitle('REVERSE PREVIEW');
+    this.preview.show();
+
     this.input.keyboard?.on('keydown-SPACE', this.onSwap);
     this.input.keyboard?.on('keydown-ENTER', this.onSwap);
     this.input.keyboard?.on('keydown-D', () => this.tryMoveLeft());
     this.input.keyboard?.on('keydown-J', () => this.tryMoveRight());
 
     this.startRound(0);
+  }
+
+  /** Compute and push the predicted outcome of the next available key press. */
+  private refreshPreview(): void {
+    if (!this.preview) return;
+
+    const valuesStr = `[${this.values.join(', ')}]`;
+    const target = `[${this.targetValues.join(', ')}]`;
+    const stateLines = [
+      `arr   = ${valuesStr}`,
+      `goal  = ${target}`,
+      `L = ${this.leftIndex}  →  ${this.values[this.leftIndex] ?? '—'}`,
+      `R = ${this.rightIndex}  →  ${this.values[this.rightIndex] ?? '—'}`,
+    ];
+    this.preview.setState(stateLines);
+
+    let next: string;
+    if (this.roundCompleting || this.leftIndex >= this.rightIndex) {
+      next = 'Loop exits.\nRound complete — advance to next river.';
+    } else if (this.swappedThisPair && this.leftAdvancedThisPair && !this.rightRetreatedThisPair) {
+      const newR = this.rightIndex - 1;
+      next = `J  →  R = ${newR} (value: ${this.values[newR] ?? '—'})`;
+    } else if (!this.swappedThisPair) {
+      // Preview the swap: predict the row state after SPACE
+      const predicted = [...this.values];
+      [predicted[this.leftIndex], predicted[this.rightIndex]] =
+        [predicted[this.rightIndex], predicted[this.leftIndex]];
+      next = `SPACE  →  arr = [${predicted.join(', ')}]`;
+    } else if (!this.leftAdvancedThisPair) {
+      const newL = this.leftIndex + 1;
+      next = `D  →  L = ${newL} (value: ${this.values[newL] ?? '—'})`;
+    } else {
+      next = 'Check while condition.';
+    }
+    this.preview.setNextAction(next);
   }
 
   private readonly onSwap = () => {
@@ -166,6 +213,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     this.statusText.setText(
       `RIVER ${stage}/${total}   -   L=${this.leftIndex}   R=${this.rightIndex}   -   ${nextStep}`
     );
+    this.refreshPreview();
   }
 
   private async trySwap(): Promise<void> {
@@ -347,6 +395,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   private trace!: AlgorithmTrace;
   private sumText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
+  private preview!: PuzzlePreviewSidePanel;
   private actionLocked = false;
 
   constructor() {
@@ -409,6 +458,10 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
       color: '#88c070',
     }).setOrigin(0.5).setDepth(20);
 
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -16 });
+    this.preview.setTitle('POINTER PREVIEW');
+    this.preview.show();
+
     this.input.keyboard?.on('keydown-A', () => this.tryMoveLeft(-1));
     this.input.keyboard?.on('keydown-D', () => this.tryMoveLeft(1));
     this.input.keyboard?.on('keydown-J', () => this.tryMoveRight(-1));
@@ -456,6 +509,19 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
 
     const directive = pointerDirective(sum, this.round.target);
     this.trace.highlightLine(directive === 'lock' ? 4 : directive === 'advance_left' ? 5 : 6);
+    this.refreshPreview();
+  }
+
+  private refreshPreview(): void {
+    if (!this.preview) return;
+    const preview = buildPointerBridgePreview({
+      values: this.round.values,
+      target: this.round.target,
+      left: this.leftIndex,
+      right: this.rightIndex,
+    });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
   }
 
   private tryMoveLeft(direction: -1 | 1): void {
@@ -545,6 +611,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   private trace!: AlgorithmTrace;
   private statusText!: Phaser.GameObjects.Text;
   private sumText!: Phaser.GameObjects.Text;
+  private preview!: PuzzlePreviewSidePanel;
   private actionLocked = false;
 
   constructor() {
@@ -607,6 +674,10 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
       color: '#88c070',
     }).setOrigin(0.5).setDepth(20);
 
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -16 });
+    this.preview.setTitle('WINDOW PREVIEW');
+    this.preview.show();
+
     this.input.keyboard?.on('keydown-LEFT', () => this.slide(-1));
     this.input.keyboard?.on('keydown-RIGHT', () => this.slide(1));
     this.input.keyboard?.on('keydown-A', () => this.slide(-1));
@@ -655,6 +726,19 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     // Light up the appropriate line in the trace.
     if (this.windowStart === 0) this.trace.highlightLine(0);
     else this.trace.highlightLine(5); // best = max(best, s)
+    this.refreshPreview();
+  }
+
+  private refreshPreview(): void {
+    if (!this.preview) return;
+    const preview = buildFixedWindowPreview({
+      values: this.round.values,
+      windowSize: this.round.windowSize,
+      start: this.windowStart,
+      bestSeen: this.bestSeenSum,
+    });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
   }
 
   private slide(direction: -1 | 1): void {
@@ -730,6 +814,7 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   private trace!: AlgorithmTrace;
   private statusText!: Phaser.GameObjects.Text;
   private metricsText!: Phaser.GameObjects.Text;
+  private preview!: PuzzlePreviewSidePanel;
   private actionLocked = false;
 
   constructor() {
@@ -791,6 +876,10 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
       color: '#88c070',
     }).setOrigin(0.5).setDepth(20);
 
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -16 });
+    this.preview.setTitle('CURRENT PREVIEW');
+    this.preview.show();
+
     this.input.keyboard?.on('keydown-E', () => this.extendRight());
     this.input.keyboard?.on('keydown-Q', () => this.shrinkLeft());
     this.input.keyboard?.on('keydown-D', () => this.extendRight());
@@ -844,6 +933,19 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     if (hasDup) this.trace.highlightLine(3); // L = L + 1
     else if (this.rightIndex >= this.round.letters.length - 1) this.trace.highlightLine(5);
     else this.trace.highlightLine(2); // for R
+    this.refreshPreview();
+  }
+
+  private refreshPreview(): void {
+    if (!this.preview) return;
+    const preview = buildCurrentRiderPreview({
+      letters: this.round.letters,
+      left: this.leftIndex,
+      right: this.rightIndex,
+      bestLength: this.bestLength,
+    });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
   }
 
   private extendRight(): void {
@@ -924,6 +1026,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
   private statusText!: Phaser.GameObjects.Text;
   private detailText!: Phaser.GameObjects.Text;
   private serpentBanner!: Phaser.GameObjects.Text;
+  private preview!: PuzzlePreviewSidePanel;
   private actionLocked = false;
   private reverseCompleting = false;
 
@@ -1001,6 +1104,10 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       align: 'center',
     }).setOrigin(0.5).setDepth(20);
 
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -8 });
+    this.preview.setTitle('SERPENT PREVIEW');
+    this.preview.show();
+
     this.input.keyboard?.on('keydown-SPACE', () => this.handleSpace());
     this.input.keyboard?.on('keydown-ENTER', () => this.handleSpace());
     this.input.keyboard?.on('keydown-A', () => this.handleA());
@@ -1034,6 +1141,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.cycleRow(this.reverseValues);
     this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: 0, side: 'top' });
     this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.reverseRight, side: 'top' });
+    this.refreshSerpentPreview();
   }
 
   // ---- Phase 2: two-sum ----
@@ -1066,6 +1174,38 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.statusText.setText(`Lock the window of size ${round.windowSize} on its heaviest catch.`);
     this.cycleRow(round.values);
     this.refreshFixedWindowDetail();
+  }
+
+  private refreshSerpentPreview(): void {
+    if (!this.preview) return;
+    const preview = this.phase === 'reverse'
+      ? buildMirrorSerpentPreview({
+        phase: 'reverse',
+        values: this.reverseValues,
+        target: this.reverseTarget,
+        left: this.reverseLeft,
+        right: this.reverseRight,
+      })
+      : this.phase === 'twoSum'
+        ? buildMirrorSerpentPreview({
+          phase: 'twoSum',
+          values: MIRROR_SERPENT_PHASES.twoSum.values,
+          target: MIRROR_SERPENT_PHASES.twoSum.target,
+          left: this.twoSumLeft,
+          right: this.twoSumRight,
+        })
+        : this.phase === 'fixedWindow'
+          ? buildMirrorSerpentPreview({
+            phase: 'fixedWindow',
+            values: MIRROR_SERPENT_PHASES.fixedWindow.values,
+            windowSize: MIRROR_SERPENT_PHASES.fixedWindow.windowSize,
+            start: this.windowStart,
+            optimalStart: this.windowOptimalStart,
+            optimalSum: this.windowOptimalSum,
+          })
+          : buildMirrorSerpentPreview({ phase: 'won' });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
   }
 
   private cycleRow(values: ReadonlyArray<string | number>): void {
@@ -1130,6 +1270,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.reverseRight--;
     this.row.moveCursor('L', this.reverseLeft);
     this.row.moveCursor('R', this.reverseRight);
+    this.refreshSerpentPreview();
     this.time.delayedCall(160, () => {
       if (this.reverseLeft >= this.reverseRight) {
         this.completeReversePhase();
@@ -1165,6 +1306,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       `${v[this.twoSumLeft]} + ${v[this.twoSumRight]} = ${sum}  ${sign}  ${target}`
     );
     this.detailText.setColor(sum === target ? '#88c070' : '#fbbf24');
+    this.refreshSerpentPreview();
   }
 
   private advanceTwoSumLeft(direction: -1 | 1): void {
@@ -1219,6 +1361,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     const sum = windowSumAt(round.values, left, round.windowSize);
     this.detailText.setText(`SUM = ${sum}   -   TARGET = ${this.windowOptimalSum} (heaviest)`);
     this.detailText.setColor(sum === this.windowOptimalSum ? '#88c070' : '#fbbf24');
+    this.refreshSerpentPreview();
   }
 
   private slideWindow(direction: -1 | 1): void {
@@ -1245,6 +1388,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     }
     this.time.delayedCall(1100, () => {
       this.phase = 'won';
+      this.refreshSerpentPreview();
       this.completeBoss();
     });
   }

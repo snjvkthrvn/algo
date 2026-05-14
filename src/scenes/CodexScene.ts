@@ -74,6 +74,12 @@ export class CodexScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ESC', () => this.exitCodex());
     this.input.keyboard?.on('keydown-C', () => this.exitCodex());
 
+    // Keyboard nav between unlocked entries
+    this.input.keyboard?.on('keydown-UP', () => this.cycleUnlockedEntry(-1));
+    this.input.keyboard?.on('keydown-W', () => this.cycleUnlockedEntry(-1));
+    this.input.keyboard?.on('keydown-DOWN', () => this.cycleUnlockedEntry(1));
+    this.input.keyboard?.on('keydown-S', () => this.cycleUnlockedEntry(1));
+
     // Sidebar (left 30%)
     const sidebarWidth = width * 0.3;
     drawPanel(this, 20, 84, sidebarWidth - 28, height - 112, {
@@ -155,9 +161,40 @@ export class CodexScene extends Phaser.Scene {
     }
   }
 
+  /** Move selection to the previous/next unlocked codex entry — keyboard only. */
+  private cycleUnlockedEntry(direction: -1 | 1): void {
+    const unlocked: number[] = [];
+    for (let i = 0; i < CODEX_ENTRIES.length; i++) {
+      if (gameState.isCodexUnlocked(CODEX_ENTRIES[i].id)) unlocked.push(i);
+    }
+    if (unlocked.length === 0) return;
+    const currentPos = unlocked.indexOf(this.selectedIndex);
+    const nextPos = currentPos < 0
+      ? 0
+      : (currentPos + direction + unlocked.length) % unlocked.length;
+    audioManager.playTone(220, 50, 'square');
+    this.selectEntry(unlocked[nextPos]);
+  }
+
+  /** Refresh sidebar visuals so the selected entry is visually distinguishable. */
+  private refreshSidebarSelection(): void {
+    for (let i = 0; i < this.sidebarEntries.length; i++) {
+      const container = this.sidebarEntries[i];
+      const bg = container.list[0] as Phaser.GameObjects.Rectangle | undefined;
+      const text = container.list[1] as Phaser.GameObjects.Text | undefined;
+      if (!bg || !text) continue;
+      const isSelected = this.selectedIndex === i;
+      const isUnlocked = gameState.isCodexUnlocked(CODEX_ENTRIES[i].id);
+      if (!isUnlocked) continue;
+      bg.setFillStyle(isSelected ? 0x88c070 : 0xe0f8d0, isSelected ? 1 : 0.98);
+      text.setColor('#081820');
+    }
+  }
+
   private selectEntry(index: number): void {
     this.selectedIndex = index;
     const entry = CODEX_ENTRIES[index];
+    this.refreshSidebarSelection();
 
     this.contentContainer.removeAll(true);
 

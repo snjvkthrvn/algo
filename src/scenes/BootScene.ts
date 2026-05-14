@@ -1,10 +1,19 @@
 /**
- * BootScene - Asset preloading with retro progress bar.
+ * BootScene - Asset preloading with retro Game Boy boot screen.
  */
 
 import Phaser from 'phaser';
 import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
+// IMAGE_ASSETS = full eager-load set (every region). IMAGE_ASSETS exists in
+// assets.ts as a documented v1.1 target for a per-region lazy-load pipeline once
+// beta scenes gain their own preload() steps. Until then we eager-load everything
+// so beta regions past Hash Highlands still have textures available.
 import { SPRITE_ASSETS, IMAGE_ASSETS, TILEMAP_ASSETS, AUDIO_ASSETS } from '../config/assets';
+
+const GLYPHS = '0123456789#%&*!?<>=+~^@$';
+const GAME_VERSION = 'v1.0.0';
+const BAR_WIDTH = 512;
+const BAR_HEIGHT = 16;
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -13,53 +22,115 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     const { width, height } = this.cameras.main;
-
     this.cameras.main.setBackgroundColor(COLORS.VOID_BLACK);
 
-    // Title
-    this.add.text(width / 2, height / 2 - 80, 'ALGORITHMIA', {
-      fontSize: '28px',
+    const totalAssets =
+      SPRITE_ASSETS.length + IMAGE_ASSETS.length + TILEMAP_ASSETS.length + AUDIO_ASSETS.length;
+
+    // Layout — all snapped to 8px grid
+    const titleY = Math.round(height / 2 - 96);
+    const accentY = titleY + 40;
+    const subtitleY = accentY + 16;
+    const barX = Math.round((width - BAR_WIDTH) / 2);
+    const barY = Math.round(height / 2 + 80);
+
+    // Title — glitch-assembles into "ALGORITHMIA"
+    const titleTarget = 'ALGORITHMIA';
+    const titleDisplay: string[] = new Array(titleTarget.length).fill(' ');
+    const title = this.add.text(width / 2, titleY, '', {
+      fontSize: '40px',
       fontFamily: FONTS.RETRO,
       color: '#e0f8d0',
       stroke: '#081820',
       strokeThickness: 4,
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height / 2 - 45, 'The Path of Logic', {
+    titleTarget.split('').forEach((finalChar, i) => {
+      this.time.delayedCall(160 + i * 56, () => {
+        const scramble = this.time.addEvent({
+          delay: 32,
+          repeat: 5,
+          callback: () => {
+            titleDisplay[i] = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+            title.setText(titleDisplay.join(''));
+          },
+        });
+        this.time.delayedCall(32 * 7, () => {
+          scramble.remove();
+          titleDisplay[i] = finalChar;
+          title.setText(titleDisplay.join(''));
+        });
+      });
+    });
+
+    // Accent line — grows from center after title settles
+    const accent = this.add.rectangle(width / 2, accentY, 0, 2, 0x88c070, 0.9);
+    this.tweens.add({
+      targets: accent,
+      width: 320,
+      duration: 600,
+      delay: 320,
+      ease: 'Expo.easeOut',
+    });
+
+    this.add.text(width / 2, subtitleY, 'THE PATH OF LOGIC', {
       fontSize: '14px',
+      fontFamily: FONTS.RETRO,
+      color: '#88c070',
+      stroke: '#081820',
+      strokeThickness: 1,
+    }).setOrigin(0.5);
+
+    // Progress chrome — sharp pixel border, no rounding
+    const barFrame = this.add.graphics();
+    barFrame.lineStyle(2, 0x88c070, 0.85);
+    barFrame.strokeRect(barX - 4, barY - 4, BAR_WIDTH + 8, BAR_HEIGHT + 8);
+    barFrame.lineStyle(1, 0x346856, 0.6);
+    barFrame.strokeRect(barX - 2, barY - 2, BAR_WIDTH + 4, BAR_HEIGHT + 4);
+
+    const barBg = this.add.graphics();
+    barBg.fillStyle(0x081820, 1);
+    barBg.fillRect(barX, barY, BAR_WIDTH, BAR_HEIGHT);
+
+    const barFill = this.add.graphics();
+
+    const statusText = this.add.text(width / 2, barY - 24, '> INITIALIZING SYSTEMS', {
+      fontSize: '10px',
       fontFamily: FONTS.RETRO,
       color: '#88c070',
     }).setOrigin(0.5);
 
-    // Progress bar
-    const barWidth = 400;
-    const barHeight = 20;
-    const barX = width / 2 - barWidth / 2;
-    const barY = height / 2 + 20;
-
-    const barBg = this.add.graphics();
-    barBg.fillStyle(0x1a1a2e, 1);
-    barBg.fillRoundedRect(barX, barY, barWidth, barHeight, 4);
-    barBg.lineStyle(2, 0x4a4a6a, 1);
-    barBg.strokeRoundedRect(barX, barY, barWidth, barHeight, 4);
-
-    const barFill = this.add.graphics();
-
-    const loadingText = this.add.text(width / 2, barY + barHeight + 20, 'Initializing...', {
-      fontSize: '10px',
+    const countText = this.add.text(width / 2, barY + BAR_HEIGHT + 16, `[ 0 / ${totalAssets} ]`, {
+      fontSize: '9px',
       fontFamily: FONTS.RETRO,
-      color: '#9ca3af',
+      color: '#e0f8d0',
     }).setOrigin(0.5);
 
     this.load.on('progress', (value: number) => {
+      const filled = Math.floor(BAR_WIDTH * value);
       barFill.clear();
       barFill.fillStyle(0x88c070, 1);
-      barFill.fillRoundedRect(barX + 2, barY + 2, (barWidth - 4) * value, barHeight - 4, 3);
-      loadingText.setText(`Loading... ${Math.floor(value * 100)}%`);
+      barFill.fillRect(barX, barY, filled, BAR_HEIGHT);
+      // Brighter leading edge — reads as a sweeping scan tick
+      if (filled > 4 && filled < BAR_WIDTH - 1) {
+        barFill.fillStyle(0xe0f8d0, 1);
+        barFill.fillRect(barX + filled - 2, barY, 2, BAR_HEIGHT);
+      }
+      const loaded = Math.floor(totalAssets * value);
+      countText.setText(`[ ${loaded} / ${totalAssets} ]`);
+
+      if (value < 0.33) statusText.setText('> INITIALIZING SYSTEMS');
+      else if (value < 0.66) statusText.setText('> LOADING ASSETS');
+      else if (value < 1) statusText.setText('> CALIBRATING WORLD');
+      else statusText.setText('> SYSTEMS ONLINE');
     });
 
     this.load.on('complete', () => {
-      loadingText.setText('Systems Online');
+      barFill.clear();
+      barFill.fillStyle(0x88c070, 1);
+      barFill.fillRect(barX, barY, BAR_WIDTH, BAR_HEIGHT);
+      countText.setText(`[ ${totalAssets} / ${totalAssets} ]`);
+      statusText.setText('> SYSTEMS ONLINE');
     });
 
     this.load.on('loaderror', (file: Phaser.Loader.File) => {
@@ -76,13 +147,26 @@ export class BootScene extends Phaser.Scene {
     for (const asset of TILEMAP_ASSETS) this.load.tilemapTiledJSON(asset.key, asset.path);
     for (const asset of AUDIO_ASSETS) this.load.audio(asset.key, asset.path);
 
-    if (SPRITE_ASSETS.length + IMAGE_ASSETS.length + TILEMAP_ASSETS.length + AUDIO_ASSETS.length === 0) {
+    if (totalAssets === 0) {
       barFill.fillStyle(0x88c070, 1);
-      barFill.fillRoundedRect(barX + 2, barY + 2, barWidth - 4, barHeight - 4, 3);
-      loadingText.setText('Systems Online');
+      barFill.fillRect(barX, barY, BAR_WIDTH, BAR_HEIGHT);
+      statusText.setText('> SYSTEMS ONLINE');
+      countText.setText('[ 0 / 0 ]');
     }
 
-    // CRT power-on: two black bars slide apart from the center to reveal the loading screen
+    this.add.text(width - 24, height - 24, `${GAME_VERSION}  //  BUILD 2026.05`, {
+      fontSize: '8px',
+      fontFamily: FONTS.RETRO,
+      color: '#346856',
+    }).setOrigin(1, 1);
+
+    this.add.text(width / 2, height - 40, 'A world of algorithms awaits', {
+      fontSize: '10px',
+      fontFamily: FONTS.RETRO,
+      color: '#346856',
+    }).setOrigin(0.5);
+
+    // CRT power-on — two black bars slide apart from center
     const topCover = this.add.rectangle(0, 0, width, height / 2, 0x000000).setOrigin(0, 0).setDepth(8000);
     const botCover = this.add.rectangle(0, height / 2, width, height / 2, 0x000000).setOrigin(0, 0).setDepth(8000);
 
@@ -102,7 +186,6 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Launch CRT overlay — runs as a persistent parallel scene for the entire session
     this.scene.launch(SCENE_KEYS.CRT_OVERLAY);
 
     const { width, height } = this.cameras.main;

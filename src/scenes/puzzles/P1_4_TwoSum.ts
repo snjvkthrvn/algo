@@ -24,6 +24,7 @@ import { JuiceSystem } from '../../systems/JuiceSystem';
 import { drawPanel } from '../../ui/panel';
 import { BitHint } from '../../entities/BitHint';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
+import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
 import {
   TWO_SUM_ROUND_CONFIGS,
@@ -32,6 +33,7 @@ import {
   starsFromMistakesAndHints,
   type TwoSumRoundConfig,
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
+import { buildTwoSumPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 
 interface NumberTile {
@@ -64,6 +66,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private softTimeLeftMs = 0;
   private softTimeBudgetMs = 0;
   private timerBar!: Phaser.GameObjects.Rectangle;
+  private preview: PuzzlePreviewSidePanel | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_4 });
@@ -88,6 +91,9 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.buildRoundBadge(width);
     this.buildTargetPanel(width);
     this.buildTimerBar(width);
+    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
+    this.preview.setTitle('PAIR PREVIEW');
+    this.preview.show();
 
     this.beam = this.add.graphics().setDepth(25);
 
@@ -100,6 +106,8 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.bitHint?.destroy();
       this.bitHint = null;
       this.softTimer?.destroy();
+      this.preview?.destroy();
+      this.preview = null;
     });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -163,6 +171,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.targetText.setText(`TARGET  =  ${round.target}`);
 
     this.layoutTiles(round);
+    this.refreshPreview();
 
     const subtitle = idx === 2
       ? `${round.label}  ·  target ${round.target}  ·  ${round.values.length} runestones, ${round.seconds}s on the clock`
@@ -315,6 +324,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.styleTile(tile, false);
       this.hideNeedBadge(tile);
       this.redrawBeam();
+      this.refreshPreview();
       return;
     }
 
@@ -327,11 +337,13 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.bitHint?.moveTo(tile.container.x, tile.container.y - 90, 280);
       this.bitHint?.showWarm();
       this.redrawBeam();
+      this.refreshPreview();
       return;
     }
 
     // Two tiles selected — evaluate.
     this.redrawBeam();
+    this.refreshPreview();
     const values = this.selectedIndices.map((i) => this.tiles[i].value);
     if (isTwoSumPair(round.values, round.target, values)) {
       this.handleCorrectPair();
@@ -395,6 +407,21 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   // ──────────────────────────────────────────────────────────────────
   // Pair resolution
   // ──────────────────────────────────────────────────────────────────
+
+  private refreshPreview(): void {
+    if (!this.preview) return;
+    const round = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
+    const selectedValues = this.selectedIndices
+      .map((index) => this.tiles[index]?.value)
+      .filter((value): value is number => value !== undefined);
+    const preview = buildTwoSumPreview({
+      values: round.values,
+      target: round.target,
+      selectedValues,
+    });
+    this.preview.setState(preview.state);
+    this.preview.setNextAction(preview.next);
+  }
 
   private handleCorrectPair(): void {
     this.isResolving = true;
@@ -487,6 +514,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       });
       this.selectedIndices = [];
       this.actionLocked = false;
+      this.refreshPreview();
     });
   }
 
