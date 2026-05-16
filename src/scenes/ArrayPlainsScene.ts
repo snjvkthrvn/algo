@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { VISUAL_REVAMP_KEYS } from '../config/assets';
+import { ARRAY_PLAINS_SCENE_IMAGE_ASSETS, OVERWORLD_PLAYER_SPRITE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
 import { CAMERA_TUNING, COLORS, FONTS, REGIONS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { eventBus } from '../core/EventBus';
@@ -21,6 +21,7 @@ import {
 } from '../data/regions/arrayPlains';
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { HUDManager } from '../systems/HUDManager';
+import { OverworldAmbience } from '../ui/OverworldAmbience';
 import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
 import { progressionSystem } from '../systems/ProgressionSystem';
 import {
@@ -77,6 +78,20 @@ export class ArrayPlainsScene extends Phaser.Scene {
     }
   }
 
+  preload(): void {
+    for (const asset of OVERWORLD_PLAYER_SPRITE_ASSETS) {
+      if (this.textures.exists(asset.key)) continue;
+      this.load.spritesheet(asset.key, asset.path, {
+        frameWidth: asset.frameWidth || 32,
+        frameHeight: asset.frameHeight || 48,
+      });
+    }
+
+    for (const asset of ARRAY_PLAINS_SCENE_IMAGE_ASSETS) {
+      if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
+    }
+  }
+
   create(): void {
     this.hasShutdown = false;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
@@ -96,6 +111,10 @@ export class ArrayPlainsScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, ARRAY_PLAINS_WORLD_WIDTH, ARRAY_PLAINS_WORLD_HEIGHT);
     this.renderField();
     this.renderRoute();
+    // Drifting pollen, dust motes, and a couple of butterflies layered over
+    // the static pixel-art tilemap. Scroll factor 0 so the ambience sits in
+    // screen space; the player never out-runs the atmosphere.
+    new OverworldAmbience(this, 'farmland', { intensity: 0.85 });
 
     this.player = new Player(this, px, py, {
       canMoveTo: (point) => this.isPlayerStepWalkable(point),

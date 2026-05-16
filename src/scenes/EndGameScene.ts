@@ -12,7 +12,7 @@
  */
 
 import Phaser from 'phaser';
-import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
+import { COLORS, COLOR_HEX, FONTS, SCENE_KEYS } from '../config/constants';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
 import { saveLoadManager } from '../core/SaveLoadManager';
@@ -143,7 +143,7 @@ export class EndGameScene extends Phaser.Scene {
     const subtitle = this.add.text(width / 2, 248, 'ALGORITHMIA - VOLUME I COMPLETE', {
       fontSize: '12px',
       fontFamily: FONTS.RETRO,
-      color: '#88c070',
+      color: COLOR_HEX.TEXT_MUTED,
       stroke: '#081820',
       strokeThickness: 2,
     }).setOrigin(0.5).setAlpha(0).setDepth(5);
@@ -170,17 +170,21 @@ export class EndGameScene extends Phaser.Scene {
 
     const panel = drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
       depth: 4,
-      fill: COLORS.FRAME_BG,
-      frame: COLORS.FRAME_BORDER,
-      inner: COLORS.FRAME_BORDER_LIGHT,
+      fill: COLORS.ERROR,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.SUCCESS,
       alpha: 0.9,
+      shadow: true,
+      shadowAlpha: 0.26,
+      accent: COLORS.GOLD_ACCENT,
+      accentSide: 'top',
     });
     panel.setAlpha(0);
 
     const heading = this.add.text(width / 2, panelY + 16, 'JOURNEY LEDGER', {
       fontSize: '12px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
     }).setOrigin(0.5, 0).setAlpha(0).setDepth(5);
 
     const rows: Array<[string, string]> = [
@@ -207,13 +211,13 @@ export class EndGameScene extends Phaser.Scene {
       const labelText = this.add.text(xLabel, y, label, {
         fontSize: '9px',
         fontFamily: FONTS.RETRO,
-        color: '#346856',
+        color: COLOR_HEX.TEXT_MUTED,
       }).setOrigin(0, 0.5).setAlpha(0).setDepth(5);
 
       const valueText = this.add.text(xValue, y, value, {
         fontSize: '11px',
         fontFamily: FONTS.RETRO,
-        color: '#081820',
+        color: COLOR_HEX.TEXT_LIGHT,
       }).setOrigin(1, 0.5).setAlpha(0).setDepth(5);
 
       rowObjects.push(labelText, valueText);
@@ -261,8 +265,8 @@ export class EndGameScene extends Phaser.Scene {
       const button = this.add.text(width / 2, height - 36, '> RETURN TO MENU <', {
         fontSize: '14px',
         fontFamily: FONTS.RETRO,
-        color: '#081820',
-        backgroundColor: '#e0f8d0',
+        color: COLOR_HEX.TEXT_DARK,
+        backgroundColor: COLOR_HEX.CYAN_GLOW,
         padding: { x: 14, y: 8 },
       })
         .setOrigin(0.5, 1)

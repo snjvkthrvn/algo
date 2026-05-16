@@ -20,6 +20,13 @@ import { RiverRow } from '../../ui/RiverRow';
 import { AlgorithmTrace } from '../../ui/AlgorithmTrace';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
 import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
+import { BitCompanion } from '../../ui/BitCompanion';
+import { GlitchCorner } from '../../ui/GlitchCorner';
+import { ComplexityMeter } from '../../ui/ComplexityMeter';
+import { NextMoveHint } from '../../ui/NextMoveHint';
+import { TWIN_RIVERS_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
+import type { RegionBackdropId, RegionBackdropOptions } from '../../ui/RegionBackdrop';
+import { showLessonCard } from '../../ui/LessonCard';
 import {
   buildCurrentRiderPreview,
   buildFixedWindowPreview,
@@ -66,6 +73,8 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   private swappedThisPair = false;
   private leftAdvancedThisPair = false;
   private rightRetreatedThisPair = false;
+  /** Glowing marker for the algorithm's next forced move. */
+  private hint: NextMoveHint | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_TR_1 });
@@ -75,10 +84,16 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_MIRROR_WALK_BG;
+    return null;
   }
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.025;
+    return 0;
+  }
+  protected getPuzzleTheme(): PuzzleTheme {
+    return TWIN_RIVERS_PUZZLE_THEME;
+  }
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    return { id: 'twin-rivers', options: { riverMode: 'dual', intensity: 0.9 } };
   }
   protected getConceptName(): string {
     return 'Two-Pointer Reverse';
@@ -86,8 +101,17 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
 
   create(): void {
     super.create();
-    new PuzzleAmbience(this, 'river', { intensity: 0.9 });
+    new PuzzleAmbience(this, 'river', { intensity: 0.35 });
     const { width, height } = this.cameras.main;
+    new BitCompanion(this, { stage: 'frame', frameMode: 'split', x: width - 108, y: 100, depth: 40 });
+    new GlitchCorner(this, {
+      x: 152, y: height - 92,
+      width: 240, height: 74,
+      variant: 'parchment',
+      heading: 'Nearby · Glitch (in the river)',
+      body: '"The water tastes like ink!"',
+      depth: 40,
+    });
 
     this.statusText = this.add.text(width / 2, 174, '', {
       fontSize: '12px',
@@ -127,8 +151,25 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     this.input.keyboard?.on('keydown-ENTER', this.onSwap);
     this.input.keyboard?.on('keydown-D', () => this.tryMoveLeft());
     this.input.keyboard?.on('keydown-J', () => this.tryMoveRight());
+    // Arrow-key aliases — RIGHT advances L (inward), LEFT retreats R (inward).
+    this.input.keyboard?.on('keydown-RIGHT', () => this.tryMoveLeft());
+    this.input.keyboard?.on('keydown-LEFT', () => this.tryMoveRight());
 
-    this.startRound(0);
+    this.hint = new NextMoveHint(this, { tone: 'gold', depth: 45 });
+
+    void this.beginRound(0);
+  }
+
+  /**
+   * Surfaces the round's `lesson` card before calling `startRound`. Inputs
+   * are locked while the card is visible so the lesson's SPACE dismiss key
+   * doesn't double-fire the puzzle's swap handler.
+   */
+  private async beginRound(index: number): Promise<void> {
+    this.actionLocked = true;
+    const lesson = MIRROR_WALK_ROUNDS[index]?.lesson;
+    if (lesson) await showLessonCard(this, lesson, 'parchment');
+    this.startRound(index);
   }
 
   /** Compute and push the predicted outcome of the next available key press. */
@@ -214,6 +255,51 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       `RIVER ${stage}/${total}   -   L=${this.leftIndex}   R=${this.rightIndex}   -   ${nextStep}`
     );
     this.refreshPreview();
+    this.refreshHint();
+  }
+
+  /**
+   * Position the NextMoveHint marker so the algorithm's forced action is
+   * visible on the board itself, not just in the side trace:
+   *   • Pre-swap → swap-pair arrows spanning L and R.
+   *   • Post-swap, pre-advance → pulse-ring on L tile (next action: D).
+   *   • Post-advance, pre-retreat → pulse-ring on R tile (next action: J).
+   *   • Round complete → hide.
+   */
+  private refreshHint(): void {
+    if (!this.hint || !this.row) return;
+    if (this.roundCompleting || this.leftIndex >= this.rightIndex) {
+      this.hint.clear();
+      return;
+    }
+    const lCenter = this.row.tileCenter(this.leftIndex);
+    const rCenter = this.row.tileCenter(this.rightIndex);
+    if (!lCenter || !rCenter) {
+      this.hint.clear();
+      return;
+    }
+    const above = lCenter.y - this.row.tileSize / 2;
+    if (!this.swappedThisPair) {
+      this.hint.setTarget({
+        kind: 'swap-pair',
+        x: lCenter.x, x2: rCenter.x, y: above,
+        label: 'swap',
+      });
+    } else if (!this.leftAdvancedThisPair) {
+      this.hint.setTarget({
+        kind: 'pulse-ring',
+        x: lCenter.x, y: above - 12,
+        label: 'L→',
+      });
+    } else if (!this.rightRetreatedThisPair) {
+      this.hint.setTarget({
+        kind: 'pulse-ring',
+        x: rCenter.x, y: above - 12,
+        label: '←R',
+      });
+    } else {
+      this.hint.clear();
+    }
   }
 
   private async trySwap(): Promise<void> {
@@ -355,7 +441,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       return;
     }
 
-      this.time.delayedCall(900, () => this.startRound(this.roundIndex + 1));
+    this.time.delayedCall(900, () => { void this.beginRound(this.roundIndex + 1); });
   }
 
   private flashWrong(message: string): void {
@@ -397,6 +483,10 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   private statusText!: Phaser.GameObjects.Text;
   private preview!: PuzzlePreviewSidePanel;
   private actionLocked = false;
+  /** Pair-checks (brute) vs walk steps (algo). */
+  private complexity: ComplexityMeter | null = null;
+  /** Walk steps consumed this round — every pointer move counts. */
+  private walkSteps = 0;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_TR_2 });
@@ -406,10 +496,18 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_POINTER_BRIDGE_BG;
+    return null;
   }
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.025;
+    return 0;
+  }
+  protected getPuzzleTheme(): PuzzleTheme {
+    return TWIN_RIVERS_PUZZLE_THEME;
+  }
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    // Pointer Bridge crosses the converged river — one wide blue ribbon flowing
+    // downstream, so the bridge becomes the natural stage spine.
+    return { id: 'twin-rivers', options: { riverMode: 'converged', intensity: 0.9 } };
   }
   protected getConceptName(): string {
     return 'Sorted Two-Sum';
@@ -417,8 +515,28 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
 
   create(): void {
     super.create();
-    new PuzzleAmbience(this, 'river', { intensity: 0.9 });
+    new PuzzleAmbience(this, 'river', { intensity: 0.35 });
     const { width, height } = this.cameras.main;
+    new BitCompanion(this, { stage: 'frame', frameMode: 'split', x: width - 108, y: 100, depth: 40 });
+    new GlitchCorner(this, {
+      x: 152, y: height - 92,
+      width: 240, height: 74,
+      variant: 'parchment',
+      heading: "Glitch's Approach",
+      body: 'check every pair: n(n−1)/2 · the walk: ≤ n steps.',
+      depth: 40,
+    });
+
+    this.complexity = new ComplexityMeter(this, {
+      x: width / 2, y: 246,
+      width: 320,
+      bruteLabel: 'pair checks',
+      bruteCost: pairCount(POINTER_BRIDGE_ROUNDS[0].values.length),
+      algoLabel: 'walk steps',
+      algoCost: 0,
+      variant: 'parchment',
+      depth: 40,
+    });
 
     this.statusText = this.add.text(width / 2, 174, '', {
       fontSize: '12px',
@@ -469,7 +587,14 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     this.input.keyboard?.on('keydown-ENTER', () => this.tryLock());
     this.input.keyboard?.on('keydown-SPACE', () => this.tryLock());
 
-    this.startRound(0);
+    void this.beginRound(0);
+  }
+
+  private async beginRound(index: number): Promise<void> {
+    this.actionLocked = true;
+    const lesson = POINTER_BRIDGE_ROUNDS[index]?.lesson;
+    if (lesson) await showLessonCard(this, lesson, 'parchment');
+    this.startRound(index);
   }
 
   private startRound(index: number): void {
@@ -477,6 +602,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     this.round = POINTER_BRIDGE_ROUNDS[index];
     this.leftIndex = 0;
     this.rightIndex = this.round.values.length - 1;
+    this.walkSteps = 0;
 
     if (this.row) this.row.destroy();
     this.row = new RiverRow(this, {
@@ -488,6 +614,13 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     });
     this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: this.leftIndex, side: 'top' });
     this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.rightIndex, side: 'top' });
+
+    this.complexity?.reset({
+      bruteCost: pairCount(this.round.values.length),
+      algoCost: 0,
+      bruteLabel: 'pair checks',
+      algoLabel: 'walk steps',
+    });
 
     this.refreshDisplay();
   }
@@ -533,6 +666,8 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     }
     if (this.leftIndex + 1 >= this.rightIndex) return;
     this.leftIndex++;
+    this.walkSteps++;
+    this.complexity?.setAlgoCost(this.walkSteps);
     this.row.moveCursor('L', this.leftIndex);
     audioManager.playTone(420, 60, 'sine');
     this.refreshDisplay();
@@ -547,6 +682,8 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     }
     if (this.rightIndex - 1 <= this.leftIndex) return;
     this.rightIndex--;
+    this.walkSteps++;
+    this.complexity?.setAlgoCost(this.walkSteps);
     this.row.moveCursor('R', this.rightIndex);
     audioManager.playTone(360, 60, 'sine');
     this.refreshDisplay();
@@ -559,6 +696,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
       return;
     }
     this.actionLocked = true;
+    this.complexity?.celebrate();
     audioManager.playCorrectTone();
     this.row.pulseTile(this.leftIndex, COLORS.SUCCESS);
     this.row.pulseTile(this.rightIndex, COLORS.SUCCESS);
@@ -570,7 +708,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
         this.completePuzzle();
         return;
       }
-      this.startRound(this.roundIndex + 1);
+      void this.beginRound(this.roundIndex + 1);
     });
   }
 
@@ -582,8 +720,10 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   }
 
   private completePuzzle(): void {
+    // Tightened scoring: 3 stars only for flawless; 2 stars allows one mistake
+    // and one hint.
     const stars = this.mistakes === 0 && this.hintsUsed === 0 ? 3
-      : this.mistakes <= 2 && this.hintsUsed <= 1 ? 2 : 1;
+      : this.mistakes <= 1 && this.hintsUsed <= 1 ? 2 : 1;
     this.onPuzzleComplete(stars);
   }
 
@@ -613,6 +753,10 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   private sumText!: Phaser.GameObjects.Text;
   private preview!: PuzzlePreviewSidePanel;
   private actionLocked = false;
+  /** Brute (recompute every window: (n-k+1)·k) vs algo (n-k+1 slides). */
+  private complexity: ComplexityMeter | null = null;
+  /** Number of slide operations the player has performed this round. */
+  private slideCount = 0;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_TR_3 });
@@ -622,10 +766,16 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_FIXED_WINDOW_BG;
+    return null;
   }
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.025;
+    return 0;
+  }
+  protected getPuzzleTheme(): PuzzleTheme {
+    return TWIN_RIVERS_PUZZLE_THEME;
+  }
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    return { id: 'twin-rivers', options: { riverMode: 'converged', intensity: 0.9 } };
   }
   protected getConceptName(): string {
     return 'Fixed Sliding Window';
@@ -633,8 +783,30 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
 
   create(): void {
     super.create();
-    new PuzzleAmbience(this, 'river', { intensity: 0.9 });
+    new PuzzleAmbience(this, 'river', { intensity: 0.35 });
     const { width, height } = this.cameras.main;
+    // Frame mode (not split) — Bit's frame BECOMES the sliding window.
+    new BitCompanion(this, { stage: 'frame', frameMode: 'frame', x: width - 108, y: 100, depth: 40 });
+    new GlitchCorner(this, {
+      x: 152, y: height - 92,
+      width: 240, height: 74,
+      variant: 'parchment',
+      heading: 'Glitch Re-Adds Each Window',
+      body: 'recount every step: O(n·k). Slide: O(n).',
+      depth: 40,
+    });
+
+    const r0 = FIXED_WINDOW_ROUNDS[0];
+    this.complexity = new ComplexityMeter(this, {
+      x: width / 2, y: 246,
+      width: 320,
+      bruteLabel: 'recompute cost',
+      bruteCost: bruteWindowCost(r0.values.length, r0.windowSize),
+      algoLabel: 'your slides',
+      algoCost: 0,
+      variant: 'parchment',
+      depth: 40,
+    });
 
     this.statusText = this.add.text(width / 2, 174, '', {
       fontSize: '12px',
@@ -685,7 +857,14 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     this.input.keyboard?.on('keydown-SPACE', () => this.tryLock());
     this.input.keyboard?.on('keydown-ENTER', () => this.tryLock());
 
-    this.startRound(0);
+    void this.beginRound(0);
+  }
+
+  private async beginRound(index: number): Promise<void> {
+    this.actionLocked = true;
+    const lesson = FIXED_WINDOW_ROUNDS[index]?.lesson;
+    if (lesson) await showLessonCard(this, lesson, 'parchment');
+    this.startRound(index);
   }
 
   private startRound(index: number): void {
@@ -693,6 +872,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     this.round = FIXED_WINDOW_ROUNDS[index];
     this.windowStart = 0;
     this.bestSeenSum = windowSumAt(this.round.values, 0, this.round.windowSize);
+    this.slideCount = 0;
 
     if (this.row) this.row.destroy();
     this.row = new RiverRow(this, {
@@ -702,6 +882,14 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
       tileSize: 50,
       gap: 6,
     });
+
+    this.complexity?.reset({
+      bruteCost: bruteWindowCost(this.round.values.length, this.round.windowSize),
+      algoCost: 0,
+      bruteLabel: 'recompute cost',
+      algoLabel: 'your slides',
+    });
+
     this.refreshDisplay();
   }
 
@@ -746,6 +934,8 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     const next = this.windowStart + direction;
     if (next < 0 || next + this.round.windowSize > this.round.values.length) return;
     this.windowStart = next;
+    this.slideCount++;
+    this.complexity?.setAlgoCost(this.slideCount);
     audioManager.playTone(direction === 1 ? 540 : 420, 50, 'sine');
     this.refreshDisplay();
   }
@@ -766,6 +956,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     }
 
     this.actionLocked = true;
+    this.complexity?.celebrate();
     audioManager.playCorrectTone();
     JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2);
     for (let i = this.windowStart; i < this.windowStart + k; i++) {
@@ -778,13 +969,16 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
         this.completePuzzle();
         return;
       }
-      this.startRound(this.roundIndex + 1);
+      void this.beginRound(this.roundIndex + 1);
     });
   }
 
   private completePuzzle(): void {
+    // Tightened scoring: 3 stars only for a flawless run, and the optimal
+    // window must be reached on the first lock per round (mistakes counts
+    // every wrong lock).
     const stars = this.mistakes === 0 && this.hintsUsed === 0 ? 3
-      : this.mistakes <= 2 && this.hintsUsed <= 1 ? 2 : 1;
+      : this.mistakes <= 1 && this.hintsUsed <= 1 ? 2 : 1;
     this.onPuzzleComplete(stars);
   }
 
@@ -825,10 +1019,16 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_VARIABLE_WINDOW_BG;
+    return null;
   }
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.025;
+    return 0;
+  }
+  protected getPuzzleTheme(): PuzzleTheme {
+    return TWIN_RIVERS_PUZZLE_THEME;
+  }
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    return { id: 'twin-rivers', options: { riverMode: 'converged', intensity: 0.9 } };
   }
   protected getConceptName(): string {
     return 'Variable Sliding Window';
@@ -836,8 +1036,17 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
 
   create(): void {
     super.create();
-    new PuzzleAmbience(this, 'river', { intensity: 0.9 });
+    new PuzzleAmbience(this, 'river', { intensity: 0.35 });
     const { width, height } = this.cameras.main;
+    new BitCompanion(this, { stage: 'frame', frameMode: 'frame', x: width - 108, y: 100, depth: 40 });
+    new GlitchCorner(this, {
+      x: 152, y: height - 92,
+      width: 240, height: 74,
+      variant: 'parchment',
+      heading: 'Glitch Rechecks Every Substring',
+      body: 'all substrings: O(n²). Two pointers: O(n).',
+      depth: 40,
+    });
 
     this.statusText = this.add.text(width / 2, 174, '', {
       fontSize: '12px',
@@ -884,10 +1093,21 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     this.input.keyboard?.on('keydown-Q', () => this.shrinkLeft());
     this.input.keyboard?.on('keydown-D', () => this.extendRight());
     this.input.keyboard?.on('keydown-A', () => this.shrinkLeft());
+    // Arrow-key aliases — matches the player's intuition that the window
+    // grows rightward (RIGHT extends) and shrinks from the left (LEFT shrinks).
+    this.input.keyboard?.on('keydown-RIGHT', () => this.extendRight());
+    this.input.keyboard?.on('keydown-LEFT', () => this.shrinkLeft());
     this.input.keyboard?.on('keydown-SPACE', () => this.trySubmit());
     this.input.keyboard?.on('keydown-ENTER', () => this.trySubmit());
 
-    this.startRound(0);
+    void this.beginRound(0);
+  }
+
+  private async beginRound(index: number): Promise<void> {
+    this.actionLocked = true;
+    const lesson = CURRENT_RIDER_ROUNDS[index]?.lesson;
+    if (lesson) await showLessonCard(this, lesson, 'parchment');
+    this.startRound(index);
   }
 
   private startRound(index: number): void {
@@ -993,13 +1213,14 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
         this.completePuzzle();
         return;
       }
-      this.startRound(this.roundIndex + 1);
+      void this.beginRound(this.roundIndex + 1);
     });
   }
 
   private completePuzzle(): void {
+    // Tightened scoring: 3 stars requires a flawless run.
     const stars = this.mistakes === 0 && this.hintsUsed === 0 ? 3
-      : this.mistakes <= 2 && this.hintsUsed <= 1 ? 2 : 1;
+      : this.mistakes <= 1 && this.hintsUsed <= 1 ? 2 : 1;
     this.onPuzzleComplete(stars);
   }
 
@@ -1422,4 +1643,20 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       this.showMessage(`Hint ${hintNumber}: lock at index ${this.windowOptimalStart}.`, COLORS.GOLD_ACCENT);
     }
   }
+}
+
+/** Pair count helper — n(n-1)/2, the brute-force cost for "check every pair". */
+function pairCount(n: number): number {
+  return Math.max(1, (n * (n - 1)) / 2);
+}
+
+/**
+ * Fixed-window brute-force cost: recompute the window sum from scratch at
+ * every starting position. (n - k + 1) windows × k additions each.
+ * The sliding-window algorithm is (n - k + 1) operations — that's the
+ * comparison.
+ */
+function bruteWindowCost(n: number, k: number): number {
+  const windows = Math.max(1, n - k + 1);
+  return windows * k;
 }

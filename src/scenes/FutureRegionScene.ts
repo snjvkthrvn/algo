@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { VISUAL_REVAMP_KEYS } from '../config/assets';
+import { getImageAssetPath, OVERWORLD_PLAYER_SPRITE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
 import { CAMERA_TUNING, COLORS, FONTS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { gameState } from '../core/GameStateManager';
@@ -66,6 +66,36 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   init(data: SpawnData): void {
     if (data.spawnX !== undefined && data.spawnY !== undefined) {
       gameState.setPlayerPosition(data.spawnX, data.spawnY);
+    }
+  }
+
+  preload(): void {
+    for (const asset of OVERWORLD_PLAYER_SPRITE_ASSETS) {
+      if (this.textures.exists(asset.key)) continue;
+      this.load.spritesheet(asset.key, asset.path, {
+        frameWidth: asset.frameWidth || 32,
+        frameHeight: asset.frameHeight || 48,
+      });
+    }
+
+    const imageKeys = new Set<string>([
+      this.regionConfig.backgroundKey,
+      VISUAL_REVAMP_KEYS.ROUTE_MATERIALS,
+      this.regionConfig.back.portalKey,
+      this.regionConfig.guide.assetKey,
+      VISUAL_REVAMP_KEYS.BIT_SPARK,
+      VISUAL_REVAMP_KEYS.BIT_BYTE,
+      VISUAL_REVAMP_KEYS.BIT_FRAME,
+      VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
+      VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_OPEN,
+      VISUAL_REVAMP_KEYS.PROP_PUZZLE_SHRINE,
+      VISUAL_REVAMP_KEYS.PROP_CORE_TERMINAL,
+    ]);
+    if (this.regionConfig.next) imageKeys.add(this.regionConfig.next.portalKey);
+
+    for (const key of imageKeys) {
+      const path = getImageAssetPath(key);
+      if (path && !this.textures.exists(key)) this.load.image(key, path);
     }
   }
 

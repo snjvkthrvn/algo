@@ -5,7 +5,7 @@
  */
 
 import Phaser from 'phaser';
-import { COLORS, FONTS } from '../config/constants';
+import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { gameState } from '../core/GameStateManager';
 import { moveMenuSelection } from '../input/MenuNavigation';
@@ -61,19 +61,25 @@ export class PauseOverlayScene extends Phaser.Scene {
     drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
       depth: 1,
       scrollFactor: 0,
-      inner: 0x346856,
+      fill: COLORS.ERROR,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.SUCCESS,
+      shadow: true,
+      shadowAlpha: 0.28,
+      accent: COLORS.CYAN_GLOW,
+      accentSide: 'top',
     });
 
     this.add.text(width / 2, panelY + 32, 'PAUSED', {
       fontSize: '20px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
     }).setOrigin(0.5, 0).setDepth(2);
 
     this.add.text(width / 2, panelY + 72, 'The world holds its breath.', {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
-      color: '#346856',
+      color: COLOR_HEX.TEXT_MUTED,
     }).setOrigin(0.5, 0).setDepth(2);
 
     this.menuItems = [
@@ -86,7 +92,7 @@ export class PauseOverlayScene extends Phaser.Scene {
       this.add.text(width / 2, panelY + 132 + i * 44, item.text, {
         fontSize: '12px',
         fontFamily: FONTS.RETRO,
-        color: '#346856',
+        color: COLOR_HEX.TEXT_MUTED,
       })
         .setOrigin(0.5)
         .setDepth(2)
@@ -147,8 +153,8 @@ export class PauseOverlayScene extends Phaser.Scene {
     this.menuTexts.forEach((text, i) => {
       const selected = i === this.selectedIndex;
       text.setText(`${selected ? '> ' : '  '}${this.menuItems[i].text}`);
-      text.setColor(selected ? '#081820' : '#346856');
-      text.setBackgroundColor(selected ? '#e0f8d0' : 'transparent');
+      text.setColor(selected ? COLOR_HEX.TEXT_DARK : COLOR_HEX.TEXT_MUTED);
+      text.setBackgroundColor(selected ? COLOR_HEX.CYAN_GLOW : 'transparent');
       text.setPadding(selected ? 6 : 0, selected ? 4 : 0, selected ? 6 : 0, selected ? 4 : 0);
     });
   }
@@ -178,13 +184,19 @@ export class PauseOverlayScene extends Phaser.Scene {
     const panel = drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
       depth: 101,
       scrollFactor: 0,
-      inner: 0x346856,
+      fill: COLORS.ERROR,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.SUCCESS,
+      shadow: true,
+      shadowAlpha: 0.28,
+      accent: COLORS.CYAN_GLOW,
+      accentSide: 'top',
     });
 
     const title = this.add.text(width / 2, panelY + 32, 'SETTINGS', {
       fontSize: '16px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
     }).setOrigin(0.5, 0).setDepth(102);
 
     const volumes = [
@@ -203,14 +215,14 @@ export class PauseOverlayScene extends Phaser.Scene {
       this.add.text(panelX + 32, ROW_Y[i], label, {
         fontSize: '10px',
         fontFamily: FONTS.RETRO,
-        color: '#081820',
+        color: COLOR_HEX.TEXT_LIGHT,
       }).setDepth(102),
     );
 
     const barGraphics = [this.add.graphics().setDepth(102), this.add.graphics().setDepth(102)];
     const pctTexts = [
-      this.add.text(BAR_X + BAR_W + 12, ROW_Y[0], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: '#081820' }).setDepth(102),
-      this.add.text(BAR_X + BAR_W + 12, ROW_Y[1], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: '#081820' }).setDepth(102),
+      this.add.text(BAR_X + BAR_W + 12, ROW_Y[0], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_LIGHT }).setDepth(102),
+      this.add.text(BAR_X + BAR_W + 12, ROW_Y[1], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_LIGHT }).setDepth(102),
     ];
 
     const redrawSliders = () => {
@@ -241,13 +253,13 @@ export class PauseOverlayScene extends Phaser.Scene {
     const hint = this.add.text(width / 2, panelY + 192, 'Tab switch | arrows adjust', {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
-      color: '#4a5568',
+      color: COLOR_HEX.TEXT_MUTED,
     }).setOrigin(0.5).setDepth(102);
 
     const closeBtn = this.add.text(width / 2, panelY + PANEL_H - 36, 'CLOSE', {
       fontSize: '12px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.CYAN_GLOW,
     }).setOrigin(0.5, 0).setDepth(102).setInteractive({ useHandCursor: true });
 
     const onLeft = () => adjust(-10);

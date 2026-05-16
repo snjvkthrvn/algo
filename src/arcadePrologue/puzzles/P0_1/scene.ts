@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, HEX_RADIUS, s } from './tokens';
+import { COLORS, HEX_RADIUS, s, STAGE } from './tokens';
 import { TIMING } from './motion';
 import { ROUNDS } from './rounds';
 import { paintAtmosphere, type Atmosphere } from './visuals/atmosphere';
@@ -35,6 +35,8 @@ import { scorePopup } from '../../ui/popups';
 import { hexColorToNumber, sparkle } from '../../ui/particles';
 import { comboMilestone } from '../../game/milestone';
 import { SCENE_KEYS } from '../../../config/constants';
+import { BitCompanion } from '../../../ui/BitCompanion';
+import { GlitchCorner } from '../../../ui/GlitchCorner';
 
 const HIT_RADIUS = HEX_RADIUS + s(22);
 const SNAP_BIAS = s(18);
@@ -98,6 +100,27 @@ export class FollowThePathScene extends Phaser.Scene {
 
     const escape = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     escape?.on('down', this.exitToReturnScene, this);
+
+    // Region companions — Bit spark in the upper-right and a Glitch quote in
+    // the lower-left. The Watcher prism (added in atmosphere.ts) handles the
+    // rest of the cosmic-void signature elements above the rune board.
+    new BitCompanion(this, {
+      stage: 'spark',
+      x: STAGE.width - s(60),
+      y: s(160),
+      scale: 1.2,
+      depth: 9,
+    });
+    new GlitchCorner(this, {
+      x: s(124),
+      y: STAGE.height - s(64),
+      width: s(220),
+      height: s(74),
+      variant: 'cosmic',
+      heading: 'Nearby · Glitch',
+      body: '"Took me forever — I just tried every tile."',
+      depth: 9,
+    });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       escape?.removeAllListeners();

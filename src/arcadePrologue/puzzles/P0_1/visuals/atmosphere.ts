@@ -41,6 +41,7 @@ export function paintAtmosphere(scene: Phaser.Scene): Atmosphere {
     .setAlpha(defaultStarsAlpha);
 
   paintEdgeFog(scene);
+  paintWatcherDrift(scene);
 
   let active: 'normal' | 'preview' = 'normal';
 
@@ -81,6 +82,41 @@ function paintEdgeFog(scene: Phaser.Scene): void {
   g.fillStyle(COLORS.bg.deep, 0.55);
   g.fillRect(0, 0, STAGE.width, s(36));
   g.fillRect(0, STAGE.height - s(36), STAGE.width, s(36));
+}
+
+/**
+ * The distant Watcher — a purple diamond prism drifting slowly across the top
+ * of the chamber. It signals "you are being observed" without pulling focus
+ * from the rune board, and gives the cosmic backdrop a slow living motion.
+ */
+function paintWatcherDrift(scene: Phaser.Scene): void {
+  const prism = scene.add.container(-s(40), s(60)).setDepth(3.2);
+  const gfx = scene.add.graphics();
+  gfx.fillStyle(0xa78bfa, 0.28);
+  gfx.fillTriangle(0, -s(14), s(14), 0, 0, s(14));
+  gfx.fillTriangle(0, -s(14), -s(14), 0, 0, s(14));
+  gfx.lineStyle(1, 0xa78bfa, 0.55);
+  gfx.strokeTriangle(0, -s(14), s(14), 0, 0, s(14));
+  gfx.strokeTriangle(0, -s(14), -s(14), 0, 0, s(14));
+  gfx.fillStyle(0xa78bfa, 0.55);
+  gfx.fillRect(-s(2), -s(2), s(4), s(4));
+  prism.add(gfx);
+  prism.setAlpha(0.4);
+  scene.tweens.add({
+    targets: prism,
+    x: STAGE.width + s(40),
+    duration: 42000,
+    repeat: -1,
+    delay: -10000,
+    ease: 'Linear',
+  });
+  scene.tweens.add({
+    targets: gfx,
+    angle: 360,
+    duration: 18000,
+    repeat: -1,
+    ease: 'Linear',
+  });
 }
 
 function ensureStarTexture(scene: Phaser.Scene): void {

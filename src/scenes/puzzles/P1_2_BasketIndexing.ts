@@ -14,7 +14,6 @@
 
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
@@ -23,6 +22,10 @@ import { BitHint } from '../../entities/BitHint';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
 import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
+import { showLessonCard } from '../../ui/LessonCard';
+import { BitCompanion } from '../../ui/BitCompanion';
+import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
+import type { RegionBackdropId, RegionBackdropOptions } from '../../ui/RegionBackdrop';
 import {
   INDEXING_ROUNDS,
   starsFromMistakesAndHints,
@@ -30,6 +33,8 @@ import {
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
 import { buildIndexingPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
+import { BruteForceScanner } from '../../entities/BruteForceScanner';
+import { PuzzlePhase } from '../../data/types';
 
 interface Basket {
   index: number;
@@ -62,6 +67,14 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
   private obscureTimer: Phaser.Time.TimerEvent | null = null;
   private labelsObscured = false;
   private preview: PuzzlePreviewSidePanel | null = null;
+  /** Glitch as visible scanning co-actor during FEEL_IT round 1. A parallel
+   *  row of slots with a cursor that walks 0→N until it finds the target —
+   *  visually demonstrating the linear-scan brute force that indexing
+   *  obsoletes. */
+  private bruteForce: BruteForceScanner | null = null;
+  private namedYet = false;
+  private affordancePrompt: Phaser.GameObjects.Text | null = null;
+  private affordanceFaded = false;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_2 });
@@ -71,22 +84,33 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_INDEXING_BARN_BG;
+    return null;
   }
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.02;
+    return 0;
+  }
+  protected getPuzzleTheme(): PuzzleTheme {
+    return ARRAY_PLAINS_PUZZLE_THEME;
+  }
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    return { id: 'array-plains', options: { intensity: 0.85 } };
   }
 
   create(): void {
+    // FEEL_IT diegetic puzzleDescription override — strip "the index tells
+    // you exactly which basket" (that names the mechanic before play).
+    if (INDEXING_ROUNDS[0].lesson.phase === PuzzlePhase.FEEL_IT) {
+      this.puzzleDescription = 'The Basket Keeper needs a tool. Help them find it.';
+    }
     super.create();
-    new PuzzleAmbience(this, 'farmland', { intensity: 0.85 });
+    new PuzzleAmbience(this, 'farmland', { intensity: 0.35 });
 
     const { width } = this.cameras.main;
     this.buildRoundBadge(width);
     this.buildRequestPanel(width);
-    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
-    this.preview.setTitle('INDEX PREVIEW');
-    this.preview.show();
+    // BitCompanion stays — fictional character. All algorithm-named UI
+    // (preview, GlitchCorner→BruteForceActor) mounts per-phase.
+    new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40, highlight: 5 });
 
     this.startRound(0).catch(() => undefined);
 
@@ -97,6 +121,10 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
       this.obscureTimer?.destroy();
       this.preview?.destroy();
       this.preview = null;
+      this.bruteForce?.destroy();
+      this.bruteForce = null;
+      this.affordancePrompt?.destroy();
+      this.affordancePrompt = null;
     });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -147,22 +175,183 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     this.isResolving = true;
 
     const round = INDEXING_ROUNDS[idx];
-    this.roundBadge.setText(`ROUND ${idx + 1}/3 · ${round.label} · use the address directly`);
+    const total = INDEXING_ROUNDS.length;
+    const isFeelIt = round.lesson.phase === PuzzlePhase.FEEL_IT;
+
+    // FEEL_IT badge strips "use the address directly" — that names the
+    // mechanic before play. Diegetic version: just count the round.
+    this.roundBadge.setText(
+      isFeelIt
+        ? `ROUND ${idx + 1}/${total}`
+        : `ROUND ${idx + 1}/${total} · ${round.label} · use the address directly`,
+    );
 
     this.layoutBaskets(round);
+
+    if (isFeelIt) {
+      this.mountFeelItPanels();
+    } else {
+      this.mountUseItPanels();
+      this.bruteForce?.fadeTo(0.32);
+    }
 
     const labelLine = round.obscureLabels
       ? `${round.label}  ·  labels fade — commit to the address`
       : `${round.label}  ·  ${round.requests.length} fetch${round.requests.length > 1 ? 'es' : ''}`;
 
+    await showLessonCard(this, round.lesson, 'parchment');
+
     await showRoundBanner(this, {
-      label: `ROUND ${idx + 1} / 3`,
+      label: `ROUND ${idx + 1} / ${total}`,
       subtitle: labelLine,
-      accent: idx === 2 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
+      accent: idx >= total - 1 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
     });
 
     this.isResolving = false;
     this.nextRequest();
+  }
+
+  private isFeelItRound(): boolean {
+    return INDEXING_ROUNDS[this.roundIndex]?.lesson.phase === PuzzlePhase.FEEL_IT;
+  }
+
+  /** FEEL_IT: a visible scanning row above the player's basket shelf (Glitch
+   *  walking 0→N) + the affordance prompt. NO PuzzlePreviewSidePanel
+   *  (algorithm-name leak). NO Bit-pointing. */
+  private mountFeelItPanels(): void {
+    if (this.bruteForce) return;
+    const { width, height } = this.cameras.main;
+    const round = INDEXING_ROUNDS[this.roundIndex];
+    const request = round.requests[0];
+    if (!request) return;
+
+    // Glitch's scan row sits BELOW the player's basket shelf so the
+    // hierarchy reads top-to-bottom: chrome → request → affordance →
+    // player's shelf → Glitch's brute-force scan. Slot labels are the
+    // numbers 0..N-1 so the player sees Glitch walking through addresses
+    // while they themselves can jump straight to the right one.
+    const slotLabels = Array.from({ length: round.basketCount }, (_, i) => `${i}`);
+    this.bruteForce = new BruteForceScanner(this, {
+      x: width / 2,
+      y: height - 150,
+      slotCount: round.basketCount,
+      slotLabels,
+      target: request.index,
+      heading: "⚠ GLITCH'S APPROACH",
+      subtitle: `(opening baskets one by one, looking for ${request.item.toLowerCase()})`,
+      notDoneLabel: 'still hunting',
+      doneLabel: 'found it. eventually.',
+      verbLabel: 'checks',
+      depth: 40,
+      tickIntervalMs: 750,
+    });
+
+    // Affordance prompt — sits just above the player's basket shelf, in
+    // the band between the request panel and the baskets. Tells the player
+    // WHAT to do without naming the algorithm.
+    this.affordancePrompt = this.add.text(width / 2, 290,
+      'Tap the basket whose number matches.',
+      {
+        fontSize: '11px',
+        fontFamily: '"IBM Plex Mono", monospace',
+        color: '#88c070',
+        fontStyle: 'italic',
+        stroke: '#081820',
+        strokeThickness: 2,
+      },
+    ).setOrigin(0.5, 0.5).setDepth(40);
+    this.tweens.add({
+      targets: this.affordancePrompt,
+      alpha: 0.6,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  /** USE_IT: the full teaching toolkit. Idempotent. */
+  private mountUseItPanels(): void {
+    if (!this.preview) {
+      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
+      this.preview.setTitle('INDEX PREVIEW');
+      this.preview.show();
+    }
+  }
+
+  /** NAME_IT beat — fired between FEEL_IT and the first USE_IT round.
+   *  Parchment dialogue overlay, dismissable on SPACE/ENTER/click. */
+  private async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
+    const { width, height } = this.cameras.main;
+    const cardW = Math.min(width - 200, 580);
+    const cardH = 200;
+
+    return new Promise<void>((resolve) => {
+      const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0.55)
+        .setOrigin(0, 0).setDepth(8999).setInteractive();
+
+      const container = this.add.container(width / 2, height / 2).setDepth(9000);
+
+      const shadow = this.add.graphics();
+      shadow.fillStyle(0x000000, 0.42);
+      shadow.fillRoundedRect(-cardW / 2 + 6, -cardH / 2 + 6, cardW, cardH, 6);
+
+      const card = this.add.graphics();
+      card.fillStyle(0xf0e4c2, 1);
+      card.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
+      card.fillStyle(0xd8c890, 1);
+      card.fillRect(-cardW / 2 + 6, cardH / 2 - 12, cardW - 12, 6);
+      card.lineStyle(3, 0x1a1208, 1);
+      card.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
+      card.lineStyle(1, 0xf5b820, 0.65);
+      card.strokeRoundedRect(-cardW / 2 + 4, -cardH / 2 + 4, cardW - 8, cardH - 8, 4);
+
+      const eyebrow = this.add.text(-cardW / 2 + 24, -cardH / 2 + 18, beat.speaker.toUpperCase(), {
+        fontSize: '9px',
+        fontFamily: '"Press Start 2P", monospace',
+        color: '#a03830',
+      }).setOrigin(0, 0);
+
+      const line = this.add.text(-cardW / 2 + 24, -cardH / 2 + 46, beat.line, {
+        fontSize: '13px',
+        fontFamily: '"IBM Plex Mono", monospace',
+        color: '#1a1208',
+        wordWrap: { width: cardW - 48, useAdvancedWrap: true },
+        lineSpacing: 4,
+      }).setOrigin(0, 0);
+
+      const hint = this.add.text(0, cardH / 2 - 18, 'press  SPACE  · ENTER · click  to continue', {
+        fontSize: '10px',
+        fontFamily: '"IBM Plex Mono", monospace',
+        color: '#4a3818',
+        fontStyle: 'italic',
+      }).setOrigin(0.5, 0.5);
+
+      container.add([shadow, card, eyebrow, line, hint]);
+      container.setAlpha(0).setScale(0.92);
+      this.tweens.add({ targets: container, alpha: 1, scale: 1, duration: 240, ease: 'Back.easeOut' });
+
+      let dismissed = false;
+      const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        this.input.keyboard?.off('keydown-SPACE', dismiss);
+        this.input.keyboard?.off('keydown-ENTER', dismiss);
+        this.tweens.add({
+          targets: container,
+          alpha: 0, scale: 0.92,
+          duration: 180, ease: 'Power2.easeIn',
+          onComplete: () => {
+            container.destroy();
+            dim.destroy();
+            resolve();
+          },
+        });
+      };
+      this.input.keyboard?.once('keydown-SPACE', dismiss);
+      this.input.keyboard?.once('keydown-ENTER', dismiss);
+      dim.once('pointerdown', dismiss);
+    });
   }
 
   private layoutBaskets(round: IndexingRound): void {
@@ -187,12 +376,17 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
       this.baskets.push(this.createBasket(i, x, y));
     }
 
-    // Bit hovers above basket 0 at the start of a round to anchor attention.
+    // Bit hovers above basket 0 in USE_IT — anchors attention to the shelf.
+    // FEEL_IT suppresses Bit entirely; the basket numbers + the request panel
+    // are the player's only cues. No hovering helper.
     this.bitHint?.destroy();
-    const first = this.baskets[0];
-    if (first) {
-      this.bitHint = new BitHint(this, first.container.x, first.container.y - 80);
-      this.bitHint.showNeutral();
+    this.bitHint = null;
+    if (!this.isFeelItRound()) {
+      const first = this.baskets[0];
+      if (first) {
+        this.bitHint = new BitHint(this, first.container.x, first.container.y - 80);
+        this.bitHint.showNeutral();
+      }
     }
   }
 
@@ -316,15 +510,25 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
 
     const remaining = round.requests.length - this.requestIndex;
     const remainingNote = round.requests.length > 1 ? ` · ${remaining} left` : '';
+    // FEEL_IT swaps "index" → "basket" — algorithm vocabulary leaks
+    // through that single word otherwise.
+    const addressWord = this.isFeelItRound() ? 'basket' : 'index';
     this.requestLabel.setText(
-      `Fetch  ${request.item.toUpperCase()}  →  index ${request.index}${remainingNote}`,
+      `Fetch  ${request.item.toUpperCase()}  →  ${addressWord} ${request.index}${remainingNote}`,
     );
     this.requestLabel.setColor('#081820');
 
-    // Bit walks above the requested basket.
-    const target = this.baskets[request.index];
-    if (target) this.bitHint?.moveTo(target.container.x, target.container.y - 80, 320);
-    this.bitHint?.showWarm();
+    // Bit walks above the requested basket — but ONLY in USE_IT. In FEEL_IT,
+    // Bit floating directly over the answer is unfiltered hand-holding;
+    // the player should derive that the number IS the address from the
+    // request alone, not by following Bit.
+    if (!this.isFeelItRound()) {
+      const target = this.baskets[request.index];
+      if (target) this.bitHint?.moveTo(target.container.x, target.container.y - 80, 320);
+      this.bitHint?.showWarm();
+    } else {
+      this.bitHint?.showNeutral();
+    }
 
     // Soft round timer drives star rating, not failure.
     this.softTimeBudgetMs = round.secondsPerRequest * 1000;
@@ -382,8 +586,30 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
 
   private chooseBasket(index: number): void {
     if (this.isResolving) return;
+    // Fade the affordance prompt on first interaction (any tap — even wrong
+    // ones teach the control affordance).
+    if (this.affordancePrompt && !this.affordanceFaded) {
+      this.affordanceFaded = true;
+      this.tweens.killTweensOf(this.affordancePrompt);
+      this.tweens.add({
+        targets: this.affordancePrompt,
+        alpha: 0,
+        duration: 320,
+        ease: 'Sine.easeIn',
+        onComplete: () => {
+          this.affordancePrompt?.destroy();
+          this.affordancePrompt = null;
+        },
+      });
+    }
     const round = INDEXING_ROUNDS[this.roundIndex];
     const request = round.requests[this.requestIndex];
+    // Round-transition guard: between the last correct fetch of a round and
+    // the next round starting, requestIndex is past the end of the array
+    // (see line 458). Without this check, clicking during that window would
+    // throw when reading request.index. P1_1/P1_3/P1_4 release isResolving
+    // at safer points so this guard isn't needed there.
+    if (!request) return;
     this.softTimer?.destroy();
     this.obscureTimer?.destroy();
     this.isResolving = true;
@@ -466,18 +692,39 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
       return;
     }
 
-    this.time.delayedCall(1400, () => this.startRound(this.roundIndex + 1).catch(() => undefined));
+    this.time.delayedCall(1400, async () => {
+      // FEEL_IT completion → fire the NAME_IT script beat once. The Basket
+      // Keeper names what the player just felt.
+      const round = INDEXING_ROUNDS[this.roundIndex];
+      if (
+        round.lesson.phase === PuzzlePhase.FEEL_IT &&
+        round.lesson.nameItBeat &&
+        !this.namedYet
+      ) {
+        this.namedYet = true;
+        this.bruteForce?.freeze();
+        await this.showNameItBeat(round.lesson.nameItBeat);
+      }
+      this.startRound(this.roundIndex + 1).catch(() => undefined);
+    });
   }
 
   protected displayHint(hintNumber: number): void {
     const round = INDEXING_ROUNDS[this.roundIndex];
     const request = round.requests[this.requestIndex];
     const target = request ? request.index : 0;
-    const messages = [
-      `The request already gives you the address: index ${target}.`,
-      'Array indexing is O(1). Tap the slot directly — never scan from 0.',
-      'Keyboard: 1..9 maps to baskets 0..8, and 0 maps to basket 9.',
-    ];
+    // FEEL_IT hints stay diegetic — no "Array indexing is O(1)" leak.
+    const messages = this.isFeelItRound()
+      ? [
+          `The request shows you a number — ${target}. That's the basket.`,
+          `Tap basket ${target}. The Keeper trusts the number.`,
+          `Keyboard: 1..9 maps to the basket numbered to its left.`,
+        ]
+      : [
+          `The request already gives you the address: index ${target}.`,
+          'Array indexing is O(1). Tap the slot directly — never scan from 0.',
+          'Keyboard: 1..9 maps to baskets 0..8, and 0 maps to basket 9.',
+        ];
     this.showMessage(messages[hintNumber - 1] ?? messages[0], COLORS.GOLD_ACCENT);
   }
 
@@ -485,3 +732,4 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     return 'Array Indexing';
   }
 }
+

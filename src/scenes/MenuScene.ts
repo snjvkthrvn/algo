@@ -4,7 +4,7 @@
 
 import Phaser from 'phaser';
 import { VISUAL_REVAMP_KEYS } from '../config/assets';
-import { COLORS, FONTS, REGIONS, REGION_DISPLAY_NAMES, SCENE_BY_REGION, SCENE_KEYS } from '../config/constants';
+import { COLORS, COLOR_HEX, FONTS, REGIONS, REGION_DISPLAY_NAMES, SCENE_BY_REGION, SCENE_KEYS } from '../config/constants';
 import { saveLoadManager } from '../core/SaveLoadManager';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
@@ -12,6 +12,7 @@ import { TransitionManager } from '../core/TransitionManager';
 import { moveMenuSelection } from '../input/MenuNavigation';
 import { drawPanel } from '../ui/panel';
 import { a11yManager } from '../core/A11yManager';
+import { OverworldAmbience } from '../ui/OverworldAmbience';
 import {
   REGION_PRESENTATION,
   getRegionPresentation,
@@ -92,6 +93,11 @@ export class MenuScene extends Phaser.Scene {
 
     this.createTitleBackdrop(width, height);
 
+    // Animated title ambience — slow drifting cyan/purple stars across the
+    // entire menu plus a single Bit-spark that crosses the title area on a
+    // long diagonal. First impression of the game becomes "this is alive".
+    new OverworldAmbience(this, 'menu', { intensity: 1.0 });
+
     // Pixel ornament above title
     const ox = Math.round(width / 2);
     const oy = 152;
@@ -156,10 +162,16 @@ export class MenuScene extends Phaser.Scene {
 
       text.on('pointerover', () => {
         this.setSelectedMenuIndex(index);
-        this.tweens.add({ targets: text, scale: 1.1, duration: 100 });
+        // Micro-interaction: scale up + faint cyan stroke + soft tonal ping
+        // so each hover is a multi-sensory beat. Helps the player know the
+        // menu is reactive before they ever click.
+        this.tweens.add({ targets: text, scale: 1.12, duration: 110, ease: 'Back.easeOut' });
+        text.setStroke('#06b6d4', 2);
+        audioManager.playTone(620, 35, 'sine');
       });
       text.on('pointerout', () => {
-        this.tweens.add({ targets: text, scale: 1, duration: 100 });
+        this.tweens.add({ targets: text, scale: 1, duration: 110, ease: 'Sine.easeIn' });
+        text.setStroke('#000000', 0);
       });
       text.on('pointerdown', () => {
         audioManager.playClickTone();
@@ -229,13 +241,19 @@ export class MenuScene extends Phaser.Scene {
     const panel = drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
       depth: 201,
       scrollFactor: 0,
-      inner: COLORS.FRAME_BORDER_LIGHT,
+      fill: COLORS.ERROR,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.SUCCESS,
+      shadow: true,
+      shadowAlpha: 0.28,
+      accent: COLORS.CYAN_GLOW,
+      accentSide: 'top',
     });
     const title = this.add
       .text(width / 2, panelY + 28, 'DESKTOP RECOMMENDED', {
         fontSize: '16px',
         fontFamily: FONTS.RETRO,
-        color: '#081820',
+        color: COLOR_HEX.TEXT_LIGHT,
       })
       .setOrigin(0.5, 0)
       .setDepth(202);
@@ -251,7 +269,7 @@ export class MenuScene extends Phaser.Scene {
         {
           fontSize: '11px',
           fontFamily: FONTS.RETRO,
-          color: '#081820',
+          color: COLOR_HEX.TEXT_LIGHT,
           align: 'center',
           lineSpacing: 5,
         },
@@ -262,8 +280,8 @@ export class MenuScene extends Phaser.Scene {
       .text(width / 2, panelY + PANEL_H - 56, '> GOT IT — CONTINUE <', {
         fontSize: '12px',
         fontFamily: FONTS.RETRO,
-        color: '#081820',
-        backgroundColor: '#e0f8d0',
+        color: COLOR_HEX.TEXT_DARK,
+        backgroundColor: COLOR_HEX.CYAN_GLOW,
         padding: { x: 12, y: 6 },
       })
       .setOrigin(0.5)
@@ -530,8 +548,8 @@ export class MenuScene extends Phaser.Scene {
     this.menuTexts.forEach((text, index) => {
       const selected = index === this.selectedMenuIndex;
       text.setText(`${selected ? '> ' : '  '}${this.menuItems[index].text}`);
-      text.setColor(selected ? '#081820' : '#88c070');
-      text.setBackgroundColor(selected ? '#e0f8d0' : 'transparent');
+      text.setColor(selected ? COLOR_HEX.TEXT_DARK : COLOR_HEX.TEXT_MUTED);
+      text.setBackgroundColor(selected ? COLOR_HEX.CYAN_GLOW : 'transparent');
       text.setPadding(selected ? 6 : 0, selected ? 4 : 0, selected ? 6 : 0, selected ? 4 : 0);
     });
 
@@ -571,19 +589,25 @@ export class MenuScene extends Phaser.Scene {
     const panel = drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
       depth: 101,
       scrollFactor: 0,
-      inner: 0x346856,
+      fill: COLORS.ERROR,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.SUCCESS,
+      shadow: true,
+      shadowAlpha: 0.28,
+      accent: COLORS.BRIDGE_WRONG,
+      accentSide: 'top',
     });
 
     const title = this.add.text(width / 2, panelY + 32, 'OVERWRITE SAVE?', {
       fontSize: '14px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
     }).setOrigin(0.5, 0).setDepth(102);
 
     const body = this.add.text(width / 2, panelY + 72, 'Starting a new game will erase\nyour existing save permanently.', {
       fontSize: '10px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
       align: 'center',
       lineSpacing: 6,
     }).setOrigin(0.5, 0).setDepth(102);
@@ -595,7 +619,7 @@ export class MenuScene extends Phaser.Scene {
       this.add.text(panelX + (i === 0 ? 96 : PANEL_W - 96), panelY + PANEL_H - 56, label, {
         fontSize: '12px',
         fontFamily: FONTS.RETRO,
-        color: '#081820',
+        color: COLOR_HEX.TEXT_LIGHT,
       }).setOrigin(0.5).setDepth(102).setInteractive({ useHandCursor: true }),
     );
 
@@ -603,8 +627,8 @@ export class MenuScene extends Phaser.Scene {
       choiceTexts.forEach((text, i) => {
         const isSelected = i === selected;
         text.setText(`${isSelected ? '> ' : '  '}${choices[i]}${isSelected ? ' <' : '  '}`);
-        text.setColor(isSelected ? '#081820' : '#346856');
-        text.setBackgroundColor(isSelected ? '#e0f8d0' : 'transparent');
+        text.setColor(isSelected ? COLOR_HEX.TEXT_DARK : COLOR_HEX.TEXT_MUTED);
+        text.setBackgroundColor(isSelected ? COLOR_HEX.CYAN_GLOW : 'transparent');
         text.setPadding(isSelected ? 6 : 0, isSelected ? 4 : 0, isSelected ? 6 : 0, isSelected ? 4 : 0);
       });
     };
@@ -704,13 +728,19 @@ export class MenuScene extends Phaser.Scene {
     const panel = drawPanel(this, panelX, panelY, PANEL_W, PANEL_H, {
       depth: 101,
       scrollFactor: 0,
-      inner: 0x346856,
+      fill: COLORS.ERROR,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.SUCCESS,
+      shadow: true,
+      shadowAlpha: 0.28,
+      accent: COLORS.CYAN_GLOW,
+      accentSide: 'top',
     });
 
     const settingsTitle = this.add.text(width / 2, panelY + 32, 'SETTINGS', {
       fontSize: '16px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
     }).setOrigin(0.5, 0).setDepth(102);
 
     const volumes = [
@@ -729,14 +759,14 @@ export class MenuScene extends Phaser.Scene {
       this.add.text(panelX + 32, ROW_Y[i], label, {
         fontSize: '10px',
         fontFamily: FONTS.RETRO,
-        color: '#081820',
+        color: COLOR_HEX.TEXT_LIGHT,
       }).setDepth(102),
     );
 
     const barGraphics = [this.add.graphics().setDepth(102), this.add.graphics().setDepth(102)];
     const pctTexts = [
-      this.add.text(BAR_X + BAR_W + 12, ROW_Y[0], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: '#081820' }).setDepth(102),
-      this.add.text(BAR_X + BAR_W + 12, ROW_Y[1], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: '#081820' }).setDepth(102),
+      this.add.text(BAR_X + BAR_W + 12, ROW_Y[0], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_LIGHT }).setDepth(102),
+      this.add.text(BAR_X + BAR_W + 12, ROW_Y[1], '', { fontSize: '10px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_LIGHT }).setDepth(102),
     ];
 
     const redrawSliders = () => {
@@ -767,13 +797,13 @@ export class MenuScene extends Phaser.Scene {
     const hintText = this.add.text(width / 2, panelY + 192, 'Tab switch | arrows adjust', {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
-      color: '#4a5568',
+      color: COLOR_HEX.TEXT_MUTED,
     }).setOrigin(0.5).setDepth(102);
 
     const closeBtn = this.add.text(width / 2, panelY + PANEL_H - 36, 'CLOSE', {
       fontSize: '12px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.CYAN_GLOW,
     }).setOrigin(0.5, 0).setDepth(102).setInteractive({ useHandCursor: true });
 
     const onLeft = () => adjust(-10);

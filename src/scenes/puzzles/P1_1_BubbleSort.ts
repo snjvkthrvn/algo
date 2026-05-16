@@ -20,7 +20,6 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { BitHint } from '../../entities/BitHint';
@@ -28,15 +27,26 @@ import { drawPanel } from '../../ui/panel';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
 import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
+import { BitCompanion } from '../../ui/BitCompanion';
+import { ComplexityMeter } from '../../ui/ComplexityMeter';
+import { NextMoveHint } from '../../ui/NextMoveHint';
+import { AlgorithmTrace } from '../../ui/AlgorithmTrace';
+import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
+import type { RegionBackdropId, RegionBackdropOptions } from '../../ui/RegionBackdrop';
 import {
   BUBBLE_SORT_ROUNDS,
   firstInversionIndex,
   isSortedAscending,
   starsFromMistakesAndHints,
   swapAdjacent,
+  withOptimalityPenalty,
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
+import { showLessonCard } from '../../ui/LessonCard';
+import { showRoundRecap } from '../../ui/RoundRecap';
 import { buildBubbleSortPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
+import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
+import { PuzzlePhase } from '../../data/types';
 
 interface SortTile {
   value: number;
@@ -74,11 +84,37 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   private statusStrip!: Phaser.GameObjects.Text;
   private currentSwaps = 0;
   private lastPreviewAction = 'none';
-  private pseudoText!: Phaser.GameObjects.Text;
+  /**
+   * Live algorithm trace replacing the previous static pseudocode block. The
+   * trace shows the current `i`, `a[i]`, `a[i+1]` bindings and the entire
+   * array as the player acts — bubble sort becomes a moment-to-moment
+   * conversation between code and board.
+   */
+  private trace: AlgorithmTrace | null = null;
   private currentSweepLine = 0;
   private groundLine!: Phaser.GameObjects.Graphics;
   private rowY = 0;
   private preview: PuzzlePreviewSidePanel | null = null;
+  /**
+   * Live brute-force-vs-algo comparison chip. For Bubble Sort, the
+   * inversion count is BOTH the optimal swap count AND the worst-case
+   * cost (since a fully reversed row has n(n−1)/2 inversions). Comparing
+   * the player's swap count to the inversion count gives a real-time
+   * "are you wasting swaps?" readout.
+   */
+  private complexity: ComplexityMeter | null = null;
+  /** Glowing swap-pair indicator placed over the leftmost inversion. */
+  private hint: NextMoveHint | null = null;
+  /** Glitch as visible co-actor during FEEL_IT round 1. Null in USE_IT rounds. */
+  private bruteForce: BruteForceActor | null = null;
+  /** True between FEEL_IT round completion and USE_IT round mount. Guards
+   *  against re-firing the NAME_IT beat on restart. */
+  private namedYet = false;
+  /** Diegetic control affordance — visible during FEEL_IT round 1 only, fades
+   *  on first player interaction. Tells the player HOW to act without naming
+   *  the algorithm (no "swap neighbours" / "sort"). */
+  private affordancePrompt: Phaser.GameObjects.Text | null = null;
+  private affordanceFaded = false;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_1 });
@@ -88,17 +124,29 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   }
 
   create(): void {
+    // FEEL_IT first-principles guard: strip the mechanic prescription out of
+    // the title-bar subtitle when round 0 is FEEL_IT. The player is meant to
+    // discover that adjacent swaps work — we shouldn't be naming the
+    // mechanic in the chrome before they've played.
+    if (BUBBLE_SORT_ROUNDS[0].lesson.phase === PuzzlePhase.FEEL_IT) {
+      this.puzzleDescription = 'The furrows grew out of order. Make them stand shortest to tallest.';
+    }
     super.create();
-    new PuzzleAmbience(this, 'farmland', { intensity: 1 });
+    // Light particle haze layered on top of the new procedural backdrop —
+    // RegionBackdrop already paints the farmstead scenery, so PuzzleAmbience
+    // stays at low intensity just to keep dust drifting in the foreground.
+    new PuzzleAmbience(this, 'farmland', { intensity: 0.4 });
 
-    const { width, height } = this.cameras.main;
-    this.rowY = height / 2 + 36;
+    const { width } = this.cameras.main;
+    this.rowY = this.cameras.main.height / 2 + 36;
     this.buildGroundLine(width);
     this.buildTopStrip(width);
-    this.buildPseudocodePanel(width);
-    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
-    this.preview.setTitle('SORT PREVIEW');
-    this.preview.show();
+
+    // BitCompanion is universal — present in all phases (fictional character,
+    // no algorithm leak). All other teaching panels (pseudocode trace, sort
+    // preview, complexity meter, hint arrow) mount per-phase via
+    // mountUseItPanels(). FEEL_IT mounts a BruteForceActor instead.
+    new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40 });
 
     this.startRound(0).catch(() => undefined);
 
@@ -107,6 +155,10 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       this.bitHint = null;
       this.preview?.destroy();
       this.preview = null;
+      this.bruteForce?.destroy();
+      this.bruteForce = null;
+      this.affordancePrompt?.destroy();
+      this.affordancePrompt = null;
     });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -117,10 +169,16 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_SORTING_SHED_BG;
+    return null;
   }
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.02;
+    return 0;
+  }
+  protected getPuzzleTheme(): PuzzleTheme {
+    return ARRAY_PLAINS_PUZZLE_THEME;
+  }
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    return { id: 'array-plains', options: { intensity: 1 } };
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -167,27 +225,57 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   }
 
   private buildPseudocodePanel(width: number): void {
-    const panelX = 70;
-    const panelY = 250;
-    const panelW = 220;
-    const panelH = 150;
-    drawPanel(this, panelX, panelY, panelW, panelH, {
-      depth: 8, fill: 0x0a1a14, frame: 0x346856, inner: 0x88c070, alpha: 0.88,
+    // Live AlgorithmTrace — every line that references variables ({i},
+    // {lhs}, {rhs}, {arr}, {swaps}) updates whenever bindTraceState runs.
+    // This converts the previously-static pseudocode panel into a live
+    // debugger view of bubble sort.
+    this.trace = new AlgorithmTrace(this, {
+      x: 70,
+      y: 250,
+      width: 230,
+      title: 'bubbleSort(arr)',
+      lines: [
+        'for pass = 1..n-1',
+        '  for i = 0..n-2',
+        '    i = {i}, a[i] = {lhs}, a[i+1] = {rhs}',
+        '    if a[i] > a[i+1]: swap',
+        '  ── pass complete ──',
+        'arr = {arr}  (swaps {swaps})',
+      ],
     });
-    this.add.text(panelX + 10, panelY + 8, 'PSEUDOCODE', {
-      fontSize: '9px', fontFamily: FONTS.RETRO, color: '#88c070',
-    }).setDepth(10);
-    this.pseudoText = this.add.text(panelX + 10, panelY + 26, '', {
-      fontSize: '10px', fontFamily: FONTS.MONO, color: '#e0f8d0', lineSpacing: 4,
-    }).setDepth(10);
+    this.bindTraceState();
     void width;
+  }
+
+  /**
+   * Push the current scene state into the AlgorithmTrace's bindings so
+   * every {var} placeholder shows live values. Called after every
+   * focus change, swap, or inspect.
+   */
+  private bindTraceState(): void {
+    if (!this.trace) return;
+    const i = firstInversionIndex(this.values);
+    const lhs = i >= 0 ? this.values[i] : null;
+    const rhs = i >= 0 ? this.values[i + 1] : null;
+    this.trace.bindState({
+      i: i >= 0 ? i : 'sorted',
+      lhs,
+      rhs,
+      arr: `[${this.values.join(', ')}]`,
+      swaps: this.currentSwaps,
+    });
   }
 
   private updateStatusStrip(): void {
     const round = BUBBLE_SORT_ROUNDS[this.roundIndex];
-    this.statusStrip.setText(
-      `ROUND ${this.roundIndex + 1}/3 · ${round.label}   ·   SWAPS ${this.currentSwaps} / OPTIMAL ${round.optimalSwaps}`,
-    );
+    const isFeelIt = round.lesson.phase === PuzzlePhase.FEEL_IT;
+    // FEEL_IT strips "OPTIMAL" / "SWAPS" vocabulary — the player shouldn't
+    // know there's an algorithmic best answer until NAME_IT names the
+    // pattern. Diegetic move count only.
+    const status = isFeelIt
+      ? `ROUND ${this.roundIndex + 1}/${BUBBLE_SORT_ROUNDS.length} · ${this.currentSwaps} ${this.currentSwaps === 1 ? 'move' : 'moves'}`
+      : `ROUND ${this.roundIndex + 1}/${BUBBLE_SORT_ROUNDS.length} · ${round.label}   ·   SWAPS ${this.currentSwaps} / OPTIMAL ${round.optimalSwaps}`;
+    this.statusStrip.setText(status);
     this.refreshPreview();
   }
 
@@ -216,28 +304,214 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     this.currentSwaps = 0;
     this.lastPreviewAction = 'round start';
     this.currentSweepLine = 0;
-    this.isResolving = true; // unblocked after banner
+    this.isResolving = true; // unblocked after lesson + banner
     this.actionLocked = false;
 
+    const isFeelIt = round.lesson.phase === PuzzlePhase.FEEL_IT;
+    if (isFeelIt) {
+      this.mountFeelItPanels();
+    } else {
+      this.mountUseItPanels();
+      // Coming from FEEL_IT into USE_IT — fade Glitch out of focus instead of
+      // destroying. The contrast read in round 1 is the *reason* round 2's
+      // pseudocode lands; keeping Glitch dim-visible cements that they're
+      // still the worse approach.
+      this.bruteForce?.fadeTo(0.32);
+    }
+
+    this.complexity?.reset({
+      bruteCost: round.optimalSwaps,
+      algoCost: 0,
+      bruteLabel: 'inversions',
+      algoLabel: 'your swaps',
+    });
+
     this.updateStatusStrip();
-    this.updatePseudocode(false);
+    if (this.trace) this.updatePseudocode(false);
     this.layoutTiles();
     this.refreshHints();
 
     this.bitHint?.destroy();
-    const firstTile = this.tiles[0];
-    if (firstTile) {
-      this.bitHint = new BitHint(this, firstTile.container.x - 56, firstTile.container.y - 60);
-      this.bitHint.showWarm();
+    this.bitHint = null;
+    // FEEL_IT suppresses BitHint entirely — Bit pointing at the leftmost
+    // inversion is the algorithm telling the player which pair to look at,
+    // which violates the derive-it-yourself contract. BitHint returns in
+    // USE_IT, where Bit becomes a legitimate guide for the named pattern.
+    if (!this.isFeelItRound()) {
+      const firstTile = this.tiles[0];
+      if (firstTile) {
+        this.bitHint = new BitHint(this, firstTile.container.x - 56, firstTile.container.y - 60);
+        this.bitHint.showWarm();
+      }
     }
 
+    // Surface the per-round lesson card. In FEEL_IT this is the diegetic
+    // "Fix the row" copy (no algorithm name). In USE_IT it's the formal
+    // pedagogical block ("Bubble Sort · Round 2 · Twist").
+    await showLessonCard(this, round.lesson, 'parchment');
+
     await showRoundBanner(this, {
-      label: `ROUND ${idx + 1} / 3`,
+      label: `ROUND ${idx + 1} / ${BUBBLE_SORT_ROUNDS.length}`,
       subtitle: `${round.label}  ·  sort ${round.values.length} furrows ascending`,
-      accent: idx === 2 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
+      accent: idx === BUBBLE_SORT_ROUNDS.length - 1 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
     });
 
     this.isResolving = false;
+  }
+
+  /** FEEL_IT mounts: only the brute-force co-actor. NO pseudocode, NO state
+   *  preview, NO algorithm-named complexity meter, NO guided arrows. The
+   *  player has to derive the heuristic from contrast — that's the whole
+   *  pedagogical point. */
+  private mountFeelItPanels(): void {
+    if (this.bruteForce) return;
+    const { width } = this.cameras.main;
+    const round = BUBBLE_SORT_ROUNDS[this.roundIndex];
+    // Glitch's row sits above the player's, in the vertical band the
+    // pseudocode panel will eventually occupy when round 2 begins.
+    const glitchRowY = this.rowY - 160;
+    this.bruteForce = new BruteForceActor(this, {
+      x: width / 2,
+      y: glitchRowY,
+      strategy: makeBubbleSortBruteStrategy(round.values),
+      heading: "⚠ GLITCH'S ROW",
+      subtitle: '(grabbing furrows at random...)',
+      notDoneLabel: 'still in chaos',
+      doneLabel: 'somehow got there',
+      depth: 28,
+    });
+
+    // Diegetic control affordance — sits in the neutral band between Glitch
+    // (above) and the player's row (below). Pulses gently to draw attention,
+    // fades the moment the player makes their first interaction.
+    const promptY = this.rowY - TILE_H / 2 - 22;
+    this.affordancePrompt = this.add.text(width / 2, promptY,
+      'Tap a furrow. Its neighbour will trade places.',
+      {
+        fontSize: '11px',
+        fontFamily: '"IBM Plex Mono", monospace',
+        color: '#88c070',
+        fontStyle: 'italic',
+        stroke: '#081820',
+        strokeThickness: 2,
+      },
+    ).setOrigin(0.5, 0.5).setDepth(40);
+    this.tweens.add({
+      targets: this.affordancePrompt,
+      alpha: 0.6,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  /** USE_IT mounts: the full teaching toolkit (idempotent — safe to call on
+   *  every round-2-onward start). */
+  private mountUseItPanels(): void {
+    const { width } = this.cameras.main;
+    if (!this.trace) this.buildPseudocodePanel(width);
+    if (!this.preview) {
+      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
+      this.preview.setTitle('SORT PREVIEW');
+      this.preview.show();
+    }
+    if (!this.complexity) {
+      this.complexity = new ComplexityMeter(this, {
+        x: width / 2, y: 218,
+        width: 320,
+        bruteLabel: 'inversions',
+        bruteCost: BUBBLE_SORT_ROUNDS[this.roundIndex].optimalSwaps,
+        algoLabel: 'your swaps',
+        algoCost: 0,
+        variant: 'parchment',
+        depth: 40,
+      });
+    }
+    if (!this.hint) this.hint = new NextMoveHint(this, { tone: 'gold', depth: 45 });
+  }
+
+  /**
+   * NAME_IT beat — fired between FEEL_IT completion and the first USE_IT
+   * round. Mid-screen parchment overlay with the NPC speaker eyebrow and
+   * the literal script line. Dismissable on SPACE/ENTER/click. Resolves
+   * when dismissed so `completeRound` can advance the round index.
+   */
+  private async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
+    const { width, height } = this.cameras.main;
+    const cardW = Math.min(width - 200, 580);
+    const cardH = 200;
+
+    return new Promise<void>((resolve) => {
+      const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0.55)
+        .setOrigin(0, 0)
+        .setDepth(8999)
+        .setInteractive();
+
+      const container = this.add.container(width / 2, height / 2).setDepth(9000);
+
+      const shadow = this.add.graphics();
+      shadow.fillStyle(0x000000, 0.42);
+      shadow.fillRoundedRect(-cardW / 2 + 6, -cardH / 2 + 6, cardW, cardH, 6);
+
+      const card = this.add.graphics();
+      card.fillStyle(0xf0e4c2, 1);
+      card.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
+      card.fillStyle(0xd8c890, 1);
+      card.fillRect(-cardW / 2 + 6, cardH / 2 - 12, cardW - 12, 6);
+      card.lineStyle(3, 0x1a1208, 1);
+      card.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
+      card.lineStyle(1, 0xf5b820, 0.65);
+      card.strokeRoundedRect(-cardW / 2 + 4, -cardH / 2 + 4, cardW - 8, cardH - 8, 4);
+
+      const eyebrow = this.add.text(-cardW / 2 + 24, -cardH / 2 + 18, beat.speaker.toUpperCase(), {
+        fontSize: '9px',
+        fontFamily: '"Press Start 2P", monospace',
+        color: '#a03830',
+      }).setOrigin(0, 0);
+
+      const line = this.add.text(-cardW / 2 + 24, -cardH / 2 + 46, beat.line, {
+        fontSize: '13px',
+        fontFamily: '"IBM Plex Mono", monospace',
+        color: '#1a1208',
+        wordWrap: { width: cardW - 48, useAdvancedWrap: true },
+        lineSpacing: 4,
+      }).setOrigin(0, 0);
+
+      const hint = this.add.text(0, cardH / 2 - 18, 'press  SPACE  · ENTER · click  to continue', {
+        fontSize: '10px',
+        fontFamily: '"IBM Plex Mono", monospace',
+        color: '#4a3818',
+        fontStyle: 'italic',
+      }).setOrigin(0.5, 0.5);
+
+      container.add([shadow, card, eyebrow, line, hint]);
+      container.setAlpha(0).setScale(0.92);
+      this.tweens.add({ targets: container, alpha: 1, scale: 1, duration: 240, ease: 'Back.easeOut' });
+
+      let dismissed = false;
+      const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        this.input.keyboard?.off('keydown-SPACE', dismiss);
+        this.input.keyboard?.off('keydown-ENTER', dismiss);
+        this.tweens.add({
+          targets: container,
+          alpha: 0,
+          scale: 0.92,
+          duration: 180,
+          ease: 'Power2.easeIn',
+          onComplete: () => {
+            container.destroy();
+            dim.destroy();
+            resolve();
+          },
+        });
+      };
+      this.input.keyboard?.once('keydown-SPACE', dismiss);
+      this.input.keyboard?.once('keydown-ENTER', dismiss);
+      dim.once('pointerdown', dismiss);
+    });
   }
 
   private layoutTiles(): void {
@@ -270,6 +544,14 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     }
   }
 
+  /** Phase helper — true when the current round is FEEL_IT. Used to gate
+   *  algorithmic hand-holding (compare carets, index labels, focus
+   *  arrows) that violate the first-principles "no naming before doing"
+   *  contract. */
+  private isFeelItRound(): boolean {
+    return BUBBLE_SORT_ROUNDS[this.roundIndex]?.lesson.phase === PuzzlePhase.FEEL_IT;
+  }
+
   private createTile(x: number, y: number, value: number, index: number): SortTile {
     // Anchored "footprint" shadow at the home position — never moves.
     const shadow = this.add.ellipse(x, y + TILE_H / 2 + 12, TILE_W + 6, 6, 0x000000, 0.42).setDepth(9);
@@ -288,7 +570,11 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       strokeThickness: 3,
     }).setOrigin(0.5);
 
-    const key = this.add.text(0, TILE_H / 2 + 14, index < this.values.length - 1 ? `[${index + 1}]` : '·', {
+    // Index labels [1][2][3] are zero-indexed array vocabulary — gated to
+    // USE_IT so they don't leak the "arrays have indices" framing during
+    // FEEL_IT (player should derive the row-as-sequence framing).
+    const showIndex = !this.isFeelItRound() && index < this.values.length - 1;
+    const key = this.add.text(0, TILE_H / 2 + 14, showIndex ? `[${index + 1}]` : '', {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
       color: '#88c070',
@@ -305,10 +591,50 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     this.paintSprout(sprout, value, false);
     sprout.y = -TILE_H / 2 - 2;
 
-    // Hit zone matches the soil rectangle.
+    // Hit zone matches the soil rectangle. We support BOTH click-to-swap
+    // (legacy / keyboard accessible) and drag-to-swap (a more physical
+    // gesture that matches the bubble-sort mental model — pick up a furrow,
+    // drag it past its neighbour to swap).
     const hit = this.add.rectangle(0, 0, TILE_W, TILE_H, 0x000000, 0)
-      .setInteractive({ useHandCursor: true });
-    hit.on('pointerdown', () => this.trySwap(index));
+      .setInteractive({ useHandCursor: true, draggable: true });
+    let dragStartX = 0;
+    let didDrag = false;
+    hit.on('pointerdown', () => {
+      dragStartX = container.x;
+      didDrag = false;
+    });
+    hit.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number) => {
+      if (this.isResolving || this.actionLocked) return;
+      didDrag = true;
+      const span = TILE_W + TILE_GAP;
+      // Clamp horizontal drag to ±1 tile-span; the player only ever swaps
+      // with an immediate neighbour, so capping the cursor distance prevents
+      // multi-tile drags from feeling like dead input.
+      const clamped = Phaser.Math.Clamp(dragX - dragStartX, -span, span);
+      container.x = dragStartX + clamped;
+    });
+    hit.on('dragend', () => {
+      if (this.isResolving || this.actionLocked) {
+        this.tweens.add({ targets: container, x: dragStartX, duration: 140, ease: 'Quad.easeOut' });
+        return;
+      }
+      const span = TILE_W + TILE_GAP;
+      const delta = container.x - dragStartX;
+      // Snap home, then dispatch a swap if the drag crossed a neighbour midpoint.
+      container.x = dragStartX;
+      if (delta >= span * 0.45) {
+        this.trySwap(index);
+      } else if (delta <= -span * 0.45 && index > 0) {
+        this.trySwap(index - 1);
+      } else if (didDrag) {
+        // No swap committed — give a soft snap-back so the gesture feels
+        // physical instead of silent.
+        audioManager.playTone(280, 60, 'sine');
+      }
+    });
+    hit.on('pointerup', () => {
+      if (!didDrag) this.trySwap(index);
+    });
     hit.on('pointerover', () => this.tweens.add({ targets: container, scale: 1.03, duration: 90 }));
     hit.on('pointerout', () => this.tweens.add({ targets: container, scale: 1, duration: 90 }));
 
@@ -407,6 +733,23 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
 
   private trySwap(leftIndex: number): void {
     if (this.isResolving || this.actionLocked) return;
+    // Fade the affordance prompt on the first ANY interaction (even an
+    // invalid one against an out-of-bounds tile) — the player has now
+    // discovered the control affordance and the prompt has done its job.
+    if (this.affordancePrompt && !this.affordanceFaded) {
+      this.affordanceFaded = true;
+      this.tweens.killTweensOf(this.affordancePrompt);
+      this.tweens.add({
+        targets: this.affordancePrompt,
+        alpha: 0,
+        duration: 320,
+        ease: 'Sine.easeIn',
+        onComplete: () => {
+          this.affordancePrompt?.destroy();
+          this.affordancePrompt = null;
+        },
+      });
+    }
     if (leftIndex < 0 || leftIndex >= this.values.length - 1) {
       this.showMessage('Pick a furrow that has a right-hand neighbour.', COLORS.WARNING);
       return;
@@ -424,17 +767,23 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     const tileY = leftTile.container.y;
 
     if (!wasUseful) {
-      this.lastPreviewAction = `no swap at i=${leftIndex}`;
+      // Checking a sorted pair is part of how bubble sort terminates — we
+      // don't count it as a mistake. The player gets a soft beep + a Bit
+      // 'cold' reaction so the no-op still feels like feedback, and the
+      // status strip records the inspection so it's clear the action was
+      // registered. No swap counter increment, no attempts bump, no
+      // mistakesTotal increase.
+      this.lastPreviewAction = `inspected i=${leftIndex} · no swap needed`;
       this.refreshPreview();
-      audioManager.playTone(180, 110, 'square');
+      audioManager.playTone(220, 90, 'sine');
       this.currentSweepLine = 1;
       this.updatePseudocode(false);
-      JuiceSystem.wrongBurst(this, midX, tileY);
-      JuiceSystem.cameraShake(this, 40, 0.001);
       this.bitHint?.showCold();
-      this.attempts++;
-      this.mistakesTotal++;
-      this.showMessage('Already in order: compare, then leave this pair alone.', COLORS.WARNING);
+      this.tweens.add({
+        targets: [leftTile.container, rightTile.container],
+        scale: 0.94, duration: 110, yoyo: true, ease: 'Quad.easeOut',
+      });
+      this.showMessage('Already in order — that pair is fine. Move on.', COLORS.SUCCESS);
       this.time.delayedCall(220, () => {
         this.actionLocked = false;
         this.refreshHints();
@@ -444,8 +793,10 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
 
     this.values = swapAdjacent(this.values, leftIndex);
     this.currentSwaps++;
+    this.complexity?.setAlgoCost(this.currentSwaps);
     this.lastPreviewAction = `swapped i=${leftIndex} -> ${this.values.join(', ')}`;
     this.updateStatusStrip();
+    this.bindTraceState();
 
     this.tiles[leftIndex] = rightTile;
     this.tiles[leftIndex + 1] = leftTile;
@@ -481,31 +832,63 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
 
   private refreshHints(): void {
     const focus = firstInversionIndex(this.values);
+    const feelIt = this.isFeelItRound();
 
     this.tiles.forEach((tile, index) => {
       const inPair = index === focus || index === focus + 1;
-      this.paintSoil(tile.soil, inPair ? 'focus' : 'idle');
-      tile.caret.setAlpha(index === focus ? 1 : 0);
+      // FEEL_IT keeps every tile idle — no cyan focus rim, no caret. The
+      // player has to *see* which neighbours are out of order themselves.
+      // USE_IT (post-NAME_IT) restores the focus highlight as a guided cue.
+      this.paintSoil(tile.soil, feelIt ? 'idle' : (inPair ? 'focus' : 'idle'));
+      tile.caret.setAlpha(feelIt ? 0 : (index === focus ? 1 : 0));
     });
+
+    if (feelIt) {
+      // FEEL_IT: Bit floats neutrally near the player; no arrow tracking the
+      // forced move. The whole point is to make the player derive the focus.
+      this.bitHint?.showNeutral();
+      this.hint?.clear();
+      return;
+    }
 
     if (focus >= 0 && this.tiles[focus] && this.tiles[focus + 1]) {
       const leftTile = this.tiles[focus];
       const rightTile = this.tiles[focus + 1];
       this.bitHint?.moveTo((leftTile.container.x + rightTile.container.x) / 2, leftTile.container.y - 76);
       this.bitHint?.showWarm();
+      // Surface the algorithm's forced move with a glowing swap-pair arrow
+      // anchored directly over the two tiles. The arrow tracks the leftmost
+      // inversion and disappears once the row is sorted.
+      this.hint?.setTarget({
+        kind: 'swap-pair',
+        x: leftTile.container.x,
+        y: leftTile.container.y - 32,
+        x2: rightTile.container.x,
+        label: 'swap',
+      });
     } else {
       this.bitHint?.showNeutral();
+      this.hint?.clear();
     }
   }
 
   private updatePseudocode(swapped: boolean): void {
-    const mark = (lit: boolean) => (lit ? '▶' : ' ');
-    this.pseudoText.setText([
-      `${mark(this.currentSweepLine === 1)} for pass = 1..n-1`,
-      `${mark(this.currentSweepLine === 2)}   for i = 0..n-2`,
-      `${mark(this.currentSweepLine === 1 || this.currentSweepLine === 3)}     if a[i] > a[i+1]`,
-      `${mark(swapped)}       swap(a[i], a[i+1])`,
-    ].join('\n'));
+    if (!this.trace) return;
+    // `currentSweepLine` carries semantic meaning: 0 = idle, 1 = comparing,
+    // 2 = scanning, 3 = swapping. Map to AlgorithmTrace's zero-indexed line
+    // numbers. We re-bind state on every update so the i/lhs/rhs bindings
+    // track the leftmost inversion live.
+    this.bindTraceState();
+    if (swapped) {
+      // Two lines fire together on a swap: the "if" guard and the swap row.
+      this.trace.highlightLines(3, 5);
+    } else if (this.currentSweepLine === 1) {
+      this.trace.highlightLine(2); // comparing this i
+    } else if (this.currentSweepLine === 2) {
+      this.trace.highlightLine(1); // scanning the row
+    } else {
+      this.trace.highlightLine(0);
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -530,9 +913,11 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     });
     JuiceSystem.screenFlash(this, COLORS.SUCCESS, 0.10, 240);
 
-    const optimal = BUBBLE_SORT_ROUNDS[this.roundIndex].optimalSwaps;
+    const round = BUBBLE_SORT_ROUNDS[this.roundIndex];
+    const optimal = round.optimalSwaps;
     const wasted = Math.max(0, this.currentSwaps - optimal);
     this.mistakesTotal += wasted;
+    this.complexity?.celebrate();
 
     const isFinal = this.roundIndex >= BUBBLE_SORT_ROUNDS.length - 1;
     this.showMessage(
@@ -540,16 +925,78 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       COLORS.SUCCESS,
     );
 
+    // Round-specific star: 3 if at optimum exactly, 2 if within 2, else 1.
+    // This is a *preview* of the run's star count, not the final puzzle
+    // score (which aggregates across all rounds).
+    const roundStars: 1 | 2 | 3 = wasted === 0 ? 3 : wasted <= 2 ? 2 : 1;
+
     if (isFinal) {
       this.bitHint?.celebrate();
-      this.time.delayedCall(1400, () => {
-        const stars = starsFromMistakesAndHints(this.mistakesTotal, this.hintsUsed);
+      this.time.delayedCall(1400, async () => {
+        // Show the round-4 recap, then the final aggregate stars.
+        await this.showRecapForCompletedRound(round, optimal, wasted, roundStars);
+        const aggregateOptimal = BUBBLE_SORT_ROUNDS
+          .reduce((acc, r) => acc + r.optimalSwaps, 0);
+        const aggregateUsed = aggregateOptimal + this.mistakesTotal;
+        const base = starsFromMistakesAndHints(this.mistakesTotal, this.hintsUsed);
+        const stars = withOptimalityPenalty(base, aggregateUsed, aggregateOptimal);
         this.onPuzzleComplete(stars);
       });
       return;
     }
 
-    this.time.delayedCall(1500, () => this.startRound(this.roundIndex + 1).catch(() => undefined));
+    // Non-final rounds: lock-in cascade plays for ~720ms, then show the
+    // recap card. After the recap dismisses, advance to the next round.
+    this.time.delayedCall(800, async () => {
+      await this.showRecapForCompletedRound(round, optimal, wasted, roundStars);
+
+      // FEEL_IT completion → fire the NAME_IT script beat once, BEFORE the
+      // next round starts. This is the moment where the NPC names the
+      // algorithm the player just felt — the entire pedagogical hinge of
+      // the first-principles contract.
+      if (
+        round.lesson.phase === PuzzlePhase.FEEL_IT &&
+        round.lesson.nameItBeat &&
+        !this.namedYet
+      ) {
+        this.namedYet = true;
+        // Freeze Glitch the moment NAME_IT fires — narratively, the NPC's
+        // recognition stops Glitch in their tracks.
+        this.bruteForce?.freeze();
+        await this.showNameItBeat(round.lesson.nameItBeat);
+      }
+
+      this.startRound(this.roundIndex + 1).catch(() => undefined);
+    });
+  }
+
+  /** Compose + show the round-complete RoundRecap. */
+  private async showRecapForCompletedRound(
+    round: typeof BUBBLE_SORT_ROUNDS[number],
+    optimal: number,
+    wasted: number,
+    stars: 1 | 2 | 3,
+  ): Promise<void> {
+    const savings = optimal - this.currentSwaps;
+    const factor = optimal > 0 ? Math.max(1, optimal / Math.max(1, this.currentSwaps)) : 1;
+    const insight = wasted === 0
+      ? `Optimal pass — you matched bubble sort's inversion lower bound (${optimal}).`
+      : `You used ${wasted} extra swap${wasted === 1 ? '' : 's'}; the inversion count is the floor — you can't beat it.`;
+    const stats: Array<{ label: string; value: string; tint: 'algo' | 'brute' | 'gold' | 'plain' }> = [
+      { label: 'your swaps', value: String(this.currentSwaps), tint: 'algo' },
+      { label: 'inversions (lower bound)', value: String(optimal), tint: 'brute' },
+    ];
+    if (savings > 0) {
+      stats.push({ label: 'under optimum by', value: `${savings} (impossible ✦)`, tint: 'gold' });
+    } else if (factor > 1) {
+      stats.push({ label: 'efficiency', value: `${factor.toFixed(1)}× brute`, tint: 'gold' });
+    }
+    await showRoundRecap(this, {
+      title: `Round ${this.roundIndex + 1} · ${round.label}`,
+      stars,
+      stats,
+      insight,
+    }, 'parchment');
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -572,4 +1019,36 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   protected getConceptName(): string {
     return 'Bubble Sort';
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Brute-force strategy — fed to BruteForceActor during FEEL_IT round 1.
+//
+// Bubble sort's brute-force foil is "random adjacent swap" — Glitch picks a
+// random index and swaps regardless of whether it's an inversion. Half the
+// time they make progress; half the time they undo their own work. The
+// average time to convergence is dramatically worse than the player's
+// directed approach. We don't need to mathematically guarantee Glitch
+// never converges — `isSolved` lets the actor stop ticking if they luck
+// into a sorted state.
+// ──────────────────────────────────────────────────────────────────────────
+
+function makeBubbleSortBruteStrategy(initialValues: ReadonlyArray<number>): BruteForceStrategy {
+  return {
+    initialValues,
+    nextMove(values) {
+      const arr = [...values];
+      if (arr.length < 2) return arr;
+      const i = Math.floor(Math.random() * (arr.length - 1));
+      [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+      return arr;
+    },
+    isSolved(values) {
+      for (let i = 1; i < values.length; i++) {
+        if (values[i] < values[i - 1]) return false;
+      }
+      return true;
+    },
+    tickIntervalMs: 850,
+  };
 }

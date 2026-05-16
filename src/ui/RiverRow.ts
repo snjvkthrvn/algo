@@ -12,7 +12,7 @@
  */
 
 import Phaser from 'phaser';
-import { COLORS, FONTS } from '../config/constants';
+import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
 
 export interface RiverRowOptions {
   values: ReadonlyArray<string | number>;
@@ -81,13 +81,13 @@ export class RiverRow {
     values.forEach((value, i) => {
       const x = startX + i * stride;
       const container = this.scene.add.container(x, y).setDepth(20);
-      const shadow = this.scene.add.rectangle(3, 4, tileSize, tileSize, 0x081820, 0.32);
-      const box = this.scene.add.rectangle(0, 0, tileSize, tileSize, COLORS.FRAME_BG, 0.96)
+      const shadow = this.scene.add.rectangle(4, 5, tileSize, tileSize, COLORS.PURE_BLACK, 0.32);
+      const box = this.scene.add.rectangle(0, 0, tileSize, tileSize, COLORS.ERROR, 0.96)
         .setStrokeStyle(3, COLORS.FRAME_BORDER_LIGHT, 1);
       const label = this.scene.add.text(0, 0, String(value), {
         fontSize: '24px',
         fontFamily: FONTS.RETRO,
-        color: '#081820',
+        color: COLOR_HEX.TEXT_LIGHT,
       }).setOrigin(0.5);
 
       container.add([shadow, box, label]);
@@ -96,7 +96,7 @@ export class RiverRow {
         const idxText = this.scene.add.text(0, tileSize / 2 + 14, String(i), {
           fontSize: '8px',
           fontFamily: FONTS.RETRO,
-          color: '#346856',
+          color: COLOR_HEX.TEXT_MUTED,
         }).setOrigin(0.5);
         container.add(idxText);
       }
@@ -112,6 +112,23 @@ export class RiverRow {
       );
     }
     values.forEach((v, i) => this.tiles[i].label.setText(String(v)));
+  }
+
+  /**
+   * Returns the world-space centre of the tile at `index`, or null if the
+   * index is out of range. Used by external hint widgets (NextMoveHint) to
+   * place affordances directly over a tile without re-deriving the row's
+   * stride math.
+   */
+  tileCenter(index: number): { x: number; y: number } | null {
+    const tile = this.tiles[index];
+    if (!tile) return null;
+    return { x: tile.x, y: tile.y };
+  }
+
+  /** Tile size used by the row — handy for vertical offsetting hint markers. */
+  get tileSize(): number {
+    return this.options.tileSize;
   }
 
   /** Animate a swap of two indices. Returns when the tween completes. */
@@ -204,8 +221,8 @@ export class RiverRow {
     const labelText = this.scene.add.text(0, arrowDir > 0 ? -18 : 18, options.label, {
       fontSize: '9px',
       fontFamily: FONTS.RETRO,
-      color: '#e0f8d0',
-      backgroundColor: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
+      backgroundColor: COLOR_HEX.TEXT_DARK,
       padding: { x: 4, y: 2 },
     }).setOrigin(0.5);
 
@@ -304,8 +321,8 @@ export class RiverRow {
         const badge = this.scene.add.text(tile.x, tile.y - this.options.tileSize / 2 - 12, '!', {
           fontSize: '12px',
           fontFamily: FONTS.RETRO,
-          color: '#e0f8d0',
-          backgroundColor: '#ef4444',
+          color: COLOR_HEX.TEXT_LIGHT,
+          backgroundColor: COLOR_HEX.BRIDGE_WRONG,
           padding: { x: 5, y: 2 },
         }).setOrigin(0.5).setDepth(25);
         this.duplicateBadges.push(badge);

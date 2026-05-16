@@ -1,9 +1,12 @@
 /**
- * Three rounds for P0_2 Forks.
+ * Four rounds for P0_2 Forks.
  *
  * R1 The First Choice  — one fork, two exits, only one reaches the sink.
  * R2 In Series         — two forks in cascade.
  * R3 Cascade           — three forks in a row, all three must be set.
+ * R4 Maze              — four forks with hidden dead ends and back-tracking
+ *                        decisions. MASTER+ tier: every fork is "live", no
+ *                        single choice is obvious in isolation.
  */
 
 export type Axial = { q: number; r: number };
@@ -111,4 +114,53 @@ const round3: FlowRound = {
   ],
 };
 
-export const FLOW_ROUNDS: FlowRound[] = [round1, round2, round3];
+// ─────────────────────────────────────────────────────────────────────────
+// Round 4 — Maze
+//
+// Four forks; the sink sits across a wider field. Every fork has at least
+// one wrong choice that leads to a dead-end branch. Only by reasoning the
+// whole chain in advance (or playing through with backtracking) can the
+// player set all four correctly.
+// ─────────────────────────────────────────────────────────────────────────
+
+const A4 = { q: -3, r: 0 };
+const B4 = { q: -2, r: 0 };
+const C4 = { q: -1, r: 0 };
+const D4 = { q: 0, r: 0 };
+const E4 = { q: 1, r: 0 };
+const F4 = { q: 2, r: 0 };
+const G4 = { q: 3, r: 0 };
+// Dead-end branches off each interior fork.
+const DA4 = { q: -2, r: 1 };
+const DB4 = { q: -1, r: 1 };
+const DC4 = { q: 0, r: 1 };
+const DD4 = { q: 1, r: 1 };
+
+const round4: FlowRound = {
+  title: 'IV. Maze',
+  principle: 'A long sequence of choices is still one sequence. Reason the chain — or play it through.',
+  teach: 'Four forks, four dead ends. Each fork has two outgoing paths; pick the one that keeps the chain alive.',
+  field: [A4, B4, C4, D4, E4, F4, G4, DA4, DB4, DC4, DD4],
+  source: A4,
+  sink: G4,
+  edges: [
+    { from: A4, to: B4 },
+    { from: B4, to: C4 },
+    { from: B4, to: DA4 },
+    { from: C4, to: D4 },
+    { from: C4, to: DB4 },
+    { from: D4, to: E4 },
+    { from: D4, to: DC4 },
+    { from: E4, to: F4 },
+    { from: E4, to: DD4 },
+    { from: F4, to: G4 },
+  ],
+  forks: [
+    { at: B4, choices: [DA4, C4] },
+    { at: C4, choices: [DB4, D4] },
+    { at: D4, choices: [DC4, E4] },
+    { at: E4, choices: [DD4, F4] },
+  ],
+};
+
+export const FLOW_ROUNDS: FlowRound[] = [round1, round2, round3, round4];

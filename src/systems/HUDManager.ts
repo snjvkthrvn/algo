@@ -182,6 +182,9 @@ export class HUDManager {
     this.scene.tweens.killTweensOf(this.objectiveHintText);
     this.objectiveHintText.setText(trimmed);
     this.objectiveHintText.setAlpha(trimmed ? 0.9 : 0);
+    // Screen-reader users navigate by the objective hint between dialogues —
+    // without an announce here the whole player-direction flow goes silent.
+    if (trimmed) a11yManager.announce(trimmed, false);
   }
 
   private createControlsStrip(scene: Phaser.Scene): void {

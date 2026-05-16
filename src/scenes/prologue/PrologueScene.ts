@@ -13,7 +13,12 @@ import {
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from '../../config/constants';
-import { PROLOGUE_SHEET_KEYS, VISUAL_REVAMP_KEYS } from '../../config/assets';
+import {
+  PROLOGUE_SCENE_IMAGE_ASSETS,
+  PROLOGUE_SCENE_SPRITE_ASSETS,
+  PROLOGUE_SHEET_KEYS,
+  VISUAL_REVAMP_KEYS,
+} from '../../config/assets';
 import { Player } from '../../entities/Player';
 import { BitCompanion } from '../../entities/BitCompanion';
 import { GlitchRival } from '../../entities/GlitchRival';
@@ -98,6 +103,20 @@ export class PrologueScene extends Phaser.Scene {
   init(data: { spawnX?: number; spawnY?: number }): void {
     if (data.spawnX !== undefined && data.spawnY !== undefined) {
       gameState.setPlayerPosition(data.spawnX, data.spawnY);
+    }
+  }
+
+  preload(): void {
+    for (const asset of PROLOGUE_SCENE_SPRITE_ASSETS) {
+      if (this.textures.exists(asset.key)) continue;
+      this.load.spritesheet(asset.key, asset.path, {
+        frameWidth: asset.frameWidth || 32,
+        frameHeight: asset.frameHeight || 48,
+      });
+    }
+
+    for (const asset of PROLOGUE_SCENE_IMAGE_ASSETS) {
+      if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
     }
   }
 

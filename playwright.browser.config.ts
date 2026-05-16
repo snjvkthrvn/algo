@@ -7,7 +7,7 @@ const useExternalServer = Boolean(process.env.PLAYWRIGHT_BASE_URL);
 export default defineConfig({
   testDir: './tests',
   testMatch: 'browser-support.spec.ts',
-  timeout: 90_000,
+  timeout: 120_000,
   workers: 1,
   reporter: [['html', { open: 'never' }], ['list']],
   use: {

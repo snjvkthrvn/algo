@@ -17,15 +17,22 @@
 
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { audioManager } from '../../core/AudioManager';
+import { a11yManager } from '../../core/A11yManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { drawPanel } from '../../ui/panel';
 import { BitHint } from '../../entities/BitHint';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
 import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
+import { showLessonCard } from '../../ui/LessonCard';
+import { BitCompanion } from '../../ui/BitCompanion';
+import { GlitchCorner } from '../../ui/GlitchCorner';
+import { ComplexityMeter } from '../../ui/ComplexityMeter';
+import { AlgorithmTrace } from '../../ui/AlgorithmTrace';
+import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
+import type { RegionBackdropId, RegionBackdropOptions } from '../../ui/RegionBackdrop';
 import {
   TWO_SUM_ROUND_CONFIGS,
   complementOf,
@@ -67,6 +74,19 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private softTimeBudgetMs = 0;
   private timerBar!: Phaser.GameObjects.Rectangle;
   private preview: PuzzlePreviewSidePanel | null = null;
+  /** Brute force pair-check count per round vs the player's click count. */
+  private complexity: ComplexityMeter | null = null;
+  /** Number of pair-checks the player has *consumed* — each anchor-then-target click is one check. */
+  private checksUsed = 0;
+  /**
+   * Live trace of the hash-set two-sum algorithm. The player sees `need`
+   * computed from their anchor pick and `seen` accumulating tiles they've
+   * tried — turning "I clicked a tile" into "I just executed step 3 of the
+   * algorithm".
+   */
+  private trace: AlgorithmTrace | null = null;
+  /** Values the player has anchored at least once this round (the algorithm's `seen` set). */
+  private seenValues: number[] = [];
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_4 });
@@ -76,17 +96,23 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_PAIRING_GROUNDS_BG;
+    return null;
   }
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.02;
+    return 0;
+  }
+  protected getPuzzleTheme(): PuzzleTheme {
+    return ARRAY_PLAINS_PUZZLE_THEME;
+  }
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    return { id: 'array-plains', options: { intensity: 0.7 } };
   }
 
   create(): void {
     super.create();
-    new PuzzleAmbience(this, 'farmland', { intensity: 0.7 });
+    new PuzzleAmbience(this, 'farmland', { intensity: 0.30 });
 
-    const { width } = this.cameras.main;
+    const { width, height } = this.cameras.main;
 
     this.buildRoundBadge(width);
     this.buildTargetPanel(width);
@@ -94,6 +120,49 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
     this.preview.setTitle('PAIR PREVIEW');
     this.preview.show();
+    new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40 });
+    new GlitchCorner(this, {
+      x: 152, y: height - 92,
+      width: 240, height: 74,
+      variant: 'parchment',
+      heading: 'Glitch Tries Every Pair',
+      body: 'n × (n−1) / 2 checks. You can do better.',
+      depth: 40,
+    });
+
+    // The brute-force cost is the number of distinct pairs in the row. Each
+    // anchor-then-target selection counts as one pair-check on the player's
+    // side, so a 3-star run picks the correct pair in 1-2 checks vs the
+    // brute force baseline of n(n-1)/2.
+    // Live trace — left side panel showing the hash-set walk. Lines bind
+    // to {target}, {v}, {need}, {seen} so the player sees the algorithm's
+    // local variables update with every click.
+    this.trace = new AlgorithmTrace(this, {
+      x: 64, y: 270, width: 240,
+      title: 'twoSum(arr, target)',
+      lines: [
+        'seen = {}',
+        'for v in arr:',
+        '  need = target - v',
+        '  v = {v}, need = {need}',
+        '  if need in seen: return',
+        '  seen.add(v)',
+        'seen = {seen}',
+      ],
+    });
+    this.bindTraceState();
+
+    const initialBrute = pairCount(TWO_SUM_ROUND_CONFIGS[0].values.length);
+    this.complexity = new ComplexityMeter(this, {
+      x: width / 2, y: 230,
+      width: 320,
+      bruteLabel: 'pair checks',
+      bruteCost: initialBrute,
+      algoLabel: 'your picks',
+      algoCost: 0,
+      variant: 'parchment',
+      depth: 40,
+    });
 
     this.beam = this.add.graphics().setDepth(25);
 
@@ -162,25 +231,38 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private async startRound(idx: number): Promise<void> {
     this.roundIndex = idx;
     this.selectedIndices = [];
+    this.checksUsed = 0;
+    this.seenValues = [];
     this.beam.clear();
     this.isResolving = true;
     this.actionLocked = false;
 
     const round = TWO_SUM_ROUND_CONFIGS[idx];
-    this.roundBadge.setText(`ROUND ${idx + 1}/3 · ${round.label} · find any pair that sums to target`);
+    const total = TWO_SUM_ROUND_CONFIGS.length;
+    this.roundBadge.setText(`ROUND ${idx + 1}/${total} · ${round.label} · find any pair that sums to target`);
     this.targetText.setText(`TARGET  =  ${round.target}`);
 
     this.layoutTiles(round);
     this.refreshPreview();
+    this.bindTraceState();
+    this.trace?.highlightLine(0); // seen = {}
+    this.complexity?.reset({
+      bruteCost: pairCount(round.values.length),
+      algoCost: 0,
+      bruteLabel: 'pair checks',
+      algoLabel: 'your picks',
+    });
 
-    const subtitle = idx === 2
+    const subtitle = idx >= total - 2
       ? `${round.label}  ·  target ${round.target}  ·  ${round.values.length} runestones, ${round.seconds}s on the clock`
       : `${round.label}  ·  target ${round.target}  ·  pick one, find its complement`;
 
+    await showLessonCard(this, round.lesson, 'parchment');
+
     await showRoundBanner(this, {
-      label: `ROUND ${idx + 1} / 3`,
+      label: `ROUND ${idx + 1} / ${total}`,
       subtitle,
-      accent: idx === 2 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
+      accent: idx >= total - 1 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
     });
 
     this.isResolving = false;
@@ -266,6 +348,28 @@ export class P1_4_TwoSum extends BasePuzzleScene {
 
     container.add([shadow, box, decor, label, key, needBadge]);
     box.on('pointerdown', () => this.chooseTile(index));
+    // Hover affordance — the click target lifts slightly and brightens so the
+    // player can scan complements with their eye instead of clicking blind.
+    // We tween scale on the container, not the box, so the decor + label
+    // come along for the ride.
+    box.on('pointerover', () => {
+      if (this.isResolving || this.actionLocked) return;
+      if (this.selectedIndices.includes(index)) return;
+      this.tweens.add({ targets: container, scale: 1.06, duration: 90, ease: 'Sine.easeOut' });
+      box.setFillStyle(0xfde68a, 0.6);
+    });
+    box.on('pointerout', () => {
+      this.tweens.add({ targets: container, scale: 1, duration: 110, ease: 'Sine.easeIn' });
+      // Restore the appropriate fill — selection state takes precedence over
+      // the hover preview.
+      if (this.selectedIndices.includes(index)) {
+        box.setFillStyle(COLORS.GOLD_ACCENT, 0.96);
+        box.setStrokeStyle(3, COLORS.CYAN_GLOW, 0.95);
+      } else {
+        box.setFillStyle(0xe0f8d0, 0.96);
+        box.setStrokeStyle(3, 0x346856, 1);
+      }
+    });
 
     // Entrance: small cascade so the field assembles, not just appears.
     container.setScale(0.6);
@@ -325,11 +429,16 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.hideNeedBadge(tile);
       this.redrawBeam();
       this.refreshPreview();
+      this.bindTraceState();
       return;
     }
 
     this.selectedIndices.push(index);
     this.styleTile(tile, true);
+    // The picked value joins the algorithm's `seen` set on first selection.
+    if (!this.seenValues.includes(tile.value)) {
+      this.seenValues.push(tile.value);
+    }
 
     if (this.selectedIndices.length === 1) {
       const need = complementOf(tile.value, round.target);
@@ -338,18 +447,52 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.bitHint?.showWarm();
       this.redrawBeam();
       this.refreshPreview();
+      this.bindTraceState();
+      // Highlight the "compute need" line — the player is at step 3 of the algo.
+      this.trace?.highlightLines(3, 2);
+      // Need badge appears silently — announce the anchor + complement so
+      // screen-reader players know what value to look for next.
+      a11yManager.announce(`Anchored ${tile.value}. Need ${need} to reach target ${round.target}.`, false);
       return;
     }
 
     // Two tiles selected — evaluate.
     this.redrawBeam();
     this.refreshPreview();
+    this.checksUsed++;
+    this.complexity?.setAlgoCost(this.checksUsed);
+    if (!this.seenValues.includes(tile.value)) {
+      this.seenValues.push(tile.value);
+    }
+    this.bindTraceState();
     const values = this.selectedIndices.map((i) => this.tiles[i].value);
     if (isTwoSumPair(round.values, round.target, values)) {
+      // The algorithm found target − v in `seen`: line 4 fires.
+      this.trace?.highlightLine(4);
+      this.complexity?.celebrate();
       this.handleCorrectPair();
     } else {
+      // Algorithm path didn't terminate yet — line 5 (seen.add) fires, then
+      // we'd loop back to line 1 in a real implementation. The wrong-pair
+      // visual shake makes the "no match" reading clear.
+      this.trace?.highlightLine(5);
       this.handleWrongPair();
     }
+  }
+
+  /** Push current scene state into the trace so {v}, {need}, {seen} update live. */
+  private bindTraceState(): void {
+    if (!this.trace) return;
+    const round = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
+    const anchorIdx = this.selectedIndices[0];
+    const anchor = anchorIdx !== undefined ? this.tiles[anchorIdx]?.value ?? null : null;
+    const need = anchor !== null ? complementOf(anchor, round.target) : null;
+    this.trace.bindState({
+      target: round.target,
+      v: anchor,
+      need,
+      seen: this.seenValues.length ? `{${this.seenValues.join(', ')}}` : '{}',
+    });
   }
 
   private styleTile(tile: NumberTile, selected: boolean): void {
@@ -538,4 +681,9 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   protected getConceptName(): string {
     return 'Two Sum';
   }
+}
+
+/** n(n-1)/2 — the number of unordered pairs in a row of n values. */
+function pairCount(n: number): number {
+  return Math.max(1, (n * (n - 1)) / 2);
 }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { COLOR_HEX } from '../config/constants';
 
 export function showStarRating(
   scene: Phaser.Scene,
@@ -19,7 +20,7 @@ export function showStarRating(
     if (isFilled) {
       const shadow = scene.add.text(sx + 4, 4, '★', {
         fontSize: '24px',
-        color: '#081820',
+        color: COLOR_HEX.TEXT_DARK,
       }).setOrigin(0.5).setY(-40);
       
       container.add(shadow);
@@ -34,8 +35,8 @@ export function showStarRating(
 
     const star = scene.add.text(sx, 0, '★', {
       fontSize: '24px',
-      color: isFilled ? '#e0f8d0' : '#346856',
-      stroke: '#081820',
+      color: isFilled ? COLOR_HEX.GOLD : COLOR_HEX.WARNING,
+      stroke: COLOR_HEX.TEXT_DARK,
       strokeThickness: 2,
     }).setOrigin(0.5).setY(-40);
 

@@ -47,6 +47,7 @@ type FakeSprite = {
   anims: { play: (key: string, ignoreIfPlaying?: boolean) => void };
   setDepth: () => FakeSprite;
   setScale: () => FakeSprite;
+  setOrigin: (originX?: number, originY?: number) => FakeSprite;
   setFlipX: (flip: boolean) => FakeSprite;
   setPosition: (x: number, y: number) => FakeSprite;
   destroy: () => void;
@@ -161,6 +162,7 @@ function createPlayer(canMoveTo: (position: { x: number; y: number }) => boolean
       },
       setDepth: () => sprite,
       setScale: () => sprite,
+      setOrigin: () => sprite,
       setFlipX: (flip: boolean) => {
         sprite.flipX = flip;
         return sprite;
@@ -278,7 +280,7 @@ describe('Player', () => {
     expect(configByKey.get('player-idle-up')?.frames.map((frame) => frame.frame)).toEqual([24]);
 
     expect(configByKey.get('player-walk-down')).toMatchObject({
-      frameRate: 25,
+      frameRate: 50,
       repeat: -1,
       frames: [
         { key: 'prologue-sheet-player-walk', frame: 0 },

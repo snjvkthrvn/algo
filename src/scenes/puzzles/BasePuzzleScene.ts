@@ -4,8 +4,8 @@
  * Preserved and enhanced from original 485-line implementation.
  */
 
-import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { PROLOGUE_REWORK_KEYS, VISUAL_REVAMP_KEYS } from '../../config/assets';
+import { COLORS, COLOR_HEX, FONTS, SCENE_KEYS } from '../../config/constants';
+import { getImageAssetPath, PROLOGUE_REWORK_KEYS, VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { colorToHex } from '../../utils/colors';
 import { createRetroButton, updateButtonText, disableButton } from '../../ui/RetroButton';
 import { showStarRating } from '../../ui/StarRating';
@@ -17,6 +17,7 @@ import { JuiceSystem } from '../../systems/JuiceSystem';
 import { a11yManager } from '../../core/A11yManager';
 import type { ConceptBridgeData } from '../../data/types';
 import { PARCHMENT_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
+import { RegionBackdrop, type RegionBackdropId, type RegionBackdropOptions } from '../../ui/RegionBackdrop';
 
 export abstract class BasePuzzleScene extends Phaser.Scene {
   // UI Elements
@@ -78,29 +79,53 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.setupKeyboardShortcuts();
   }
 
+  preload(): void {
+    const imageKeys = [
+      this.getPuzzleBackdropKey(),
+      VISUAL_REVAMP_KEYS.PUZZLE_FRAME,
+      PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME,
+    ].filter((key): key is string => Boolean(key));
+
+    for (const key of imageKeys) {
+      const path = getImageAssetPath(key);
+      if (path && !this.textures.exists(key)) this.load.image(key, path);
+    }
+  }
+
   protected createPuzzleUI(): void {
     const { width, height } = this.cameras.main;
 
     this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0, 0).setDepth(-30);
 
-    const backdropKey = this.getPuzzleBackdropKey();
-    const resolvedBackdropKey = backdropKey && this.textures.exists(backdropKey)
-      ? backdropKey
-      : PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME;
-    const hasBackdrop = this.textures.exists(resolvedBackdropKey);
+    // If a region backdrop is active, it owns the entire surface — skip the
+    // static texture entirely so the painted scene reads cleanly.
+    if (!this.getRegionBackdrop()) {
+      const backdropKey = this.getPuzzleBackdropKey();
+      const resolvedBackdropKey = backdropKey && this.textures.exists(backdropKey)
+        ? backdropKey
+        : PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME;
+      const hasBackdrop = this.textures.exists(resolvedBackdropKey);
 
-    if (hasBackdrop) {
-      this.add
-        .image(width / 2, height / 2, resolvedBackdropKey)
-        .setDisplaySize(width, height)
-        .setDepth(-29);
-    } else {
-      this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1)
-        .setOrigin(0, 0)
-        .setDepth(-28);
+      if (hasBackdrop) {
+        this.add
+          .image(width / 2, height / 2, resolvedBackdropKey)
+          .setDisplaySize(width, height)
+          .setDepth(-29);
+      } else {
+        this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1)
+          .setOrigin(0, 0)
+          .setDepth(-28);
+      }
     }
 
     this.uiContainer = this.add.container(0, 0);
+
+    // Region-themed procedural backdrop (replaces the static image when a
+    // puzzle opts in via getRegionBackdrop()).
+    const region = this.getRegionBackdrop();
+    if (region) {
+      new RegionBackdrop(this, region.id, region.options);
+    }
 
     this.createPuzzleFrame(width, height);
     this.createTitleArea(width);
@@ -112,25 +137,29 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   /** Bottom bar — matches overworld legend; M mute is registered on the CRT overlay scene. */
   protected createPuzzleControlsStrip(width: number, height: number): void {
-    const stripW = Math.min(width - 96, 720);
-    const stripH = 26;
+    const stripW = Math.min(width - 96, 760);
+    const stripH = 32;
     drawPanel(this, width / 2 - stripW / 2, height - stripH - 8, stripW, stripH, {
       depth: 4999,
       fill: COLORS.ERROR,
       frame: COLORS.FRAME_BORDER_LIGHT,
       inner: COLORS.SUCCESS,
       alpha: 0.78,
+      shadow: true,
+      shadowAlpha: 0.22,
+      accent: COLORS.CYAN_GLOW,
+      accentSide: 'top',
     });
 
     this.add
       .text(
         width / 2,
-        height - 14,
-        'SPACE INTERACT  |  H HINT  |  R RESTART  |  ESC EXIT  |  M MUTE',
+        height - 16,
+        'SPACE: ACT   H: HINT   R: RESTART   ESC: EXIT   M: MUTE',
         {
-          fontSize: '7px',
+          fontSize: '8px',
           fontFamily: FONTS.RETRO,
-          color: colorToHex(COLORS.SUCCESS),
+          color: COLOR_HEX.TEXT_LIGHT,
         },
       )
       .setOrigin(0.5, 1)
@@ -141,6 +170,42 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected getPuzzleBackdropKey(): string | null {
     return VISUAL_REVAMP_KEYS.PUZZLE_FRAME;
+  }
+
+  /**
+   * Diegetic label for the puzzle-frame eyebrow (replaces the engineering
+   * "PUZZLE MODULE" wording). Defaults are region-aware: Array Plains shows
+   * "FARMSTEAD", Twin Rivers shows "RIVERSIDE", etc. Children can override
+   * for puzzle-specific copy. The intent is that nothing on the puzzle
+   * screen reads as "software UI" — every label should sound like it
+   * belongs in the world the player is currently inhabiting.
+   */
+  protected getModuleLabel(): string {
+    const region = this.getRegionBackdrop();
+    switch (region?.id) {
+      case 'prologue': return 'CHAMBER';
+      case 'array-plains': return 'FARMSTEAD';
+      case 'twin-rivers': return 'RIVERSIDE';
+      default: return 'TRIAL';
+    }
+  }
+
+  /** Status-dot label, shortened from "MODULE READY" — the dot itself is
+   *  the indicator; the word just confirms state. */
+  protected getReadyLabel(): string {
+    return 'READY';
+  }
+
+  /**
+   * Opt a puzzle into the region-themed procedural backdrop. Returning a non
+   * null value here skips the static `getPuzzleBackdropKey()` image and paints
+   * the animated region scene (drifting stars / swaying wheat / flowing rivers)
+   * for the full puzzle surface.
+   *
+   * Used by the three production regions: prologue, array-plains, twin-rivers.
+   */
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    return null;
   }
 
   protected getPuzzleFrameFillAlpha(): number {
@@ -160,14 +225,18 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     this.puzzleFrame = this.add.graphics();
 
-    // Shadow
-    this.puzzleFrame.fillStyle(0x000000, 0.5);
-    this.puzzleFrame.fillRoundedRect(padding + 4, padding + 4, frameWidth, frameHeight, 8);
+    const fillAlpha = this.getPuzzleFrameFillAlpha();
 
-    // Keep the generated encounter art visible while giving primitive puzzle
-    // objects a shared readable surface.
-    this.puzzleFrame.fillStyle(theme.frameFill, this.getPuzzleFrameFillAlpha());
-    this.puzzleFrame.fillRoundedRect(padding, padding, frameWidth, frameHeight, 8);
+    // Shadow — tracks the fill alpha so that puzzles opting into a fully
+    // transparent frame (region-themed puzzles) don't leave a stray dark slab
+    // floating over the procedural backdrop.
+    if (fillAlpha > 0) {
+      this.puzzleFrame.fillStyle(0x000000, 0.5);
+      this.puzzleFrame.fillRoundedRect(padding + 4, padding + 4, frameWidth, frameHeight, 8);
+
+      this.puzzleFrame.fillStyle(theme.frameFill, fillAlpha);
+      this.puzzleFrame.fillRoundedRect(padding, padding, frameWidth, frameHeight, 8);
+    }
 
     // Outer border
     this.puzzleFrame.lineStyle(3, theme.frameOuterStroke, theme.frameOuterStrokeAlpha);
@@ -258,8 +327,11 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected createTitleArea(width: number): void {
     const theme = this.getPuzzleTheme();
-    this.titleText = this.add.text(width / 2, 75, this.puzzleName, {
-      fontSize: '24px',
+    const titlePanelW = Math.min(width - 240, 760);
+    const titlePanelX = Math.round(width / 2 - titlePanelW / 2);
+
+    this.titleText = this.add.text(width / 2, 70, this.puzzleName, {
+      fontSize: '20px',
       fontFamily: FONTS.RETRO,
       color: theme.titleColor,
       stroke: theme.titleStroke,
@@ -268,30 +340,46 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     // Instruction text uses the theme's body color so contrast holds on either
     // the cream parchment surface or the dark chamber surface.
-    this.instructionText = this.add.text(width / 2 - 80, 115, this.puzzleDescription, {
-      fontSize: '14px',
+    this.instructionText = this.add.text(width / 2 - 64, 112, this.puzzleDescription, {
+      fontSize: '12px',
       fontFamily: FONTS.MONO,
       color: theme.bodyColor,
       align: 'center',
-      wordWrap: { width: width - 200 },
+      wordWrap: { width: titlePanelW - 80, useAdvancedWrap: true },
     }).setOrigin(0.5).setAlpha(0);
 
-    const titlePanel = drawPanel(this, width / 2 - 368, 48, 736, 86, {
+    const titlePanel = drawPanel(this, titlePanelX, 48, titlePanelW, 90, {
       depth: 0,
       fill: theme.titlePanelFill,
       frame: theme.titlePanelFrame,
       inner: theme.titlePanelInner,
       alpha: theme.titlePanelAlpha,
+      shadow: true,
+      shadowAlpha: 0.24,
+      accent: COLORS.CYAN_GLOW,
+      accentSide: 'top',
     });
     titlePanel.setAlpha(0);
 
-    this.uiContainer.add([titlePanel, this.titleText, this.instructionText]);
+    const moduleLabel = this.add.text(titlePanelX + 20, 60, this.getModuleLabel(), {
+      fontSize: '8px',
+      fontFamily: FONTS.RETRO,
+      color: theme.id === 'chamber' ? COLOR_HEX.CYAN_GLOW : COLOR_HEX.WARNING,
+    }).setOrigin(0, 0).setAlpha(0);
+
+    const idLabel = this.add.text(titlePanelX + titlePanelW - 20, 60, this.puzzleId.toUpperCase(), {
+      fontSize: '8px',
+      fontFamily: FONTS.RETRO,
+      color: theme.id === 'chamber' ? COLOR_HEX.TEXT_MUTED : COLOR_HEX.WARNING,
+    }).setOrigin(1, 0).setAlpha(0);
+
+    this.uiContainer.add([titlePanel, moduleLabel, idLabel, this.titleText, this.instructionText]);
 
     // Glitch-reveal the title after the frame starts fading in.
     this.time.delayedCall(180, () => this.glitchReveal(this.titleText, theme.titleColor));
 
     this.tweens.add({
-      targets: titlePanel,
+      targets: [titlePanel, moduleLabel, idLabel],
       alpha: 1,
       duration: 260,
       delay: 120,
@@ -358,21 +446,35 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected addStatusIndicator(width: number, _height: number): void {
     const padding = 40;
-    const dotX = width - padding - 160;
-    const dotY = padding + 14;
+    const panelW = 160;
+    const panelH = 30;
+    const panelX = width - padding - panelW - 8;
+    const panelY = padding + 4;
+    const dotX = panelX + 18;
+    const dotY = panelY + panelH / 2;
 
+    const panel = drawPanel(this, panelX, panelY, panelW, panelH, {
+      depth: 0,
+      fill: COLORS.ERROR,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.WARNING,
+      alpha: 0.84,
+      shadow: true,
+      shadowAlpha: 0.18,
+    });
     const dot = this.add.circle(dotX, dotY, 4, COLORS.SUCCESS);
-    const label = this.add.text(dotX - 8, dotY, 'ONLINE', {
+    const label = this.add.text(dotX + 12, dotY, this.getReadyLabel(), {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
-      color: colorToHex(COLORS.SUCCESS),
-    }).setOrigin(1, 0.5);
+      color: COLOR_HEX.TEXT_LIGHT,
+    }).setOrigin(0, 0.5);
 
+    panel.setAlpha(0);
     dot.setAlpha(0);
     label.setAlpha(0);
-    this.uiContainer.add([dot, label]);
+    this.uiContainer.add([panel, dot, label]);
 
-    this.tweens.add({ targets: [dot, label], alpha: 1, duration: 300, delay: 600 });
+    this.tweens.add({ targets: [panel, dot, label], alpha: 1, duration: 300, delay: 600 });
 
     // Pulsing dot signals the puzzle module is active.
     this.tweens.add({
@@ -460,6 +562,10 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     audioManager.playCorrectTone();
     if (explanation) {
       this.showMessage(explanation, COLORS.SUCCESS);
+    } else {
+      // showMessage owns the announce when explanation is provided; otherwise
+      // the correct-answer juice is silent for screen-reader users.
+      a11yManager.announce('Correct.', false);
     }
   }
 
@@ -536,8 +642,8 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected showMessage(text: string, color: number = COLORS.TEXT_LIGHT): void {
     const { width, height } = this.cameras.main;
-    const msgW = Math.min(width - 80, 480);
-    const msgH = 48;
+    const msgW = Math.min(width - 80, 560);
+    const msgH = 56;
     const msgY = height / 2 - 20;
 
     a11yManager.announce(text, true);
@@ -546,16 +652,19 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     const panel = drawPanel(this, -msgW / 2, -msgH / 2, msgW, msgH, {
       depth: 0,
-      fill: COLORS.FRAME_BG,
+      fill: COLORS.ERROR,
       frame: color,
-      inner: color,
-      alpha: 1
+      inner: COLORS.FRAME_BORDER_LIGHT,
+      alpha: 0.96,
+      shadow: true,
+      shadowAlpha: 0.28,
+      accent: color,
     });
 
     const label = this.add.text(0, 0, text, {
-      fontSize: '16px',
+      fontSize: '13px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
       stroke: colorToHex(color),
       strokeThickness: 1,
       align: 'center',

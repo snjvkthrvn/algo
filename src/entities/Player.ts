@@ -5,12 +5,17 @@
 
 import Phaser from 'phaser';
 import { PROLOGUE_SHEET_KEYS } from '../config/assets';
+import { COLORS } from '../config/constants';
+import { audioManager } from '../core/AudioManager';
 import { PlayerState } from '../data/types';
+import { JuiceSystem } from '../systems/JuiceSystem';
 
 const PLAYER_SPRITE_SCALE = 0.25;
 export const PLAYER_GRID_STEP = 32;
 const PLAYER_STEP_DURATION_MS = 160;
-const PLAYER_WALK_FRAME_RATE = 25; // 4 frames per 160ms step, full 8-frame cycle over 2 chained tiles
+const PLAYER_WALK_FRAME_RATE = 50; // 8 frames per 160ms step — one FULL footfall cycle per tile. Halves perceived foot-glide vs 4 frames/step.
+const SHADOW_BASE_ALPHA = 0.28;
+const SHADOW_BASE_SCALE = 1;
 
 type FacingDirection = 'down' | 'up' | 'left' | 'right';
 
@@ -34,6 +39,8 @@ export class Player {
   private autoWalkCallback: (() => void) | null = null;
   private nextMoveBuffer: FacingDirection | null = null; // buffers input during tween for responsive chaining
   private walkStepElapsedMs = 0;
+  private lastFootstepLift = 0; // tracks bob envelope so we can fire one audio tic per contact phase
+  private stepCount = 0; // every other step landing emits a dust puff (avoids clutter)
 
   constructor(scene: Phaser.Scene, x: number, y: number, options: PlayerOptions = {}) {
     this.scene = scene;
@@ -41,11 +48,14 @@ export class Player {
     this.canMoveTo = options.canMoveTo ?? (() => true);
 
     this.createAnimations();
-    this.shadow = scene.add.ellipse(x, y + 14, 20, 7, 0x000000, 0.28).setDepth(4.8);
+    this.shadow = scene.add.ellipse(x, y + 14, 20, 7, 0x000000, SHADOW_BASE_ALPHA).setDepth(4.8);
     this.sprite = scene.add
       .sprite(x, y, PROLOGUE_SHEET_KEYS.PLAYER, 0)
       .setDepth(5)
       .setScale(PLAYER_SPRITE_SCALE);
+    // setOrigin defaults to (0.5, 0.5); we shift origin.y at walk apex for a sub-pixel
+    // visual bob that doesn't pollute sprite.y / body / shadow position.
+    if (typeof this.sprite.setOrigin === 'function') this.sprite.setOrigin(0.5, 0.5);
     this.sprite.anims.play('player-idle-down');
 
     // Enable physics so the sprite has an Arcade body that tracks its position
@@ -243,8 +253,17 @@ export class Player {
       onComplete: () => {
         this.sprite.setPosition(target.x, target.y);
         this.sprite.setScale(PLAYER_SPRITE_SCALE);
+        if (typeof this.sprite.setOrigin === 'function') this.sprite.setOrigin(0.5, 0.5);
         this.body.reset(target.x, target.y);
         this.movementTween = null;
+
+        // Dust puff on every other landing — small pixel-rect cluster in our
+        // medium-dark GB green so it reads against the lighter floor tiles
+        // without breaking palette.
+        this.stepCount += 1;
+        if (this.stepCount % 2 === 0) {
+          JuiceSystem.burst?.(this.scene, target.x, target.y + 14, COLORS.WARNING, 3, 14);
+        }
 
         // Only fall back to idle when there's no input or auto-walk pending.
         // Otherwise leaving the animation as walk-{dir} lets `update()`'s next
@@ -276,11 +295,54 @@ export class Player {
 
   private applyWalkPolish(): void {
     const phase = Math.min(1, this.walkStepElapsedMs / PLAYER_STEP_DURATION_MS);
-    const lift = Math.sin(phase * Math.PI);
+
+    // Two footfalls per tile step → 2π over one phase. |sin| gives a peaked
+    // envelope at phase 0.25 and 0.75 (mid-stride apex), zero at contact.
+    const lift = Math.abs(Math.sin(phase * Math.PI * 2));
+
+    // Root-motion compensation. Body tween is linear (32 px / step) but the
+    // sprite's leg swing covers less ground per frame, so feet "glide" if not
+    // countered. We anchor the rendered sprite BEHIND its natural position at
+    // each mid-stance moment, returning to zero at the three contact moments
+    // (t=0, 0.5, 1.0). |sin(2π·t)| gives this exact pattern: two peaks per
+    // step at t=0.25 and t=0.75 — synced with foot A's mid-stance and foot
+    // B's mid-stance respectively. ANCHOR_PX must stay ≤ ~5 to avoid the
+    // sprite-velocity going negative (rubber-band effect).
+    const planted = lift; // identical envelope: |sin(2π·t)|, two peaks per step
+    const ANCHOR_PX = 5;
+    const SPRITE_DISPLAY = 64; // 256 source × 0.25 scale
+    const facingX = this.facingDirection === 'left' ? -1 : this.facingDirection === 'right' ? 1 : 0;
+    const facingY = this.facingDirection === 'up' ? -1 : this.facingDirection === 'down' ? 1 : 0;
+    // originX > 0.5 shifts the rendered sprite LEFT (pivot column is right of center).
+    // To draw BEHIND motion direction, push origin AWAY along facing axis.
+    const anchorOriginX = (facingX * planted * ANCHOR_PX) / SPRITE_DISPLAY;
+    const anchorOriginY = (facingY * planted * ANCHOR_PX) / SPRITE_DISPLAY;
+
+    // Visual Y bob via originY shift — purely render-side, so sprite.y / body /
+    // shadow position all stay authoritative. originY > 0.5 shifts the rendered
+    // sprite UPWARD because the pivot row anchors lower in the sprite.
+    if (typeof this.sprite.setOrigin === 'function') {
+      this.sprite.setOrigin(0.5 + anchorOriginX, 0.5 + lift * 0.012 + anchorOriginY);
+    }
+
+    // Squash on contact (wider/shorter) and stretch mid-stride (narrower/taller).
     this.sprite.setScale(
-      PLAYER_SPRITE_SCALE * (1 + lift * 0.018),
-      PLAYER_SPRITE_SCALE * (1 - lift * 0.012)
+      PLAYER_SPRITE_SCALE * (1 + (1 - lift) * 0.02),
+      PLAYER_SPRITE_SCALE * (1 + lift * 0.018)
     );
+
+    // Shadow tightens & fades at apex, spreads & darkens at contact — sells weight.
+    if (typeof this.shadow.setScale === 'function' && typeof this.shadow.setAlpha === 'function') {
+      this.shadow.setScale(SHADOW_BASE_SCALE - lift * 0.22, SHADOW_BASE_SCALE - lift * 0.18);
+      this.shadow.setAlpha(SHADOW_BASE_ALPHA + (1 - lift) * 0.10);
+    }
+
+    // Footstep audio: fire one tic per contact moment (when lift dips through ~zero
+    // from a high value). 110Hz triangle, 35ms — reads as a soft thud, not melodic.
+    if (this.lastFootstepLift > 0.45 && lift < 0.18) {
+      audioManager.playTone?.(110, 35, 'triangle');
+    }
+    this.lastFootstepLift = lift;
   }
 
   private resolveMoveDirection(): FacingDirection | null {
@@ -318,7 +380,13 @@ export class Player {
     this.movementTween = null;
     this.nextMoveBuffer = null;
     this.walkStepElapsedMs = 0;
+    this.lastFootstepLift = 0;
     this.sprite.setScale(PLAYER_SPRITE_SCALE);
+    if (typeof this.sprite.setOrigin === 'function') this.sprite.setOrigin(0.5, 0.5);
+    if (typeof this.shadow.setScale === 'function' && typeof this.shadow.setAlpha === 'function') {
+      this.shadow.setScale(SHADOW_BASE_SCALE, SHADOW_BASE_SCALE);
+      this.shadow.setAlpha(SHADOW_BASE_ALPHA);
+    }
     this.body.reset(this.sprite.x, this.sprite.y);
   }
 

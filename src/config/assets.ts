@@ -282,15 +282,22 @@ export const PROLOGUE_SHEET_KEYS = {
 
 export const PROLOGUE_SHEET_SPRITE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_SHEET_KEYS.ROUTE_TILESET, path: `${SHEET_BASE}/environment/prologue_route_tileset_v3.png`, frameWidth: 32, frameHeight: 32 },
-  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_smooth_v3.png`, frameWidth: 256, frameHeight: 256 },
+  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_smooth_v6.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.NPCS, path: `${SHEET_BASE}/characters/imagegen_npc_idle.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.COMPANIONS, path: `${SHEET_BASE}/characters/companion_sheet.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.OBJECTS, path: `${SHEET_BASE}/objects/object_sheet.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.UI, path: `${SHEET_BASE}/ui/ui_sheet.png`, frameWidth: 256, frameHeight: 256 },
 ];
 
+const LEGACY_PROLOGUE_TILESET_ASSET: AssetEntry = {
+  key: 'prologue-tileset',
+  path: `${BASE}/tileset/sheet.png`,
+  frameWidth: 469,
+  frameHeight: 384,
+};
+
 export const SPRITE_ASSETS: AssetEntry[] = [
-  { key: 'prologue-tileset', path: `${BASE}/tileset/sheet.png`, frameWidth: 469, frameHeight: 384 },
+  LEGACY_PROLOGUE_TILESET_ASSET,
   { key: 'prologue-mc', path: `${BASE}/mc/sheet.png`, frameWidth: 469, frameHeight: 512 },
   { key: 'prologue-mc-extra', path: `${BASE}/mcmore/sheet.png`, frameWidth: 469, frameHeight: 512 },
   { key: 'prologue-node', path: `${BASE}/node/sheet.png`, frameWidth: 352, frameHeight: 384 },
@@ -302,12 +309,28 @@ export const SPRITE_ASSETS: AssetEntry[] = [
   ...PROLOGUE_SHEET_SPRITE_ASSETS,
 ];
 
+export const BOOT_SPRITE_ASSETS: AssetEntry[] = [];
+
+const PROLOGUE_SCENE_SPRITE_KEYS = new Set<string>([
+  PROLOGUE_SHEET_KEYS.ROUTE_TILESET,
+  PROLOGUE_SHEET_KEYS.PLAYER,
+  PROLOGUE_SHEET_KEYS.COMPANIONS,
+]);
+
+export const PROLOGUE_SCENE_SPRITE_ASSETS: AssetEntry[] = PROLOGUE_SHEET_SPRITE_ASSETS.filter((asset) =>
+  PROLOGUE_SCENE_SPRITE_KEYS.has(asset.key),
+);
+
+export const OVERWORLD_PLAYER_SPRITE_ASSETS: AssetEntry[] = PROLOGUE_SHEET_SPRITE_ASSETS.filter(
+  (asset) => asset.key === PROLOGUE_SHEET_KEYS.PLAYER,
+);
+
 const COMPOSITE_IMAGE = (sub: string, name: string): AssetEntry => ({
   key: `prologue-${sub}-${name}`,
   path: `${BASE}/${sub}/${name}.png`,
 });
 
-export const IMAGE_ASSETS: AssetEntry[] = [
+const LEGACY_PROLOGUE_COMPOSITE_IMAGE_ASSETS: AssetEntry[] = [
   COMPOSITE_IMAGE('portal', 'locked'),
   COMPOSITE_IMAGE('portal', 'active_0'),
   COMPOSITE_IMAGE('portal', 'swirl_0'),
@@ -322,81 +345,94 @@ export const IMAGE_ASSETS: AssetEntry[] = [
   COMPOSITE_IMAGE('moretiles', 'bridge_straight_v'),
   COMPOSITE_IMAGE('moretiles', 'bridge_corner_ne'),
   COMPOSITE_IMAGE('moretiles', 'bridge_corner_nw'),
+];
+
+export const IMAGE_ASSETS: AssetEntry[] = [
+  ...LEGACY_PROLOGUE_COMPOSITE_IMAGE_ASSETS,
   ...PROLOGUE_REWORK_IMAGE_ASSETS,
   ...VISUAL_REVAMP_IMAGE_ASSETS,
   ...ARRAY_PLAINS_IMAGE_ASSETS,
   ...TWIN_RIVERS_IMAGE_ASSETS,
 ];
 
-const BOOT_VISUAL_REVAMP_KEYS = new Set<string>([
-  VISUAL_REVAMP_KEYS.TITLE_BG,
+export const BOOT_IMAGE_ASSETS: AssetEntry[] = [
+  ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) => asset.key === VISUAL_REVAMP_KEYS.TITLE_BG),
+  // portrait_active is the only legacy composite still rendered — by DialogueBox.
+  // dialogue_box, portrait_inactive, and prompt were replaced by drawPanel + glyphs.
+  COMPOSITE_IMAGE('ui', 'portrait_active'),
+];
+
+const PROLOGUE_SCENE_REWORK_KEYS = new Set<string>([
+  PROLOGUE_REWORK_KEYS.SPAWN_SHRINE,
+  PROLOGUE_REWORK_KEYS.CENTRAL_HUB_SHRINE,
+  PROLOGUE_REWORK_KEYS.RUNE_BRANCH,
+  PROLOGUE_REWORK_KEYS.CONSOLE_BRANCH,
+  PROLOGUE_REWORK_KEYS.GATE_COURTYARD,
+]);
+
+const PROLOGUE_SCENE_VISUAL_KEYS = new Set<string>([
   VISUAL_REVAMP_KEYS.PROLOGUE_BG,
-  VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG,
-  VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG,
-  VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG,
-  VISUAL_REVAMP_KEYS.ROUTE_MATERIALS,
   VISUAL_REVAMP_KEYS.PLAYER,
   VISUAL_REVAMP_KEYS.PROFESSOR_NODE,
   VISUAL_REVAMP_KEYS.RUNE_KEEPER,
   VISUAL_REVAMP_KEYS.CONSOLE_KEEPER,
-  VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
   VISUAL_REVAMP_KEYS.GLITCH,
   VISUAL_REVAMP_KEYS.WATCHER,
   VISUAL_REVAMP_KEYS.BIT_SPARK,
   VISUAL_REVAMP_KEYS.BIT_BYTE,
   VISUAL_REVAMP_KEYS.BIT_FRAME,
-  VISUAL_REVAMP_KEYS.PORTAL_VOID,
   VISUAL_REVAMP_KEYS.PORTAL_FIELD,
+  VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
+  VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_OPEN,
+]);
+
+export const PROLOGUE_SCENE_IMAGE_ASSETS: AssetEntry[] = [
+  ...PROLOGUE_REWORK_IMAGE_ASSETS.filter((asset) => PROLOGUE_SCENE_REWORK_KEYS.has(asset.key)),
+  ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) => PROLOGUE_SCENE_VISUAL_KEYS.has(asset.key)),
+];
+
+const ARRAY_PLAINS_SCENE_VISUAL_KEYS = new Set<string>([
+  VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG,
+  VISUAL_REVAMP_KEYS.ROUTE_MATERIALS,
+  VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
+  VISUAL_REVAMP_KEYS.GLITCH,
+  VISUAL_REVAMP_KEYS.BIT_SPARK,
+  VISUAL_REVAMP_KEYS.BIT_BYTE,
+  VISUAL_REVAMP_KEYS.BIT_FRAME,
+  VISUAL_REVAMP_KEYS.PORTAL_VOID,
   VISUAL_REVAMP_KEYS.PORTAL_WATER,
-  VISUAL_REVAMP_KEYS.PORTAL_MOUNTAIN,
   VISUAL_REVAMP_KEYS.PROP_FIELD_SIGN,
   VISUAL_REVAMP_KEYS.PROP_PUZZLE_SHRINE,
   VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
   VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_OPEN,
-  VISUAL_REVAMP_KEYS.PROP_SAVE_OBELISK,
   VISUAL_REVAMP_KEYS.PROP_ARRAY_MARKER,
-  VISUAL_REVAMP_KEYS.PROP_WATER_BUOY,
-  VISUAL_REVAMP_KEYS.PUZZLE_FRAME,
-  VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_SORTING_SHED_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_INDEXING_BARN_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_GRAIN_HOPPER_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_PAIRING_GROUNDS_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_SHUFFLER_DOMAIN_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_TWIN_MIRROR_WALK_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_TWIN_POINTER_BRIDGE_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_TWIN_FIXED_WINDOW_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_TWIN_VARIABLE_WINDOW_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_MIRROR_SERPENT_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_HASH_NAMEPLATE_GATES_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_HASH_FREQUENCY_FORGE_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_HASH_ANAGRAM_GARDENS_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_HASH_CACHE_CAVERN_BG,
-  VISUAL_REVAMP_KEYS.PUZZLE_HASH_ARCHIVIST_BG,
 ]);
 
-export const BOOT_IMAGE_ASSETS: AssetEntry[] = [
-  COMPOSITE_IMAGE('portal', 'locked'),
-  COMPOSITE_IMAGE('portal', 'active_0'),
-  COMPOSITE_IMAGE('portal', 'swirl_0'),
-  COMPOSITE_IMAGE('portal', 'swirl_1'),
-  COMPOSITE_IMAGE('portal', 'swirl_2'),
-  COMPOSITE_IMAGE('portal', 'swirl_3'),
-  COMPOSITE_IMAGE('ui', 'dialogue_box'),
-  COMPOSITE_IMAGE('ui', 'portrait_inactive'),
-  COMPOSITE_IMAGE('ui', 'portrait_active'),
-  COMPOSITE_IMAGE('ui', 'prompt'),
-  COMPOSITE_IMAGE('moretiles', 'bridge_straight_h'),
-  COMPOSITE_IMAGE('moretiles', 'bridge_straight_v'),
-  COMPOSITE_IMAGE('moretiles', 'bridge_corner_ne'),
-  COMPOSITE_IMAGE('moretiles', 'bridge_corner_nw'),
-  ...PROLOGUE_REWORK_IMAGE_ASSETS,
-  ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) => BOOT_VISUAL_REVAMP_KEYS.has(asset.key)),
+export const ARRAY_PLAINS_SCENE_IMAGE_ASSETS: AssetEntry[] = [
   ...ARRAY_PLAINS_IMAGE_ASSETS,
-  ...TWIN_RIVERS_IMAGE_ASSETS,
+  ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) => ARRAY_PLAINS_SCENE_VISUAL_KEYS.has(asset.key)),
 ];
+
+const TWIN_RIVERS_SCENE_VISUAL_KEYS = new Set<string>([
+  VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG,
+  VISUAL_REVAMP_KEYS.ROUTE_MATERIALS,
+  VISUAL_REVAMP_KEYS.BIT_SPARK,
+  VISUAL_REVAMP_KEYS.BIT_BYTE,
+  VISUAL_REVAMP_KEYS.BIT_FRAME,
+  VISUAL_REVAMP_KEYS.PORTAL_FIELD,
+  VISUAL_REVAMP_KEYS.PORTAL_MOUNTAIN,
+  VISUAL_REVAMP_KEYS.PORTAL_WATER,
+  VISUAL_REVAMP_KEYS.PROP_WATER_BUOY,
+]);
+
+export const TWIN_RIVERS_SCENE_IMAGE_ASSETS: AssetEntry[] = [
+  ...TWIN_RIVERS_IMAGE_ASSETS,
+  ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) => TWIN_RIVERS_SCENE_VISUAL_KEYS.has(asset.key)),
+];
+
+export function getImageAssetPath(key: string): string | undefined {
+  return IMAGE_ASSETS.find((asset) => asset.key === key)?.path;
+}
 
 export const TILEMAP_ASSETS: AssetEntry[] = [];
 

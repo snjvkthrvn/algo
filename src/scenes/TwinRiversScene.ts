@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { VISUAL_REVAMP_KEYS } from '../config/assets';
+import { OVERWORLD_PLAYER_SPRITE_ASSETS, TWIN_RIVERS_SCENE_IMAGE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
 import { CAMERA_TUNING, COLORS, FONTS, REGIONS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { gameState } from '../core/GameStateManager';
@@ -17,6 +17,7 @@ import {
   type TwinRiversCollisionBlocker,
 } from '../data/regions/twinRivers';
 import { DialogueSystem } from '../systems/DialogueSystem';
+import { OverworldAmbience } from '../ui/OverworldAmbience';
 import { HUDManager } from '../systems/HUDManager';
 import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
 import {
@@ -77,6 +78,20 @@ export class TwinRiversScene extends Phaser.Scene {
     }
   }
 
+  preload(): void {
+    for (const asset of OVERWORLD_PLAYER_SPRITE_ASSETS) {
+      if (this.textures.exists(asset.key)) continue;
+      this.load.spritesheet(asset.key, asset.path, {
+        frameWidth: asset.frameWidth || 32,
+        frameHeight: asset.frameHeight || 48,
+      });
+    }
+
+    for (const asset of TWIN_RIVERS_SCENE_IMAGE_ASSETS) {
+      if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
+    }
+  }
+
   create(): void {
     this.hasShutdown = false;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
@@ -96,6 +111,13 @@ export class TwinRiversScene extends Phaser.Scene {
 
     this.renderField();
     this.renderRoute();
+    // Foam flecks + drifting leaves over the river ambient layer. Capped to
+    // the lower half of the screen so the sky stays uncluttered.
+    new OverworldAmbience(this, 'river', {
+      intensity: 1,
+      yMin: this.cameras.main.height * 0.35,
+      yMax: this.cameras.main.height - 30,
+    });
 
     this.player = new Player(this, px, py, {
       canMoveTo: (point) => this.isPlayerStepWalkable(point),

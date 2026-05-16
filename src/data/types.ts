@@ -67,6 +67,31 @@ export enum BitMood {
   HINT_COLD = 'hint_cold', // Player is moving away from solution
 }
 
+/**
+ * The script's "first principles" learning contract: the player should
+ * NEVER read about an algorithm before experiencing it. Each puzzle round
+ * declares which pedagogical phase it lives in, and BasePuzzleScene +
+ * child puzzles render different UI per phase.
+ *
+ *   FEEL_IT  Round 1 of every puzzle. No algorithm name, no pseudocode panel,
+ *            no formal lesson card. Just a playable surface + a diegetic
+ *            objective + Glitch visible as a brute-force co-actor showing
+ *            the cost of having no pattern.
+ *   NAME_IT  Transitional dialogue beat (NPC names the pattern the player
+ *            just performed). Brief — fires between FEEL_IT and the first
+ *            USE_IT round of the same puzzle.
+ *   USE_IT   Subsequent rounds (typically 2-4). Pseudocode trace, complexity
+ *            meter, state preview, lesson card with algorithm name all
+ *            mount. The player applies what they now have a name for.
+ *   MASTER_IT Boss fights. USE_IT toolkit + escalation / multi-pattern.
+ */
+export enum PuzzlePhase {
+  FEEL_IT = 'feel_it',
+  NAME_IT = 'name_it',
+  USE_IT = 'use_it',
+  MASTER_IT = 'master_it',
+}
+
 // ============================================================================
 // REGION TYPES
 // ============================================================================

@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import { COLORS, HEX_RADIUS, s } from '../P0_1/tokens';
+import { COLORS, HEX_RADIUS, s, STAGE } from '../P0_1/tokens';
+import { BitCompanion } from '../../../ui/BitCompanion';
+import { GlitchCorner } from '../../../ui/GlitchCorner';
 import { paintAtmosphere, type Atmosphere } from '../P0_1/visuals/atmosphere';
 import { ensureRuneTexture } from '../P0_1/visuals/rune';
 import { buildHud, type Hud } from '../P0_1/visuals/hud';
@@ -92,6 +94,27 @@ export class FlowConsolesScene extends Phaser.Scene {
 
     const escape = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     escape?.on('down', this.exitToReturnScene, this);
+
+    // Region companions — Bit spark + Glitch corner. The atmosphere already
+    // paints the Watcher prism + drifting stars, so the cosmic-void signature
+    // elements all live in the same place across both Prologue puzzles.
+    new BitCompanion(this, {
+      stage: 'spark',
+      x: STAGE.width - s(60),
+      y: s(160),
+      scale: 1.2,
+      depth: 9,
+    });
+    new GlitchCorner(this, {
+      x: s(124),
+      y: STAGE.height - s(64),
+      width: s(220),
+      height: s(74),
+      variant: 'cosmic',
+      heading: 'Nearby · Glitch',
+      body: '"Nope. Nope. Come ON. WHY WON\'T YOU FIT?!"',
+      depth: 9,
+    });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       escape?.removeAllListeners();

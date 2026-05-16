@@ -1,9 +1,12 @@
 /**
- * Three-round teaching arc.
+ * Four-round teaching arc.
  *
- * R1 Trace   — pure echo of a linear sequence.
- * R2 Branch  — adjacency presents multiple legal options at a junction.
- * R3 Revisit — the same hex appears twice in the walk; sequences are not sets.
+ * R1 Trace    — pure echo of a linear sequence.
+ * R2 Branch   — adjacency presents multiple legal options at a junction.
+ * R3 Revisit  — the same hex appears twice in the walk; sequences are not sets.
+ * R4 Long Walk — extended sequence with multiple revisits and branches;
+ *                tests that the player has *encoded* the chant, not memorised
+ *                a path. This is the puzzle's MASTER+ tier.
  */
 
 export type Axial = { q: number; r: number };
@@ -49,6 +52,40 @@ const r3Walk: Axial[] = [
   { q: 0, r: 1 },
 ];
 
+/**
+ * Round 4 field — wider and taller for the longer chant. Adds two extra
+ * outer hexes so the walk can fork and re-converge.
+ */
+const longField: Axial[] = [
+  { q: -2, r: 0 },
+  { q: 0, r: -1 },
+  { q: 1, r: -1 },
+  { q: -1, r: 0 },
+  { q: 0, r: 0 },
+  { q: 1, r: 0 },
+  { q: 2, r: 0 },
+  { q: -1, r: 1 },
+  { q: 0, r: 1 },
+  { q: 1, r: 1 },
+];
+
+/**
+ * 9-step chant: revisits the centre twice, hits both outer extremes, and
+ * sandwiches the branches between revisits so a "remember the path"
+ * strategy fails. Only encoding the order works.
+ */
+const r4Walk: Axial[] = [
+  { q: -2, r: 0 },
+  { q: -1, r: 0 },
+  { q: 0, r: 0 },
+  { q: 1, r: -1 },
+  { q: 1, r: 0 },
+  { q: 0, r: 0 },
+  { q: 0, r: 1 },
+  { q: 1, r: 1 },
+  { q: 2, r: 0 },
+];
+
 export const ROUNDS: Round[] = [
   {
     title: 'I. Trace',
@@ -70,5 +107,12 @@ export const ROUNDS: Round[] = [
     teach: 'If the chant returns to a rune, return to it too. Position in the sequence is what matters.',
     field: branchField,
     walk: r3Walk,
+  },
+  {
+    title: 'IV. Long Walk',
+    principle: 'A sequence is a function from index to action — index 0 to index n−1. Memorise the function, not the picture.',
+    teach: 'Nine steps. The chant revisits, branches, and crosses. Encode the order — the picture won\'t help.',
+    field: longField,
+    walk: r4Walk,
   },
 ];

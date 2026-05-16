@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   IMAGE_ASSETS,
   BOOT_IMAGE_ASSETS,
+  BOOT_SPRITE_ASSETS,
+  PROLOGUE_SCENE_IMAGE_ASSETS,
+  PROLOGUE_SCENE_SPRITE_ASSETS,
+  OVERWORLD_PLAYER_SPRITE_ASSETS,
+  ARRAY_PLAINS_SCENE_IMAGE_ASSETS,
+  TWIN_RIVERS_SCENE_IMAGE_ASSETS,
   ARRAY_PLAINS_IMAGE_ASSETS,
   ARRAY_PLAINS_KEYS,
   TWIN_RIVERS_IMAGE_ASSETS,
@@ -103,7 +109,7 @@ describe('prologue spritesheet manifest', () => {
   it('uses imagegen-derived field sheets for the playable prologue cast', () => {
     const sheets = new Map(PROLOGUE_SHEET_SPRITE_ASSETS.map((asset) => [asset.key, asset.path]));
 
-    expect(sheets.get(PROLOGUE_SHEET_KEYS.PLAYER)).toBe('assets/prologue_sheets/characters/imagegen_player_walk_smooth_v3.png');
+    expect(sheets.get(PROLOGUE_SHEET_KEYS.PLAYER)).toBe('assets/prologue_sheets/characters/imagegen_player_walk_smooth_v6.png');
     expect(sheets.get(PROLOGUE_SHEET_KEYS.NPCS)).toBe('assets/prologue_sheets/characters/imagegen_npc_idle.png');
   });
 
@@ -198,21 +204,38 @@ describe('visual revamp asset manifest', () => {
     }
   });
 
-  it('keeps the boot preload scoped to the first-three-region launch surface', () => {
+  it('keeps the boot preload scoped to menu-critical assets only', () => {
     const bootKeys = new Set(BOOT_IMAGE_ASSETS.map((asset) => asset.key));
 
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.TITLE_BG)).toBe(true);
-    expect(bootKeys.has(VISUAL_REVAMP_KEYS.PROLOGUE_BG)).toBe(true);
-    expect(bootKeys.has(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe(true);
-    expect(bootKeys.has(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe(true);
-    expect(bootKeys.has(VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG)).toBe(true);
-    expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_MIRROR_SERPENT_BG)).toBe(true);
-    expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_HASH_ARCHIVIST_BG)).toBe(true);
-
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.PROLOGUE_BG)).toBe(false);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe(false);
+    expect(bootKeys.has(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe(false);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.STACK_SPIRES_BG)).toBe(false);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_STACK_SCROLL_STACK_BG)).toBe(false);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_CORE_PROTOCOL_OMEGA_BG)).toBe(false);
-    expect(BOOT_IMAGE_ASSETS.length).toBeLessThan(IMAGE_ASSETS.length);
+    expect(BOOT_SPRITE_ASSETS).toEqual([]);
+    expect(BOOT_IMAGE_ASSETS.length).toBeLessThan(10);
+  });
+
+  it('moves overworld and puzzle art into scene-level preload bundles', () => {
+    const prologueImageKeys = new Set(PROLOGUE_SCENE_IMAGE_ASSETS.map((asset) => asset.key));
+    const prologueSpriteKeys = new Set(PROLOGUE_SCENE_SPRITE_ASSETS.map((asset) => asset.key));
+    const playerSpriteKeys = new Set(OVERWORLD_PLAYER_SPRITE_ASSETS.map((asset) => asset.key));
+    const arrayKeys = new Set(ARRAY_PLAINS_SCENE_IMAGE_ASSETS.map((asset) => asset.key));
+    const twinKeys = new Set(TWIN_RIVERS_SCENE_IMAGE_ASSETS.map((asset) => asset.key));
+
+    expect(prologueImageKeys.has(VISUAL_REVAMP_KEYS.PROLOGUE_BG)).toBe(true);
+    expect(prologueImageKeys.has(VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED)).toBe(true);
+    expect(prologueSpriteKeys.has(PROLOGUE_SHEET_KEYS.ROUTE_TILESET)).toBe(true);
+    expect(prologueSpriteKeys.has(PROLOGUE_SHEET_KEYS.PLAYER)).toBe(true);
+    expect(prologueSpriteKeys.has(PROLOGUE_SHEET_KEYS.COMPANIONS)).toBe(true);
+    expect(prologueSpriteKeys.has(PROLOGUE_SHEET_KEYS.NPCS)).toBe(false);
+    expect(playerSpriteKeys).toEqual(new Set([PROLOGUE_SHEET_KEYS.PLAYER]));
+    expect(arrayKeys.has(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe(true);
+    expect(arrayKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_SHUFFLER_DOMAIN_BG)).toBe(false);
+    expect(twinKeys.has(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe(true);
+    expect(twinKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_MIRROR_SERPENT_BG)).toBe(false);
   });
 });
 

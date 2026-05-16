@@ -17,7 +17,6 @@
 
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
@@ -26,6 +25,10 @@ import { BitHint } from '../../entities/BitHint';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
 import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
+import { showLessonCard } from '../../ui/LessonCard';
+import { BitCompanion } from '../../ui/BitCompanion';
+import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
+import type { RegionBackdropId, RegionBackdropOptions } from '../../ui/RegionBackdrop';
 import {
   HASH_ROUNDS,
   starsFromMistakesAndHints,
@@ -34,6 +37,8 @@ import {
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
 import { buildHashRoutingPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
+import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
+import { PuzzlePhase } from '../../data/types';
 
 /** Bucket fill colours used for chip backgrounds — one per crop family. */
 const CROP_PALETTE: Record<string, { fill: number; stroke: number; glyph: string }> = {
@@ -101,11 +106,13 @@ export class P1_3_HashHopper extends BasePuzzleScene {
   private floorY = 0;
   private bitHint: BitHint | null = null;
   private roundBadge!: Phaser.GameObjects.Text;
-  private formulaPill!: Phaser.GameObjects.Text;
+  private formulaPill: Phaser.GameObjects.Text | null = null;
   private statusPill!: Phaser.GameObjects.Text;
   private missedCount = 0;
   private routedCount = 0;
   private preview: PuzzlePreviewSidePanel | null = null;
+  private bruteForce: BruteForceActor | null = null;
+  private namedYet = false;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_3 });
@@ -115,25 +122,39 @@ export class P1_3_HashHopper extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_GRAIN_HOPPER_BG;
+    return null;
   }
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.02;
+    return 0;
+  }
+  protected getPuzzleTheme(): PuzzleTheme {
+    return ARRAY_PLAINS_PUZZLE_THEME;
+  }
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    return { id: 'array-plains', options: { intensity: 0.6 } };
   }
 
   create(): void {
+    // FEEL_IT diegetic puzzleDescription override — strip "hash each crop
+    // with its key % bucketCount" which is the literal algorithm.
+    if (HASH_ROUNDS[0].lesson.phase === PuzzlePhase.FEEL_IT) {
+      this.puzzleDescription = 'The harvest is coming in. Each crop has its bucket — land them before they fall.';
+    }
     super.create();
-    new PuzzleAmbience(this, 'farmland', { intensity: 0.6 });
+    new PuzzleAmbience(this, 'farmland', { intensity: 0.3 });
 
-    const { width, height } = this.cameras.main;
-    this.floorY = height - 110;
+    const { width } = this.cameras.main;
+    this.floorY = this.cameras.main.height - 110;
+    new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40, highlight: 3 });
+    // GlitchCorner removed — replaced by phase-gated BruteForceActor in
+    // mountFeelItPanels (degenerate-row mode: heading + ticking counter).
 
     this.buildRoundBadge(width);
-    this.buildFormulaPill(width);
+    if (HASH_ROUNDS[0].lesson.phase !== PuzzlePhase.FEEL_IT) {
+      this.buildFormulaPill(width);
+    }
     this.buildStatusPill(width);
-    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: 24 });
-    this.preview.setTitle('HASH PREVIEW');
-    this.preview.show();
+    // Preview side panel — algorithm-named in FEEL_IT, mount only in USE_IT.
 
     this.bitHint = new BitHint(this, 90, 260);
     this.bitHint.showNeutral();
@@ -149,6 +170,8 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       this.spawnTimer?.destroy();
       this.preview?.destroy();
       this.preview = null;
+      this.bruteForce?.destroy();
+      this.bruteForce = null;
     });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -236,11 +259,27 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     this.isResolving = true;
 
     const round = HASH_ROUNDS[idx];
+    const total = HASH_ROUNDS.length;
+    const isFeelIt = round.lesson.phase === PuzzlePhase.FEEL_IT;
+
+    // FEEL_IT strips the formula "bucket = key % N" from chrome — it's
+    // exactly what the player should derive.
     this.roundBadge.setText(
-      `ROUND ${idx + 1}/3 · ${round.label} · bucket = key % ${round.bucketCount}`,
+      isFeelIt
+        ? `ROUND ${idx + 1}/${total}`
+        : `ROUND ${idx + 1}/${total} · ${round.label} · bucket = key % ${round.bucketCount}`,
     );
-    this.formulaPill.setText(`bucket = letterIndex % ${round.bucketCount}`);
+    if (!isFeelIt && this.formulaPill) {
+      this.formulaPill.setText(`bucket = letterIndex % ${round.bucketCount}`);
+    }
     this.updateStatusPill(round);
+
+    if (isFeelIt) {
+      this.mountFeelItPanels();
+    } else {
+      this.mountUseItPanels();
+      this.bruteForce?.fadeTo(0.32);
+    }
 
     this.layoutBuckets(round);
     this.spawnQueue = [...round.stream];
@@ -250,10 +289,12 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       ? `${round.label}  ·  expect collisions — two keys can hash to one bucket`
       : `${round.label}  ·  ${round.stream.length} crops at speed`;
 
+    await showLessonCard(this, round.lesson, 'parchment');
+
     await showRoundBanner(this, {
-      label: `ROUND ${idx + 1} / 3`,
+      label: `ROUND ${idx + 1} / ${total}`,
       subtitle,
-      accent: idx === 2 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
+      accent: idx >= total - 1 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
     });
 
     this.isResolving = false;
@@ -265,6 +306,96 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     this.spawnTimer = this.time.addEvent({
       delay: round.spawnGapMs, loop: true,
       callback: () => this.spawnNext(),
+    });
+  }
+
+  private isFeelItRound(): boolean {
+    return HASH_ROUNDS[this.roundIndex]?.lesson.phase === PuzzlePhase.FEEL_IT;
+  }
+
+  private mountFeelItPanels(): void {
+    if (this.bruteForce) return;
+    const { height } = this.cameras.main;
+    this.bruteForce = new BruteForceActor(this, {
+      x: 152, y: height - 92,
+      strategy: makeHashingBruteStrategy(),
+      heading: "⚠ GLITCH'S APPROACH",
+      subtitle: '(tossing crops at random buckets...)',
+      notDoneLabel: 'still fumbling',
+      doneLabel: 'gave up',
+      verbLabel: 'misroutes',
+      depth: 40,
+    });
+  }
+
+  private mountUseItPanels(): void {
+    if (!this.preview) {
+      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: 24 });
+      this.preview.setTitle('HASH PREVIEW');
+      this.preview.show();
+    }
+    if (!this.formulaPill) {
+      this.buildFormulaPill(this.cameras.main.width);
+    }
+  }
+
+  /** NAME_IT beat — fired between FEEL_IT and the first USE_IT round.
+   *  Parchment overlay, dismissable on SPACE/ENTER/click. */
+  private async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
+    const { width, height } = this.cameras.main;
+    const cardW = Math.min(width - 200, 580);
+    const cardH = 200;
+
+    return new Promise<void>((resolve) => {
+      const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0.55)
+        .setOrigin(0, 0).setDepth(8999).setInteractive();
+      const container = this.add.container(width / 2, height / 2).setDepth(9000);
+
+      const shadow = this.add.graphics();
+      shadow.fillStyle(0x000000, 0.42);
+      shadow.fillRoundedRect(-cardW / 2 + 6, -cardH / 2 + 6, cardW, cardH, 6);
+
+      const card = this.add.graphics();
+      card.fillStyle(0xf0e4c2, 1);
+      card.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
+      card.fillStyle(0xd8c890, 1);
+      card.fillRect(-cardW / 2 + 6, cardH / 2 - 12, cardW - 12, 6);
+      card.lineStyle(3, 0x1a1208, 1);
+      card.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
+      card.lineStyle(1, 0xf5b820, 0.65);
+      card.strokeRoundedRect(-cardW / 2 + 4, -cardH / 2 + 4, cardW - 8, cardH - 8, 4);
+
+      const eyebrow = this.add.text(-cardW / 2 + 24, -cardH / 2 + 18, beat.speaker.toUpperCase(), {
+        fontSize: '9px', fontFamily: '"Press Start 2P", monospace', color: '#a03830',
+      }).setOrigin(0, 0);
+
+      const line = this.add.text(-cardW / 2 + 24, -cardH / 2 + 46, beat.line, {
+        fontSize: '13px', fontFamily: '"IBM Plex Mono", monospace', color: '#1a1208',
+        wordWrap: { width: cardW - 48, useAdvancedWrap: true }, lineSpacing: 4,
+      }).setOrigin(0, 0);
+
+      const hint = this.add.text(0, cardH / 2 - 18, 'press  SPACE  · ENTER · click  to continue', {
+        fontSize: '10px', fontFamily: '"IBM Plex Mono", monospace', color: '#4a3818', fontStyle: 'italic',
+      }).setOrigin(0.5, 0.5);
+
+      container.add([shadow, card, eyebrow, line, hint]);
+      container.setAlpha(0).setScale(0.92);
+      this.tweens.add({ targets: container, alpha: 1, scale: 1, duration: 240, ease: 'Back.easeOut' });
+
+      let dismissed = false;
+      const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        this.input.keyboard?.off('keydown-SPACE', dismiss);
+        this.input.keyboard?.off('keydown-ENTER', dismiss);
+        this.tweens.add({
+          targets: container, alpha: 0, scale: 0.92, duration: 180, ease: 'Power2.easeIn',
+          onComplete: () => { container.destroy(); dim.destroy(); resolve(); },
+        });
+      };
+      this.input.keyboard?.once('keydown-SPACE', dismiss);
+      this.input.keyboard?.once('keydown-ENTER', dismiss);
+      dim.once('pointerdown', dismiss);
     });
   }
 
@@ -299,7 +430,11 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     const rim = this.add.rectangle(0, -h / 2, w + 6, 8, 0x346856, 1)
       .setOrigin(0.5, 0.5);
 
-    const label = this.add.text(0, -h / 2 + 22, `BUCKET ${index}\n(key % ${this.buckets.length || index + 1} = ${index})`, {
+    // FEEL_IT strips the "(key % N = i)" formula line — that IS the algorithm.
+    const labelText = this.isFeelItRound()
+      ? `BUCKET ${index}`
+      : `BUCKET ${index}\n(key % ${this.buckets.length || index + 1} = ${index})`;
+    const label = this.add.text(0, -h / 2 + 22, labelText, {
       fontSize: '10px',
       fontFamily: FONTS.RETRO,
       color: '#081820',
@@ -331,8 +466,13 @@ export class P1_3_HashHopper extends BasePuzzleScene {
 
   // Once buckets are created, refresh their `(key % N = i)` label with the real N.
   private refreshBucketLabels(round: HashRound): void {
+    const isFeelIt = round.lesson.phase === PuzzlePhase.FEEL_IT;
     this.buckets.forEach((bucket) => {
-      bucket.label.setText(`BUCKET ${bucket.index}\n(key % ${round.bucketCount} = ${bucket.index})`);
+      bucket.label.setText(
+        isFeelIt
+          ? `BUCKET ${bucket.index}`
+          : `BUCKET ${bucket.index}\n(key % ${round.bucketCount} = ${bucket.index})`,
+      );
     });
   }
 
@@ -398,7 +538,12 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       fontFamily: FONTS.RETRO,
       color: '#081820',
     }).setOrigin(0.5);
-    const keyLabel = this.add.text(8, 6, `${crop.letterIndex} % ${HASH_ROUNDS[this.roundIndex].bucketCount} = ${crop.bucket}`, {
+    // FEEL_IT: show only the target bucket ("→ 2"). USE_IT shows the
+    // full hash formula ("22 % 4 = 2") so the player can verify the math.
+    const keyText = this.isFeelItRound()
+      ? `→ ${crop.bucket}`
+      : `${crop.letterIndex} % ${HASH_ROUNDS[this.roundIndex].bucketCount} = ${crop.bucket}`;
+    const keyLabel = this.add.text(8, 6, keyText, {
       fontSize: '9px',
       fontFamily: FONTS.MONO,
       color: '#3a2418',
@@ -614,7 +759,20 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       return;
     }
 
-    this.time.delayedCall(1500, () => this.startRound(this.roundIndex + 1).catch(() => undefined));
+    this.time.delayedCall(1500, async () => {
+      // FEEL_IT → fire the NAME_IT script beat once between rounds.
+      const round = HASH_ROUNDS[this.roundIndex];
+      if (
+        round.lesson.phase === PuzzlePhase.FEEL_IT &&
+        round.lesson.nameItBeat &&
+        !this.namedYet
+      ) {
+        this.namedYet = true;
+        this.bruteForce?.freeze();
+        await this.showNameItBeat(round.lesson.nameItBeat);
+      }
+      this.startRound(this.roundIndex + 1).catch(() => undefined);
+    });
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -627,17 +785,44 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       .filter((c) => !c.routed && !c.dragging)
       .sort((a, b) => b.container.y - a.container.y)[0];
 
-    const messages = [
-      `bucket = key % ${round?.bucketCount ?? 4}. Drag or press 1..${round?.bucketCount ?? 4}.`,
-      lowest
-        ? `Lowest crop: ${lowest.crop.crop} (key ${lowest.crop.letterIndex}) → bucket ${lowest.crop.bucket}.`
-        : 'Wait for a crop to fall, then route it before it lands.',
-      'Two keys hitting the same bucket is a hash collision. The formula still worked.',
-    ];
+    const messages = this.isFeelItRound()
+      ? [
+          lowest
+            ? `${lowest.crop.crop} belongs in bucket ${lowest.crop.bucket}.`
+            : 'A crop will fall soon. Watch its number.',
+          'Each crop has its own bucket. Always the same one.',
+          `Press 1..${round?.bucketCount ?? 4} to send the lowest crop, or drag it onto a bucket.`,
+        ]
+      : [
+          `bucket = key % ${round?.bucketCount ?? 4}. Drag or press 1..${round?.bucketCount ?? 4}.`,
+          lowest
+            ? `Lowest crop: ${lowest.crop.crop} (key ${lowest.crop.letterIndex}) → bucket ${lowest.crop.bucket}.`
+            : 'Wait for a crop to fall, then route it before it lands.',
+          'Two keys hitting the same bucket is a hash collision. The formula still worked.',
+        ];
     this.showMessage(messages[hintNumber - 1] ?? messages[0], COLORS.GOLD_ACCENT);
   }
 
   protected getConceptName(): string {
     return 'Hash Functions';
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Brute-force strategy — fed to BruteForceActor during FEEL_IT round 1.
+//
+// Hashing's brute-force foil is "toss into a random bucket and hope". We
+// run BruteForceActor in degenerate-row mode (no tile row); the counter
+// ticks up as Glitch racks up misroutes. The visible chaos is implied —
+// while the player is routing crops to their rightful homes via the
+// number on the sack, Glitch is making things worse over there.
+// ──────────────────────────────────────────────────────────────────────────
+
+function makeHashingBruteStrategy(): BruteForceStrategy {
+  return {
+    initialValues: [],
+    nextMove: (vals) => vals,
+    isSolved: () => false,
+    tickIntervalMs: 800,
+  };
 }
