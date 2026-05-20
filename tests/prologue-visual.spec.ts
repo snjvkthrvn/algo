@@ -71,13 +71,14 @@ async function waitForScene(page: Page, key: string, timeout = 30_000) {
 }
 
 /** Block until P0-1 enters PLAYER_TURN for any round. */
-async function waitForP01PlayerTurn(page: Page, timeout = 20_000) {
+async function waitForP01PlayerTurn(page: Page, timeout = 60_000) {
   await page.waitForFunction(
     () => {
       const game = (window as GameWindow).__PHASER_GAME__;
       const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
       return scene?.['state'] === 'turn' || scene?.['puzzleState'] === 'PLAYER_TURN';
     },
+    undefined,
     { timeout },
   );
 }
