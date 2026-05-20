@@ -1,0 +1,39 @@
+Use the imagegen skill to produce a NEW Pokemon Red style ARRAY MARKER puzzle prop for "Algorithmia: The Path of Logic" — marks indexed array tiles in Array Plains.
+
+=== AESTHETIC ===
+Pokemon Red style numbered marker tile. Flat-shaded, 16×16-effective, 5-color.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\objects\props\array_marker_v2.png
+- Dimensions: EXACTLY 64 × 64 pixels (square — it's a tile-like marker)
+- TRANSPARENT background
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, frame)
+- `#346856` medium dark (frame body, deeper)
+- `#88c070` light accent (rare)
+- `#e0f8d0` lightest (cream tile face)
+- `#06b6d4` cyan (number/glyph on the marker — interactive)
+
+=== SUBJECT ===
+A small square stone tile with a cyan glyph indicating an index position. Pokemon Red style — think the floor tile decorations in the dungeon.
+
+Composition:
+- Outer frame: dark #081820 + #346856 stone border
+- Tile face: cream #e0f8d0 inner square
+- Center: a cyan #06b6d4 number-glyph or "◇" pattern (universal "this is an indexed tile" marker)
+- 1px outline everywhere
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO smooth gradients, NO AA, NO drop shadows
+- NO HD painted style
+- NO color count above 5+alpha
+- NO baked numerals (the glyph is decorative, not legible)
+
+=== SELF-VERIFICATION ===
+Report dimensions, color count, hex values, file size, hard-edge confirmation.
+
+STOP after self-verification. DO NOT edit assets.ts.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.

@@ -1,11 +1,14 @@
 import Phaser from 'phaser';
 import { COLORS, s } from '../tokens';
 import type { Board } from '../board';
+import { placeRuneLit } from './rune';
 
 /**
- * Two-layer ribbon:
- *  - ghost   dashed surface line of the full walk (low-key, persistent)
- *  - trace   solid accent stroke of the player's traced portion + midpoint ticks
+ * Path visuals layered:
+ *  - ghost     dashed line of the full walk (low-key, persistent)
+ *  - trace     soft outer glow + bright cyan stroke connecting walked tiles
+ *  - lit tiles full-tile cyan rune overlays stamped on each walked step,
+ *              so the path reads as "tiles you've lit" instead of a thin line
  */
 
 export type Ribbon = {
@@ -17,6 +20,7 @@ export type Ribbon = {
 export function createRibbon(scene: Phaser.Scene): Ribbon {
   const ghost = scene.add.graphics().setDepth(4);
   const trace = scene.add.graphics().setDepth(7);
+  let litTiles: Phaser.GameObjects.Image[] = [];
 
   function paintGhost(board: Board): void {
     ghost.clear();
@@ -29,37 +33,52 @@ export function createRibbon(scene: Phaser.Scene): Ribbon {
     }
   }
 
+  function clearLitTiles(): void {
+    for (const img of litTiles) img.destroy();
+    litTiles = [];
+  }
+
   function paintTrace(board: Board, throughHop: number): void {
     trace.clear();
+    clearLitTiles();
     const chain = board.walkKeys.slice(0, throughHop + 1);
+    if (chain.length < 1) return;
+
+    for (const key of chain) {
+      const p = coordsOf(board, key);
+      litTiles.push(placeRuneLit(scene, p.x, p.y));
+    }
+
     if (chain.length < 2) return;
 
-    trace.lineStyle(s(3), COLORS.accent, 0.9);
-    for (let i = 1; i < chain.length; i += 1) {
-      const a = coordsOf(board, chain[i - 1]!);
-      const b = coordsOf(board, chain[i]!);
-      trace.beginPath();
-      trace.moveTo(a.x, a.y);
-      trace.lineTo(b.x, b.y);
-      trace.strokePath();
-    }
-
-    for (let i = 1; i < chain.length; i += 1) {
-      const a = coordsOf(board, chain[i - 1]!);
-      const b = coordsOf(board, chain[i]!);
-      const mx = (a.x + b.x) / 2;
-      const my = (a.y + b.y) / 2;
-      trace.fillStyle(COLORS.accent, 1);
-      trace.fillCircle(mx, my, s(2.5));
-    }
+    trace.lineStyle(s(8), COLORS.accent, 0.22);
+    drawChainPath(trace, board, chain);
+    trace.lineStyle(s(3.5), COLORS.accent, 0.95);
+    drawChainPath(trace, board, chain);
   }
 
   function clear(): void {
     ghost.clear();
     trace.clear();
+    clearLitTiles();
   }
 
   return { paintGhost, paintTrace, clear };
+}
+
+function drawChainPath(
+  g: Phaser.GameObjects.Graphics,
+  board: Board,
+  chain: string[],
+): void {
+  for (let i = 1; i < chain.length; i += 1) {
+    const a = coordsOf(board, chain[i - 1]!);
+    const b = coordsOf(board, chain[i]!);
+    g.beginPath();
+    g.moveTo(a.x, a.y);
+    g.lineTo(b.x, b.y);
+    g.strokePath();
+  }
 }
 
 function coordsOf(board: Board, key: string): Phaser.Math.Vector2 {

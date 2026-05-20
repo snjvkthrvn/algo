@@ -18,6 +18,7 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
+import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { drawPanel } from '../../ui/panel';
@@ -122,7 +123,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return null;
+    return VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG;
   }
   protected getPuzzleFrameFillAlpha(): number {
     return 0;
@@ -339,65 +340,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     }
   }
 
-  /** NAME_IT beat — fired between FEEL_IT and the first USE_IT round.
-   *  Parchment overlay, dismissable on SPACE/ENTER/click. */
-  private async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
-    const { width, height } = this.cameras.main;
-    const cardW = Math.min(width - 200, 580);
-    const cardH = 200;
-
-    return new Promise<void>((resolve) => {
-      const dim = this.add.rectangle(0, 0, width, height, 0x000000, 0.55)
-        .setOrigin(0, 0).setDepth(8999).setInteractive();
-      const container = this.add.container(width / 2, height / 2).setDepth(9000);
-
-      const shadow = this.add.graphics();
-      shadow.fillStyle(0x000000, 0.42);
-      shadow.fillRoundedRect(-cardW / 2 + 6, -cardH / 2 + 6, cardW, cardH, 6);
-
-      const card = this.add.graphics();
-      card.fillStyle(0xf0e4c2, 1);
-      card.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
-      card.fillStyle(0xd8c890, 1);
-      card.fillRect(-cardW / 2 + 6, cardH / 2 - 12, cardW - 12, 6);
-      card.lineStyle(3, 0x1a1208, 1);
-      card.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 6);
-      card.lineStyle(1, 0xf5b820, 0.65);
-      card.strokeRoundedRect(-cardW / 2 + 4, -cardH / 2 + 4, cardW - 8, cardH - 8, 4);
-
-      const eyebrow = this.add.text(-cardW / 2 + 24, -cardH / 2 + 18, beat.speaker.toUpperCase(), {
-        fontSize: '9px', fontFamily: '"Press Start 2P", monospace', color: '#a03830',
-      }).setOrigin(0, 0);
-
-      const line = this.add.text(-cardW / 2 + 24, -cardH / 2 + 46, beat.line, {
-        fontSize: '13px', fontFamily: '"IBM Plex Mono", monospace', color: '#1a1208',
-        wordWrap: { width: cardW - 48, useAdvancedWrap: true }, lineSpacing: 4,
-      }).setOrigin(0, 0);
-
-      const hint = this.add.text(0, cardH / 2 - 18, 'press  SPACE  · ENTER · click  to continue', {
-        fontSize: '10px', fontFamily: '"IBM Plex Mono", monospace', color: '#4a3818', fontStyle: 'italic',
-      }).setOrigin(0.5, 0.5);
-
-      container.add([shadow, card, eyebrow, line, hint]);
-      container.setAlpha(0).setScale(0.92);
-      this.tweens.add({ targets: container, alpha: 1, scale: 1, duration: 240, ease: 'Back.easeOut' });
-
-      let dismissed = false;
-      const dismiss = () => {
-        if (dismissed) return;
-        dismissed = true;
-        this.input.keyboard?.off('keydown-SPACE', dismiss);
-        this.input.keyboard?.off('keydown-ENTER', dismiss);
-        this.tweens.add({
-          targets: container, alpha: 0, scale: 0.92, duration: 180, ease: 'Power2.easeIn',
-          onComplete: () => { container.destroy(); dim.destroy(); resolve(); },
-        });
-      };
-      this.input.keyboard?.once('keydown-SPACE', dismiss);
-      this.input.keyboard?.once('keydown-ENTER', dismiss);
-      dim.once('pointerdown', dismiss);
-    });
-  }
+  // showNameItBeat lifted to BasePuzzleScene.
 
   private layoutBuckets(round: HashRound): void {
     this.buckets.forEach((b) => b.container.destroy());

@@ -140,7 +140,7 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PROP_WATER_BUOY, path: `${VISUAL_REVAMP_BASE}/objects/props/water_buoy.png` },
   { key: VISUAL_REVAMP_KEYS.PROP_CORE_TERMINAL, path: `${VISUAL_REVAMP_BASE}/objects/props/core_terminal.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FRAME, path: `${VISUAL_REVAMP_BASE}/ui/puzzle_encounter_frame_v2.png` },
-  { key: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/rune_memory_backdrop_v2.png` },
+  { key: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/rune_memory_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/flow_consoles_backdrop_v2.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/litany_trial_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_SORTING_SHED_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/sorting_shed_backdrop_v2.png` },
@@ -221,6 +221,8 @@ export const PROLOGUE_REWORK_KEYS = {
   ARRAY_PORTAL_ACTIVE: 'prologue-rework-array-portal-active',
   RUNE_TILES: 'prologue-rework-rune-tiles',
   FLOW_CONSOLES: 'prologue-rework-flow-consoles',
+  FLOW_CONSOLE_DAMAGED: 'prologue-rework-flow-console-damaged',
+  ROUTE_BRIDGE_BROKEN: 'prologue-rework-route-bridge-broken',
   PUZZLE_CHAMBER_FRAME: 'prologue-rework-puzzle-chamber-frame',
   DIALOGUE_BOX: 'prologue-rework-dialogue-box',
   PROMPT: 'prologue-rework-prompt',
@@ -250,6 +252,8 @@ export const PROLOGUE_REWORK_IMAGE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_REWORK_KEYS.ARRAY_PORTAL_ACTIVE, path: `${REWORK_BASE}/objects/array_portal_active.png` },
   { key: PROLOGUE_REWORK_KEYS.RUNE_TILES, path: `${REWORK_BASE}/objects/rune_tiles.png` },
   { key: PROLOGUE_REWORK_KEYS.FLOW_CONSOLES, path: `${REWORK_BASE}/objects/flow_consoles.png` },
+  { key: PROLOGUE_REWORK_KEYS.FLOW_CONSOLE_DAMAGED, path: `${REWORK_BASE}/objects/flow_console_damaged_v1.png` },
+  { key: PROLOGUE_REWORK_KEYS.ROUTE_BRIDGE_BROKEN, path: `${REWORK_BASE}/environment/route_bridge_broken_v1.png` },
   { key: PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME, path: `${REWORK_BASE}/ui/puzzle_chamber_frame.png` },
   { key: PROLOGUE_REWORK_KEYS.DIALOGUE_BOX, path: `${REWORK_BASE}/ui/dialogue_box.png` },
   { key: PROLOGUE_REWORK_KEYS.PROMPT, path: `${REWORK_BASE}/ui/prompt.png` },
@@ -271,6 +275,20 @@ export const TWIN_RIVERS_IMAGE_ASSETS: AssetEntry[] = [
   { key: TWIN_RIVERS_KEYS.FIELD_BACKGROUND, path: `${TWIN_RIVERS_BASE}/environment/twin_rivers_field.png` },
 ];
 
+const P0_1_BASE = `${VISUAL_REVAMP_BASE}/puzzles/p0_1`;
+
+export const P0_1_PUZZLE_KEYS = {
+  COSMIC_VOID: 'p0-1-cosmic-void',
+  STONE_ARENA: 'p0-1-stone-arena',
+  RUNE_TILES: 'p0-1-rune-tiles',
+} as const;
+
+export const P0_1_PUZZLE_ASSETS: AssetEntry[] = [
+  { key: P0_1_PUZZLE_KEYS.COSMIC_VOID, path: `${P0_1_BASE}/cosmic_void.png` },
+  { key: P0_1_PUZZLE_KEYS.STONE_ARENA, path: `${P0_1_BASE}/stone_arena.png` },
+  { key: P0_1_PUZZLE_KEYS.RUNE_TILES, path: `${P0_1_BASE}/rune_tiles.png`, frameWidth: 512, frameHeight: 512 },
+];
+
 export const PROLOGUE_SHEET_KEYS = {
   ROUTE_TILESET: 'prologue-sheet-route-tileset',
   PLAYER: 'prologue-sheet-player-walk',
@@ -278,15 +296,17 @@ export const PROLOGUE_SHEET_KEYS = {
   COMPANIONS: 'prologue-sheet-companions',
   OBJECTS: 'prologue-sheet-objects',
   UI: 'prologue-sheet-ui',
+  GLITCH_ATTACK: 'prologue-sheet-glitch-attack',
 } as const;
 
 export const PROLOGUE_SHEET_SPRITE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_SHEET_KEYS.ROUTE_TILESET, path: `${SHEET_BASE}/environment/prologue_route_tileset_v3.png`, frameWidth: 32, frameHeight: 32 },
-  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_smooth_v6.png`, frameWidth: 256, frameHeight: 256 },
+  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_smooth_v7.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.NPCS, path: `${SHEET_BASE}/characters/imagegen_npc_idle.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.COMPANIONS, path: `${SHEET_BASE}/characters/companion_sheet.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.OBJECTS, path: `${SHEET_BASE}/objects/object_sheet.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.UI, path: `${SHEET_BASE}/ui/ui_sheet.png`, frameWidth: 256, frameHeight: 256 },
+  { key: PROLOGUE_SHEET_KEYS.GLITCH_ATTACK, path: `${SHEET_BASE}/characters/glitch_attack_v1.png`, frameWidth: 256, frameHeight: 256 },
 ];
 
 const LEGACY_PROLOGUE_TILESET_ASSET: AssetEntry = {
@@ -353,6 +373,7 @@ export const IMAGE_ASSETS: AssetEntry[] = [
   ...VISUAL_REVAMP_IMAGE_ASSETS,
   ...ARRAY_PLAINS_IMAGE_ASSETS,
   ...TWIN_RIVERS_IMAGE_ASSETS,
+  ...P0_1_PUZZLE_ASSETS,
 ];
 
 export const BOOT_IMAGE_ASSETS: AssetEntry[] = [

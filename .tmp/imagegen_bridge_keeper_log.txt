@@ -1,0 +1,1308 @@
+Reading additional input from stdin...
+2026-05-18T13:13:30.850412Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer realm=\"OAuth\", resource_metadata=\"https://mcp.linear.app/.well-known/oauth-protected-resource/mcp\", error=\"invalid_token\", error_description=\"Missing or invalid access token\"" })
+OpenAI Codex v0.130.0
+--------
+2026-05-18T13:13:30.857914Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://mcp.supabase.com/.well-known/oauth-protected-resource/mcp\"" })
+workdir: D:\algo
+model: gpt-5.5
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, C:\Users\kathi\.codex\memories]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019e3b38-5e04-7a90-9a4b-07d9605251f3
+--------
+user
+Use the imagegen skill to produce a NEW Pokemon Red style NPC sprite for "BRIDGE KEEPER" — host of the TR2 Pointer Bridge puzzle in "Algorithmia: The Path of Logic".
+
+=== AESTHETIC ===
+Pokemon Red NPC — a bridge guardian / lantern keeper figure. Chunky, flat-shaded, 16×16 effective.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\characters\bridge_keeper_v2.png
+- Dimensions: EXACTLY 256 × 256 pixels
+- TRANSPARENT background
+
+=== EFFECTIVE RESOLUTION ===
+EFFECTIVE 16×16. Every 16×16 actual-pixel block = ONE solid color.
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, dark pants/cloak)
+- `#346856` medium dark (jacket body, hat)
+- `#88c070` light accent (rare)
+- `#e0f8d0` lightest (lantern body, face, light highlights)
+- `#06b6d4` cyan (the lantern flame — glowing cyan)
+
+=== CHARACTER ===
+A bridge keeper holding a lantern that helps travelers cross. Front-facing pose. Wears a practical jacket and travel pants. One arm extends forward holding a small lantern (cream body with cyan flame).
+
+Pokemon Red sized: chunky and sparse. The lantern is the iconic feature.
+
+=== PROHIBITIONS ===
+NO smooth gradients, NO AA, NO drop shadows, NO color count above 5+alpha, NO modern detail, NO HD face.
+
+=== SELF-VERIFICATION ===
+Report dimensions, color count, hex values, file size, hard-edge confirmation, transparent background.
+
+STOP after self-verification. DO NOT edit assets.ts or run build/tests.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.
+2026-05-18T13:13:30.883167Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/\"" })
+2026-05-18T13:13:30.909701Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_token\", error_description=\"No authorization provided\", resource_metadata=\"https://mcp.vercel.com/.well-known/oauth-protected-resource\"" })
+ERROR: The process "21352" not found.
+codex
+I’ll use the requested imagegen skill, but I’ll generate the sprite with Pillow so the dimensions, palette, transparency, and 16x16 block grid are deterministic. I’ll also do a light memory check for existing asset conventions in this repo before writing the PNG.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Path 'C:\\Users\\kathi\\.codex\\skills\\.system\\imagegen\\SKILL.md'" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Select-String -Path 'C:\\Users\\kathi\\.codex\\memories\\MEMORY.md' -Pattern 'bridge_keeper|visual_revamp|Pokemon Red|sprite|D:\\\\algo' -CaseSensitive:"'$false | Select-Object -First 20' in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Path 'C:\\Users\\kathi\\.codex\\plugins\\cache\\openai-curated\\superpowers\\dc902811\\skills\\using-superpowers\\SKILL.md'" in D:\algo
+ succeeded in 662ms:
+---
+name: "imagegen"
+description: "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas."
+---
+
+# Image Generation Skill
+
+Generates or edits images for the current project (for example website assets, game assets, UI mockups, product mockups, wireframes, logo design, photorealistic images, or infographics).
+
+## Top-level modes and rules
+
+This skill has exactly two top-level modes:
+
+- **Default built-in tool mode (preferred):** built-in `image_gen` tool for normal image generation, editing, and simple transparent-image requests. Does not require `OPENAI_API_KEY`.
+- **Fallback CLI mode:** `scripts/image_gen.py` CLI. Use when the user explicitly asks for the CLI/API/model path, or after the user explicitly confirms a true model-native transparency fallback with `gpt-image-1.5`. Requires `OPENAI_API_KEY`.
+
+Within CLI fallback, the CLI exposes three subcommands:
+
+- `generate`
+- `edit`
+- `generate-batch`
+
+Rules:
+- Use the built-in `image_gen` tool by default for normal image generation and editing requests.
+- Do not switch to CLI fallback for ordinary quality, size, or file-path control.
+- If the user explicitly asks for a transparent image/background, stay on built-in `image_gen` first: prompt for a flat removable chroma-key background, then remove it locally with the installed helper at `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`.
+- Never silently switch from built-in `image_gen` or CLI `gpt-image-2` to CLI `gpt-image-1.5`. Treat this as a model/path downgrade and ask the user before doing it, unless the user has already explicitly requested `gpt-image-1.5`, `scripts/image_gen.py`, or CLI fallback.
+- If a transparent request appears too complex for clean chroma-key removal, asks for true/native transparency, or local removal fails validation, explain that true transparency requires CLI `gpt-image-1.5 --background transparent --output-format png` because `gpt-image-2` does not support `background=transparent`, then ask whether to proceed. Run the CLI fallback only after the user confirms.
+- The word `batch` by itself does not mean CLI fallback. If the user asks for many assets or says to batch-generate assets without explicitly asking for CLI/API/model controls, stay on the built-in path and issue one built-in call per requested asset or variant.
+- If the built-in tool fails or is unavailable, tell the user the CLI fallback exists and that it requires `OPENAI_API_KEY`. Proceed only if the user explicitly asks for that fallback.
+- If the user explicitly asks for CLI mode, use the bundled `scripts/image_gen.py` workflow. Do not create one-off SDK runners.
+- Never modify `scripts/image_gen.py`. If something is missing, ask the user before doing anything else.
+
+Built-in save-path policy:
+- In built-in tool mode, Codex saves generated images under `$CODEX_HOME/*` by default.
+- Do not describe or rely on OS temp as the default built-in destination.
+- Do not describe or rely on a destination-path argument (if any) on the built-in `image_gen` tool. If a specific location is needed, generate first and then move or copy the selected output from `$CODEX_HOME/generated_images/...`.
+- Save-path precedence in built-in mode:
+  1. If the user names a destination, move or copy the selected output there.
+  2. If the image is meant for the current project, move or copy the final selected image into the workspace before finishing.
+  3. If the image is only for preview or brainstorming, render it inline; the underlying file can remain at the default `$CODEX_HOME/*` path.
+- Never leave a project-referenced asset only at the default `$CODEX_HOME/*` path.
+- Do not overwrite an existing asset unless the user explicitly asked for replacement; otherwise create a sibling versioned filename such as `hero-v2.png` or `item-icon-edited.png`.
+
+Shared prompt guidance for both modes lives in `references/prompting.md` and `references/sample-prompts.md`.
+
+Fallback-only docs/resources for CLI mode:
+- `references/cli.md`
+- `references/image-api.md`
+- `references/codex-network.md`
+- `scripts/image_gen.py`
+
+Local post-processing helper:
+- `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`: removes a flat chroma-key background from a generated image and writes a PNG/WebP with alpha. Prefer auto-key sampling, soft matte, and despill for antialiased edges.
+
+## When to use
+- Generate a new image (concept art, product shot, cover, website hero)
+- Generate a new image using one or more reference images for style, composition, or mood
+- Edit an existing image (inpainting, lighting or weather transformations, background replacement, object removal, compositing, transparent background)
+- Produce many assets or variants for one task
+
+## When not to use
+- Extending or matching an existing SVG/vector icon set, logo system, or illustration library inside the repo
+- Creating simple shapes, diagrams, wireframes, or icons that are better produced directly in SVG, HTML/CSS, or canvas
+- Making a small project-local asset edit when the source file already exists in an editable native format
+- Any task where the user clearly wants deterministic code-native output instead of a generated bitmap
+
+## Decision tree
+
+Think about two separate questions:
+
+1. **Intent:** is this a new image or an edit of an existing image?
+2. **Execution strategy:** is this one asset or many assets/variants?
+
+Intent:
+- If the user wants to modify an existing image while preserving parts of it, treat the request as **edit**.
+- If the user provides images only as references for style, composition, mood, or subject guidance, treat the request as **generate**.
+- If the user provides no images, treat the request as **generate**.
+
+Built-in edit semantics:
+- Built-in edit mode is for images already visible in the conversation context, such as attached images or images generated earlier in the thread.
+- If the user wants to edit a local image file with the built-in tool, first load it with built-in `view_image` tool so the image is visible in the conversation context, then proceed with the built-in edit flow.
+- Do not promise arbitrary filesystem-path editing through the built-in tool.
+- If a local file still needs direct file-path control, masks, or other explicit CLI-only parameters, use the explicit CLI fallback only when the user asks for it.
+- For edits, preserve invariants aggressively and save non-destructively by default.
+
+Execution strategy:
+- In the built-in default path, produce many assets or variants by issuing one `image_gen` call per requested asset or variant.
+- In the CLI fallback path, use the CLI `generate-batch` subcommand only when the user explicitly chose CLI mode and needs many prompts/assets.
+- For many distinct assets, do not use `n` as a substitute for separate prompts. `n` is for variants of one prompt; distinct assets need distinct built-in calls or distinct CLI `generate-batch` jobs.
+
+Assume the user wants a new image unless they clearly ask to change an existing one.
+
+## Workflow
+1. Decide the top-level mode: built-in by default, including simple transparent-output requests; fallback CLI only if explicitly requested or after the user explicitly confirms a transparent-output fallback.
+2. Decide the intent: `generate` or `edit`.
+3. Decide whether the output is preview-only or meant to be consumed by the current project.
+4. Decide the execution strategy: single asset vs repeated built-in calls vs CLI `generate-batch`.
+5. Collect inputs up front: prompt(s), exact text (verbatim), constraints/avoid list, and any input images.
+6. For every input image, label its role explicitly:
+   - reference image
+   - edit target
+   - supporting insert/style/compositing input
+7. If the edit target is only on the local filesystem and you are staying on the built-in path, inspect it with `view_image` first so the image is available in conversation context.
+8. If the user asked for a photo, illustration, sprite, product image, banner, or other explicitly raster-style asset, use `image_gen` rather than substituting SVG/HTML/CSS placeholders. If the request is for an icon, logo, or UI graphic that should match existing repo-native SVG/vector/code assets, prefer editing those directly instead.
+9. Augment the prompt based on specificity:
+   - If the user's prompt is already specific and detailed, normalize it into a clear spec without adding creative requirements.
+   - If the user's prompt is generic, add tasteful augmentation only when it materially improves output quality.
+10. Use the built-in `image_gen` tool by default.
+11. For transparent-output requests, follow the transparent image guidance below: generate with built-in `image_gen` on a flat chroma-key background, copy the selected output into the workspace or `tmp/imagegen/`, run the installed `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py` helper, and validate the alpha result before using it. If this path looks unsuitable or fails, ask before switching to CLI `gpt-image-1.5`.
+12. Inspect outputs and validate: subject, style, composition, text accuracy, and invariants/avoid items.
+13. Iterate with a single targeted change, then re-check.
+14. For preview-only work, render the image inline; the underlying file may remain at the default `$CODEX_HOME/generated_images/...` path.
+15. For project-bound work, move or copy the selected artifact into the workspace and update any consuming code or references. Never leave a project-referenced asset only at the default `$CODEX_HOME/generated_images/...` path.
+16. For batches or multi-asset requests, persist every requested deliverable final in the workspace unless the user explicitly asked to keep outputs preview-only. Discarded variants do not need to be kept unless requested.
+17. If the user explicitly chooses or confirms the CLI fallback, then use the fallback-only docs for model, quality, size, `input_fidelity`, masks, output format, output paths, and network setup.
+18. Always report the final saved path(s) for any workspace-bound asset(s), plus the final prompt or prompt set and whether the built-in tool or fallback CLI mode was used.
+
+## Transparent image requests
+
+Transparent-image requests still use built-in `image_gen` first. Because the built-in tool does not expose a true transparent-background control, create a removable chroma-key source image and then convert the key color to alpha locally.
+
+Default sequence:
+1. Use built-in `image_gen` to generate the requested subject on a perfectly flat solid chroma-key background.
+2. Choose a key color that is unlikely to appear in the subject: default `#00ff00`, use `#ff00ff` for green subjects, and avoid `#0000ff` for blue subjects.
+3. After generation, move or copy the selected source image from `$CODEX_HOME/generated_images/...` into the workspace or `tmp/imagegen/`.
+4. Run the installed helper path, not a project-relative script path:
+   ```bash
+   python "${CODEX_HOME:-$HOME/.codex}/skills/.system/imagegen/scripts/remove_chroma_key.py" \
+     --input <source> \
+     --out <final.png> \
+     --auto-key border \
+     --soft-matte \
+     --transparent-threshold 12 \
+     --opaque-threshold 220 \
+     --despill
+   ```
+5. Validate that the output has an alpha channel, transparent corners, plausible subject coverage, and no obvious key-color fringe. If a thin fringe remains, retry once with `--edge-contract 1`; use `--edge-feather 0.25` only when the edge is visibly stair-stepped and the subject is not shiny or reflective.
+6. Save the final alpha PNG/WebP in the project if the asset is project-bound. Never leave a project-referenced transparent asset only under `$CODEX_HOME/*`.
+
+Prompt transparent requests like this:
+
+```text
+Create the requested subject on a perfectly flat solid #00ff00 chroma-key background for background removal.
+The background must be one uniform color with no shadows, gradients, texture, reflections, floor plane, or lighting variation.
+Keep the subject fully separated from the background with crisp edges and generous padding.
+Do not use #00ff00 anywhere in the subject.
+No cast shadow, no contact shadow, no reflection, no watermark, and no text unless explicitly requested.
+```
+
+Do not automatically use CLI `gpt-image-1.5 --background transparent --output-format png` instead of chroma keying. Ask the user first when the user asks for true/native transparency, when local removal fails validation, or when the requested image is complex: hair, fur, feathers, smoke, glass, liquids, translucent materials, reflective objects, soft shadows, realistic product grounding, or subject colors that conflict with all practical key colors.
+
+Use a concise confirmation like:
+
+```text
+This likely needs true native transparency. The default built-in path uses a chroma-key background plus local removal, but true transparency requires the CLI fallback with gpt-image-1.5 because gpt-image-2 does not support background=transparent. It also requires OPENAI_API_KEY. Should I proceed with that CLI fallback?
+```
+
+## Prompt augmentation
+
+Reformat user prompts into a structured, production-oriented spec. Make the user's goal clearer and more actionable, but do not blindly add detail.
+
+Treat this as prompt-shaping guidance, not a closed schema. Use only the lines that help, and add a short extra labeled line when it materially improves clarity.
+
+### Specificity policy
+
+Use the user's prompt specificity to decide how much augmentation is appropriate:
+
+- If the prompt is already specific and detailed, preserve that specificity and only normalize/structure it.
+- If the prompt is generic, you may add tasteful augmentation when it will materially improve the result.
+
+Allowed augmentations:
+- composition or framing hints
+- polish level or intended-use hints
+- practical layout guidance
+- reasonable scene concreteness that supports the stated request
+
+Not allowed augmentations:
+- extra characters or objects that are not implied by the request
+- brand names, slogans, palettes, or narrative beats that are not implied
+- arbitrary side-specific placement unless the surrounding layout supports it
+
+## Use-case taxonomy (exact slugs)
+
+Classify each request into one of these buckets and keep the slug consistent across prompts and references.
+
+Generate:
+- photorealistic-natural â€” candid/editorial lifestyle scenes with real texture and natural lighting.
+- product-mockup â€” product/packaging shots, catalog imagery, merch concepts.
+- ui-mockup â€” app/web interface mockups and wireframes; specify the desired fidelity.
+- infographic-diagram â€” diagrams/infographics with structured layout and text.
+- scientific-educational â€” classroom explainers, scientific diagrams, and learning visuals with required labels and accuracy constraints.
+- ads-marketing â€” campaign concepts and ad creatives with audience, brand position, scene, and exact tagline/copy.
+- productivity-visual â€” slide, chart, workflow, and data-heavy business visuals.
+- logo-brand â€” logo/mark exploration, vector-friendly.
+- illustration-story â€” comics, childrenâ€™s book art, narrative scenes.
+- stylized-concept â€” style-driven concept art, 3D/stylized renders.
+- historical-scene â€” period-accurate/world-knowledge scenes.
+
+Edit:
+- text-localization â€” translate/replace in-image text, preserve layout.
+- identity-preserve â€” try-on, person-in-scene; lock face/body/pose.
+- precise-object-edit â€” remove/replace a specific element (including interior swaps).
+- lighting-weather â€” time-of-day/season/atmosphere changes only.
+- background-extraction â€” transparent background / clean cutout. Use built-in `image_gen` with chroma-key removal first for simple opaque subjects; ask before using CLI true transparency for complex subjects.
+- style-transfer â€” apply reference style while changing subject/scene.
+- compositing â€” multi-image insert/merge with matched lighting/perspective.
+- sketch-to-render â€” drawing/line art to photoreal render.
+
+## Shared prompt schema
+
+Use the following labeled spec as shared prompt scaffolding for both top-level modes:
+
+```text
+Use case: <taxonomy slug>
+Asset type: <where the asset will be used>
+Primary request: <user's main prompt>
+Input images: <Image 1: role; Image 2: role> (optional)
+Scene/backdrop: <environment>
+Subject: <main subject>
+Style/medium: <photo/illustration/3D/etc>
+Composition/framing: <wide/close/top-down; placement>
+Lighting/mood: <lighting + mood>
+Color palette: <palette notes>
+Materials/textures: <surface details>
+Text (verbatim): "<exact text>"
+Constraints: <must keep/must avoid>
+Avoid: <negative constraints>
+```
+
+Notes:
+- `Asset type` and `Input images` are prompt scaffolding, not dedicated CLI flags.
+- `Scene/backdrop` refers to the visual setting. It is not the same as the fallback CLI `background` parameter, which controls output transparency behavior.
+- Fallback-only execution notes such as `Quality:`, `Input fidelity:`, masks, output format, and output paths belong in the CLI path only. Do not treat them as built-in `image_gen` tool arguments.
+
+Augmentation rules:
+- Keep it short.
+- Add only the details needed to improve the prompt materially.
+- For edits, explicitly list invariants (`change only X; keep Y unchanged`).
+- If any critical detail is missing and blocks success, ask a question; otherwise proceed.
+
+## Examples
+
+### Generation example (hero image)
+```text
+Use case: product-mockup
+Asset type: landing page hero
+Primary request: a minimal hero image of a ceramic coffee mug
+Style/medium: clean product photography
+Composition/framing: wide composition with usable negative space for page copy if needed
+Lighting/mood: soft studio lighting
+Constraints: no logos, no text, no watermark
+```
+
+### Edit example (invariants)
+```text
+Use case: precise-object-edit
+Asset type: product photo background replacement
+Primary request: replace only the background with a warm sunset gradient
+Constraints: change only the background; keep the product and its edges unchanged; no text; no watermark
+```
+
+## Prompting best practices
+- Structure prompt as scene/backdrop -> subject -> details -> constraints.
+- Include intended use (ad, UI mock, infographic) to set the mode and polish level.
+- Use camera/composition language for photorealism.
+- Only use SVG/vector stand-ins when the user explicitly asked for vector output or a non-image placeholder.
+- Quote exact text and specify typography + placement.
+- For tricky words, spell them letter-by-letter and require verbatim rendering.
+- For multi-image inputs, reference images by index and describe how they should be used.
+- For edits, repeat invariants every iteration to reduce drift.
+- Iterate with single-change follow-ups.
+- If the prompt is generic, add only the extra detail that will materially help.
+- If the prompt is already detailed, normalize it instead of expanding it.
+- For CLI fallback only, see `references/cli.md` and `references/image-api.md` for model, `quality`, `input_fidelity`, masks, output format, and output-path guidance.
+- For transparent images, use the built-in-first chroma-key workflow unless the request is complex enough to need true CLI transparency; ask before switching to CLI `gpt-image-1.5`.
+
+More principles shared by both modes: `references/prompting.md`.
+Copy/paste specs shared by both modes: `references/sample-prompts.md`.
+
+## Guidance by asset type
+Asset-type templates (website assets, game assets, wireframes, logo) are consolidated in `references/sample-prompts.md`.
+
+## gpt-image-2 guidance for CLI fallback
+
+The fallback CLI defaults to `gpt-image-2`.
+
+- Use `gpt-image-2` for new CLI/API workflows unless the request needs true model-native transparent output.
+- If a transparent request may need CLI fallback, ask before using `gpt-image-1.5` unless the user already explicitly requested `gpt-image-1.5`, `scripts/image_gen.py`, or CLI fallback. Explain that the built-in chroma-key path is the default, but true transparency requires `gpt-image-1.5` because `gpt-image-2` does not support `background=transparent`.
+- `gpt-image-2` always uses high fidelity for image inputs; do not set `input_fidelity` with this model.
+- `gpt-image-2` supports `quality` values `low`, `medium`, `high`, and `auto`.
+- Use `quality low` for fast drafts, thumbnails, and quick iterations. Use `medium`, `high`, or `auto` for final assets, dense text, diagrams, identity-sensitive edits, or high-resolution outputs.
+- Square images are typically fastest to generate. Use `1024x1024` for fast square drafts.
+- If the user asks for 4K-style output, use `3840x2160` for landscape or `2160x3840` for portrait.
+- `gpt-image-2` size may be `auto` or `WIDTHxHEIGHT` if all constraints hold: max edge `<= 3840px`, both edges multiples of `16px`, long-to-short ratio `<= 3:1`, total pixels between `655,360` and `8,294,400`.
+
+Popular `gpt-image-2` sizes:
+- `1024x1024` square
+- `1536x1024` landscape
+- `1024x1536` portrait
+- `2048x2048` 2K square
+- `2048x1152` 2K landscape
+- `3840x2160` 4K landscape
+- `2160x3840` 4K portrait
+- `auto`
+
+## Fallback CLI mode only
+
+### Temp and output conventions
+These conventions apply only to the CLI fallback. They do not describe built-in `image_gen` output behavior.
+- Use `tmp/imagegen/` for intermediate files (for example JSONL batches); delete them when done.
+- Write final artifacts under `output/imagegen/`.
+- Use `--out` or `--out-dir` to control output paths; keep filenames stable and descriptive.
+
+### Dependencies
+Prefer `uv` for dependency management in this repo.
+
+Required Python package:
+```bash
+uv pip install openai
+```
+
+Required for local chroma-key removal and optional downscaling:
+```bash
+uv pip install pillow
+```
+
+Portability note:
+- If you are using the installed skill outside this repo, install dependencies into that environment with its package manager.
+- In uv-managed environments, `uv pip install ...` remains the preferred path.
+
+### Environment
+- `OPENAI_API_KEY` must be set for live API calls.
+- Do not ask the user for `OPENAI_API_KEY` when using the built-in `image_gen` tool.
+- Never ask the user to paste the full key in chat. Ask them to set it locally and confirm when ready.
+
+If the key is missing, give the user these steps:
+1. Create an API key in the OpenAI platform UI: https://platform.openai.com/api-keys
+2. Set `OPENAI_API_KEY` as an environment variable in their system.
+3. Offer to guide them through setting the environment variable for their OS/shell if needed.
+
+If installation is not possible in this environment, tell the user which dependency is missing and how to install it into their active environment.
+
+### Script-mode notes
+- CLI commands + examples: `references/cli.md`
+- API parameter quick reference: `references/image-api.md`
+- Network approvals / sandbox settings for CLI mode: `references/codex-network.md`
+
+## Reference map
+- `references/prompting.md`: shared prompting principles for both modes.
+- `references/sample-prompts.md`: shared copy/paste prompt recipes for both modes.
+- `references/cli.md`: fallback-only CLI usage via `scripts/image_gen.py`.
+- `references/image-api.md`: fallback-only API/CLI parameter reference.
+- `references/codex-network.md`: fallback-only network/sandbox troubleshooting for CLI mode.
+- `scripts/image_gen.py`: fallback-only CLI implementation. Do not load or use it unless the user explicitly chooses CLI mode or explicitly confirms a transparent request's true CLI transparency fallback.
+- `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`: local post-processing helper for built-in transparent-image requests.
+
+ succeeded in 698ms:
+---
+name: using-superpowers
+description: Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions
+---
+
+<SUBAGENT-STOP>
+If you were dispatched as a subagent to execute a specific task, skip this skill.
+</SUBAGENT-STOP>
+
+<EXTREMELY-IMPORTANT>
+If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+
+IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+
+This is not negotiable. This is not optional. You cannot rationalize your way out of this.
+</EXTREMELY-IMPORTANT>
+
+## Instruction Priority
+
+Superpowers skills override default system prompt behavior, but **user instructions always take precedence**:
+
+1. **User's explicit instructions** (CLAUDE.md, GEMINI.md, AGENTS.md, direct requests) â€” highest priority
+2. **Superpowers skills** â€” override default system behavior where they conflict
+3. **Default system prompt** â€” lowest priority
+
+If CLAUDE.md, GEMINI.md, or AGENTS.md says "don't use TDD" and a skill says "always use TDD," follow the user's instructions. The user is in control.
+
+## How to Access Skills
+
+**In Claude Code:** Use the `Skill` tool. When you invoke a skill, its content is loaded and presented to youâ€”follow it directly. Never use the Read tool on skill files.
+
+**In Copilot CLI:** Use the `skill` tool. Skills are auto-discovered from installed plugins. The `skill` tool works the same as Claude Code's `Skill` tool.
+
+**In Gemini CLI:** Skills activate via the `activate_skill` tool. Gemini loads skill metadata at session start and activates the full content on demand.
+
+**In other environments:** Check your platform's documentation for how skills are loaded.
+
+## Platform Adaptation
+
+Skills use Claude Code tool names. Non-CC platforms: see `references/copilot-tools.md` (Copilot CLI), `references/codex-tools.md` (Codex) for tool equivalents. Gemini CLI users get the tool mapping loaded automatically via GEMINI.md.
+
+# Using Skills
+
+## The Rule
+
+**Invoke relevant or requested skills BEFORE any response or action.** Even a 1% chance a skill might apply means that you should invoke the skill to check. If an invoked skill turns out to be wrong for the situation, you don't need to use it.
+
+```dot
+digraph skill_flow {
+    "User message received" [shape=doublecircle];
+    "About to EnterPlanMode?" [shape=doublecircle];
+    "Already brainstormed?" [shape=diamond];
+    "Invoke brainstorming skill" [shape=box];
+    "Might any skill apply?" [shape=diamond];
+    "Invoke Skill tool" [shape=box];
+    "Announce: 'Using [skill] to [purpose]'" [shape=box];
+    "Has checklist?" [shape=diamond];
+    "Create TodoWrite todo per item" [shape=box];
+    "Follow skill exactly" [shape=box];
+    "Respond (including clarifications)" [shape=doublecircle];
+
+    "About to EnterPlanMode?" -> "Already brainstormed?";
+    "Already brainstormed?" -> "Invoke brainstorming skill" [label="no"];
+    "Already brainstormed?" -> "Might any skill apply?" [label="yes"];
+    "Invoke brainstorming skill" -> "Might any skill apply?";
+
+    "User message received" -> "Might any skill apply?";
+    "Might any skill apply?" -> "Invoke Skill tool" [label="yes, even 1%"];
+    "Might any skill apply?" -> "Respond (including clarifications)" [label="definitely not"];
+    "Invoke Skill tool" -> "Announce: 'Using [skill] to [purpose]'";
+    "Announce: 'Using [skill] to [purpose]'" -> "Has checklist?";
+    "Has checklist?" -> "Create TodoWrite todo per item" [label="yes"];
+    "Has checklist?" -> "Follow skill exactly" [label="no"];
+    "Create TodoWrite todo per item" -> "Follow skill exactly";
+}
+```
+
+## Red Flags
+
+These thoughts mean STOPâ€”you're rationalizing:
+
+| Thought | Reality |
+|---------|---------|
+| "This is just a simple question" | Questions are tasks. Check for skills. |
+| "I need more context first" | Skill check comes BEFORE clarifying questions. |
+| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
+| "I can check git/files quickly" | Files lack conversation context. Check for skills. |
+| "Let me gather information first" | Skills tell you HOW to gather information. |
+| "This doesn't need a formal skill" | If a skill exists, use it. |
+| "I remember this skill" | Skills evolve. Read current version. |
+| "This doesn't count as a task" | Action = task. Check for skills. |
+| "The skill is overkill" | Simple things become complex. Use it. |
+| "I'll just do this one thing first" | Check BEFORE doing anything. |
+| "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
+| "I know what that means" | Knowing the concept â‰  using the skill. Invoke it. |
+
+## Skill Priority
+
+When multiple skills could apply, use this order:
+
+1. **Process skills first** (brainstorming, debugging) - these determine HOW to approach the task
+2. **Implementation skills second** (frontend-design, mcp-builder) - these guide execution
+
+"Let's build X" â†’ brainstorming first, then implementation skills.
+"Fix this bug" â†’ debugging first, then domain-specific skills.
+
+## Skill Types
+
+**Rigid** (TDD, debugging): Follow exactly. Don't adapt away discipline.
+
+**Flexible** (patterns): Adapt principles to context.
+
+The skill itself tells you which.
+
+## User Instructions
+
+Instructions say WHAT, not HOW. "Add X" or "Fix Y" doesn't mean skip workflows.
+
+ succeeded in 818ms:
+
+C:\Users\kathi\.codex\memories\MEMORY.md:39:# Task Group: D:\algo\algo-demo standalone audit with Gemini and Firefox 
+prod smoke
+C:\Users\kathi\.codex\memories\MEMORY.md:42:applies_to: cwd=D:\algo\algo-demo; reuse_rule=safe for follow-up work in 
+this nested demo repo while its standalone `.git` root, demo-vs-full-game contract, and current Playwright/browser 
+scripts remain recognizable; do not reuse blindly for the parent `D:\algo` checkout.
+C:\Users\kathi\.codex\memories\MEMORY.md:48:- 
+rollout_summaries/2026-05-16T19-45-06-9snG-algo_demo_gemini_audit_and_firefox_load_failure.md (cwd=D:\algo, rollout_pat
+h=C:\Users\kathi\.codex\sessions\2026\05\16\rollout-2026-05-16T15-45-06-019e3252-2a6a-78f0-ab72-c78baaff6104.jsonl, 
+updated_at=2026-05-16T19:55:47+00:00, thread_id=019e3252-2a6a-78f0-ab72-c78baaff6104, nested repo audit found stale 
+tests, doc drift, Firefox preload stall, and real npm audit findings)
+C:\Users\kathi\.codex\memories\MEMORY.md:52:- D:\algo\algo-demo, nested git repo, gemini-3.1-pro-preview, npm.cmd ci, 
+npm run build, npm run test:run, npm run test:browsers:prod, Firefox timeout, BootScene, IMAGE_ASSETS, 
+BOOT_IMAGE_ASSETS, twinRivers, hash_highlands_gateway, end_game, HashHighlandsChoiceScenes.ts, CoreChoiceScenes.ts, 
+README.md, 9 fully playable regions, Thanks for playing this demo, Rollup advisory
+C:\Users\kathi\.codex\memories\MEMORY.md:56:- when the user said "look at D:\algo\algo-demo and see if it is correct. 
+also use gemini model gemini-3.1-pro-preview" -> treat `D:\algo\algo-demo` as the actual audit target, not the dirty 
+parent checkout, and use that exact Gemini model unless the user changes it [Task 1]
+C:\Users\kathi\.codex\memories\MEMORY.md:60:- `D:\algo\algo-demo` is its own Git repo nested under `D:\algo`; the 
+correct audit boundary here is the clean inner repo on `master`, not the dirty parent checkout [Task 1]
+C:\Users\kathi\.codex\memories\MEMORY.md:105:# Task Group: D:\algo Firefox boot stall, scene-level asset preload 
+split, and preview-panel rollout context
+C:\Users\kathi\.codex\memories\MEMORY.md:108:applies_to: cwd=D:\algo; reuse_rule=safe for follow-up work in this 
+checkout while `src/config/assets.ts`, `BootScene`, region scene `preload()` hooks, and the preview-panel helper 
+remain recognizable, but treat exact asset names, branch names, and cache/temp redirection paths as checkout or 
+machine specific.
+C:\Users\kathi\.codex\memories\MEMORY.md:114:- 
+rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C
+:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, 
+updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, preview-panel inspection before 
+the rollout pivoted into the browser blocker)
+C:\Users\kathi\.codex\memories\MEMORY.md:118:- D:\algo, PuzzlePreviewSidePanel, TwinRiversChoiceScenes.ts, 
+refreshPreview, refreshStatus, predicted state, literal [8, 5, 2, 3], cyan interactive state
+C:\Users\kathi\.codex\memories\MEMORY.md:124:- 
+rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C
+:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, 
+updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, Firefox-specific boot stall 
+traced to heavy BootScene preload pressure)
+C:\Users\kathi\.codex\memories\MEMORY.md:128:- D:\algo, Firefox, BootScene, preload, asset manifest, 
+src/config/assets.ts, PROLOGUE_SCENE_IMAGE_ASSETS, ARRAY_PLAINS_SCENE_IMAGE_ASSETS, TWIN_RIVERS_SCENE_IMAGE_ASSETS, 
+OVERWORLD_PLAYER_SPRITE_ASSETS, Set<string>, ENOSPC, test:browsers:prod
+C:\Users\kathi\.codex\memories\MEMORY.md:134:- 
+rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C
+:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, 
+updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, build/unit/browser matrix passed 
+but full Playwright completion was not captured)
+C:\Users\kathi\.codex\memories\MEMORY.md:138:- D:\algo, npm.cmd run build, npm.cmd run test:run, npm.cmd run 
+test:browsers:prod, Chromium, Firefox, WebKit, NPM_CONFIG_CACHE, TEMP, TMP, D:\algo\npm-cache, D:\algo\.tmp, 55 files, 
+302 tests
+C:\Users\kathi\.codex\memories\MEMORY.md:149:- The durable asset fix was to strip BootScene down to menu-critical art 
+and move heavy region/player assets into scene-local `preload()` methods in `src/scenes/prologue/PrologueScene.ts`, 
+`src/scenes/ArrayPlainsScene.ts`, `src/scenes/TwinRiversScene.ts`, and `src/scenes/FutureRegionScene.ts`, with 
+targeted bundles in `src/config/assets.ts` such as `PROLOGUE_SCENE_*`, `ARRAY_PLAINS_SCENE_IMAGE_ASSETS`, 
+`TWIN_RIVERS_SCENE_IMAGE_ASSETS`, and `OVERWORLD_PLAYER_SPRITE_ASSETS` [Task 2]
+C:\Users\kathi\.codex\memories\MEMORY.md:150:- On this machine, a full `C:` can masquerade as a repo problem during 
+npm/build/test runs. Redirecting `NPM_CONFIG_CACHE=D:\algo\npm-cache`, `TEMP=D:\algo\.tmp`, and `TMP=D:\algo\.tmp` was 
+enough to get `npm.cmd run build`, `npm.cmd run test:run`, and `npm.cmd run test:browsers:prod` working again after 
+clearing only `C:\Users\kathi\AppData\Local\npm-cache\_cacache` and `...\_npx` [Task 2][Task 3]
+C:\Users\kathi\.codex\memories\MEMORY.md:157:- Symptom: npm/build/test suddenly fail with `ENOSPC` while working a 
+browser blocker. Cause: `C:` ran out of space and npm cache/temp writes were still targeting it. Fix: free only the 
+npm cache folders you need and redirect cache/temp to `D:\algo` before treating the repo as broken [Task 2][Task 3]
+C:\Users\kathi\.codex\memories\MEMORY.md:160:# Task Group: D:\algo production-pass cleanup, commit/push, and branch 
+hygiene
+C:\Users\kathi\.codex\memories\MEMORY.md:163:applies_to: cwd=D:\algo; reuse_rule=safe for follow-up cleanup/push work 
+in this checkout while `tests/prologue-visual.spec.ts`, `src/arcadePrologue/`, and the current QA-artifact naming 
+remain recognizable, but treat branch names, commit SHAs, and exact ignore rules as checkout specific.
+C:\Users\kathi\.codex\memories\MEMORY.md:169:- 
+rollout_summaries/2026-05-14T14-13-16-31di-algo_cleanup_commit_push_gemini_checked.md (cwd=D:\algo, rollout_path=C:\Use
+rs\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T10-13-16-019e26d5-a4a3-79c1-ae7a-7c41f15d7c44.jsonl, 
+updated_at=2026-05-14T14:49:11+00:00, thread_id=019e26d5-a4a3-79c1-ae7a-7c41f15d7c44, freshest cleanup/push pass with 
+Gemini consulted at each decision point)
+
+
+
+codex
+Using `imagegen` for the asset workflow. The exact pixel/palette constraints make a deterministic Pillow sprite the right execution path here; a generative model would be hard to constrain to 5 colors and 16x16 solid blocks.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Path 'C:\\Users\\kathi\\.codex\\plugins\\cache\\openai-curated\\superpowers\\dc902811\\skills\\brainstorming\\SKILL.md'" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Path 'C:\\Users\\kathi\\.codex\\plugins\\cache\\openai-curated\\superpowers\\dc902811\\skills\\verification-before-completion\\SKILL.md'" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -LiteralPath 'D:\\algo\\public\\assets\\visual_revamp\\characters' | Select-Object Name,Length,LastWriteTime | Sort-Object Name" in D:\algo
+ succeeded in 550ms:
+---
+name: brainstorming
+description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
+---
+
+# Brainstorming Ideas Into Designs
+
+Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+
+Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+
+<HARD-GATE>
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+</HARD-GATE>
+
+## Anti-Pattern: "This Is Too Simple To Need A Design"
+
+Every project goes through this process. A todo list, a single-function utility, a config change â€” all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+
+## Checklist
+
+You MUST create a task for each of these items and complete them in order:
+
+1. **Explore project context** â€” check files, docs, recent commits
+2. **Offer visual companion** (if topic will involve visual questions) â€” this is its own message, not combined with a clarifying question. See the Visual Companion section below.
+3. **Ask clarifying questions** â€” one at a time, understand purpose/constraints/success criteria
+4. **Propose 2-3 approaches** â€” with trade-offs and your recommendation
+5. **Present design** â€” in sections scaled to their complexity, get user approval after each section
+6. **Write design doc** â€” save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
+7. **Spec self-review** â€” quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+8. **User reviews written spec** â€” ask user to review the spec file before proceeding
+9. **Transition to implementation** â€” invoke writing-plans skill to create implementation plan
+
+## Process Flow
+
+```dot
+digraph brainstorming {
+    "Explore project context" [shape=box];
+    "Visual questions ahead?" [shape=diamond];
+    "Offer Visual Companion\n(own message, no other content)" [shape=box];
+    "Ask clarifying questions" [shape=box];
+    "Propose 2-3 approaches" [shape=box];
+    "Present design sections" [shape=box];
+    "User approves design?" [shape=diamond];
+    "Write design doc" [shape=box];
+    "Spec self-review\n(fix inline)" [shape=box];
+    "User reviews spec?" [shape=diamond];
+    "Invoke writing-plans skill" [shape=doublecircle];
+
+    "Explore project context" -> "Visual questions ahead?";
+    "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
+    "Visual questions ahead?" -> "Ask clarifying questions" [label="no"];
+    "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
+    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Propose 2-3 approaches" -> "Present design sections";
+    "Present design sections" -> "User approves design?";
+    "User approves design?" -> "Present design sections" [label="no, revise"];
+    "User approves design?" -> "Write design doc" [label="yes"];
+    "Write design doc" -> "Spec self-review\n(fix inline)";
+    "Spec self-review\n(fix inline)" -> "User reviews spec?";
+    "User reviews spec?" -> "Write design doc" [label="changes requested"];
+    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+}
+```
+
+**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
+
+## The Process
+
+**Understanding the idea:**
+
+- Check out the current project state first (files, docs, recent commits)
+- Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
+- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec â†’ plan â†’ implementation cycle.
+- For appropriately-scoped projects, ask questions one at a time to refine the idea
+- Prefer multiple choice questions when possible, but open-ended is fine too
+- Only one question per message - if a topic needs more exploration, break it into multiple questions
+- Focus on understanding: purpose, constraints, success criteria
+
+**Exploring approaches:**
+
+- Propose 2-3 different approaches with trade-offs
+- Present options conversationally with your recommendation and reasoning
+- Lead with your recommended option and explain why
+
+**Presenting the design:**
+
+- Once you believe you understand what you're building, present the design
+- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
+- Ask after each section whether it looks right so far
+- Cover: architecture, components, data flow, error handling, testing
+- Be ready to go back and clarify if something doesn't make sense
+
+**Design for isolation and clarity:**
+
+- Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
+- For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
+- Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
+- Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
+
+**Working in existing codebases:**
+
+- Explore the current structure before proposing changes. Follow existing patterns.
+- Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
+- Don't propose unrelated refactoring. Stay focused on what serves the current goal.
+
+## After the Design
+
+**Documentation:**
+
+- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+  - (User preferences for spec location override this default)
+- Use elements-of-style:writing-clearly-and-concisely skill if available
+- Commit the design document to git
+
+**Spec Self-Review:**
+After writing the spec document, look at it with fresh eyes:
+
+1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
+2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
+3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
+4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+
+Fix any issues inline. No need to re-review â€” just fix and move on.
+
+**User Review Gate:**
+After the spec review loop passes, ask the user to review the written spec before proceeding:
+
+> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+
+Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+
+**Implementation:**
+
+- Invoke the writing-plans skill to create a detailed implementation plan
+- Do NOT invoke any other skill. writing-plans is the next step.
+
+## Key Principles
+
+- **One question at a time** - Don't overwhelm with multiple questions
+- **Multiple choice preferred** - Easier to answer than open-ended when possible
+- **YAGNI ruthlessly** - Remove unnecessary features from all designs
+- **Explore alternatives** - Always propose 2-3 approaches before settling
+- **Incremental validation** - Present design, get approval before moving on
+- **Be flexible** - Go back and clarify when something doesn't make sense
+
+## Visual Companion
+
+A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool â€” not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
+
+**Offering the companion:** When you anticipate that upcoming questions will involve visual content (mockups, layouts, diagrams), offer it once for consent:
+> "Some of what we're working on might be easier to explain if I can show it to you in a web browser. I can put together mockups, diagrams, comparisons, and other visuals as we go. This feature is still new and can be token-intensive. Want to try it? (Requires opening a local URL)"
+
+**This offer MUST be its own message.** Do not combine it with clarifying questions, context summaries, or any other content. The message should contain ONLY the offer above and nothing else. Wait for the user's response before continuing. If they decline, proceed with text-only brainstorming.
+
+**Per-question decision:** Even after the user accepts, decide FOR EACH QUESTION whether to use the browser or the terminal. The test: **would the user understand this better by seeing it than reading it?**
+
+- **Use the browser** for content that IS visual â€” mockups, wireframes, layout comparisons, architecture diagrams, side-by-side visual designs
+- **Use the terminal** for content that is text â€” requirements questions, conceptual choices, tradeoff lists, A/B/C/D text options, scope decisions
+
+A question about a UI topic is not automatically a visual question. "What does personality mean in this context?" is a conceptual question â€” use the terminal. "Which wizard layout works better?" is a visual question â€” use the browser.
+
+If they agree to the companion, read the detailed guide before proceeding:
+`skills/brainstorming/visual-companion.md`
+
+ succeeded in 566ms:
+---
+name: verification-before-completion
+description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always
+---
+
+# Verification Before Completion
+
+## Overview
+
+Claiming work is complete without verification is dishonesty, not efficiency.
+
+**Core principle:** Evidence before claims, always.
+
+**Violating the letter of this rule is violating the spirit of this rule.**
+
+## The Iron Law
+
+```
+NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
+```
+
+If you haven't run the verification command in this message, you cannot claim it passes.
+
+## The Gate Function
+
+```
+BEFORE claiming any status or expressing satisfaction:
+
+1. IDENTIFY: What command proves this claim?
+2. RUN: Execute the FULL command (fresh, complete)
+3. READ: Full output, check exit code, count failures
+4. VERIFY: Does output confirm the claim?
+   - If NO: State actual status with evidence
+   - If YES: State claim WITH evidence
+5. ONLY THEN: Make the claim
+
+Skip any step = lying, not verifying
+```
+
+## Common Failures
+
+| Claim | Requires | Not Sufficient |
+|-------|----------|----------------|
+| Tests pass | Test command output: 0 failures | Previous run, "should pass" |
+| Linter clean | Linter output: 0 errors | Partial check, extrapolation |
+| Build succeeds | Build command: exit 0 | Linter passing, logs look good |
+| Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
+| Regression test works | Red-green cycle verified | Test passes once |
+| Agent completed | VCS diff shows changes | Agent reports "success" |
+| Requirements met | Line-by-line checklist | Tests passing |
+
+## Red Flags - STOP
+
+- Using "should", "probably", "seems to"
+- Expressing satisfaction before verification ("Great!", "Perfect!", "Done!", etc.)
+- About to commit/push/PR without verification
+- Trusting agent success reports
+- Relying on partial verification
+- Thinking "just this once"
+- Tired and wanting work over
+- **ANY wording implying success without having run verification**
+
+## Rationalization Prevention
+
+| Excuse | Reality |
+|--------|---------|
+| "Should work now" | RUN the verification |
+| "I'm confident" | Confidence â‰  evidence |
+| "Just this once" | No exceptions |
+| "Linter passed" | Linter â‰  compiler |
+| "Agent said success" | Verify independently |
+| "I'm tired" | Exhaustion â‰  excuse |
+| "Partial check is enough" | Partial proves nothing |
+| "Different words so rule doesn't apply" | Spirit over letter |
+
+## Key Patterns
+
+**Tests:**
+```
+âœ… [Run test command] [See: 34/34 pass] "All tests pass"
+âŒ "Should pass now" / "Looks correct"
+```
+
+**Regression tests (TDD Red-Green):**
+```
+âœ… Write â†’ Run (pass) â†’ Revert fix â†’ Run (MUST FAIL) â†’ Restore â†’ Run (pass)
+âŒ "I've written a regression test" (without red-green verification)
+```
+
+**Build:**
+```
+âœ… [Run build] [See: exit 0] "Build passes"
+âŒ "Linter passed" (linter doesn't check compilation)
+```
+
+**Requirements:**
+```
+âœ… Re-read plan â†’ Create checklist â†’ Verify each â†’ Report gaps or completion
+âŒ "Tests pass, phase complete"
+```
+
+**Agent delegation:**
+```
+âœ… Agent reports success â†’ Check VCS diff â†’ Verify changes â†’ Report actual state
+âŒ Trust agent report
+```
+
+## Why This Matters
+
+From 24 failure memories:
+- your human partner said "I don't believe you" - trust broken
+- Undefined functions shipped - would crash
+- Missing requirements shipped - incomplete features
+- Time wasted on false completion â†’ redirect â†’ rework
+- Violates: "Honesty is a core value. If you lie, you'll be replaced."
+
+## When To Apply
+
+**ALWAYS before:**
+- ANY variation of success/completion claims
+- ANY expression of satisfaction
+- ANY positive statement about work state
+- Committing, PR creation, task completion
+- Moving to next task
+- Delegating to agents
+
+**Rule applies to:**
+- Exact phrases
+- Paraphrases and synonyms
+- Implications of success
+- ANY communication suggesting completion/correctness
+
+## The Bottom Line
+
+**No shortcuts for verification.**
+
+Run the command. Read the output. THEN claim the result.
+
+This is non-negotiable.
+
+ succeeded in 586ms:
+
+Name                  Length LastWriteTime        
+----                  ------ -------------        
+basket_keeper_v1.png   13165 5/17/2026 12:17:24 PM
+basket_keeper_v2.png     912 5/18/2026 9:14:03 AM 
+bit_byte.png            6348 4/29/2026 5:36:22 PM 
+bit_frame.png           7186 4/29/2026 5:36:24 PM 
+bit_spark.png           3697 4/29/2026 5:36:21 PM 
+bridge_keeper_v1.png   10129 5/17/2026 12:20:15 PM
+console_keeper.png     42362 5/7/2026 3:42:43 PM  
+console_keeper_v2.png   4255 5/17/2026 12:13:37 PM
+console_keeper_v3.png    956 5/17/2026 11:48:59 PM
+current_rider_v1.png   11768 5/17/2026 12:20:52 PM
+glitch.png             45678 4/29/2026 1:15:02 PM 
+hash_keeper_v1.png     13755 5/17/2026 12:19:14 PM
+mirror_walker_v1.png    8689 5/17/2026 12:18:09 PM
+player.png             48095 5/7/2026 3:42:43 PM  
+professor_node.png     51811 5/7/2026 3:42:43 PM  
+professor_node_v2.png    934 5/18/2026 8:56:48 AM 
+rune_keeper.png        53448 5/7/2026 3:42:43 PM  
+rune_keeper_v2.png      1033 5/17/2026 11:49:31 PM
+sorting_farmer_v1.png  10077 5/17/2026 12:16:32 PM
+sorting_farmer_v2.png   1073 5/17/2026 11:49:15 PM
+tile_worker_v1.png     10958 5/17/2026 12:21:24 PM
+village_elder.png      21422 5/14/2026 5:59:37 PM 
+watcher.png            26807 4/29/2026 5:36:25 PM 
+window_fisher_v1.png   14030 5/17/2026 12:23:58 PM
+
+
+
+codex
+The asset folder already contains `bridge_keeper_v1.png` and several recent `*_v2.png` sprites, so I’m treating this as a replacement-style v2 asset only at the requested PNG path. I’m not touching manifests or running the project test suite per your stop condition.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from pathlib import Path
+from PIL import Image
+paths = [
+    Path(r'D:\\algo\\public\\assets\\visual_revamp\\characters\\bridge_keeper_v1.png'),
+    Path(r'D:\\algo\\public\\assets\\visual_revamp\\characters\\basket_keeper_v2.png'),
+    Path(r'D:\\algo\\public\\assets\\visual_revamp\\characters\\console_keeper_v3.png'),
+    Path(r'D:\\algo\\public\\assets\\visual_revamp\\characters\\professor_node_v2.png'),
+]
+for image_path in paths:
+    with Image.open(image_path).convert('RGBA') as image:
+        colors = image.getcolors(maxcolors=1000000)
+        opaque = sorted({color for count, color in colors if color[3] "'!= 0})
+        print(image_path.name)
+        print('"'  size=', image.size, 'colors=', len(colors), 'opaque=', len(opaque), 'bytes=', image_path.stat().st_size)
+        print('  opaque_hex=', ['#{:02x}{:02x}{:02x}'.format(*color[:3]) for color in opaque])
+'@ | python -" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -LiteralPath 'D:\\algo\\public\\assets\\visual_revamp\\characters' -Filter '*keeper*.png' | Select-Object Name,Length,LastWriteTime | Sort-Object LastWriteTime -Descending" in D:\algo
+ succeeded in 595ms:
+
+Name                  Length LastWriteTime        
+----                  ------ -------------        
+basket_keeper_v2.png     912 5/18/2026 9:14:03 AM 
+rune_keeper_v2.png      1033 5/17/2026 11:49:31 PM
+console_keeper_v3.png    956 5/17/2026 11:48:59 PM
+bridge_keeper_v1.png   10129 5/17/2026 12:20:15 PM
+hash_keeper_v1.png     13755 5/17/2026 12:19:14 PM
+basket_keeper_v1.png   13165 5/17/2026 12:17:24 PM
+console_keeper_v2.png   4255 5/17/2026 12:13:37 PM
+rune_keeper.png        53448 5/7/2026 3:42:43 PM  
+console_keeper.png     42362 5/7/2026 3:42:43 PM  
+
+
+
+ succeeded in 939ms:
+bridge_keeper_v1.png
+  size= (256, 256) colors= 15 opaque= 14 bytes= 10129
+  opaque_hex= ['#101820', '#172b3a', '#29475a', '#3a2417', '#3e6575', '#52d6e8', '#596067', '#6a4324', '#7d8790', '#8a5734', '#c0c5c8', '#c8874f', '#c99b3e', '#e0ac73']
+basket_keeper_v2.png
+  size= (256, 256) colors= 6 opaque= 5 bytes= 912
+  opaque_hex= ['#06b6d4', '#081820', '#346856', '#88c070', '#e0f8d0']
+console_keeper_v3.png
+  size= (256, 256) colors= 6 opaque= 5 bytes= 956
+  opaque_hex= ['#06b6d4', '#081820', '#346856', '#88c070', '#e0f8d0']
+professor_node_v2.png
+  size= (256, 256) colors= 6 opaque= 5 bytes= 934
+  opaque_hex= ['#06b6d4', '#081820', '#346856', '#88c070', '#e0f8d0']
+
+codex
+The existing constrained v2 sprites use the same 5 opaque colors plus transparent alpha, so I’m matching that pipeline and palette exactly. Next I’m writing the new 16x16 source grid and scaling it to 256x256 with nearest-neighbor blocks.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from pathlib import Path
+from PIL import Image
+palette_chars = {
+    (8, 24, 32, 255): 'D',
+    (52, 104, 86, 255): 'M',
+    (136, 192, 112, 255): 'A',
+    (224, 248, 208, 255): 'L',
+    (6, 182, 212, 255): 'C',
+    (0, 0, 0, 0): '.',
+}
+for image_name in ['basket_keeper_v2.png', 'console_keeper_v3.png', 'rune_keeper_v2.png']:
+    image_path = Path(r'D:\\algo\\public\\assets\\visual_revamp\\characters') / image_name
+    with Image.open(image_path).convert('RGBA') as image:
+        print(image_name)
+        for grid_y in range(16):
+            row_chars = []
+            for grid_x in range(16):
+                row_chars.append(palette_chars.get(image.getpixel((grid_x * 16 + 8, grid_y * 16 + 8)), '?'))
+            print(''.join(row_chars))
+        print()
+'@ | python -" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "git status --short -- 'public/assets/visual_revamp/characters/bridge_keeper_v2.png' 'public/assets/visual_revamp/characters/bridge_keeper_v1.png'" in D:\algo
+ succeeded in 444ms:
+?? public/assets/visual_revamp/characters/bridge_keeper_v1.png
+
+ succeeded in 623ms:
+basket_keeper_v2.png
+................
+.....DDDDDD.....
+....DLLLLLD.....
+....DLDLDLD.....
+....DLLLLLD.....
+.....DDDDDD.....
+...DDMMMMMDD....
+..DMMMAAAMMD....
+..DMAAAAAAMD....
+.DDMMLLLMMDD....
+.DMMDDMMDDMMD...
+.DMMDDMMMMCMD...
+.DMMDDMMDDMMD...
+..DDMMMMMMDD....
+...DDMDDMDD.....
+....DD..DD......
+
+console_keeper_v3.png
+................
+.....DDDDD......
+....DLLLLLD.....
+....DLDLDLD.....
+....DDLLLDD.....
+....DDDDDDDD....
+...DMDDLLDDMD...
+..DDMMMCCMMMDD..
+..LDMMACCAMMDL..
+...DMMDLLDMMD...
+....DMADDAMD....
+....DDDMMDDD....
+.....DDDDDD.....
+.....MD..DM.....
+....DDDDDDDD....
+................
+
+rune_keeper_v2.png
+............C...
+......DDDD.CCC..
+.....DMMMMDDCD..
+....DMMLLMD..D..
+....DMLDLMD..D..
+.....DMMMDD..D..
+....DDMMMDD..D..
+...DMMMMMMDD.D..
+...DMMMAMMMD.D..
+...DMMCMMMDM.D..
+..DMMMMMMMDD.D..
+..DMMMMMMMMDD.D.
+..DMMCMMCMDD.D..
+..DMMMMMMMMDD.D.
+...DDCMACMDD..D.
+....DD....DD....
+
+
+codex
+I’ve settled the 16x16 grid: centered hat/face/jacket, extended right-side arm, and a three-cell lantern silhouette with cream body and cyan flame. I’m saving only `bridge_keeper_v2.png` now.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from pathlib import Path
+from PIL import Image
+
+output_path = Path(r'D:\\algo\\public\\assets\\visual_revamp\\characters\\bridge_keeper_v2.png')
+block_size = 16
+sprite_grid = [
+    '................',
+    '.....DDDDD......',
+    '....DMMAMMD.....',
+    '...DDMMMMMDD....',
+    '....DLLLLLD.....',
+    '....DLDLDLD.....',
+    '....DDLLLDD.....',
+    '...DDMMMMMDD....',
+    '..DMMMMAMMDDD...',
+    '.DMMMMDMMMLDCD..',
+    '.DMMMDLLDMLDLD..',
+    '.DMMMDMMDMMDLD..',
+    '..DMMDDDDMMDD...',
+    '...DMMDDMMD.....',
+    '...DDD..DDD.....',
+    '................',
+]
+
+palette = {
+    '.': (0, 0, 0, 0),
+    'D': (0x08, 0x18, 0x20, 255),
+    'M': (0x34, 0x68, 0x56, 255),
+    'A': (0x88, 0xc0, 0x70, 255),
+    'L': (0xe0, 0xf8, 0xd0, 255),
+    'C': (0x06, 0xb6, 0xd4, 255),
+}
+
+if len(sprite_grid) "'!= 16 or any(len(row) != 16 for row in sprite_grid):
+    raise ValueError('"'Sprite grid must be exactly 16 by 16.')
+
+source_image = Image.new('RGBA', (16, 16), palette['.'])
+source_pixels = source_image.load()
+for grid_y, row in enumerate(sprite_grid):
+    for grid_x, symbol in enumerate(row):
+        source_pixels[grid_x, grid_y] = palette[symbol]
+
+resampling_mode = getattr(Image, 'Resampling', Image).NEAREST
+scaled_image = source_image.resize((16 * block_size, 16 * block_size), resampling_mode)
+output_path.parent.mkdir(parents=True, exist_ok=True)
+scaled_image.save(output_path, format='PNG', optimize=True)
+print(output_path)
+'@ | python -" in D:\algo
+ succeeded in 598ms:
+D:\algo\public\assets\visual_revamp\characters\bridge_keeper_v2.png
+
+codex
+The PNG is written. I’m doing a file-level verification now: dimensions, allowed palette, alpha, and a full scan that every 16x16 block is one solid RGBA value.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from pathlib import Path
+from PIL import Image
+
+image_path = Path(r'D:\\algo\\public\\assets\\visual_revamp\\characters\\bridge_keeper_v2.png')
+allowed_rgb = {
+    (0x08, 0x18, 0x20): '#081820',
+    (0x34, 0x68, 0x56): '#346856',
+    (0x88, 0xc0, 0x70): '#88c070',
+    (0xe0, 0xf8, 0xd0): '#e0f8d0',
+    (0x06, 0xb6, 0xd4): '#06b6d4',
+}
+block_size = 16
+with Image.open(image_path).convert('RGBA') as image:
+    colors = image.getcolors(maxcolors=1000000)
+    unique_rgba = sorted({rgba for count, rgba in colors})
+    opaque_rgba = sorted({rgba for rgba in unique_rgba if rgba[3] "'!= 0})
+    opaque_hex = ['"'#{:02x}{:02x}{:02x}'.format(*rgba[:3]) for rgba in opaque_rgba]
+    transparent_count = sum(count for count, rgba in colors if rgba[3] == 0)
+    alpha_values = sorted({rgba[3] for rgba in unique_rgba})
+
+    block_failures = []
+    for block_y in range(0, image.height, block_size):
+        for block_x in range(0, image.width, block_size):
+            block_colors = set()
+            for pixel_y in range(block_y, block_y + block_size):
+                for pixel_x in range(block_x, block_x + block_size):
+                    block_colors.add(image.getpixel((pixel_x, pixel_y)))
+            if len(block_colors) "'!= 1:
+                block_failures.append((block_x, block_y, len(block_colors)))
+
+    unexpected = [rgba for rgba in opaque_rgba if rgba[:3] not in allowed_rgb or rgba[3] != 255]
+    corners = [image.getpixel(point) for point in [(0, 0), (255, 0), (0, 255), (255, 255)]]
+
+print(f'"'path={image_path}')
+print(f'dimensions={image.size[0]}x{image.size[1]}')
+print(f'file_size_bytes={image_path.stat().st_size}')
+print(f'total_unique_rgba={len(unique_rgba)}')
+print(f'opaque_color_count={len(opaque_rgba)}')
+print(f'opaque_hex={opaque_hex}')
+print(f'alpha_values={alpha_values}')
+print(f'transparent_pixels={transparent_count}')
+print(f'transparent_corners={all(pixel[3] == 0 for pixel in corners)}')
+print(f'palette_allowed={len(unexpected) == 0}')
+print(f'hard_edge_blocks={len(block_failures) == 0}')
+print(f'block_failures={block_failures[:5]}')
+'@ | python -" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "git status --short -- 'public/assets/visual_revamp/characters/bridge_keeper_v2.png' 'public/assets/visual_revamp/characters/bridge_keeper_v1.png' 'src/config/assets.ts'" in D:\algo
+ succeeded in 479ms:
+ M src/config/assets.ts
+?? public/assets/visual_revamp/characters/bridge_keeper_v1.png
+?? public/assets/visual_revamp/characters/bridge_keeper_v2.png
+
+ succeeded in 698ms:
+path=D:\algo\public\assets\visual_revamp\characters\bridge_keeper_v2.png
+dimensions=256x256
+file_size_bytes=931
+total_unique_rgba=6
+opaque_color_count=5
+opaque_hex=['#06b6d4', '#081820', '#346856', '#88c070', '#e0f8d0']
+alpha_values=[0, 255]
+transparent_pixels=33280
+transparent_corners=True
+palette_allowed=True
+hard_edge_blocks=True
+block_failures=[]
+
+codex
+Verification passed at the image-file level: exact size, 5 opaque palette colors, alpha only 0/255, transparent corners, and no mixed-color 16x16 blocks. I’m just grabbing the memory line references required for the final citation, then I’ll stop.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$memoryPath = '"'C:\\Users\\kathi\\.codex\\memories\\MEMORY.md'; "'$lines = Get-Content -Path $memoryPath; for ($lineNumber = 105; $lineNumber -le 150; $lineNumber++) { '"'{0}:{1}' -f "'$lineNumber, $lines[$lineNumber - 1] }' in D:\algo
+ succeeded in 435ms:
+105:
+106:- rollout_summaries/2026-05-16T16-27-20-a95e-valorant_session_only_background_service_cleanup.md (cwd=C:\Users\kathi, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\16\rollout-2026-05-16T12-27-20-019e319d-1cf9-77d1-af0c-6fcfbc9f4378.jsonl, updated_at=2026-05-16T16:31:03+00:00, thread_id=019e319d-1cf9-77d1-af0c-6fcfbc9f4378, reversible live-session cleanup with service/process verification after each change)
+107:
+108:### keywords
+109:
+110:- Valorant, Windows, FPS, session only, background services, DoSvc, UsoSvc, WerSvc, PcaSvc, lfsvc, OneSyncSvc_90678, LGHUBUpdaterService, XblAuthManager, InventorySvc, Widgets, WidgetService, OneDrive.Sync.Service, lghub_agent, lghub_system_tray, EpicWebHelper, RiotClientServices, RiotClientCrashHandler, msedgewebview2, vgc, Ultimate Performance, Get-Service, Get-Process, Get-Counter
+111:
+112:## User preferences
+113:
+114:- when the user asked to "optmize valorant fps by stopping services that might cause anything in the backround", default to actually stopping safe background work for the current session rather than only describing possible optimizations [Task 1]
+115:- because Valorant was already open, the winning approach was low-disruption and reversible; keep the game running and avoid touching game-critical components unless the user explicitly asks for that tradeoff [Task 1]
+116:
+117:## Reusable knowledge
+118:
+119:- The reliable workflow on this machine was: confirm admin/process/service state first, preserve `vgc` and other game-critical services, stop only obvious nonessential services, then reread service/process state to confirm what really changed [Task 1]
+120:- Safe service stops that worked in this session were `DoSvc`, `UsoSvc`, `WerSvc`, `PcaSvc`, `lfsvc`, `OneSyncSvc_90678`, `LGHUBUpdaterService`, `XblAuthManager`, and `InventorySvc`; safe process stops included `Widgets`, `WidgetService`, `OneDrive.Sync.Service`, `lghub_agent`, and `lghub_system_tray` [Task 1]
+121:- For live-session helpers that may be game-owned, reprioritization was safer than repeated kills: `RiotClientServices`, `RiotClientCrashHandler`, `EpicWebHelper`, and `msedgewebview2` were set to `BelowNormal`, while `VALORANT` and `VALORANT-Win64-Shipping` were set to `High` [Task 1]
+122:- `EpicWebHelper.exe` can appear as a child of Valorant during a live session, so parent/command-line inspection matters before deciding whether it is safe to stop or only safe to deprioritize [Task 1]
+123:- `powercfg /GetActiveScheme` showed the machine was already on `Ultimate Performance`, so checking first avoided unnecessary changes [Task 1]
+124:
+125:## Failures and how to do differently
+126:
+127:- Symptom: helper processes come back after being killed. Cause: some of them are launched by a still-running parent, including game-owned helpers. Fix: inspect parentage/command lines first and switch to `BelowNormal` priority when the child is tied to the active game session [Task 1]
+128:- Symptom: an FPS cleanup pass risks destabilizing the game or machine. Cause: the stop list drifted into critical services. Fix: keep hands off `vgc`, audio, display/NVIDIA, network, and Windows Security services during live-session cleanup [Task 1]
+129:
+130:# Task Group: D:\algo Firefox boot stall, scene-level asset preload split, and preview-panel rollout context
+131:
+132:scope: debugging production browser startup stalls in the current Algorithmia Phaser/Vite checkout, preserving preview-panel teaching semantics, and proving asset-loading fixes with build/unit/browser verification before broadening UI rollout.
+133:applies_to: cwd=D:\algo; reuse_rule=safe for follow-up work in this checkout while `src/config/assets.ts`, `BootScene`, region scene `preload()` hooks, and the preview-panel helper remain recognizable, but treat exact asset names, branch names, and cache/temp redirection paths as checkout or machine specific.
+134:
+135:## Task 1: Inspect preview-panel rollout context and preserve predicted-state semantics, partial
+136:
+137:### rollout_summary_files
+138:
+139:- rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, preview-panel inspection before the rollout pivoted into the browser blocker)
+140:
+141:### keywords
+142:
+143:- D:\algo, PuzzlePreviewSidePanel, TwinRiversChoiceScenes.ts, refreshPreview, refreshStatus, predicted state, literal [8, 5, 2, 3], cyan interactive state
+144:
+145:## Task 2: Split BootScene asset loading to clear the Firefox production startup stall, partial
+146:
+147:### rollout_summary_files
+148:
+149:- rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, Firefox-specific boot stall traced to heavy BootScene preload pressure)
+150:
+
+codex
+Saved: `D:\algo\public\assets\visual_revamp\characters\bridge_keeper_v2.png`
+
+Self-verification:
+- Dimensions: `256 x 256`
+- File size: `931 bytes`
+- Color count: `5` opaque colors + transparent alpha
+- Hex values: `#06b6d4`, `#081820`, `#346856`, `#88c070`, `#e0f8d0`
+- Transparent background: confirmed, corners alpha `0`
+- Hard-edge blocks: confirmed, every `16 x 16` block is one solid RGBA color
+- Unexpected colors: none
+- `assets.ts` not edited; build/tests not run
+
+
+SUCCESS: The process with PID 4432 (child process of PID 25084) has been terminated.
+SUCCESS: The process with PID 25084 (child process of PID 26356) has been terminated.
+SUCCESS: The process with PID 26356 (child process of PID 11892) has been terminated.
+SUCCESS: The process with PID 11892 (child process of PID 27444) has been terminated.
+tokens used
+86,611
+Saved: `D:\algo\public\assets\visual_revamp\characters\bridge_keeper_v2.png`
+
+Self-verification:
+- Dimensions: `256 x 256`
+- File size: `931 bytes`
+- Color count: `5` opaque colors + transparent alpha
+- Hex values: `#06b6d4`, `#081820`, `#346856`, `#88c070`, `#e0f8d0`
+- Transparent background: confirmed, corners alpha `0`
+- Hard-edge blocks: confirmed, every `16 x 16` block is one solid RGBA color
+- Unexpected colors: none
+- `assets.ts` not edited; build/tests not run
+
+

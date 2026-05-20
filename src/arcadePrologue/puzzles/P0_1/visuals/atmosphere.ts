@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { VISUAL_REVAMP_KEYS } from '../../../../config/assets';
+import { P0_1_PUZZLE_KEYS, VISUAL_REVAMP_KEYS } from '../../../../config/assets';
 import { SCENE_KEYS } from '../../../../config/constants';
 import { COLORS, s, STAGE } from '../tokens';
 
@@ -17,7 +17,8 @@ export type Atmosphere = {
 const STAR_KEY = 'p0_1_stars';
 const NEBULA_KEY = 'p0_1_nebula';
 const BACKDROP_BY_SCENE: Partial<Record<string, string>> = {
-  [SCENE_KEYS.PUZZLE_P0_1]: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG,
+  // P0-1 uses its own cosmic-void art; fall back to the generic rune-memory bg if not present
+  [SCENE_KEYS.PUZZLE_P0_1]: P0_1_PUZZLE_KEYS.COSMIC_VOID,
   [SCENE_KEYS.PUZZLE_P0_2]: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG,
   [SCENE_KEYS.BOSS_SENTINEL]: VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG,
 };
@@ -41,7 +42,6 @@ export function paintAtmosphere(scene: Phaser.Scene): Atmosphere {
     .setAlpha(defaultStarsAlpha);
 
   paintEdgeFog(scene);
-  paintWatcherDrift(scene);
 
   let active: 'normal' | 'preview' = 'normal';
 
@@ -58,7 +58,18 @@ export function paintAtmosphere(scene: Phaser.Scene): Atmosphere {
 }
 
 function paintBackdrop(scene: Phaser.Scene): boolean {
-  const backdropKey = BACKDROP_BY_SCENE[scene.scene.key];
+  // For P0-1 fall back to the legacy key if the dedicated art hasn't been placed yet
+  const primary = BACKDROP_BY_SCENE[scene.scene.key];
+  const fallback =
+    scene.scene.key === SCENE_KEYS.PUZZLE_P0_1
+      ? VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG
+      : undefined;
+  const backdropKey =
+    primary && scene.textures.exists(primary)
+      ? primary
+      : fallback && scene.textures.exists(fallback)
+        ? fallback
+        : undefined;
   if (backdropKey && scene.textures.exists(backdropKey)) {
     scene.add
       .image(STAGE.width / 2, STAGE.height / 2, backdropKey)
@@ -82,41 +93,6 @@ function paintEdgeFog(scene: Phaser.Scene): void {
   g.fillStyle(COLORS.bg.deep, 0.55);
   g.fillRect(0, 0, STAGE.width, s(36));
   g.fillRect(0, STAGE.height - s(36), STAGE.width, s(36));
-}
-
-/**
- * The distant Watcher — a purple diamond prism drifting slowly across the top
- * of the chamber. It signals "you are being observed" without pulling focus
- * from the rune board, and gives the cosmic backdrop a slow living motion.
- */
-function paintWatcherDrift(scene: Phaser.Scene): void {
-  const prism = scene.add.container(-s(40), s(60)).setDepth(3.2);
-  const gfx = scene.add.graphics();
-  gfx.fillStyle(0xa78bfa, 0.28);
-  gfx.fillTriangle(0, -s(14), s(14), 0, 0, s(14));
-  gfx.fillTriangle(0, -s(14), -s(14), 0, 0, s(14));
-  gfx.lineStyle(1, 0xa78bfa, 0.55);
-  gfx.strokeTriangle(0, -s(14), s(14), 0, 0, s(14));
-  gfx.strokeTriangle(0, -s(14), -s(14), 0, 0, s(14));
-  gfx.fillStyle(0xa78bfa, 0.55);
-  gfx.fillRect(-s(2), -s(2), s(4), s(4));
-  prism.add(gfx);
-  prism.setAlpha(0.4);
-  scene.tweens.add({
-    targets: prism,
-    x: STAGE.width + s(40),
-    duration: 42000,
-    repeat: -1,
-    delay: -10000,
-    ease: 'Linear',
-  });
-  scene.tweens.add({
-    targets: gfx,
-    angle: 360,
-    duration: 18000,
-    repeat: -1,
-    ease: 'Linear',
-  });
 }
 
 function ensureStarTexture(scene: Phaser.Scene): void {

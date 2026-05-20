@@ -17,6 +17,7 @@
  */
 
 import type { RoundLabel, RoundLesson } from './arrayPlainsPuzzleLogic';
+import { PuzzlePhase } from '../types';
 
 // ----- P2_1 Mirror Walk: in-place reverse via two converging pointers -----
 
@@ -28,17 +29,27 @@ export interface MirrorWalkRound {
 }
 
 export const MIRROR_WALK_ROUNDS: ReadonlyArray<MirrorWalkRound> = [
+  // Round 1 (FEEL_IT): 6-value row. The player should NEVER read about "two
+  // pointers" or "in-place reverse" here — they discover that working from
+  // both ends inward is qualitatively different from random swapping. Glitch
+  // demonstrates the foil: random swaps anywhere in the row, never converges.
+  // Algorithm named between this round and round 2 via the Mirror Walker.
   {
     values: [3, 8, 1, 4, 7, 2],
     label: 'TEACH',
     lesson: {
-      title: 'Two pointers, walking inward',
-      subtitle: 'Round 1 · Teach',
+      phase: PuzzlePhase.FEEL_IT,
+      title: 'The river runs backwards',
+      subtitle: 'Round 1',
       bullets: [
-        'Place L at the start, R at the end.',
-        'Swap arr[L] with arr[R], then step both inward.',
-        'When L meets R, the row is reversed.',
+        'The current flows the wrong way. Reverse it.',
+        'You can act on either bank. Glitch is splashing at random.',
+        'Find the pattern. Both feet, one mind.',
       ],
+      nameItBeat: {
+        speaker: 'Mirror Walker',
+        line: 'Well walked. What you just did — that\'s called Two Pointers. One mind moving two hands. Not two problems — ONE problem with two tools. When the work meets in the middle, you\'ve done in n/2 steps what the river would have needed n² for.',
+      },
     },
   },
   {
@@ -107,18 +118,28 @@ export interface PointerBridgeRound {
 }
 
 export const POINTER_BRIDGE_ROUNDS: ReadonlyArray<PointerBridgeRound> = [
+  // Round 1 (FEEL_IT): 7 sorted stones, target 19. The player should NEVER
+  // read about "two pointers", "sorted two-sum", or "convergent walk" here —
+  // they discover that the sortedness makes the move forced. Glitch checks
+  // every pair at random; the player walks from the ends. Algorithm named
+  // by the Bridge Keeper between this round and round 2.
   {
     values: [1, 3, 5, 8, 11, 14, 18],
     target: 19,
     label: 'TEACH',
     lesson: {
-      title: 'Sorted unlocks convergent walk',
-      subtitle: 'Round 1 · Teach',
+      phase: PuzzlePhase.FEEL_IT,
+      title: 'Two stones, one sum',
+      subtitle: 'Round 1',
       bullets: [
-        'Stand at both ends. Sum the two stones.',
-        'If too small, advance the west foot east (larger).',
-        'If too big, retreat the east foot west (smaller).',
+        'Find two stones that add to the target.',
+        'Glitch is testing every pair at random.',
+        'You stand on the banks. The stones are in order. Use it.',
       ],
+      nameItBeat: {
+        speaker: 'Bridge Keeper',
+        line: 'You did not check every stone. You did not check every pair. You walked, and the walk DID the checking for you. That is Two-Pointer Convergence. When the river is in order, your feet become your eyes — and the work that would take n² checks finishes in n steps.',
+      },
     },
   },
   {
@@ -191,18 +212,28 @@ export interface FixedWindowRound {
 }
 
 export const FIXED_WINDOW_ROUNDS: ReadonlyArray<FixedWindowRound> = [
+  // Round 1 (FEEL_IT): 8-value row, window size 3. The player should NEVER
+  // read about "sliding window" or "new sum = old sum − leaver + arrival"
+  // here — they discover that only the edges of the window change between
+  // slides. Glitch demonstrates the foil: recount every window from scratch.
+  // Algorithm named by the Window Fisher between this round and round 2.
   {
     values: [2, 7, 1, 9, 4, 5, 3, 6],
     windowSize: 3,
     label: 'TEACH',
     lesson: {
-      title: 'Slide, don\'t restart',
-      subtitle: 'Round 1 · Teach',
+      phase: PuzzlePhase.FEEL_IT,
+      title: 'The heavy catch',
+      subtitle: 'Round 1',
       bullets: [
-        'Each slide drops one number off the left and adds one on the right.',
-        "Don't re-add the middle — it didn't change.",
-        'New sum = old sum − leaver + arrival.',
+        'Slide your net along the dock. Find the heaviest catch.',
+        'Glitch is recounting every slat from scratch.',
+        'Watch what enters your net and what leaves it.',
       ],
+      nameItBeat: {
+        speaker: 'Window Fisher',
+        line: 'You saw what most people miss. When the net slides by one, most of what is inside did not change. Only the edges changed. Work on the EDGES. Let the middle keep itself. That is a Sliding Window — and that is how you move fast on a long river.',
+      },
     },
   },
   {
@@ -288,17 +319,27 @@ export interface CurrentRiderRound {
 }
 
 export const CURRENT_RIDER_ROUNDS: ReadonlyArray<CurrentRiderRound> = [
+  // Round 1 (FEEL_IT): 8-letter stream. The player should NEVER read about
+  // "variable window" or "shrink left when you see a duplicate" here — they
+  // discover the expand-and-shrink rhythm by playing it. Glitch demonstrates
+  // the foil: checks every possible substring from scratch. Algorithm named
+  // by the Current Rider between this round and round 2.
   {
     letters: ['A', 'B', 'C', 'A', 'D', 'B', 'E', 'F'],
     label: 'TEACH',
     lesson: {
-      title: 'Stretch right, shrink left',
-      subtitle: 'Round 1 · Teach',
+      phase: PuzzlePhase.FEEL_IT,
+      title: 'The changing catch',
+      subtitle: 'Round 1',
       bullets: [
-        'Extend R while the window stays unique.',
-        'If R duplicates something in the window, slide L past the duplicate.',
-        'Best length seen is your answer.',
+        'Extend your net while the catch is good.',
+        'Shrink the net from the left to drop what spoils it.',
+        'Glitch is checking every possible stretch from scratch.',
       ],
+      nameItBeat: {
+        speaker: 'Current Rider',
+        line: 'You let the river TELL you how big your window should be. Most people pick a size and hope. You listened. That is a Variable-Size Window. And that\'s the hardest part of learning — not expanding. SHRINKING. Knowing when to give something up.',
+      },
     },
   },
   {

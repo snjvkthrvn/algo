@@ -76,7 +76,7 @@ async function waitForP01PlayerTurn(page: Page, timeout = 20_000) {
     () => {
       const game = (window as GameWindow).__PHASER_GAME__;
       const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
-      return scene?.['puzzleState'] === 'PLAYER_TURN';
+      return scene?.['state'] === 'turn' || scene?.['puzzleState'] === 'PLAYER_TURN';
     },
     { timeout },
   );
@@ -703,30 +703,31 @@ test.describe('Prologue region – visual audit', () => {
     expect(warnings.some((warning) => warning.includes('unknown_future_region'))).toBe(true);
   });
 
-  test('10 - P0-1 Follow the Path - completes all 3 rounds', async ({ page }) => {
+  test('10 - P0-1 Follow the Path - completes all 4 rounds', async ({ page }) => {
     test.setTimeout(90_000);
 
     await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
 
-    await prepareP01Round(page, 0);
-    await pressSequence(page, ['1', '2', '3']);
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, ['ArrowUp', 'ArrowUp']);
 
-    await prepareP01Round(page, 1);
-    await pressSequence(page, ['2', '4', '1', '5', '3']);
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, ['ArrowUp', 'ArrowUp', 'ArrowRight', 'ArrowRight']);
 
-    await prepareP01Round(page, 2);
-    await pressSequence(page, ['5', '1', '4', '2', '3', '6', '4']);
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, ['ArrowUp', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowUp']);
 
-    await page.evaluate(() => {
-      const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
-      const time = scene?.['time'] as { removeAllEvents?: () => void } | undefined;
-      time?.removeAllEvents?.();
-      const complete = scene?.['puzzleComplete'];
-      if (scene && typeof complete === 'function') {
-        (complete as () => void).call(scene);
-      }
-    });
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, [
+      'ArrowUp',
+      'ArrowUp',
+      'ArrowRight',
+      'ArrowRight',
+      'ArrowLeft',
+      'ArrowUp',
+      'ArrowRight',
+      'ArrowRight',
+    ]);
 
     await waitForScene(page, 'ConceptBridgeScene', 10_000);
     await snap(page, '10-p0-1-complete.png');

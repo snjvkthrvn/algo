@@ -686,4 +686,13 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * STUB — original showNameItBeat implementation was lost during a session
+   * revert (git checkout discarded uncommitted FEEL→NAME→USE pedagogical
+   * work). Re-implement or restore from compiled dist before shipping.
+   */
+  protected async showNameItBeat(_beat: unknown): Promise<void> {
+    return Promise.resolve();
+  }
+
 }

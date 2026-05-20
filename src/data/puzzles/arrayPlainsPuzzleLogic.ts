@@ -545,19 +545,32 @@ function allValidPairs(values: ReadonlyArray<number>, target: number): ReadonlyA
 export const TWO_SUM_ROUND_CONFIGS: ReadonlyArray<TwoSumRoundConfig> = (() => {
   // TEACH: target 9 satisfied by (1,8) and (3,6) — two valid pairs so a
   // single missed click still leaves a path forward.
+  // Round 1 (FEEL_IT): 5 tiles, target 9. The player should NEVER read about
+  // "complement" or "two sum" here — they discover that, given a target, they
+  // can pick one tile and *know* what its partner must be without checking
+  // every other pair. Glitch demonstrates the alternative: try every pair in
+  // sequence and watch the check count explode. The architecturally novel
+  // bit: NAME_IT is spoken by GLITCH (not a friendly NPC) — per the script,
+  // this is Glitch's first genuine learning moment, the crack in their
+  // brash attitude. They've just brute-forced 10 checks; the player did 1.
   const teach = {
     label: 'TEACH' as const,
     values: [1, 3, 5, 6, 8],
     target: 9,
     seconds: 25,
     lesson: {
-      title: 'Pair to a sum',
-      subtitle: 'Round 1 · Teach',
+      title: 'A Tile Worker waits',
+      subtitle: 'Round 1',
       bullets: [
-        'Pick any tile, call its value v.',
-        'You need to find target − v in the rest of the row.',
-        'That\'s the *complement*. Look for it specifically.',
+        'The Pairing Grounds demand a match.',
+        'Pick a runestone, then find exactly what it needs to reach the target.',
+        'Glitch is trying every pair in turn. See if you can beat them.',
       ],
+      phase: PuzzlePhase.FEEL_IT,
+      nameItBeat: {
+        speaker: 'Glitch',
+        line: 'Wait. WAIT. You just... knew what it needed? You turned it from check everything into check one thing? That\'s — that\'s the *complement*. I was checking pair after pair. You looked once. ...can you teach me that?',
+      },
     },
   };
   const twist = {

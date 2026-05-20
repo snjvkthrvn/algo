@@ -37,9 +37,12 @@ const D1 = { q: 1, r: 0 };
 const E1 = { q: -1, r: 1 };
 
 const round1: FlowRound = {
-  title: 'I. The First Choice',
-  principle: 'A program\u2019s path depends on its choices. One decision can change the destination.',
-  teach: 'Click the fork rune to rotate where the signal flows. Reach the sink.',
+  title: 'I. First Choice',
+  // Diegetic copy \u2014 frames P0_2 as continuing the "Glitch broke the chamber"
+  // arc from the cold open. The forks were left scrambled when Glitch
+  // tried to brute-force the consoles.
+  principle: 'Glitch slammed every fork open. The pulse cannot find its way home.',
+  teach: 'Click the fork to rotate where the signal flows. Send the pulse to the sink.',
   field: [A1, B1, C1, D1, E1],
   source: A1,
   sink: D1,
@@ -62,8 +65,8 @@ const F2 = { q: -1, r: 1 };
 const G2 = { q: 1, r: 1 };
 
 const round2: FlowRound = {
-  title: 'II. In Series',
-  principle: 'Decisions compose. A program is a sequence of choices, each constraining the next.',
+  title: 'II. Two Forks in a Row',
+  principle: 'The pulse must clear both forks. Each gate you set guards the next.',
   teach: 'Two forks in series — the signal must pass both. Set each one correctly.',
   field: [A2, B2, C2, D2, E2, F2, G2],
   source: A2,
@@ -92,9 +95,9 @@ const Y3 = { q: 0, r: 1 };
 const Z3 = { q: 1, r: 1 };
 
 const round3: FlowRound = {
-  title: 'III. Cascade',
-  principle: 'A cascade of choices forms a path. Set each fork; the signal will find its way.',
-  teach: 'Three forks in a row. Each must point onward — not down — for the pulse to reach the sink.',
+  title: 'III. The Cascade',
+  principle: 'Each fork stands between the pulse and its home. Open them all the right way and the way appears.',
+  teach: 'Three forks. Each must point onward — not down — for the pulse to reach the sink.',
   field: [A3, B3, C3, D3, S3, X3, Y3, Z3],
   source: A3,
   sink: S3,
@@ -137,9 +140,9 @@ const DC4 = { q: 0, r: 1 };
 const DD4 = { q: 1, r: 1 };
 
 const round4: FlowRound = {
-  title: 'IV. Maze',
-  principle: 'A long sequence of choices is still one sequence. Reason the chain — or play it through.',
-  teach: 'Four forks, four dead ends. Each fork has two outgoing paths; pick the one that keeps the chain alive.',
+  title: 'IV. The Tangled Network',
+  principle: 'A long chain of forks is still one chain. Trace it through — or play and find the way.',
+  teach: 'Four forks, four dead ends. Each fork has two outgoing paths; pick the one that keeps the signal alive.',
   field: [A4, B4, C4, D4, E4, F4, G4, DA4, DB4, DC4, DD4],
   source: A4,
   sink: G4,

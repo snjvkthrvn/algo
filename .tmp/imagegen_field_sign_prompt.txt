@@ -1,0 +1,39 @@
+Use the imagegen skill to produce a NEW Pokemon Red style FIELD SIGN puzzle marker for "Algorithmia: The Path of Logic" — marks farm puzzles in Array Plains.
+
+=== AESTHETIC ===
+Pokemon Red wooden sign / signpost. Flat-shaded, 16×16-effective, 5-color.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\objects\props\field_sign_v2.png
+- Dimensions: EXACTLY 64 × 96 pixels
+- TRANSPARENT background
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, dark wood)
+- `#346856` medium dark (wood body, post)
+- `#88c070` light accent (grass at base)
+- `#e0f8d0` lightest (cream wood highlights, sign face)
+- `#06b6d4` cyan (a small cyan glyph painted on the sign)
+
+=== SUBJECT ===
+A simple wooden signpost. Pokemon Red style — small post with a sign attached at the top.
+
+Composition:
+- Bottom: small grass patch (#88c070) with #346856 base
+- Post: vertical wooden plank (#346856 with #e0f8d0 highlight, #081820 outline)
+- Top: a small horizontal wooden sign (cream #e0f8d0 with #081820 border)
+- On the sign face: a small cyan #06b6d4 glyph/icon (could be a wheat sheaf shape)
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO smooth gradients, NO AA, NO drop shadows
+- NO HD painted style
+- NO color count above 5+alpha
+- NO baked text (the sign face shows a small icon, not legible text)
+
+=== SELF-VERIFICATION ===
+Report dimensions, color count, hex values, file size, hard-edge confirmation.
+
+STOP after self-verification. DO NOT edit assets.ts.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.

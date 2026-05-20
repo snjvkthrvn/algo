@@ -1,0 +1,42 @@
+Use the imagegen skill to produce a NEW Pokemon Red style BIT COMPANION sprite (Frame form) for "Algorithmia: The Path of Logic".
+
+=== AESTHETIC ===
+Pokemon Red companion — the most evolved/decorated state of BIT. Chunky, flat-shaded, 16×16-effective.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\characters\bit_frame_v2.png
+- Dimensions: EXACTLY 64 × 64 pixels
+- TRANSPARENT background
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, eye)
+- `#346856` medium dark (frame body shadow)
+- `#88c070` light accent (rare)
+- `#e0f8d0` lightest (frame highlights)
+- `#06b6d4` cyan (center jewel — the "frame" holds a cyan gem)
+
+=== SUBJECT ===
+A small ornate frame-cube companion. More decorated than bit_byte — visualizes the companion's most evolved/empowered state.
+
+Composition:
+- Diamond/rhombus shape (rotated cube) at center
+- Cyan #06b6d4 gem in the dead center
+- Ornate cream/dark border in #e0f8d0 + #081820 outlining
+- Optional: 4 small "corner accents" (single pixels) at 4 cardinal points
+- Single small eye dot (#081820)
+- 1px outline
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO smooth gradients
+- NO soft glow halo
+- NO anti-aliased edges
+- NO color count above 5+alpha
+- NO HD detail or "ornate" curves — keep it simple Pokemon Red shapes
+
+=== SELF-VERIFICATION ===
+Report dimensions, color count, hex values, file size, hard-edge confirmation, transparent background.
+
+STOP after self-verification. DO NOT edit assets.ts.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.

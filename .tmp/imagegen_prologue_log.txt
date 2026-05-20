@@ -1,0 +1,1541 @@
+Reading additional input from stdin...
+2026-05-18T02:54:29.399970Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer realm=\"OAuth\", resource_metadata=\"https://mcp.linear.app/.well-known/oauth-protected-resource/mcp\", error=\"invalid_token\", error_description=\"Missing or invalid access token\"" })
+2026-05-18T02:54:29.403400Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/\"" })
+2026-05-18T02:54:29.408043Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://mcp.supabase.com/.well-known/oauth-protected-resource/mcp\"" })
+2026-05-18T02:54:29.429083Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_token\", error_description=\"No authorization provided\", resource_metadata=\"https://mcp.vercel.com/.well-known/oauth-protected-resource\"" })
+OpenAI Codex v0.130.0
+--------
+workdir: D:\algo
+model: gpt-5.5
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, C:\Users\kathi\.codex\memories]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019e3901-a2a1-71e0-8c50-6113c2a3e61e
+--------
+user
+Use the imagegen skill to produce a NEW MARKETING-GRADE overworld backdrop for the PROLOGUE region (Codex Sanctum / Awakening Grove) of the indie game "Algorithmia: The Path of Logic".
+
+=== WHY WE'RE REGENERATING ===
+A multi-CLI cohesion audit (Gemini + Cursor Agent) found the current three overworld backdrops (prologue_chamber.png, array_plains_grounded_v2.png, twin_rivers_grounded_v2.png) look like THREE DIFFERENT GAMES. Cohesion score: 1.9/5. The fix: rebuild all three as POKEMON RED-style top-down overworlds sharing a strict 5-color Game Boy palette.
+
+=== AESTHETIC REFERENCE (THIS IS THE BAR) ===
+**Pokemon Red/Blue (1996), running on original Game Boy hardware.**
+- Strict TOP-DOWN camera (90° straight down, NOT 3/4 isometric)
+- 16×16 tile-based maps; every map element snaps to the 16-pixel grid
+- 100% FLAT shading — no dithering, no gradients, no airbrush
+- Hard 1-pixel-wide darker outlines on distinct entities (no drop shadows)
+- Sparse decoration — wide open areas; trees/props only where they serve navigation
+- The whole image looks like it could run on a 1996 handheld
+
+DO NOT reference Stardew Valley, Hyper Light Drifter, Sea of Stars, Octopath Traveler, or any modern indie pixel art — those have too much detail, dithering, and color depth. Pokemon Red is the WHOLE reference.
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\public\assets\visual_revamp\regions\prologue_chamber_v3.png
+- Final image dimensions: EXACTLY 320 × 120 pixels (preserves wide cinematic aspect)
+- This will be upscaled 4× by Phaser to 1280×480 at runtime
+- Transparent or opaque background — opaque is fine (it's a backdrop)
+- True pixel art, hard edges only
+
+=== PALETTE — ABSOLUTELY 5 COLORS MAXIMUM ===
+You MUST use ONLY these 5 hex values. No additional colors. No off-palette shading. If you find yourself wanting a brown, use the existing greens. If you want a purple, use the cyan accent sparingly instead.
+- `#081820` darkest (void, outlines, deep shadow)
+- `#346856` medium dark (stone tile surface, deeper stone)
+- `#88c070` light/accent (moss accent, lit stone edges — use sparingly here, mostly stone)
+- `#e0f8d0` lightest (cream highlights on stone)
+- `#06b6d4` cyan glow (INTERACTIVE ELEMENTS ONLY — altar tops, rune lines, glowing glyphs)
+
+=== SUBJECT MATTER FOR THE PROLOGUE ===
+A dark stone temple interior chamber. Top-down view of:
+- ONE central cyan rune circle (the awakening altar) — this is the heart of the scene
+- 3-4 satellite stone platforms connected to center by stone-tile paths radiating outward like spokes
+- Surrounding void (#081820 fill) representing the cosmic outside
+- Scattered cyan rune-lines etched into the stone floor between altars
+- 1-2 crystal cluster props max (small, optional)
+- Stone-tile floor uses #346856; rune lines and altar tops use #06b6d4
+
+Composition: center the rune circle. Make the central altar feel like the FOCAL POINT. Player will spawn here and walk outward.
+
+Mood: "ancient digital temple, first chamber the player wakes in, mysterious"
+
+Dominant tile: 16×16 stone (#346856) with #081820 outline; void areas are pure #081820.
+
+=== ABSOLUTE PROHIBITIONS — ANY VIOLATION FAILS THE ASSET ===
+- NO smooth gradients of any kind
+- NO anti-aliased edges (every pixel boundary is a hard step between two solid colors from the 5-color palette)
+- NO drop shadows (use 1px outline in #081820 instead)
+- NO subpixel detail or half-pixel offsets
+- NO painted/airbrushed textures (this is Pokemon Red, not modern pixel art)
+- NO 3/4 perspective, NO isometric — strict TOP-DOWN ONLY
+- NO color count above 5
+- NO purple, NO gold, NO brown — only the 5 listed hexes
+- NO baked text, NO labels, NO UI elements drawn in
+- NO NPCs or characters in the image (they get drawn separately by the game)
+
+=== SELF-VERIFICATION ASK ===
+After saving the file, OPEN IT and report:
+1. Exact file dimensions (must be 320×120)
+2. Exact unique color count (must be ≤ 5)
+3. List the actual hex values found in the image
+4. File size in bytes
+5. Confirm: does every pixel boundary look like a hard color step? (no AA, no gradient)
+6. Tile alignment: are all distinct map elements snapping to a 16-pixel grid?
+
+If any of these checks fails, RETRY the generation with a more constrained prompt. Do not save a failing asset.
+
+STOP after self-verification. DO NOT edit src/config/assets.ts — the parent agent will wire the path swap once all three regenerations are complete. DO NOT run npm build or tests. DO NOT touch any other files.
+ERROR: The process "26220" not found.
+codex
+I’ll use the `imagegen` skill, then verify the saved PNG directly for dimensions, palette, hard edges, and tile-grid alignment. I’m also doing a quick local context check because this is in the existing `D:\algo` asset pipeline.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'C:\\Users\\kathi\\.codex\\skills\\.system\\imagegen\\SKILL.md'" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Select-String -LiteralPath 'C:\\Users\\kathi\\.codex\\memories\\MEMORY.md' -Pattern 'prologue_chamber|visual_revamp|prologue-rework|D:\\\\algo|asset-manifest|preview-panel' -Context 0,2" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -LiteralPath 'C:\\Users\\kathi\\.codex\\plugins\\cache\\openai-curated\\superpowers\\dc902811\\skills\\using-superpowers\\SKILL.md' -TotalCount 80" in D:\algo
+ succeeded in 1166ms:
+---
+name: "imagegen"
+description: "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas."
+---
+
+# Image Generation Skill
+
+Generates or edits images for the current project (for example website assets, game assets, UI mockups, product mockups, wireframes, logo design, photorealistic images, or infographics).
+
+## Top-level modes and rules
+
+This skill has exactly two top-level modes:
+
+- **Default built-in tool mode (preferred):** built-in `image_gen` tool for normal image generation, editing, and simple transparent-image requests. Does not require `OPENAI_API_KEY`.
+- **Fallback CLI mode:** `scripts/image_gen.py` CLI. Use when the user explicitly asks for the CLI/API/model path, or after the user explicitly confirms a true model-native transparency fallback with `gpt-image-1.5`. Requires `OPENAI_API_KEY`.
+
+Within CLI fallback, the CLI exposes three subcommands:
+
+- `generate`
+- `edit`
+- `generate-batch`
+
+Rules:
+- Use the built-in `image_gen` tool by default for normal image generation and editing requests.
+- Do not switch to CLI fallback for ordinary quality, size, or file-path control.
+- If the user explicitly asks for a transparent image/background, stay on built-in `image_gen` first: prompt for a flat removable chroma-key background, then remove it locally with the installed helper at `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`.
+- Never silently switch from built-in `image_gen` or CLI `gpt-image-2` to CLI `gpt-image-1.5`. Treat this as a model/path downgrade and ask the user before doing it, unless the user has already explicitly requested `gpt-image-1.5`, `scripts/image_gen.py`, or CLI fallback.
+- If a transparent request appears too complex for clean chroma-key removal, asks for true/native transparency, or local removal fails validation, explain that true transparency requires CLI `gpt-image-1.5 --background transparent --output-format png` because `gpt-image-2` does not support `background=transparent`, then ask whether to proceed. Run the CLI fallback only after the user confirms.
+- The word `batch` by itself does not mean CLI fallback. If the user asks for many assets or says to batch-generate assets without explicitly asking for CLI/API/model controls, stay on the built-in path and issue one built-in call per requested asset or variant.
+- If the built-in tool fails or is unavailable, tell the user the CLI fallback exists and that it requires `OPENAI_API_KEY`. Proceed only if the user explicitly asks for that fallback.
+- If the user explicitly asks for CLI mode, use the bundled `scripts/image_gen.py` workflow. Do not create one-off SDK runners.
+- Never modify `scripts/image_gen.py`. If something is missing, ask the user before doing anything else.
+
+Built-in save-path policy:
+- In built-in tool mode, Codex saves generated images under `$CODEX_HOME/*` by default.
+- Do not describe or rely on OS temp as the default built-in destination.
+- Do not describe or rely on a destination-path argument (if any) on the built-in `image_gen` tool. If a specific location is needed, generate first and then move or copy the selected output from `$CODEX_HOME/generated_images/...`.
+- Save-path precedence in built-in mode:
+  1. If the user names a destination, move or copy the selected output there.
+  2. If the image is meant for the current project, move or copy the final selected image into the workspace before finishing.
+  3. If the image is only for preview or brainstorming, render it inline; the underlying file can remain at the default `$CODEX_HOME/*` path.
+- Never leave a project-referenced asset only at the default `$CODEX_HOME/*` path.
+- Do not overwrite an existing asset unless the user explicitly asked for replacement; otherwise create a sibling versioned filename such as `hero-v2.png` or `item-icon-edited.png`.
+
+Shared prompt guidance for both modes lives in `references/prompting.md` and `references/sample-prompts.md`.
+
+Fallback-only docs/resources for CLI mode:
+- `references/cli.md`
+- `references/image-api.md`
+- `references/codex-network.md`
+- `scripts/image_gen.py`
+
+Local post-processing helper:
+- `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`: removes a flat chroma-key background from a generated image and writes a PNG/WebP with alpha. Prefer auto-key sampling, soft matte, and despill for antialiased edges.
+
+## When to use
+- Generate a new image (concept art, product shot, cover, website hero)
+- Generate a new image using one or more reference images for style, composition, or mood
+- Edit an existing image (inpainting, lighting or weather transformations, background replacement, object removal, compositing, transparent background)
+- Produce many assets or variants for one task
+
+## When not to use
+- Extending or matching an existing SVG/vector icon set, logo system, or illustration library inside the repo
+- Creating simple shapes, diagrams, wireframes, or icons that are better produced directly in SVG, HTML/CSS, or canvas
+- Making a small project-local asset edit when the source file already exists in an editable native format
+- Any task where the user clearly wants deterministic code-native output instead of a generated bitmap
+
+## Decision tree
+
+Think about two separate questions:
+
+1. **Intent:** is this a new image or an edit of an existing image?
+2. **Execution strategy:** is this one asset or many assets/variants?
+
+Intent:
+- If the user wants to modify an existing image while preserving parts of it, treat the request as **edit**.
+- If the user provides images only as references for style, composition, mood, or subject guidance, treat the request as **generate**.
+- If the user provides no images, treat the request as **generate**.
+
+Built-in edit semantics:
+- Built-in edit mode is for images already visible in the conversation context, such as attached images or images generated earlier in the thread.
+- If the user wants to edit a local image file with the built-in tool, first load it with built-in `view_image` tool so the image is visible in the conversation context, then proceed with the built-in edit flow.
+- Do not promise arbitrary filesystem-path editing through the built-in tool.
+- If a local file still needs direct file-path control, masks, or other explicit CLI-only parameters, use the explicit CLI fallback only when the user asks for it.
+- For edits, preserve invariants aggressively and save non-destructively by default.
+
+Execution strategy:
+- In the built-in default path, produce many assets or variants by issuing one `image_gen` call per requested asset or variant.
+- In the CLI fallback path, use the CLI `generate-batch` subcommand only when the user explicitly chose CLI mode and needs many prompts/assets.
+- For many distinct assets, do not use `n` as a substitute for separate prompts. `n` is for variants of one prompt; distinct assets need distinct built-in calls or distinct CLI `generate-batch` jobs.
+
+Assume the user wants a new image unless they clearly ask to change an existing one.
+
+## Workflow
+1. Decide the top-level mode: built-in by default, including simple transparent-output requests; fallback CLI only if explicitly requested or after the user explicitly confirms a transparent-output fallback.
+2. Decide the intent: `generate` or `edit`.
+3. Decide whether the output is preview-only or meant to be consumed by the current project.
+4. Decide the execution strategy: single asset vs repeated built-in calls vs CLI `generate-batch`.
+5. Collect inputs up front: prompt(s), exact text (verbatim), constraints/avoid list, and any input images.
+6. For every input image, label its role explicitly:
+   - reference image
+   - edit target
+   - supporting insert/style/compositing input
+7. If the edit target is only on the local filesystem and you are staying on the built-in path, inspect it with `view_image` first so the image is available in conversation context.
+8. If the user asked for a photo, illustration, sprite, product image, banner, or other explicitly raster-style asset, use `image_gen` rather than substituting SVG/HTML/CSS placeholders. If the request is for an icon, logo, or UI graphic that should match existing repo-native SVG/vector/code assets, prefer editing those directly instead.
+9. Augment the prompt based on specificity:
+   - If the user's prompt is already specific and detailed, normalize it into a clear spec without adding creative requirements.
+   - If the user's prompt is generic, add tasteful augmentation only when it materially improves output quality.
+10. Use the built-in `image_gen` tool by default.
+11. For transparent-output requests, follow the transparent image guidance below: generate with built-in `image_gen` on a flat chroma-key background, copy the selected output into the workspace or `tmp/imagegen/`, run the installed `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py` helper, and validate the alpha result before using it. If this path looks unsuitable or fails, ask before switching to CLI `gpt-image-1.5`.
+12. Inspect outputs and validate: subject, style, composition, text accuracy, and invariants/avoid items.
+13. Iterate with a single targeted change, then re-check.
+14. For preview-only work, render the image inline; the underlying file may remain at the default `$CODEX_HOME/generated_images/...` path.
+15. For project-bound work, move or copy the selected artifact into the workspace and update any consuming code or references. Never leave a project-referenced asset only at the default `$CODEX_HOME/generated_images/...` path.
+16. For batches or multi-asset requests, persist every requested deliverable final in the workspace unless the user explicitly asked to keep outputs preview-only. Discarded variants do not need to be kept unless requested.
+17. If the user explicitly chooses or confirms the CLI fallback, then use the fallback-only docs for model, quality, size, `input_fidelity`, masks, output format, output paths, and network setup.
+18. Always report the final saved path(s) for any workspace-bound asset(s), plus the final prompt or prompt set and whether the built-in tool or fallback CLI mode was used.
+
+## Transparent image requests
+
+Transparent-image requests still use built-in `image_gen` first. Because the built-in tool does not expose a true transparent-background control, create a removable chroma-key source image and then convert the key color to alpha locally.
+
+Default sequence:
+1. Use built-in `image_gen` to generate the requested subject on a perfectly flat solid chroma-key background.
+2. Choose a key color that is unlikely to appear in the subject: default `#00ff00`, use `#ff00ff` for green subjects, and avoid `#0000ff` for blue subjects.
+3. After generation, move or copy the selected source image from `$CODEX_HOME/generated_images/...` into the workspace or `tmp/imagegen/`.
+4. Run the installed helper path, not a project-relative script path:
+   ```bash
+   python "${CODEX_HOME:-$HOME/.codex}/skills/.system/imagegen/scripts/remove_chroma_key.py" \
+     --input <source> \
+     --out <final.png> \
+     --auto-key border \
+     --soft-matte \
+     --transparent-threshold 12 \
+     --opaque-threshold 220 \
+     --despill
+   ```
+5. Validate that the output has an alpha channel, transparent corners, plausible subject coverage, and no obvious key-color fringe. If a thin fringe remains, retry once with `--edge-contract 1`; use `--edge-feather 0.25` only when the edge is visibly stair-stepped and the subject is not shiny or reflective.
+6. Save the final alpha PNG/WebP in the project if the asset is project-bound. Never leave a project-referenced transparent asset only under `$CODEX_HOME/*`.
+
+Prompt transparent requests like this:
+
+```text
+Create the requested subject on a perfectly flat solid #00ff00 chroma-key background for background removal.
+The background must be one uniform color with no shadows, gradients, texture, reflections, floor plane, or lighting variation.
+Keep the subject fully separated from the background with crisp edges and generous padding.
+Do not use #00ff00 anywhere in the subject.
+No cast shadow, no contact shadow, no reflection, no watermark, and no text unless explicitly requested.
+```
+
+Do not automatically use CLI `gpt-image-1.5 --background transparent --output-format png` instead of chroma keying. Ask the user first when the user asks for true/native transparency, when local removal fails validation, or when the requested image is complex: hair, fur, feathers, smoke, glass, liquids, translucent materials, reflective objects, soft shadows, realistic product grounding, or subject colors that conflict with all practical key colors.
+
+Use a concise confirmation like:
+
+```text
+This likely needs true native transparency. The default built-in path uses a chroma-key background plus local removal, but true transparency requires the CLI fallback with gpt-image-1.5 because gpt-image-2 does not support background=transparent. It also requires OPENAI_API_KEY. Should I proceed with that CLI fallback?
+```
+
+## Prompt augmentation
+
+Reformat user prompts into a structured, production-oriented spec. Make the user's goal clearer and more actionable, but do not blindly add detail.
+
+Treat this as prompt-shaping guidance, not a closed schema. Use only the lines that help, and add a short extra labeled line when it materially improves clarity.
+
+### Specificity policy
+
+Use the user's prompt specificity to decide how much augmentation is appropriate:
+
+- If the prompt is already specific and detailed, preserve that specificity and only normalize/structure it.
+- If the prompt is generic, you may add tasteful augmentation when it will materially improve the result.
+
+Allowed augmentations:
+- composition or framing hints
+- polish level or intended-use hints
+- practical layout guidance
+- reasonable scene concreteness that supports the stated request
+
+Not allowed augmentations:
+- extra characters or objects that are not implied by the request
+- brand names, slogans, palettes, or narrative beats that are not implied
+- arbitrary side-specific placement unless the surrounding layout supports it
+
+## Use-case taxonomy (exact slugs)
+
+Classify each request into one of these buckets and keep the slug consistent across prompts and references.
+
+Generate:
+- photorealistic-natural â€” candid/editorial lifestyle scenes with real texture and natural lighting.
+- product-mockup â€” product/packaging shots, catalog imagery, merch concepts.
+- ui-mockup â€” app/web interface mockups and wireframes; specify the desired fidelity.
+- infographic-diagram â€” diagrams/infographics with structured layout and text.
+- scientific-educational â€” classroom explainers, scientific diagrams, and learning visuals with required labels and accuracy constraints.
+- ads-marketing â€” campaign concepts and ad creatives with audience, brand position, scene, and exact tagline/copy.
+- productivity-visual â€” slide, chart, workflow, and data-heavy business visuals.
+- logo-brand â€” logo/mark exploration, vector-friendly.
+- illustration-story â€” comics, childrenâ€™s book art, narrative scenes.
+- stylized-concept â€” style-driven concept art, 3D/stylized renders.
+- historical-scene â€” period-accurate/world-knowledge scenes.
+
+Edit:
+- text-localization â€” translate/replace in-image text, preserve layout.
+- identity-preserve â€” try-on, person-in-scene; lock face/body/pose.
+- precise-object-edit â€” remove/replace a specific element (including interior swaps).
+- lighting-weather â€” time-of-day/season/atmosphere changes only.
+- background-extraction â€” transparent background / clean cutout. Use built-in `image_gen` with chroma-key removal first for simple opaque subjects; ask before using CLI true transparency for complex subjects.
+- style-transfer â€” apply reference style while changing subject/scene.
+- compositing â€” multi-image insert/merge with matched lighting/perspective.
+- sketch-to-render â€” drawing/line art to photoreal render.
+
+## Shared prompt schema
+
+Use the following labeled spec as shared prompt scaffolding for both top-level modes:
+
+```text
+Use case: <taxonomy slug>
+Asset type: <where the asset will be used>
+Primary request: <user's main prompt>
+Input images: <Image 1: role; Image 2: role> (optional)
+Scene/backdrop: <environment>
+Subject: <main subject>
+Style/medium: <photo/illustration/3D/etc>
+Composition/framing: <wide/close/top-down; placement>
+Lighting/mood: <lighting + mood>
+Color palette: <palette notes>
+Materials/textures: <surface details>
+Text (verbatim): "<exact text>"
+Constraints: <must keep/must avoid>
+Avoid: <negative constraints>
+```
+
+Notes:
+- `Asset type` and `Input images` are prompt scaffolding, not dedicated CLI flags.
+- `Scene/backdrop` refers to the visual setting. It is not the same as the fallback CLI `background` parameter, which controls output transparency behavior.
+- Fallback-only execution notes such as `Quality:`, `Input fidelity:`, masks, output format, and output paths belong in the CLI path only. Do not treat them as built-in `image_gen` tool arguments.
+
+Augmentation rules:
+- Keep it short.
+- Add only the details needed to improve the prompt materially.
+- For edits, explicitly list invariants (`change only X; keep Y unchanged`).
+- If any critical detail is missing and blocks success, ask a question; otherwise proceed.
+
+## Examples
+
+### Generation example (hero image)
+```text
+Use case: product-mockup
+Asset type: landing page hero
+Primary request: a minimal hero image of a ceramic coffee mug
+Style/medium: clean product photography
+Composition/framing: wide composition with usable negative space for page copy if needed
+Lighting/mood: soft studio lighting
+Constraints: no logos, no text, no watermark
+```
+
+### Edit example (invariants)
+```text
+Use case: precise-object-edit
+Asset type: product photo background replacement
+Primary request: replace only the background with a warm sunset gradient
+Constraints: change only the background; keep the product and its edges unchanged; no text; no watermark
+```
+
+## Prompting best practices
+- Structure prompt as scene/backdrop -> subject -> details -> constraints.
+- Include intended use (ad, UI mock, infographic) to set the mode and polish level.
+- Use camera/composition language for photorealism.
+- Only use SVG/vector stand-ins when the user explicitly asked for vector output or a non-image placeholder.
+- Quote exact text and specify typography + placement.
+- For tricky words, spell them letter-by-letter and require verbatim rendering.
+- For multi-image inputs, reference images by index and describe how they should be used.
+- For edits, repeat invariants every iteration to reduce drift.
+- Iterate with single-change follow-ups.
+- If the prompt is generic, add only the extra detail that will materially help.
+- If the prompt is already detailed, normalize it instead of expanding it.
+- For CLI fallback only, see `references/cli.md` and `references/image-api.md` for model, `quality`, `input_fidelity`, masks, output format, and output-path guidance.
+- For transparent images, use the built-in-first chroma-key workflow unless the request is complex enough to need true CLI transparency; ask before switching to CLI `gpt-image-1.5`.
+
+More principles shared by both modes: `references/prompting.md`.
+Copy/paste specs shared by both modes: `references/sample-prompts.md`.
+
+## Guidance by asset type
+Asset-type templates (website assets, game assets, wireframes, logo) are consolidated in `references/sample-prompts.md`.
+
+## gpt-image-2 guidance for CLI fallback
+
+The fallback CLI defaults to `gpt-image-2`.
+
+- Use `gpt-image-2` for new CLI/API workflows unless the request needs true model-native transparent output.
+- If a transparent request may need CLI fallback, ask before using `gpt-image-1.5` unless the user already explicitly requested `gpt-image-1.5`, `scripts/image_gen.py`, or CLI fallback. Explain that the built-in chroma-key path is the default, but true transparency requires `gpt-image-1.5` because `gpt-image-2` does not support `background=transparent`.
+- `gpt-image-2` always uses high fidelity for image inputs; do not set `input_fidelity` with this model.
+- `gpt-image-2` supports `quality` values `low`, `medium`, `high`, and `auto`.
+- Use `quality low` for fast drafts, thumbnails, and quick iterations. Use `medium`, `high`, or `auto` for final assets, dense text, diagrams, identity-sensitive edits, or high-resolution outputs.
+- Square images are typically fastest to generate. Use `1024x1024` for fast square drafts.
+- If the user asks for 4K-style output, use `3840x2160` for landscape or `2160x3840` for portrait.
+- `gpt-image-2` size may be `auto` or `WIDTHxHEIGHT` if all constraints hold: max edge `<= 3840px`, both edges multiples of `16px`, long-to-short ratio `<= 3:1`, total pixels between `655,360` and `8,294,400`.
+
+Popular `gpt-image-2` sizes:
+- `1024x1024` square
+- `1536x1024` landscape
+- `1024x1536` portrait
+- `2048x2048` 2K square
+- `2048x1152` 2K landscape
+- `3840x2160` 4K landscape
+- `2160x3840` 4K portrait
+- `auto`
+
+## Fallback CLI mode only
+
+### Temp and output conventions
+These conventions apply only to the CLI fallback. They do not describe built-in `image_gen` output behavior.
+- Use `tmp/imagegen/` for intermediate files (for example JSONL batches); delete them when done.
+- Write final artifacts under `output/imagegen/`.
+- Use `--out` or `--out-dir` to control output paths; keep filenames stable and descriptive.
+
+### Dependencies
+Prefer `uv` for dependency management in this repo.
+
+Required Python package:
+```bash
+uv pip install openai
+```
+
+Required for local chroma-key removal and optional downscaling:
+```bash
+uv pip install pillow
+```
+
+Portability note:
+- If you are using the installed skill outside this repo, install dependencies into that environment with its package manager.
+- In uv-managed environments, `uv pip install ...` remains the preferred path.
+
+### Environment
+- `OPENAI_API_KEY` must be set for live API calls.
+- Do not ask the user for `OPENAI_API_KEY` when using the built-in `image_gen` tool.
+- Never ask the user to paste the full key in chat. Ask them to set it locally and confirm when ready.
+
+If the key is missing, give the user these steps:
+1. Create an API key in the OpenAI platform UI: https://platform.openai.com/api-keys
+2. Set `OPENAI_API_KEY` as an environment variable in their system.
+3. Offer to guide them through setting the environment variable for their OS/shell if needed.
+
+If installation is not possible in this environment, tell the user which dependency is missing and how to install it into their active environment.
+
+### Script-mode notes
+- CLI commands + examples: `references/cli.md`
+- API parameter quick reference: `references/image-api.md`
+- Network approvals / sandbox settings for CLI mode: `references/codex-network.md`
+
+## Reference map
+- `references/prompting.md`: shared prompting principles for both modes.
+- `references/sample-prompts.md`: shared copy/paste prompt recipes for both modes.
+- `references/cli.md`: fallback-only CLI usage via `scripts/image_gen.py`.
+- `references/image-api.md`: fallback-only API/CLI parameter reference.
+- `references/codex-network.md`: fallback-only network/sandbox troubleshooting for CLI mode.
+- `scripts/image_gen.py`: fallback-only CLI implementation. Do not load or use it unless the user explicitly chooses CLI mode or explicitly confirms a transparent request's true CLI transparency fallback.
+- `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`: local post-processing helper for built-in transparent-image requests.
+
+ succeeded in 1115ms:
+---
+name: using-superpowers
+description: Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions
+---
+
+<SUBAGENT-STOP>
+If you were dispatched as a subagent to execute a specific task, skip this skill.
+</SUBAGENT-STOP>
+
+<EXTREMELY-IMPORTANT>
+If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+
+IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+
+This is not negotiable. This is not optional. You cannot rationalize your way out of this.
+</EXTREMELY-IMPORTANT>
+
+## Instruction Priority
+
+Superpowers skills override default system prompt behavior, but **user instructions always take precedence**:
+
+1. **User's explicit instructions** (CLAUDE.md, GEMINI.md, AGENTS.md, direct requests) â€” highest priority
+2. **Superpowers skills** â€” override default system behavior where they conflict
+3. **Default system prompt** â€” lowest priority
+
+If CLAUDE.md, GEMINI.md, or AGENTS.md says "don't use TDD" and a skill says "always use TDD," follow the user's instructions. The user is in control.
+
+## How to Access Skills
+
+**In Claude Code:** Use the `Skill` tool. When you invoke a skill, its content is loaded and presented to youâ€”follow it directly. Never use the Read tool on skill files.
+
+**In Copilot CLI:** Use the `skill` tool. Skills are auto-discovered from installed plugins. The `skill` tool works the same as Claude Code's `Skill` tool.
+
+**In Gemini CLI:** Skills activate via the `activate_skill` tool. Gemini loads skill metadata at session start and activates the full content on demand.
+
+**In other environments:** Check your platform's documentation for how skills are loaded.
+
+## Platform Adaptation
+
+Skills use Claude Code tool names. Non-CC platforms: see `references/copilot-tools.md` (Copilot CLI), `references/codex-tools.md` (Codex) for tool equivalents. Gemini CLI users get the tool mapping loaded automatically via GEMINI.md.
+
+# Using Skills
+
+## The Rule
+
+**Invoke relevant or requested skills BEFORE any response or action.** Even a 1% chance a skill might apply means that you should invoke the skill to check. If an invoked skill turns out to be wrong for the situation, you don't need to use it.
+
+```dot
+digraph skill_flow {
+    "User message received" [shape=doublecircle];
+    "About to EnterPlanMode?" [shape=doublecircle];
+    "Already brainstormed?" [shape=diamond];
+    "Invoke brainstorming skill" [shape=box];
+    "Might any skill apply?" [shape=diamond];
+    "Invoke Skill tool" [shape=box];
+    "Announce: 'Using [skill] to [purpose]'" [shape=box];
+    "Has checklist?" [shape=diamond];
+    "Create TodoWrite todo per item" [shape=box];
+    "Follow skill exactly" [shape=box];
+    "Respond (including clarifications)" [shape=doublecircle];
+
+    "About to EnterPlanMode?" -> "Already brainstormed?";
+    "Already brainstormed?" -> "Invoke brainstorming skill" [label="no"];
+    "Already brainstormed?" -> "Might any skill apply?" [label="yes"];
+    "Invoke brainstorming skill" -> "Might any skill apply?";
+
+    "User message received" -> "Might any skill apply?";
+    "Might any skill apply?" -> "Invoke Skill tool" [label="yes, even 1%"];
+    "Might any skill apply?" -> "Respond (including clarifications)" [label="definitely not"];
+    "Invoke Skill tool" -> "Announce: 'Using [skill] to [purpose]'";
+    "Announce: 'Using [skill] to [purpose]'" -> "Has checklist?";
+    "Has checklist?" -> "Create TodoWrite todo per item" [label="yes"];
+    "Has checklist?" -> "Follow skill exactly" [label="no"];
+    "Create TodoWrite todo per item" -> "Follow skill exactly";
+}
+```
+
+## Red Flags
+
+These thoughts mean STOPâ€”you're rationalizing:
+
+ succeeded in 1801ms:
+
+> C:\Users\kathi\.codex\memories\MEMORY.md:28:# Task Group: D:\algo\algo-demo standalone audit with Gemini and Firefox 
+prod smoke
+  C:\Users\kathi\.codex\memories\MEMORY.md:29:
+  C:\Users\kathi\.codex\memories\MEMORY.md:30:scope: auditing the nested `algo-demo` checkout as its own repo, using 
+Gemini plus local verification to judge whether the shipped demo is internally consistent across docs, tests, and 
+production browser startup.
+> C:\Users\kathi\.codex\memories\MEMORY.md:31:applies_to: cwd=D:\algo\algo-demo; reuse_rule=safe for follow-up work in 
+this nested demo repo while its standalone `.git` root, demo-vs-full-game contract, and current Playwright/browser 
+scripts remain recognizable; do not reuse blindly for the parent `D:\algo` checkout.
+  C:\Users\kathi\.codex\memories\MEMORY.md:32:
+  C:\Users\kathi\.codex\memories\MEMORY.md:33:## Task 1: Inspect standalone demo correctness with Gemini plus local 
+verification, partial
+> C:\Users\kathi\.codex\memories\MEMORY.md:37:- 
+rollout_summaries/2026-05-16T19-45-06-9snG-algo_demo_gemini_audit_and_firefox_load_failure.md (cwd=D:\algo, rollout_pat
+h=C:\Users\kathi\.codex\sessions\2026\05\16\rollout-2026-05-16T15-45-06-019e3252-2a6a-78f0-ab72-c78baaff6104.jsonl, 
+updated_at=2026-05-16T19:55:47+00:00, thread_id=019e3252-2a6a-78f0-ab72-c78baaff6104, nested repo audit found stale 
+tests, doc drift, Firefox preload stall, and real npm audit findings)
+  C:\Users\kathi\.codex\memories\MEMORY.md:38:
+  C:\Users\kathi\.codex\memories\MEMORY.md:39:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:41:- D:\algo\algo-demo, nested git repo, gemini-3.1-pro-preview, npm.cmd 
+ci, npm run build, npm run test:run, npm run test:browsers:prod, Firefox timeout, BootScene, IMAGE_ASSETS, 
+BOOT_IMAGE_ASSETS, twinRivers, hash_highlands_gateway, end_game, HashHighlandsChoiceScenes.ts, CoreChoiceScenes.ts, 
+README.md, 9 fully playable regions, Thanks for playing this demo, Rollup advisory
+  C:\Users\kathi\.codex\memories\MEMORY.md:42:
+  C:\Users\kathi\.codex\memories\MEMORY.md:43:## User preferences
+> C:\Users\kathi\.codex\memories\MEMORY.md:45:- when the user said "look at D:\algo\algo-demo and see if it is 
+correct. also use gemini model gemini-3.1-pro-preview" -> treat `D:\algo\algo-demo` as the actual audit target, not 
+the dirty parent checkout, and use that exact Gemini model unless the user changes it [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:46:
+  C:\Users\kathi\.codex\memories\MEMORY.md:47:## Reusable knowledge
+> C:\Users\kathi\.codex\memories\MEMORY.md:49:- `D:\algo\algo-demo` is its own Git repo nested under `D:\algo`; the 
+correct audit boundary here is the clean inner repo on `master`, not the dirty parent checkout [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:50:- `npm.cmd ci` succeeded and `npm run build` passed, but that did not 
+prove correctness: `npm run test:run` still failed with 2 stale-contract tests, and `npm run test:browsers:prod` still 
+timed out in Firefox while Chromium/WebKit passed [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:51:- The concrete contract drift was between shipped demo behavior and 
+stale tests/docs: `src/data/regions/twinRivers.ts` routes `hash_highlands_gateway` to `end_game`, 
+`src/scenes/TwinRiversScene.ts` says "Thanks for playing this demo", but `src/data/regions/twinRivers.test.ts` and 
+`README.md` still behave like a full 9-region game [Task 1]
+> C:\Users\kathi\.codex\memories\MEMORY.md:94:# Task Group: D:\algo Firefox boot stall, scene-level asset preload 
+split, and preview-panel rollout context
+  C:\Users\kathi\.codex\memories\MEMORY.md:95:
+> C:\Users\kathi\.codex\memories\MEMORY.md:96:scope: debugging production browser startup stalls in the current 
+Algorithmia Phaser/Vite checkout, preserving preview-panel teaching semantics, and proving asset-loading fixes with 
+build/unit/browser verification before broadening UI rollout.
+> C:\Users\kathi\.codex\memories\MEMORY.md:97:applies_to: cwd=D:\algo; reuse_rule=safe for follow-up work in this 
+checkout while `src/config/assets.ts`, `BootScene`, region scene `preload()` hooks, and the preview-panel helper 
+remain recognizable, but treat exact asset names, branch names, and cache/temp redirection paths as checkout or 
+machine specific.
+  C:\Users\kathi\.codex\memories\MEMORY.md:98:
+> C:\Users\kathi\.codex\memories\MEMORY.md:99:## Task 1: Inspect preview-panel rollout context and preserve 
+predicted-state semantics, partial
+  C:\Users\kathi\.codex\memories\MEMORY.md:100:
+  C:\Users\kathi\.codex\memories\MEMORY.md:101:### rollout_summary_files
+> C:\Users\kathi\.codex\memories\MEMORY.md:103:- 
+rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C
+:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, 
+updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, preview-panel inspection before 
+the rollout pivoted into the browser blocker)
+  C:\Users\kathi\.codex\memories\MEMORY.md:104:
+  C:\Users\kathi\.codex\memories\MEMORY.md:105:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:107:- D:\algo, PuzzlePreviewSidePanel, TwinRiversChoiceScenes.ts, 
+refreshPreview, refreshStatus, predicted state, literal [8, 5, 2, 3], cyan interactive state
+  C:\Users\kathi\.codex\memories\MEMORY.md:108:
+  C:\Users\kathi\.codex\memories\MEMORY.md:109:## Task 2: Split BootScene asset loading to clear the Firefox 
+production startup stall, partial
+> C:\Users\kathi\.codex\memories\MEMORY.md:113:- 
+rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C
+:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, 
+updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, Firefox-specific boot stall 
+traced to heavy BootScene preload pressure)
+  C:\Users\kathi\.codex\memories\MEMORY.md:114:
+  C:\Users\kathi\.codex\memories\MEMORY.md:115:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:117:- D:\algo, Firefox, BootScene, preload, asset manifest, 
+src/config/assets.ts, PROLOGUE_SCENE_IMAGE_ASSETS, ARRAY_PLAINS_SCENE_IMAGE_ASSETS, TWIN_RIVERS_SCENE_IMAGE_ASSETS, 
+OVERWORLD_PLAYER_SPRITE_ASSETS, Set<string>, ENOSPC, test:browsers:prod
+  C:\Users\kathi\.codex\memories\MEMORY.md:118:
+  C:\Users\kathi\.codex\memories\MEMORY.md:119:## Task 3: Re-run build, unit tests, and the production browser matrix 
+after cache/temp redirection, success
+> C:\Users\kathi\.codex\memories\MEMORY.md:123:- 
+rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C
+:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, 
+updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, build/unit/browser matrix passed 
+but full Playwright completion was not captured)
+  C:\Users\kathi\.codex\memories\MEMORY.md:124:
+  C:\Users\kathi\.codex\memories\MEMORY.md:125:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:127:- D:\algo, npm.cmd run build, npm.cmd run test:run, npm.cmd run 
+test:browsers:prod, Chromium, Firefox, WebKit, NPM_CONFIG_CACHE, TEMP, TMP, D:\algo\npm-cache, D:\algo\.tmp, 55 files, 
+302 tests
+  C:\Users\kathi\.codex\memories\MEMORY.md:128:
+  C:\Users\kathi\.codex\memories\MEMORY.md:129:## User preferences
+> C:\Users\kathi\.codex\memories\MEMORY.md:137:- The Firefox blocker here was a loader-pressure problem, not a generic 
+scene bug: the live probe showed BootScene stuck with `totalToLoad: 95`, `totalComplete: 47`, `inflightSize: 32`, and 
+many large `prologue-rework-*` / `visual-revamp-*` assets still in flight [Task 2]
+  C:\Users\kathi\.codex\memories\MEMORY.md:138:- The durable asset fix was to strip BootScene down to menu-critical 
+art and move heavy region/player assets into scene-local `preload()` methods in 
+`src/scenes/prologue/PrologueScene.ts`, `src/scenes/ArrayPlainsScene.ts`, `src/scenes/TwinRiversScene.ts`, and 
+`src/scenes/FutureRegionScene.ts`, with targeted bundles in `src/config/assets.ts` such as `PROLOGUE_SCENE_*`, 
+`ARRAY_PLAINS_SCENE_IMAGE_ASSETS`, `TWIN_RIVERS_SCENE_IMAGE_ASSETS`, and `OVERWORLD_PLAYER_SPRITE_ASSETS` [Task 2]
+> C:\Users\kathi\.codex\memories\MEMORY.md:139:- On this machine, a full `C:` can masquerade as a repo problem during 
+npm/build/test runs. Redirecting `NPM_CONFIG_CACHE=D:\algo\npm-cache`, `TEMP=D:\algo\.tmp`, and `TMP=D:\algo\.tmp` was 
+enough to get `npm.cmd run build`, `npm.cmd run test:run`, and `npm.cmd run test:browsers:prod` working again after 
+clearing only `C:\Users\kathi\AppData\Local\npm-cache\_cacache` and `...\_npx` [Task 2][Task 3]
+  C:\Users\kathi\.codex\memories\MEMORY.md:140:- The production-browser config that mattered for proof was `npm.cmd 
+run test:browsers:prod`, covering Chromium, Firefox, and WebKit against the built app; this run passed after the 
+preload split [Task 3]
+  C:\Users\kathi\.codex\memories\MEMORY.md:141:
+> C:\Users\kathi\.codex\memories\MEMORY.md:146:- Symptom: npm/build/test suddenly fail with `ENOSPC` while working a 
+browser blocker. Cause: `C:` ran out of space and npm cache/temp writes were still targeting it. Fix: free only the 
+npm cache folders you need and redirect cache/temp to `D:\algo` before treating the repo as broken [Task 2][Task 3]
+  C:\Users\kathi\.codex\memories\MEMORY.md:147:- Symptom: the browser-matrix fix looks done, but a later summary 
+overclaims full end-to-end completion. Cause: the full Playwright suite was started but its completion was not 
+captured in the rollout evidence. Fix: keep the claim at build + unit + browser matrix passed unless the final 
+Playwright completion is explicitly recorded [Task 3]
+  C:\Users\kathi\.codex\memories\MEMORY.md:148:
+> C:\Users\kathi\.codex\memories\MEMORY.md:149:# Task Group: D:\algo production-pass cleanup, commit/push, and branch 
+hygiene
+  C:\Users\kathi\.codex\memories\MEMORY.md:150:
+  C:\Users\kathi\.codex\memories\MEMORY.md:151:scope: classifying a dirty production-pass tree, preserving live game 
+code while removing obsolete QA artifacts, pushing verified work in clean commit slices, and answering follow-up 
+branch lifecycle questions.
+> C:\Users\kathi\.codex\memories\MEMORY.md:152:applies_to: cwd=D:\algo; reuse_rule=safe for follow-up cleanup/push 
+work in this checkout while `tests/prologue-visual.spec.ts`, `src/arcadePrologue/`, and the current QA-artifact naming 
+remain recognizable, but treat branch names, commit SHAs, and exact ignore rules as checkout specific.
+  C:\Users\kathi\.codex\memories\MEMORY.md:153:
+  C:\Users\kathi\.codex\memories\MEMORY.md:154:## Task 1: Clean the dirty production-pass tree with Gemini-guided 
+classification, success
+> C:\Users\kathi\.codex\memories\MEMORY.md:158:- 
+rollout_summaries/2026-05-14T14-13-16-31di-algo_cleanup_commit_push_gemini_checked.md (cwd=D:\algo, rollout_path=C:\Use
+rs\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T10-13-16-019e26d5-a4a3-79c1-ae7a-7c41f15d7c44.jsonl, 
+updated_at=2026-05-14T14:49:11+00:00, thread_id=019e26d5-a4a3-79c1-ae7a-7c41f15d7c44, freshest cleanup/push pass with 
+Gemini consulted at each decision point)
+  C:\Users\kathi\.codex\memories\MEMORY.md:159:
+  C:\Users\kathi\.codex\memories\MEMORY.md:160:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:162:- D:\algo, gemini --skip-trust --model flash-lite -p, dirty production 
+pass tree, qa_*.png, tests/prologue-visual.spec.ts, src/arcadePrologue, art_sources, tests/audit-screenshots, 
+.gitignore, git diff --check
+  C:\Users\kathi\.codex\memories\MEMORY.md:163:
+> C:\Users\kathi\.codex\memories\MEMORY.md:164:## Task 2: Commit the cleaned production pass in three chunks and push 
+`prologue-rework`, success
+  C:\Users\kathi\.codex\memories\MEMORY.md:165:
+  C:\Users\kathi\.codex\memories\MEMORY.md:166:### rollout_summary_files
+> C:\Users\kathi\.codex\memories\MEMORY.md:168:- 
+rollout_summaries/2026-05-14T14-13-16-31di-algo_cleanup_commit_push_gemini_checked.md (cwd=D:\algo, rollout_path=C:\Use
+rs\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T10-13-16-019e26d5-a4a3-79c1-ae7a-7c41f15d7c44.jsonl, 
+updated_at=2026-05-14T14:49:11+00:00, thread_id=019e26d5-a4a3-79c1-ae7a-7c41f15d7c44, verified build/test/visual pass 
+plus clean upstream push)
+  C:\Users\kathi\.codex\memories\MEMORY.md:169:
+  C:\Users\kathi\.codex\memories\MEMORY.md:170:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:172:- prologue-rework, git push -u origin prologue-rework, npm.cmd run 
+build, npm.cmd run test:run, npm.cmd run test:visual, 70 Playwright tests, 53 files / 279 tests, 
+491e45085c0bb1aeb799b7574fe0e925b0a1526b, git rev-parse @{u}
+  C:\Users\kathi\.codex\memories\MEMORY.md:173:
+  C:\Users\kathi\.codex\memories\MEMORY.md:174:## Task 3: Explain what deleting merged branches does, success
+> C:\Users\kathi\.codex\memories\MEMORY.md:178:- 
+rollout_summaries/2026-05-14T14-13-16-31di-algo_cleanup_commit_push_gemini_checked.md (cwd=D:\algo, rollout_path=C:\Use
+rs\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T10-13-16-019e26d5-a4a3-79c1-ae7a-7c41f15d7c44.jsonl, 
+updated_at=2026-05-14T14:49:11+00:00, thread_id=019e26d5-a4a3-79c1-ae7a-7c41f15d7c44, concise post-merge branch 
+lifecycle guidance)
+  C:\Users\kathi\.codex\memories\MEMORY.md:179:
+  C:\Users\kathi\.codex\memories\MEMORY.md:180:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:186:- when the user said `instead of that clean the dirty production pass 
+tree using gemini 1mil token context to your benefit` -> cleanup in `D:\algo` should be driven by a large-context 
+Gemini read, not a blind local delete pass [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:187:- when the user said `use gemini handindly in every step` -> consult 
+Gemini at each decision point during repo cleanup/classification instead of using it only once at the start [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:188:- when the user asked `can you clean it then push` -> default to 
+carrying the repo-cleanup flow through commit and push once verification is done, not stopping at a partial tidy-up 
+[Task 1][Task 2]
+> C:\Users\kathi\.codex\memories\MEMORY.md:199:- `prologue-rework` had no upstream until `git push -u origin 
+prologue-rework`; after push, `HEAD` matched `origin/prologue-rework` at `491e45085c0bb1aeb799b7574fe0e925b0a1526b` 
+[Task 2]
+  C:\Users\kathi\.codex\memories\MEMORY.md:200:- Deleting a merged branch only removes the branch pointer; the merged 
+commits stay in the target branch and the PR history remains [Task 3]
+  C:\Users\kathi\.codex\memories\MEMORY.md:201:- Local merged-branch cleanup sequence after merge is: switch off 
+branch, `git branch -d <branch>`, then `git fetch --prune` if stale remote-tracking refs should be cleaned [Task 3]
+> C:\Users\kathi\.codex\memories\MEMORY.md:260:# Task Group: D:\algo full-game prologue-to-Core production pass
+  C:\Users\kathi\.codex\memories\MEMORY.md:261:
+  C:\Users\kathi\.codex\memories\MEMORY.md:262:scope: re-anchoring the current whole-game Phaser checkout, following 
+repo-specific audit workflow, keeping the visual QA harness trustworthy, and reusing the latest gameplay-feel, script, 
+architecture, and final Twin Rivers/prologue correctness evidence from Prologue through The Core.
+> C:\Users\kathi\.codex\memories\MEMORY.md:263:applies_to: cwd=D:\algo; reuse_rule=safe for follow-up work in this 
+checkout while the whole-game region scaffolding, `tests/prologue-visual.spec.ts` audit flow, and current later-region 
+scene stack remain recognizable, but treat branch names, screenshot churn, generated-image cache paths, and exact 
+scene wiring as checkout specific.
+  C:\Users\kathi\.codex\memories\MEMORY.md:264:
+  C:\Users\kathi\.codex\memories\MEMORY.md:265:## Task 1: Inspect repo guidance/architecture, fix final Twin Rivers 
+and prologue correctness issues, and re-verify end to end, success
+> C:\Users\kathi\.codex\memories\MEMORY.md:269:- 
+rollout_summaries/2026-05-12T17-33-45-SntM-algo_and_puzzles_repo_inspection_plus_twin_rivers_fixes.md (cwd=D:\algo, rol
+lout_path=C:\Users\kathi\.codex\sessions\2026\05\12\rollout-2026-05-12T13-33-45-019e1d40-7a1b-7a22-b237-7dbeddd67892.js
+onl, updated_at=2026-05-12T21:01:25+00:00, thread_id=019e1d40-7a1b-7a22-b237-7dbeddd67892, freshest repo-guided 
+architecture pass plus final Twin Rivers/prologue correctness guards)
+  C:\Users\kathi\.codex\memories\MEMORY.md:270:
+  C:\Users\kathi\.codex\memories\MEMORY.md:271:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:273:- D:\algo, Phaser, Vite, TypeScript, npm.cmd, BasePuzzleScene, 
+ScriptedChoiceScene, Twin Rivers, Mirror Walk, Mirror Serpent, PrologueScene, gate visual state, roundCompleting, 
+reverseCompleting, BitGuide, tests/prologue-visual.spec.ts, 52 files passed, 271 tests passed, 65 passed (11.9m)
+  C:\Users\kathi\.codex\memories\MEMORY.md:274:
+  C:\Users\kathi\.codex\memories\MEMORY.md:275:## Task 2: Recover/confirm title navigation and resume behavior, success
+> C:\Users\kathi\.codex\memories\MEMORY.md:279:- 
+rollout_summaries/2026-05-06T21-45-25-x0nV-d_algo_critical_full_game_audit_shared_choice_refactor.md (cwd=D:\algo, roll
+out_path=C:\Users\kathi\.codex\sessions\2026\05\06\rollout-2026-05-06T17-45-25-019dff40-ba14-7160-b6a2-d9cffe1f19c3.jso
+nl, updated_at=2026-05-06T22:48:48+00:00, thread_id=019dff40-ba14-7160-b6a2-d9cffe1f19c3, Escape-to-title flow 
+preserved save state and proved Resume-first menu behavior)
+  C:\Users\kathi\.codex\memories\MEMORY.md:280:
+  C:\Users\kathi\.codex\memories\MEMORY.md:281:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:289:- 
+rollout_summaries/2026-05-06T21-45-25-x0nV-d_algo_critical_full_game_audit_shared_choice_refactor.md (cwd=D:\algo, roll
+out_path=C:\Users\kathi\.codex\sessions\2026\05\06\rollout-2026-05-06T17-45-25-019dff40-ba14-7160-b6a2-d9cffe1f19c3.jso
+nl, updated_at=2026-05-06T22:48:48+00:00, thread_id=019dff40-ba14-7160-b6a2-d9cffe1f19c3, durable audit log plus 
+baseline route/build/test proof)
+> C:\Users\kathi\.codex\memories\MEMORY.md:290:- 
+rollout_summaries/2026-05-05T17-22-56-nQ5p-d_algo_full_game_prologue_to_core_production_pass.md (cwd=D:\algo, rollout_p
+ath=C:\Users\kathi\.codex\sessions\2026\05\05\rollout-2026-05-05T13-22-56-019df92a-103a-7432-b87e-5da910312387.jsonl, 
+updated_at=2026-05-05T18:31:01+00:00, thread_id=019df92a-103a-7432-b87e-5da910312387, current dirty-branch re-anchor 
+plus baseline test/build pass)
+> C:\Users\kathi\.codex\memories\MEMORY.md:291:- 
+rollout_summaries/2026-04-28T17-10-37-69MR-full_game_prologue_array_plains_production_pass.md (cwd=D:\algo, rollout_pat
+h=C:\Users\kathi\.codex\sessions\2026\04\28\rollout-2026-04-28T13-10-37-019dd512-45cb-7c23-9fee-775e72955ce9.jsonl, 
+updated_at=2026-04-28T22:14:31+00:00, thread_id=019dd512-45cb-7c23-9fee-775e72955ce9, earlier prologue timing fix and 
+screenshot-churn baseline)
+  C:\Users\kathi\.codex\memories\MEMORY.md:292:
+  C:\Users\kathi\.codex\memories\MEMORY.md:293:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:295:- D:\algo, tests/prologue-visual.spec.ts, playwright.config.ts, 
+timeout=45000, npm.cmd, npm.cmd run test:run, npm.cmd run build, npx.cmd playwright test 
+tests/prologue-visual.spec.ts, docs/agent_progress.md, git status --short, tests/screenshots, dirty branch
+  C:\Users\kathi\.codex\memories\MEMORY.md:296:
+  C:\Users\kathi\.codex\memories\MEMORY.md:297:## Task 4: Extract the full-game script into the region build order, 
+success
+> C:\Users\kathi\.codex\memories\MEMORY.md:301:- 
+rollout_summaries/2026-04-28T17-10-37-69MR-full_game_prologue_array_plains_production_pass.md (cwd=D:\algo, rollout_pat
+h=C:\Users\kathi\.codex\sessions\2026\04\28\rollout-2026-04-28T13-10-37-019dd512-45cb-7c23-9fee-775e72955ce9.jsonl, 
+updated_at=2026-04-28T22:14:31+00:00, thread_id=019dd512-45cb-7c23-9fee-775e72955ce9, script-derived progression and 
+concept beats)
+  C:\Users\kathi\.codex\memories\MEMORY.md:302:
+  C:\Users\kathi\.codex\memories\MEMORY.md:303:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:311:- 
+rollout_summaries/2026-05-06T21-45-25-x0nV-d_algo_critical_full_game_audit_shared_choice_refactor.md (cwd=D:\algo, roll
+out_path=C:\Users\kathi\.codex\sessions\2026\05\06\rollout-2026-05-06T17-45-25-019dff40-ba14-7160-b6a2-d9cffe1f19c3.jso
+nl, updated_at=2026-05-06T22:48:48+00:00, thread_id=019dff40-ba14-7160-b6a2-d9cffe1f19c3, later-region choice 
+duplication collapsed onto shared scene architecture)
+> C:\Users\kathi\.codex\memories\MEMORY.md:312:- 
+rollout_summaries/2026-04-28T17-10-37-69MR-full_game_prologue_array_plains_production_pass.md (cwd=D:\algo, rollout_pat
+h=C:\Users\kathi\.codex\sessions\2026\04\28\rollout-2026-04-28T13-10-37-019dd512-45cb-7c23-9fee-775e72955ce9.jsonl, 
+updated_at=2026-04-28T22:14:31+00:00, thread_id=019dd512-45cb-7c23-9fee-775e72955ce9, reusable seams plus missing 
+registry/routing/base-scene layer)
+  C:\Users\kathi\.codex\memories\MEMORY.md:313:
+  C:\Users\kathi\.codex\memories\MEMORY.md:314:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:322:- 
+rollout_summaries/2026-04-28T17-10-37-69MR-full_game_prologue_array_plains_production_pass.md (cwd=D:\algo, rollout_pat
+h=C:\Users\kathi\.codex\sessions\2026\04\28\rollout-2026-04-28T13-10-37-019dd512-45cb-7c23-9fee-775e72955ce9.jsonl, 
+updated_at=2026-04-28T22:14:31+00:00, thread_id=019dd512-45cb-7c23-9fee-775e72955ce9, asset durability and QA-artifact 
+split)
+  C:\Users\kathi\.codex\memories\MEMORY.md:323:
+  C:\Users\kathi\.codex\memories\MEMORY.md:324:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:332:- 
+rollout_summaries/2026-05-06T21-45-25-x0nV-d_algo_critical_full_game_audit_shared_choice_refactor.md (cwd=D:\algo, roll
+out_path=C:\Users\kathi\.codex\sessions\2026\05\06\rollout-2026-05-06T17-45-25-019dff40-ba14-7160-b6a2-d9cffe1f19c3.jso
+nl, updated_at=2026-05-06T22:48:48+00:00, thread_id=019dff40-ba14-7160-b6a2-d9cffe1f19c3, runtime-error guard added so 
+browser passes fail on `pageerror` / `console.error`)
+> C:\Users\kathi\.codex\memories\MEMORY.md:333:- 
+rollout_summaries/2026-05-05T17-22-56-nQ5p-d_algo_full_game_prologue_to_core_production_pass.md (cwd=D:\algo, rollout_p
+ath=C:\Users\kathi\.codex\sessions\2026\05\05\rollout-2026-05-05T13-22-56-019df92a-103a-7432-b87e-5da910312387.jsonl, 
+updated_at=2026-05-05T18:31:01+00:00, thread_id=019df92a-103a-7432-b87e-5da910312387, DOM-safe accessibility fix plus 
+contract-drift cleanup)
+  C:\Users\kathi\.codex\memories\MEMORY.md:334:
+  C:\Users\kathi\.codex\memories\MEMORY.md:335:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:343:- 
+rollout_summaries/2026-05-06T21-45-25-x0nV-d_algo_critical_full_game_audit_shared_choice_refactor.md (cwd=D:\algo, roll
+out_path=C:\Users\kathi\.codex\sessions\2026\05\06\rollout-2026-05-06T17-45-25-019dff40-ba14-7160-b6a2-d9cffe1f19c3.jso
+nl, updated_at=2026-05-06T22:48:48+00:00, thread_id=019dff40-ba14-7160-b6a2-d9cffe1f19c3, focused later-region checks 
+passed; full post-refactor rerun was started but not captured)
+> C:\Users\kathi\.codex\memories\MEMORY.md:344:- 
+rollout_summaries/2026-05-05T17-22-56-nQ5p-d_algo_full_game_prologue_to_core_production_pass.md (cwd=D:\algo, rollout_p
+ath=C:\Users\kathi\.codex\sessions\2026\05\05\rollout-2026-05-05T13-22-56-019df92a-103a-7432-b87e-5da910312387.jsonl, 
+updated_at=2026-05-05T18:31:01+00:00, thread_id=019df92a-103a-7432-b87e-5da910312387, 63-step Playwright audit and 
+temp-file cleanup)
+  C:\Users\kathi\.codex\memories\MEMORY.md:345:
+  C:\Users\kathi\.codex\memories\MEMORY.md:346:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:354:- 
+rollout_summaries/2026-05-07T17-04-55-7upB-load_phaser_gamedev_skill_for_d_algo.md (cwd=D:\algo, rollout_path=C:\Users\
+kathi\.codex\sessions\2026\05\07\rollout-2026-05-07T13-04-55-019e0366-48bf-77d1-a9ce-e02e8de7bf83.jsonl, 
+updated_at=2026-05-07T20:39:31+00:00, thread_id=019e0366-48bf-77d1-a9ce-e02e8de7bf83, local skill load confirmed the 
+movement-model reference to use before Phaser edits)
+  C:\Users\kathi\.codex\memories\MEMORY.md:355:
+  C:\Users\kathi\.codex\memories\MEMORY.md:356:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:358:- phaser-gamedev, Phaser 3, Arcade Physics, tween-driven movement, 
+position proxies, C:\Users\kathi\.codex\skills\phaser-gamedev\SKILL.md, arcade-physics.md, D:\algo
+  C:\Users\kathi\.codex\memories\MEMORY.md:359:
+  C:\Users\kathi\.codex\memories\MEMORY.md:360:## Task 10: Read repo guidance, use Gemini for orientation, and verify 
+branch/worktree lineage, success
+> C:\Users\kathi\.codex\memories\MEMORY.md:364:- 
+rollout_summaries/2026-05-11T15-37-26-aaz1-d_algo_full_gameplay_feel_audit_and_branch_lineage.md (cwd=D:\algo, rollout_
+path=C:\Users\kathi\.codex\sessions\2026\05\11\rollout-2026-05-11T11-37-26-019e17af-a134-7302-b992-eff69258d6b3.jsonl, 
+updated_at=2026-05-11T16:29:30+00:00, thread_id=019e17af-a134-7302-b992-eff69258d6b3, repo workflow guidance plus 
+branch/worktree lineage check)
+  C:\Users\kathi\.codex\memories\MEMORY.md:365:
+  C:\Users\kathi\.codex\memories\MEMORY.md:366:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:368:- CLAUDE.md, gemini -p, composer-2-fast, prologue-rework, 
+audit-ui-fixes, feature/prologue-polish-audit-fixes, git worktree list, git merge-base, 
+D:\algo\.worktrees\prologue-polish, npm.cmd
+  C:\Users\kathi\.codex\memories\MEMORY.md:369:
+  C:\Users\kathi\.codex\memories\MEMORY.md:370:## Task 11: Full-game gameplay-feel audit and targeted feel fixes, 
+success
+> C:\Users\kathi\.codex\memories\MEMORY.md:374:- 
+rollout_summaries/2026-05-11T15-37-26-aaz1-d_algo_full_gameplay_feel_audit_and_branch_lineage.md (cwd=D:\algo, rollout_
+path=C:\Users\kathi\.codex\sessions\2026\05\11\rollout-2026-05-11T11-37-26-019e17af-a134-7302-b992-eff69258d6b3.jsonl, 
+updated_at=2026-05-11T16:29:30+00:00, thread_id=019e17af-a134-7302-b992-eff69258d6b3, gameplay-feel production pass 
+with verified scene-level fixes)
+  C:\Users\kathi\.codex\memories\MEMORY.md:375:
+  C:\Users\kathi\.codex\memories\MEMORY.md:376:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:384:- after gameplay/state-machine changes in `D:\algo`, default to full 
+verification rather than code-only confidence; this repo benefited from rerunning unit tests plus browser checks 
+before signoff [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:385:- when the user asked, "can you use thee skill", they expected the 
+agent to actually load and apply the installed skill rather than only acknowledge it [Task 8]
+  C:\Users\kathi\.codex\memories\MEMORY.md:386:- when the user asks "create the entire game based on the script" or 
+"every single region production ready", treat the request as a whole-game progression task, not a single-scene polish 
+pass [Task 1][Task 2][Task 3]
+> C:\Users\kathi\.codex\memories\MEMORY.md:400:- The current repo root for this line of work is `D:\algo`; do not 
+route this memory to the older `D:\algo-thepathoflogic\game_rebuild` checkout without verifying the tree first [Task 
+2][Task 4]
+  C:\Users\kathi\.codex\memories\MEMORY.md:401:- The earlier whole-game memory was tied to 
+`feature/prologue-array-plains-production`, but the newer verified production pass ran on `audit-ui-fixes`; treat 
+branch labels here as routing hints, not durable truths about the checkout [Task 2][Task 7]
+  C:\Users\kathi\.codex\memories\MEMORY.md:402:- `npm.cmd` is the correct command form in this Windows shell 
+environment, and `npm.cmd run build` succeeding is not enough for signoff when `npm.cmd run test:run` is still failing 
+[Task 2]
+> C:\Users\kathi\.codex\memories\MEMORY.md:403:- `D:\algo` is Algorithmia, a Phaser 3 + TypeScript + Vite game that 
+currently relies on a shared `BasePuzzleScene` and later-region `ScriptedChoiceScene` patterns; use that architecture 
+map before treating later-region scenes as isolated one-offs [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:404:- `MenuScene` decides whether to show resume/continue from 
+`saveLoadManager.hasSave()`, and `PauseOverlayScene` is the right choke point for save-and-quit or return-to-title 
+behavior [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:405:- `tests/prologue-visual.spec.ts` is now the main end-to-end visual 
+regression file for the whole path from menu through `Protocol Omega`; screenshot-driven verification is expected to 
+dirty `tests/screenshots/*.png`, and the audit workflow now also relies on runtime-error capture rather than 
+screenshots alone [Task 2][Task 6][Task 7]
+> C:\Users\kathi\.codex\memories\MEMORY.md:409:- `git worktree list` is the quickest lineage check here; during the 
+latest audit, `prologue-rework` and `audit-ui-fixes` pointed at the same commit while 
+`feature/prologue-polish-audit-fixes` lived in `D:\algo\.worktrees\prologue-polish` with merge base 
+`694a0721f76eb1f5c1c0758eb712e988b5076ecf` [Task 9]
+  C:\Users\kathi\.codex\memories\MEMORY.md:410:- The script-defined region order is: Prologue/Chamber of Flow -> Array 
+Plains -> Twin Rivers -> Hash Highlands -> Stack Spires -> Queue Canals -> Tree Canopy -> Graph Nexus -> The Core 
+[Task 2]
+  C:\Users\kathi\.codex\memories\MEMORY.md:411:- Prologue must include Bit, Professor Node, Rune Keeper, Console 
+Keeper, Glitch, and the Watcher/Pattern threat; Array Plains must teach arrays, bubble sort, indexing, hashing, and 
+Two Sum before the Shuffler boss [Task 2]
+> C:\Users\kathi\.codex\memories\MEMORY.md:433:- The freshest whole-game verification on `prologue-rework` finished 
+with `npm.cmd run build`, full Vitest at `52 files passed / 271 tests passed`, full Playwright route at `65 passed 
+(11.9m)`, and a custom browser probe that inspected Phaser scene state directly rather than relying on screenshots 
+alone [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:434:- The repo still carries a large intentional dirty set from the 
+production pass, so cleanup after verification should remove only temp polling artifacts such as `tmp-pw-final.exit`, 
+`tmp-pw-full.exit`, and their `.combined.log` files; screenshot churn under `tests/screenshots/*.png` remains expected 
+audit output [Task 7]
+  C:\Users\kathi\.codex\memories\MEMORY.md:435:
+> C:\Users\kathi\.codex\memories\MEMORY.md:448:- Symptom: a Phaser movement or spritesheet change in `D:\algo` starts 
+from the wrong mental model. Cause: this repo uses tween-driven movement with Arcade bodies as position proxies, not a 
+plain velocity-driven controller. Fix: read `C:\Users\kathi\.codex\skills\phaser-gamedev\references\arcade-physics.md` 
+before touching movement or sprite-loading code [Task 8]
+  C:\Users\kathi\.codex\memories\MEMORY.md:449:- Symptom: a broad Gemini audit prompt stalls or times out before 
+producing concrete findings. Cause: the whole-game ask is too wide for one monolithic pass. Fix: split the audit by 
+subsystem or gameplay slice after reading `CLAUDE.md`, then verify each batch with build/test [Task 9][Task 10]
+  C:\Users\kathi\.codex\memories\MEMORY.md:450:- Symptom: browser route tests pass while a runtime error is still 
+present. Cause: screenshot-only checks miss `pageerror` and `console.error`. Fix: collect runtime errors inside the 
+harness and fail the test if any were captured [Task 6]
+> C:\Users\kathi\.codex\memories\MEMORY.md:458:scope: separate checkout identification and first-pass routing for 
+`algorithmia-puzzles` so future agents do not conflate it with `D:\algo` before reading the actual tree.
+  C:\Users\kathi\.codex\memories\MEMORY.md:459:applies_to: cwd=D:\puzzles; reuse_rule=safe for first-pass orientation 
+and checkout-boundary checks in this repo while it remains a separate mostly-untracked Phaser/Vite tree, but treat 
+file inventory and Git cleanliness as highly time specific.
+  C:\Users\kathi\.codex\memories\MEMORY.md:460:
+> C:\Users\kathi\.codex\memories\MEMORY.md:465:- 
+rollout_summaries/2026-05-12T17-33-45-SntM-algo_and_puzzles_repo_inspection_plus_twin_rivers_fixes.md (cwd=D:\algo, rol
+lout_path=C:\Users\kathi\.codex\sessions\2026\05\12\rollout-2026-05-12T13-33-45-019e1d40-7a1b-7a22-b237-7dbeddd67892.js
+onl, updated_at=2026-05-12T21:01:25+00:00, thread_id=019e1d40-7a1b-7a22-b237-7dbeddd67892, separate repo orientation 
+only; no deep code analysis yet)
+  C:\Users\kathi\.codex\memories\MEMORY.md:466:
+  C:\Users\kathi\.codex\memories\MEMORY.md:467:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:473:- when the user redirects attention with "look at the puzzles repo", 
+treat that checkout as separate evidence and do not assume it shares state or architecture with `D:\algo` until the 
+tree is actually read [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:474:
+  C:\Users\kathi\.codex\memories\MEMORY.md:475:## Reusable knowledge
+> C:\Users\kathi\.codex\memories\MEMORY.md:477:- `D:\puzzles` is a separate Git repo from `D:\algo`, currently on 
+`master`, and the observed working tree was mostly untracked rather than a clean continuation of the main game repo 
+[Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:478:- The top-level orientation signal here was `package.json` name 
+`algorithmia-puzzles` with Phaser `^3.88.2`, TypeScript `~5.7.2`, and Vite `^6.2.5`, plus source layout under 
+`src/main.ts`, `src/game/`, and `src/puzzles/P0_1`, `P0_2`, `P0_F` [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:479:
+> C:\Users\kathi\.codex\memories\MEMORY.md:482:- Symptom: an agent starts making `D:\algo` assumptions inside 
+`D:\puzzles`. Cause: the repos look related by name, but this checkout had separate Git history and a mostly untracked 
+tree. Fix: start with `git status --short --branch`, `git log --oneline -5 --decorate`, and top-level file layout 
+before reusing any `D:\algo` architecture guidance [Task 1]
+  C:\Users\kathi\.codex\memories\MEMORY.md:483:
+  C:\Users\kathi\.codex\memories\MEMORY.md:484:# Task Group: Windows C: low-storage diagnosis and 
+largest-space-consumer ranking
+> C:\Users\kathi\.codex\memories\MEMORY.md:581:- LenovoVantageService, \Lenovo\Vantage\, 17 tasks, 
+PROCTHROTTLEMAX=60%, passive cooling, chrome-headless-shell.exe, Playwright MCP, Context7 MCP, D:\algo, port 3001
+  C:\Users\kathi\.codex\memories\MEMORY.md:582:
+  C:\Users\kathi\.codex\memories\MEMORY.md:583:## Task 7: Reduce Valorant packet loss / latency on Ethernet, success
+> C:\Users\kathi\.codex\memories\MEMORY.md:655:- Stray automation/dev load can materially heat this machine even when 
+the user only complains about gaming: leftover Playwright MCP, Context7 MCP, `chrome-headless-shell.exe`, and a 
+`D:\algo` Vite dev server on port `3001` were all worth stopping for the session [Task 6]
+  C:\Users\kathi\.codex\memories\MEMORY.md:656:- The active gaming adapter in the packet-loss run was `Realtek PCIe 
+GbE Family Controller` on Ethernet at 1 Gbps; disabling `Interrupt Moderation`, `Large Send Offload v2 (IPv4)`, and 
+`Large Send Offload v2 (IPv6)` was the reliable latency tweak, and post-change pings to `192.168.1.1` and `1.1.1.1` 
+were both `0%` loss with adapter error counters still at zero [Task 7]
+  C:\Users\kathi\.codex\memories\MEMORY.md:657:- A practical quiet profile on this laptop was a CPU min around `5%` 
+and max around `80-99%`, which dropped fan speeds materially while keeping `D:` asleep; if the sound remains a clatter 
+at lower RPM, the durable fix is mechanical service such as cleaning, repaste, or fan replacement rather than more 
+software tweaks [Task 4][Task 5]
+> C:\Users\kathi\.codex\memories\MEMORY.md:679:applies_to: cwd=C:\Users\kathi and Windows storage workflows launched 
+from D:\algo; reuse_rule=safe for this Windows machine and similar SSD-boot/HDD-noise follow-ups, but treat live 
+helper-process paths, disk numbers, protected-file state, installed-path evidence, and current power settings as 
+machine/session specific.
+  C:\Users\kathi\.codex\memories\MEMORY.md:680:
+  C:\Users\kathi\.codex\memories\MEMORY.md:681:## Task 1: Reduce HDD noise by deleting stale `D:` leftovers and 
+keeping long cleanup resumable, partial
+> C:\Users\kathi\.codex\memories\MEMORY.md:715:- 
+rollout_summaries/2026-05-04T18-55-29-TkA9-d_drive_loud_hdd_live_diagnosis_and_helper_cleanup.md (cwd=D:\algo, rollout_
+path=C:\Users\kathi\.codex\sessions\2026\05\04\rollout-2026-05-04T14-55-29-019df458-703a-7c01-bfff-6df76530af79.jsonl, 
+updated_at=2026-05-04T20:32:07+00:00, thread_id=019df458-703a-7c01-bfff-6df76530af79, freshest live-status HDD noise 
+diagnosis and helper cleanup)
+  C:\Users\kathi\.codex\memories\MEMORY.md:716:
+  C:\Users\kathi\.codex\memories\MEMORY.md:717:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:748:- D-backed helper chains under `D:\algo\npm-cache` and 
+`D:\saas\npm-cache` were running `playwright-mcp` and `context7-mcp`; stopping those removed a likely source of 
+repeated HDD wakeups even though the measured bursts were small [Task 4]
+  C:\Users\kathi\.codex\memories\MEMORY.md:749:- SMART-style checks were not alarming in that snapshot: 
+`PredictFailure=False`, `ReadErrorsTotal=0`, `Temperature=37`, `PowerOnHours=8972` [Task 4]
+  C:\Users\kathi\.codex\memories\MEMORY.md:750:
+> C:\Users\kathi\.codex\memories\MEMORY.md:757:- Symptom: a broad process search for a `D:` path returns nothing 
+useful while the HDD is still waking up. Cause: the noisy touches may be coming from helper chains launched under 
+known cache paths rather than obvious executable paths. Fix: match on command lines for `D:\algo\npm-cache` and 
+`D:\saas\npm-cache`, then correlate with live counters [Task 4]
+  C:\Users\kathi\.codex\memories\MEMORY.md:758:- Symptom: Windows counters look nearly idle but the HDD still sounds 
+loud. Cause: mechanical spin, vibration, or brief wakeups can stay audible even without sustained throughput. Fix: do 
+not equate "quiet counters" with "quiet hardware"; report the counters honestly while keeping mechanical noise in 
+scope [Task 4]
+  C:\Users\kathi\.codex\memories\MEMORY.md:759:- Symptom: the user reports a harsh click or grind instead of a smooth 
+hum. Cause: this is more consistent with a mechanical HDD issue than a benign background-access pattern. Fix: escalate 
+backup urgency instead of treating it as routine software noise tuning [Task 4]
+> C:\Users\kathi\.codex\memories\MEMORY.md:926:# Task Group: D:\algo-thepathoflogic prologue Route In The Void 
+redesign planning
+  C:\Users\kathi\.codex\memories\MEMORY.md:927:
+  C:\Users\kathi\.codex\memories\MEMORY.md:928:scope: approved visual-direction selection, spec/plan checkpoints, 
+worktree awareness, asset-path decisions, and runtime status for the Route In The Void prologue overhaul.
+> C:\Users\kathi\.codex\memories\MEMORY.md:929:applies_to: cwd=D:\algo-thepathoflogic; reuse_rule=safe for follow-up 
+work on the same prologue-overhaul effort, but treat branch/worktree state, placeholder assets, and partial 
+implementation notes as checkout specific.
+  C:\Users\kathi\.codex\memories\MEMORY.md:930:
+  C:\Users\kathi\.codex\memories\MEMORY.md:931:## Task 1: Re-establish direction and get approval for the prologue 
+redesign, success
+> C:\Users\kathi\.codex\memories\MEMORY.md:935:- 
+rollout_summaries/2026-04-19T21-36-45-kOhP-prologue_route_in_the_void_design_and_plan.md (cwd=D:\algo-thepathoflogic, r
+ollout_path=C:\Users\kathi\.codex\sessions\2026\04\19\rollout-2026-04-19T17-36-45-019da7ac-b060-7c80-aa16-84b881c39fa9.
+jsonl, updated_at=2026-04-20T17:53:48+00:00, thread_id=019da7ac-b060-7c80-aa16-84b881c39fa9, approved Route In The 
+Void direction)
+  C:\Users\kathi\.codex\memories\MEMORY.md:936:
+  C:\Users\kathi\.codex\memories\MEMORY.md:937:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:945:- 
+rollout_summaries/2026-04-19T21-36-45-kOhP-prologue_route_in_the_void_design_and_plan.md (cwd=D:\algo-thepathoflogic, r
+ollout_path=C:\Users\kathi\.codex\sessions\2026\04\19\rollout-2026-04-19T17-36-45-019da7ac-b060-7c80-aa16-84b881c39fa9.
+jsonl, updated_at=2026-04-20T17:53:48+00:00, thread_id=019da7ac-b060-7c80-aa16-84b881c39fa9, spec and plan checkpoint)
+  C:\Users\kathi\.codex\memories\MEMORY.md:946:
+  C:\Users\kathi\.codex\memories\MEMORY.md:947:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:955:- 
+rollout_summaries/2026-04-19T21-36-45-kOhP-prologue_route_in_the_void_design_and_plan.md (cwd=D:\algo-thepathoflogic, r
+ollout_path=C:\Users\kathi\.codex\sessions\2026\04\19\rollout-2026-04-19T17-36-45-019da7ac-b060-7c80-aa16-84b881c39fa9.
+jsonl, updated_at=2026-04-20T17:53:48+00:00, thread_id=019da7ac-b060-7c80-aa16-84b881c39fa9, partial implementation 
+prep only)
+  C:\Users\kathi\.codex\memories\MEMORY.md:956:
+  C:\Users\kathi\.codex\memories\MEMORY.md:957:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:986:# Task Group: D:\algo-thepathoflogic game_rebuild prologue runtime 
+debugging and visual QA
+  C:\Users\kathi\.codex\memories\MEMORY.md:987:
+  C:\Users\kathi\.codex\memories\MEMORY.md:988:scope: active-app discovery, visual bugfixing, and browser-backed 
+verification for the `game_rebuild` prologue scene; use when the task is to resume or verify current prologue behavior 
+rather than redesign the whole region.
+> C:\Users\kathi\.codex\memories\MEMORY.md:989:applies_to: cwd=D:\algo-thepathoflogic and 
+D:\algo-thepathoflogic\game_rebuild; reuse_rule=safe for this repo's current prologue-overhaul line of work, but treat 
+dirty-tree details, screenshot artifacts, and branch/worktree state as checkout specific.
+  C:\Users\kathi\.codex\memories\MEMORY.md:990:
+  C:\Users\kathi\.codex\memories\MEMORY.md:991:## Task 1: Rehydrate context for in-progress prologue visuals work, 
+uncertain
+> C:\Users\kathi\.codex\memories\MEMORY.md:995:- 
+rollout_summaries/2026-04-19T21-33-25-baGB-resume_prologue_visuals_context_rehydration.md (cwd=D:\algo-thepathoflogic, 
+rollout_path=C:\Users\kathi\.codex\sessions\2026\04\19\rollout-2026-04-19T17-33-25-019da7a9-a0aa-7d13-839a-34749cee1c41
+.jsonl, updated_at=2026-04-19T21:34:31+00:00, thread_id=019da7a9-a0aa-7d13-839a-34749cee1c41, context-only rehydration 
+for prologue visuals)
+  C:\Users\kathi\.codex\memories\MEMORY.md:996:
+  C:\Users\kathi\.codex\memories\MEMORY.md:997:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:1005:- 
+rollout_summaries/2026-04-19T16-42-58-3Suw-prologue_mc_movement_fix_playwright_skill_install.md 
+(cwd=D:\algo-thepathoflogic\game_rebuild, rollout_path=C:\Users\kathi\.codex\sessions\2026\04\19\rollout-2026-04-19T12-
+42-58-019da69f-b7d7-7ce1-bce7-aa089e968664.jsonl, updated_at=2026-04-19T17:54:40+00:00, 
+thread_id=019da69f-b7d7-7ce1-bce7-aa089e968664, includes red-green test evidence and browser audit)
+  C:\Users\kathi\.codex\memories\MEMORY.md:1006:
+  C:\Users\kathi\.codex\memories\MEMORY.md:1007:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:1033:# Task Group: D:\algo-thepathoflogic Codex local skill and tool setup
+  C:\Users\kathi\.codex\memories\MEMORY.md:1034:
+  C:\Users\kathi\.codex\memories\MEMORY.md:1035:scope: preparing the local Codex environment for Superpowers skill 
+discovery, `playwright-interactive`, and `js_repl`, including restart boundaries and session-availability checks.
+> C:\Users\kathi\.codex\memories\MEMORY.md:1036:applies_to: cwd=D:\algo-thepathoflogic with local config under 
+C:\Users\kathi\.codex; reuse_rule=safe for this user's Codex installation while the same config layout and skill path 
+remain in use, but treat tool availability as session/build specific.
+  C:\Users\kathi\.codex\memories\MEMORY.md:1037:
+  C:\Users\kathi\.codex\memories\MEMORY.md:1038:## Task 1: Wire Superpowers skill discovery into Codex on Windows, 
+success
+> C:\Users\kathi\.codex\memories\MEMORY.md:1042:- 
+rollout_summaries/2026-04-13T18-49-55-vwHS-superpowers_codex_skill_discovery_setup.md (cwd=D:\algo-thepathoflogic, roll
+out_path=C:\Users\kathi\.codex\sessions\2026\04\13\rollout-2026-04-13T14-49-55-019d882d-cbd0-74f2-b1cf-ddb4b09873a8.jso
+nl, updated_at=2026-04-13T19:06:44+00:00, thread_id=019d882d-cbd0-74f2-b1cf-ddb4b09873a8, Superpowers junction setup 
+for future sessions)
+  C:\Users\kathi\.codex\memories\MEMORY.md:1043:
+  C:\Users\kathi\.codex\memories\MEMORY.md:1044:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:1052:- 
+rollout_summaries/2026-04-19T16-42-58-3Suw-prologue_mc_movement_fix_playwright_skill_install.md 
+(cwd=D:\algo-thepathoflogic\game_rebuild, rollout_path=C:\Users\kathi\.codex\sessions\2026\04\19\rollout-2026-04-19T12-
+42-58-019da69f-b7d7-7ce1-bce7-aa089e968664.jsonl, updated_at=2026-04-19T17:54:40+00:00, 
+thread_id=019da69f-b7d7-7ce1-bce7-aa089e968664, install plus missing-tool diagnosis)
+> C:\Users\kathi\.codex\memories\MEMORY.md:1053:- 
+rollout_summaries/2026-04-19T18-03-18-GiGs-enable_js_repl_for_playwright_interactive.md (cwd=D:\algo-thepathoflogic, ro
+llout_path=C:\Users\kathi\.codex\sessions\2026\04\19\rollout-2026-04-19T14-03-18-019da6e9-441a-76e3-8330-8e45e91da5c0.j
+sonl, updated_at=2026-04-19T18:06:22+00:00, thread_id=019da6e9-441a-76e3-8330-8e45e91da5c0, restart-state verification)
+  C:\Users\kathi\.codex\memories\MEMORY.md:1054:
+  C:\Users\kathi\.codex\memories\MEMORY.md:1055:### keywords
+> C:\Users\kathi\.codex\memories\MEMORY.md:1063:- 
+rollout_summaries/2026-04-19T18-03-18-GiGs-enable_js_repl_for_playwright_interactive.md (cwd=D:\algo-thepathoflogic, ro
+llout_path=C:\Users\kathi\.codex\sessions\2026\04\19\rollout-2026-04-19T14-03-18-019da6e9-441a-76e3-8330-8e45e91da5c0.j
+sonl, updated_at=2026-04-19T18:06:22+00:00, thread_id=019da6e9-441a-76e3-8330-8e45e91da5c0, config fix)
+  C:\Users\kathi\.codex\memories\MEMORY.md:1064:
+  C:\Users\kathi\.codex\memories\MEMORY.md:1065:### keywords
+
+
+
+codex
+The local skill says to use the built-in image generation path first and then move/copy the final selected output into the project. Because your spec has hard technical constraints, I’ll also run deterministic post-processing/validation before accepting the PNG.
+codex
+The generated draft captured the altar layout but failed the hard constraints: it has gradients/AA and more than five colors. I’m moving to a constraint-safe pixel-map pass now so the saved asset can pass the exact palette and 16px-grid checks.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -LiteralPath 'public\\assets\\visual_revamp\\regions' -Force | Select-Object Name,Length,LastWriteTime | Sort-Object Name" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "python - <<'PY'
+try:
+    import PIL
+    print('Pillow available', PIL.__version__)
+except Exception as e:
+    print('Pillow missing:', type(e).__name__, str(e))
+PY" in D:\algo
+2026-05-18T02:56:10.224545Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 0.6 seconds
+Output:
+At line:2 char:11
++ python - <<'PY'
++           ~
+Missing file specification after redirection operator.
+At line:2 char:10
++ python - <<'PY'
++          ~
+The '<' operator is reserved for future use.
+At line:2 char:11
++ python - <<'PY'
++           ~
+The '<' operator is reserved for future use.
+At line:5 char:30
++     print('Pillow available', PIL.__version__)
++                              ~
+Missing expression after ','.
+At line:5 char:31
++     print('Pillow available', PIL.__version__)
++                               ~~~~~~~~~~~~~~~
+Unexpected token 'PIL.__version__' in expression or statement.
+At line:5 char:30
++     print('Pillow available', PIL.__version__)
++                              ~
+Missing closing ')' in expression.
+At line:5 char:46
++     print('Pillow available', PIL.__version__)
++                                              ~
+Unexpected token ')' in expression or statement.
+At line:7 char:29
++     print('Pillow missing:', type(e).__name__, str(e))
++                             ~
+Missing expression after ','.
+At line:7 char:30
++     print('Pillow missing:', type(e).__name__, str(e))
++                              ~~~~
+Unexpected token 'type' in expression or statement.
+At line:7 char:29
++     print('Pillow missing:', type(e).__name__, str(e))
++                             ~
+Missing closing ')' in expression.
+Not all parse errors were reported.  Correct the reported errors and try again.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingFileSpecification
+ 
+
+ exited 1 in 564ms:
+At line:2 char:11
++ python - <<'PY'
++           ~
+Missing file specification after redirection operator.
+At line:2 char:10
++ python - <<'PY'
++          ~
+The '<' operator is reserved for future use.
+At line:2 char:11
++ python - <<'PY'
++           ~
+The '<' operator is reserved for future use.
+At line:5 char:30
++     print('Pillow available', PIL.__version__)
++                              ~
+Missing expression after ','.
+At line:5 char:31
++     print('Pillow available', PIL.__version__)
++                               ~~~~~~~~~~~~~~~
+Unexpected token 'PIL.__version__' in expression or statement.
+At line:5 char:30
++     print('Pillow available', PIL.__version__)
++                              ~
+Missing closing ')' in expression.
+At line:5 char:46
++     print('Pillow available', PIL.__version__)
++                                              ~
+Unexpected token ')' in expression or statement.
+At line:7 char:29
++     print('Pillow missing:', type(e).__name__, str(e))
++                             ~
+Missing expression after ','.
+At line:7 char:30
++     print('Pillow missing:', type(e).__name__, str(e))
++                              ~~~~
+Unexpected token 'type' in expression or statement.
+At line:7 char:29
++     print('Pillow missing:', type(e).__name__, str(e))
++                             ~
+Missing closing ')' in expression.
+Not all parse errors were reported.  Correct the reported errors and try again.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingFileSpecification
+ 
+
+ succeeded in 593ms:
+
+Name                                  Length  LastWriteTime        
+----                                  ------  -------------        
+archive                                       5/14/2026 5:59:37 PM 
+array_plains.png                      3753782 5/6/2026 4:29:02 PM  
+array_plains_grounded_v1.png          3944902 5/14/2026 5:59:42 PM 
+array_plains_grounded_v2.png          34953   5/17/2026 12:18:19 PM
+array_plains_route_v2.png             4101413 5/6/2026 4:29:02 PM  
+array_plains_route_v3.png             3920441 5/6/2026 4:29:02 PM  
+core.png                              3880578 5/6/2026 4:29:02 PM  
+core_grounded_v1.png                  4487460 5/14/2026 5:59:42 PM 
+core_route_v1.png                     3187912 5/6/2026 4:29:02 PM  
+graph_nexus.png                       3313796 5/6/2026 4:29:02 PM  
+graph_nexus_grounded_v1.png           4054956 5/14/2026 5:59:42 PM 
+graph_nexus_route_v1.png              3125273 5/6/2026 4:29:02 PM  
+grounded_route_material_reference.png 2998736 5/14/2026 5:59:42 PM 
+hash_highlands.png                    3776439 5/6/2026 4:29:02 PM  
+hash_highlands_grounded_v1.png        3538018 5/14/2026 5:59:42 PM 
+hash_highlands_route_v1.png           3731948 5/6/2026 4:29:02 PM  
+legacy                                        5/14/2026 5:59:42 PM 
+prologue_chamber.png                  3013868 5/7/2026 3:42:43 PM  
+queue_canals.png                      3795252 5/6/2026 4:29:02 PM  
+queue_canals_grounded_v1.png          4767969 5/14/2026 5:59:42 PM 
+queue_canals_route_v1.png             2842391 5/6/2026 4:29:02 PM  
+stack_spires.png                      3349070 5/6/2026 4:29:02 PM  
+stack_spires_grounded_v1.png          4747912 5/14/2026 5:59:42 PM 
+stack_spires_route_v1.png             3686093 5/6/2026 4:29:02 PM  
+tree_canopy.png                       3484715 5/6/2026 4:29:02 PM  
+tree_canopy_grounded_v1.png           4753382 5/14/2026 5:59:42 PM 
+tree_canopy_route_v1.png              3249887 5/6/2026 4:29:02 PM  
+twin_rivers.png                       3928355 5/6/2026 4:29:02 PM  
+twin_rivers_grounded_v1.png           3769125 5/14/2026 5:59:43 PM 
+twin_rivers_grounded_v2.png           1621816 5/17/2026 12:24:35 PM
+twin_rivers_route_v1.png              3999963 5/6/2026 4:29:02 PM  
+
+
+
+codex
+One technical snag: the requested `320x120` height is not an even multiple of 16, so I’m keeping the actual map elements on the 16px grid and leaving the remaining edge space as void. That preserves the file size/aspect exactly without forcing off-grid geometry.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+try:
+    import PIL
+    print('Pillow available', PIL.__version__)
+except Exception as e:
+    print('Pillow missing:', type(e).__name__, str(e))
+'@ | python -" in D:\algo
+ succeeded in 529ms:
+Pillow available 12.2.0
+
+codex
+I’m writing only the requested `prologue_chamber_v3.png`. The asset is being built as indexed pixel art from the five allowed colors, then I’ll open and inspect the saved file before reporting the numbers.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from PIL import Image, ImageDraw
+from pathlib import Path
+
+out = Path(r'D:\\algo\\public\\assets\\visual_revamp\\regions\\prologue_chamber_v3.png')
+out.parent.mkdir(parents=True, exist_ok=True)
+
+W, H = 320, 120
+C_VOID = '#081820'
+C_STONE = '#346856'
+C_MOSS = '#88c070'
+C_CREAM = '#e0f8d0'
+C_CYAN = '#06b6d4'
+
+img = Image.new('RGB', (W, H), C_VOID)
+d = ImageDraw.Draw(img)
+
+# 20 columns x 7 full 16px rows, with the lower 8px intentionally left as void
+# to preserve the requested 320x120 cinematic aspect.
+stone_tiles = set()
+# Central altar platform: 4x3 tiles, snapped to 16px grid.
+for tx in range(8, 12):
+    for ty in range(2, 5):
+        stone_tiles.add((tx, ty))
+# West and east satellite platforms plus one-tile-tall spokes.
+for tx in range(3, 6):
+    for ty in range(3, 5):
+        stone_tiles.add((tx, ty))
+for tx in range(6, 8):
+    stone_tiles.add((tx, 3))
+for tx in range(14, 17):
+    for ty in range(3, 5):
+        stone_tiles.add((tx, ty))
+for tx in range(12, 14):
+    stone_tiles.add((tx, 3))
+# North and south satellite platforms/spokes.
+for tx in range(9, 11):
+    for ty in range(0, 2):
+        stone_tiles.add((tx, ty))
+for tx in range(9, 11):
+    stone_tiles.add((tx, 5))
+    stone_tiles.add((tx, 6))
+
+# Tile renderer: 16x16 cells with 1px void outlines and flat stone interiors.
+for tx, ty in sorted(stone_tiles):
+    x, y = tx * 16, ty * 16
+    d.rectangle([x + 1, y + 1, x + 14, y + 14], fill=C_STONE)
+    # Sparse Pokemon-era tile marks; no dithering, no gradients.
+    if (tx + ty) % 3 == 0:
+        d.line([(x + 4, y + 4), (x + 8, y + 4)], fill=C_CREAM)
+    if (tx * 2 + ty) % 7 == 0:
+        d.rectangle([x + 10, y + 10, x + 12, y + 12], fill=C_MOSS)
+
+# Small stone edge accents on the main spokes.
+for rect in ([100, 52, 108, 52], [212, 52, 220, 52], [156, 36, 164, 36], [156, 84, 164, 84]):
+    d.line(rect[:2], rect[2:], fill=C_CREAM)
+
+# Cyan rune lines etched into paths, with tiny broken segments over tile seams.
+def rune_line_horizontal(y, segments):
+    for x1, x2 in segments:
+        d.line([(x1, y), (x2, y)], fill=C_CYAN)
+        d.point((x1, y - 1), fill=C_CYAN)
+        d.point((x2, y + 1), fill=C_CYAN)
+
+def rune_line_vertical(x, segments):
+    for y1, y2 in segments:
+        d.line([(x, y1), (x, y2)], fill=C_CYAN)
+        d.point((x - 1, y1), fill=C_CYAN)
+        d.point((x + 1, y2), fill=C_CYAN)
+
+rune_line_horizontal(56, [(98, 111), (114, 127), (193, 206), (209, 222)])
+rune_line_vertical(160, [(18, 31), (34, 47), (81, 94), (97, 107)])
+
+# Satellite altar pads: dark one-pixel outline, cyan interactive top, cream single-pixel glint.
+def small_altar(cx, cy):
+    outline = [(cx, cy - 6), (cx + 6, cy), (cx, cy + 6), (cx - 6, cy)]
+    inner = [(cx, cy - 4), (cx + 4, cy), (cx, cy + 4), (cx - 4, cy)]
+    d.polygon(outline, fill=C_VOID)
+    d.polygon(inner, fill=C_CYAN)
+    d.point((cx - 1, cy - 1), fill=C_CREAM)
+
+small_altar(72, 56)
+small_altar(248, 56)
+small_altar(160, 16)
+small_altar(160, 104)
+
+# Central awakening rune circle: 32x32, placed on a 2x2 tile footprint at (144,48).
+outer = [(152, 48), (168, 48), (176, 56), (176, 72), (168, 80), (152, 80), (144, 72), (144, 56)]
+mid = [(153, 50), (167, 50), (174, 57), (174, 71), (167, 78), (153, 78), (146, 71), (146, 57)]
+inner = [(156, 56), (164, 56), (168, 60), (168, 68), (164, 72), (156, 72), (152, 68), (152, 60)]
+d.polygon(outer, fill=C_VOID)
+d.polygon(mid, fill=C_CYAN)
+d.polygon(inner, fill=C_STONE)
+# Rune glyph in the center, using only cyan and cream.
+d.line([(160, 57), (160, 71)], fill=C_CYAN)
+d.line([(153, 64), (167, 64)], fill=C_CYAN)
+d.rectangle([158, 62, 162, 66], outline=C_CREAM)
+d.point((160, 64), fill=C_CYAN)
+# Four small runic ticks around the ring.
+for x, y in [(160, 51), (173, 64), (160, 77), (147, 64)]:
+    d.rectangle([x - 1, y - 1, x + 1, y + 1], fill=C_CYAN)
+
+# A few sparse moss chips on outer platform corners, still snapped inside tile cells.
+for rect in ([50, 66, 55, 68], [90, 74, 94, 76], [226, 66, 231, 68], [264, 74, 268, 76], [130, 34, 134, 36], [186, 74, 190, 76]):
+    d.rectangle(rect, fill=C_MOSS)
+
+# Save as PNG with no scaling; RGB keeps exact palette values.
+img.save(out, format='PNG', optimize=True)
+print(out)
+'@ | python -" in D:\algo
+2026-05-18T02:58:23.316007Z ERROR codex_core::tools::router: error=Exit code: 1
+Wall time: 1.1 seconds
+Output:
+Traceback (most recent call last):
+  File "<stdin>", line 55, in <module>
+TypeError: ImageDraw.line() got multiple values for argument 'fill'
+
+ exited 1 in 1116ms:
+Traceback (most recent call last):
+  File "<stdin>", line 55, in <module>
+TypeError: ImageDraw.line() got multiple values for argument 'fill'
+
+codex
+The first render script hit a small draw-call bug before saving, so no asset was accepted from that pass. I’m rerunning the same constrained render with that fixed, then I’ll validate the actual PNG.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from PIL import Image, ImageDraw
+from pathlib import Path
+
+out = Path(r'D:\\algo\\public\\assets\\visual_revamp\\regions\\prologue_chamber_v3.png')
+out.parent.mkdir(parents=True, exist_ok=True)
+
+W, H = 320, 120
+C_VOID = '#081820'
+C_STONE = '#346856'
+C_MOSS = '#88c070'
+C_CREAM = '#e0f8d0'
+C_CYAN = '#06b6d4'
+
+img = Image.new('RGB', (W, H), C_VOID)
+d = ImageDraw.Draw(img)
+
+stone_tiles = set()
+for tx in range(8, 12):
+    for ty in range(2, 5):
+        stone_tiles.add((tx, ty))
+for tx in range(3, 6):
+    for ty in range(3, 5):
+        stone_tiles.add((tx, ty))
+for tx in range(6, 8):
+    stone_tiles.add((tx, 3))
+for tx in range(14, 17):
+    for ty in range(3, 5):
+        stone_tiles.add((tx, ty))
+for tx in range(12, 14):
+    stone_tiles.add((tx, 3))
+for tx in range(9, 11):
+    for ty in range(0, 2):
+        stone_tiles.add((tx, ty))
+for tx in range(9, 11):
+    stone_tiles.add((tx, 5))
+    stone_tiles.add((tx, 6))
+
+for tx, ty in sorted(stone_tiles):
+    x, y = tx * 16, ty * 16
+    d.rectangle([x + 1, y + 1, x + 14, y + 14], fill=C_STONE)
+    if (tx + ty) % 3 == 0:
+        d.line([(x + 4, y + 4), (x + 8, y + 4)], fill=C_CREAM)
+    if (tx * 2 + ty) % 7 == 0:
+        d.rectangle([x + 10, y + 10, x + 12, y + 12], fill=C_MOSS)
+
+for x1, y1, x2, y2 in ([100, 52, 108, 52], [212, 52, 220, 52], [156, 36, 164, 36], [156, 84, 164, 84]):
+    d.line([(x1, y1), (x2, y2)], fill=C_CREAM)
+
+def rune_line_horizontal(y, segments):
+    for x1, x2 in segments:
+        d.line([(x1, y), (x2, y)], fill=C_CYAN)
+        d.point((x1, y - 1), fill=C_CYAN)
+        d.point((x2, y + 1), fill=C_CYAN)
+
+def rune_line_vertical(x, segments):
+    for y1, y2 in segments:
+        d.line([(x, y1), (x, y2)], fill=C_CYAN)
+        d.point((x - 1, y1), fill=C_CYAN)
+        d.point((x + 1, y2), fill=C_CYAN)
+
+rune_line_horizontal(56, [(98, 111), (114, 127), (193, 206), (209, 222)])
+rune_line_vertical(160, [(18, 31), (34, 47), (81, 94), (97, 107)])
+
+def small_altar(cx, cy):
+    outline = [(cx, cy - 6), (cx + 6, cy), (cx, cy + 6), (cx - 6, cy)]
+    inner = [(cx, cy - 4), (cx + 4, cy), (cx, cy + 4), (cx - 4, cy)]
+    d.polygon(outline, fill=C_VOID)
+    d.polygon(inner, fill=C_CYAN)
+    d.point((cx - 1, cy - 1), fill=C_CREAM)
+
+small_altar(72, 56)
+small_altar(248, 56)
+small_altar(160, 16)
+small_altar(160, 104)
+
+outer = [(152, 48), (168, 48), (176, 56), (176, 72), (168, 80), (152, 80), (144, 72), (144, 56)]
+mid = [(153, 50), (167, 50), (174, 57), (174, 71), (167, 78), (153, 78), (146, 71), (146, 57)]
+inner = [(156, 56), (164, 56), (168, 60), (168, 68), (164, 72), (156, 72), (152, 68), (152, 60)]
+d.polygon(outer, fill=C_VOID)
+d.polygon(mid, fill=C_CYAN)
+d.polygon(inner, fill=C_STONE)
+d.line([(160, 57), (160, 71)], fill=C_CYAN)
+d.line([(153, 64), (167, 64)], fill=C_CYAN)
+d.rectangle([158, 62, 162, 66], outline=C_CREAM)
+d.point((160, 64), fill=C_CYAN)
+for x, y in [(160, 51), (173, 64), (160, 77), (147, 64)]:
+    d.rectangle([x - 1, y - 1, x + 1, y + 1], fill=C_CYAN)
+
+for rect in ([50, 66, 55, 68], [90, 74, 94, 76], [226, 66, 231, 68], [264, 74, 268, 76], [130, 34, 134, 36], [186, 74, 190, 76]):
+    d.rectangle(rect, fill=C_MOSS)
+
+img.save(out, format='PNG', optimize=True)
+print(out)
+'@ | python -" in D:\algo
+ succeeded in 675ms:
+D:\algo\public\assets\visual_revamp\regions\prologue_chamber_v3.png
+
+codex
+I opened the saved PNG at native size. It reads as a sparse top-down Game Boy-style chamber with a centered cyan altar, four spoke-linked satellite pads, and pure void around the stone tiles.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from PIL import Image
+from pathlib import Path
+from collections import Counter
+
+path = Path(r'D:\\algo\\public\\assets\\visual_revamp\\regions\\prologue_chamber_v3.png')
+allowed = {'#081820', '#346856', '#88c070', '#e0f8d0', '#06b6d4'}
+img = Image.open(path)
+rgba = img.convert('RGBA')
+colors = Counter(rgba.getdata())
+hexes = []
+for (r, g, b, a), count in colors.items():
+    if a "'!= 255:
+        hexes.append(f'"'#{r:02x}{g:02x}{b:02x}@{a}')
+    else:
+        hexes.append(f'#{r:02x}{g:02x}{b:02x}')
+hexes_sorted = sorted(hexes)
+non_allowed = sorted(set(h for h in hexes_sorted if h.split('@')[0] not in allowed))
+print('path=', path)
+print('mode=', img.mode)
+print('dimensions=', img.size)
+print('unique_color_count=', len(colors))
+print('hex_values=', ', '.join(hexes_sorted))
+print('non_allowed=', ', '.join(non_allowed) if non_allowed else 'none')
+print('file_size_bytes=', path.stat().st_size)
+print('alpha_values=', sorted({a for (_, _, _, a) in colors.keys()}))
+# Verify edge-color discipline: if every pixel is from palette and alpha is opaque,
+# the raster cannot contain anti-aliased intermediary colors.
+print('palette_exact=', set(h.split('@')[0] for h in hexes_sorted) <= allowed)
+print('opaque_only=', sorted({a for (_, _, _, a) in colors.keys()}) == [255])
+'@ | python -" in D:\algo
+ succeeded in 588ms:
+path= D:\algo\public\assets\visual_revamp\regions\prologue_chamber_v3.png
+mode= RGB
+dimensions= (320, 120)
+unique_color_count= 5
+hex_values= #06b6d4, #081820, #346856, #88c070, #e0f8d0
+non_allowed= none
+file_size_bytes= 1327
+alpha_values= [255]
+palette_exact= True
+opaque_only= True
+<stdin>:9: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+
+codex
+Saved: [prologue_chamber_v3.png](D:/algo/public/assets/visual_revamp/regions/prologue_chamber_v3.png)
+
+1. Dimensions: `320 x 120`
+2. Unique color count: `5`
+3. Hex values found: `#06b6d4`, `#081820`, `#346856`, `#88c070`, `#e0f8d0`
+4. File size: `1327` bytes
+5. Hard pixel boundaries: confirmed. RGB-only, opaque, no intermediary AA colors or gradients.
+6. Tile alignment: confirmed. Platforms and paths are snapped to the 16px grid; altar/rune glyphs sit inside grid-aligned tile footprints.
+
+I did not edit `src/config/assets.ts` and did not run builds/tests.
+
+
+SUCCESS: The process with PID 26264 (child process of PID 25572) has been terminated.
+SUCCESS: The process with PID 25572 (child process of PID 21884) has been terminated.
+SUCCESS: The process with PID 21884 (child process of PID 17268) has been terminated.
+SUCCESS: The process with PID 17268 (child process of PID 22460) has been terminated.
+tokens used
+82,733
+Saved: [prologue_chamber_v3.png](D:/algo/public/assets/visual_revamp/regions/prologue_chamber_v3.png)
+
+1. Dimensions: `320 x 120`
+2. Unique color count: `5`
+3. Hex values found: `#06b6d4`, `#081820`, `#346856`, `#88c070`, `#e0f8d0`
+4. File size: `1327` bytes
+5. Hard pixel boundaries: confirmed. RGB-only, opaque, no intermediary AA colors or gradients.
+6. Tile alignment: confirmed. Platforms and paths are snapped to the 16px grid; altar/rune glyphs sit inside grid-aligned tile footprints.
+
+I did not edit `src/config/assets.ts` and did not run builds/tests.
+
+

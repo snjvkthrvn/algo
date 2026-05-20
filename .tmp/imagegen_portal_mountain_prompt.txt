@@ -1,0 +1,44 @@
+Use the imagegen skill to produce a NEW Pokemon Red style MOUNTAIN PORTAL for "Algorithmia: The Path of Logic" — the gateway to Hash Highlands visible in the Twin Rivers closure scene.
+
+=== WHY ===
+The current portal_mountain.png is a HD AI-painted mountain with realistic brown rocks, smooth-shaded pine trees, and a glowing gold vortex. Gemini specifically called it "completely AI-generated, soft gradients, sub-pixel trees — ship-stopper."
+
+=== AESTHETIC ===
+Pokemon Red Mt. Moon / Rock Tunnel entrance. Flat-shaded, 16×16-effective, 5-color.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\objects\portals\mountain_v2.png
+- Dimensions: EXACTLY 32 × 48 pixels (portal portrait, same as other portals)
+- TRANSPARENT background
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, deep shadow, cave interior)
+- `#346856` medium dark (stone body, mountain shadow)
+- `#88c070` light accent (rare grass patch optional at base)
+- `#e0f8d0` lightest (stone highlight, peak snow)
+- `#06b6d4` cyan (the cave entrance glow)
+
+=== SUBJECT ===
+A simple mountain silhouette with a cave entrance. Pokemon Red style.
+
+Composition:
+- Triangular mountain silhouette in #346856
+- Small cream #e0f8d0 highlight at the peak (could read as "snow")
+- Cave opening at the base: a small rounded arch filled with #06b6d4 cyan
+- 1px #081820 outline
+- NO trees, NO grass, NO gold
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO pine trees (the current portal has trees — REMOVE them)
+- NO smooth gradients, NO AA
+- NO golden/yellow swirl
+- NO color count above 5+alpha
+- NO HD painted style
+
+=== SELF-VERIFICATION ===
+Report dimensions (32×48), color count (≤5), hex values, file size, hard-edge confirmation, transparent background.
+
+STOP after self-verification. DO NOT edit assets.ts.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.

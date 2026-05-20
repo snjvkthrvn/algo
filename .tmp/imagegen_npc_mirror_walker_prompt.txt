@@ -1,0 +1,35 @@
+Use the imagegen skill to produce a NEW Pokemon Red style NPC sprite for "MIRROR WALKER" in "Algorithmia: The Path of Logic" — host of the TR1 Mirror Walk puzzle.
+
+=== AESTHETIC ===
+Pokemon Red NPC — a mystical water/mirror keeper figure. Chunky, flat-shaded, 16×16 effective.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\characters\mirror_walker_v2.png
+- Dimensions: EXACTLY 256 × 256 pixels
+- TRANSPARENT background
+
+=== EFFECTIVE RESOLUTION ===
+EFFECTIVE 16×16. Every 16×16 actual-pixel block = ONE solid color.
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, dark robe shadow)
+- `#346856` medium dark (cloak body, deeper folds)
+- `#88c070` light accent (rare — maybe a small lily/leaf accessory)
+- `#e0f8d0` lightest (pale face, robe trim, hair highlights)
+- `#06b6d4` cyan (mirror eyes — the character's eyes glow cyan, signifying they SEE through mirrors)
+
+=== CHARACTER ===
+A robed figure who walks between mirrored surfaces. Front-facing pose. Hooded or veiled (hood covers most of the head, with cyan #06b6d4 EYES visible glowing under the hood). Wears a long flowing robe in #346856. Arms folded or holding a small mirror disc with cyan rim.
+
+Mood: mystical, mirror-thin, slightly otherworldly. Same Pokemon Red size as other NPCs.
+
+=== PROHIBITIONS ===
+NO smooth gradients, NO AA, NO drop shadows, NO color count above 5+alpha, NO modern detail, NO HD face.
+
+=== SELF-VERIFICATION ===
+Report dimensions, color count, hex values, file size, hard-edge confirmation, transparent background.
+
+STOP after self-verification. DO NOT edit assets.ts or run build/tests.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.

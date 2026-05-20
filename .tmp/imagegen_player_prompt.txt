@@ -1,0 +1,75 @@
+Use the imagegen skill to produce a NEW MARKETING-GRADE Pokemon Red style player character walk sheet for "Algorithmia: The Path of Logic".
+
+=== WHY WE'RE REGENERATING ===
+The 3 overworld backdrops + 3 boss arenas were regenerated as Pokemon Red 5-color flat. Gemini cohesion audit: "Stop tweaking everything else. Regenerate the player, NPCs, and portals. There is no higher-leverage smaller fix." The current player sprite is a HD anime protagonist that visually clashes with the Game Boy world.
+
+=== AESTHETIC REFERENCE (THE BAR) ===
+**Pokemon Red/Blue (1996)** player walk sprite (the iconic 16×16 ash-look character). Chunky, flat-shaded, instantly readable silhouette from above.
+
+DO NOT reference modern indie pixel art (Stardew, Hollow Knight, etc).
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\public\assets\prologue_sheets\characters\imagegen_player_walk_smooth_v8.png
+- Final image dimensions: EXACTLY 2048 × 1024 pixels (preserves existing sheet dimensions so Phaser code does not need updating)
+- TRANSPARENT background outside each character sprite
+- Frame layout: 8 columns × 4 rows of 256×256 cells (matches the existing v7 layout)
+
+=== CRITICAL: EFFECTIVE RESOLUTION CONSTRAINT ===
+Within each 256×256 cell, the character must render at an EFFECTIVE RESOLUTION OF 16×16 pixels. This means:
+- Every "logical pixel" of the character is 16×16 actual pixels in the file
+- The character body occupies roughly the central 256×256 area BUT subdivided into a 16×16 logical grid
+- Each 16×16 actual-pixel block is ONE SOLID COLOR from the 5-color palette
+- The character silhouette must read as a 16×16 sprite when downsampled
+
+Why: this matches the chunky Pokemon Red feel of the overworld backdrops (which were generated at 320×180 native = 4x chunky pixels after upscale). The player must visually match the chunkiness of the world it stands on.
+
+=== PALETTE — 5 COLORS MAX (PLUS ALPHA) ===
+- `#081820` darkest (outlines, dark clothing, shadow)
+- `#346856` medium dark (clothing, hair)
+- `#88c070` light/accent (skin highlights — only if needed)
+- `#e0f8d0` lightest (skin, light clothing)
+- `#06b6d4` cyan (interactive accent — maybe a tool the character carries, or eyes)
+
+Alpha 0 for the background outside the sprite.
+
+=== ANIMATION LAYOUT ===
+The 8×4 grid of 256×256 cells should be:
+- Row 1: Walk DOWN (facing the camera) — 8 frames of walk cycle
+- Row 2: Walk LEFT — 8 frames
+- Row 3: Walk RIGHT — 8 frames (can mirror Row 2)
+- Row 4: Walk UP (facing away) — 8 frames
+
+Each frame: a small chunky Pokemon-Red-style character mid-walk-pose.
+
+Character design:
+- A small youthful protagonist (gender-neutral / matches the existing design)
+- Wears a tunic or simple top + pants
+- Has hair (slightly dark for visibility)
+- Optional: a small hat or accessory in cyan #06b6d4 (so the interactive accent is the character's HAT/badge)
+- Front/back/side views should match (same character visible from different angles)
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO smooth gradients
+- NO anti-aliased edges (every pixel of the file is a hard color step)
+- NO drop shadows or smooth shading
+- NO color count above 5 + alpha
+- NO modern indie detail level
+- NO asymmetric features per direction (the character must be RECOGNIZABLY THE SAME PERSON in every frame)
+- NO HD facial features — keep the face MINIMAL (Pokemon Red's character had 2-pixel eyes and a 1-pixel mouth at 16×16 scale)
+- Each 16×16 actual-pixel block must be EXACTLY ONE COLOR — no sub-block detail
+
+=== SELF-VERIFICATION ASK ===
+After saving, OPEN the file and report:
+1. Exact dimensions (must be 2048×1024)
+2. Exact unique color count (must be ≤ 5 + alpha)
+3. List the actual hex values found
+4. File size in bytes
+5. Confirm: when you sample any 16×16 block within a character cell, is it ONE SOLID COLOR? (yes/no)
+6. Confirm: character is recognizable as the same person across all 32 frames
+
+If any check fails, RETRY with a more constrained prompt. Do not save a failing asset.
+
+STOP after self-verification. DO NOT edit src/config/assets.ts. DO NOT run npm build or tests. DO NOT touch any other files.
+
+== POWERSHELL NOTE ==
+Avoid one-letter helper function names (`R`, `H`, `L` collide with PowerShell built-in aliases). Prefer Python/Pillow.

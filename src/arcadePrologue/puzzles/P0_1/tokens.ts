@@ -16,6 +16,10 @@ export const STAGE = { width: Math.round(960 * SCALE), height: Math.round(540 * 
 
 export const HEX_RADIUS = 44 * SCALE;
 
+// Isometric grid tile dimensions — 2:1 ratio required for diamond tiles to share edges
+export const TILE_W = 128;
+export const TILE_H = 64;
+
 export const COLORS = {
   bg: {
     deep: 0x05060c,

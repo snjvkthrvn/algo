@@ -1,0 +1,42 @@
+Use the imagegen skill to produce a new MARKETING-GRADE Pokemon Red style portal sprite for the ARRAY PLAINS region (farm) of "Algorithmia: The Path of Logic".
+
+=== AESTHETIC REFERENCE ===
+**Pokemon Red/Blue (1996)** wooden gate / barn-door style. Sparse, flat-shaded, 16×16-grid.
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\public\assets\visual_revamp\objects\portals\field_v2.png
+- Final image dimensions: EXACTLY 32 × 48 pixels (portrait)
+- TRANSPARENT background
+- True pixel art, hard edges only
+
+=== PALETTE — 5 COLORS MAX ===
+- `#081820` darkest
+- `#346856` medium dark (wood beams)
+- `#88c070` light/accent (small farm-y accent)
+- `#e0f8d0` lightest (wood highlights, rim)
+- `#06b6d4` cyan glow (portal energy in the gate opening)
+
+=== SUBJECT ===
+A wooden farm gate / barn-door portal for the Array Plains region. Should clearly signal "farm" so a player sees it as a doorway TO the farm region.
+
+Composition:
+- Two wooden vertical posts (#346856 with #e0f8d0 highlights)
+- A horizontal top beam (wood)
+- An open gate (the interior is the portal — filled with #06b6d4 cyan)
+- Optional: a small wheat sprig (#88c070) at the base of one post for farm flavor
+- 1px #081820 outline around the silhouette
+- ~32 wide, ~48 tall
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO smooth gradients, NO AA, NO drop shadows
+- NO color count above 5 + alpha
+- NO ornate/decorated wood (KEEP IT SPARSE Pokemon Red)
+- NO modern detail level
+
+=== SELF-VERIFICATION ASK ===
+Report dimensions (32×48), color count (≤5), hex values, file size, hard-edge confirmation, transparent background.
+
+STOP after self-verification. DO NOT edit assets.ts or run build/tests.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names like `R`, `H`, `L` (collide with PS aliases). Prefer Python/Pillow.

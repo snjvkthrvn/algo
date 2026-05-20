@@ -1,0 +1,94 @@
+Here’s a **second-opinion** read focused on **code cohesion** (how cleanly the pipelines fit together) and **visual cohesion** (whether what’s on screen feels like one game, not layered eras).
+
+---
+
+## What’s unusually strong
+
+**1. The “marketing art first, motion second” stack is architecturally sane**
+
+`BasePuzzleScene` now treats the fullscreen pixel backdrop as truth and uses `RegionBackdrop` only as a thin motion layer. The inline rationale in both `RegionBackdrop.buildArrayPlains` / `buildTwinRivers` and `createPuzzleUI` matches real production risk (vector-style procedural farm vs. handcrafted BG). That decision improves **cross-scene cohesion** more than endlessly tuning procedural shapes.
+
+```115:151:D:\algo\src\scenes\puzzles\BasePuzzleScene.ts
+    this.createPuzzleUI(): void {
+    const { width, height } = this.cameras.main;
+
+    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0, 0).setDepth(-30);
+
+    // Always render the static backdrop as the BASE LAYER. A puzzle's
+    // `getPuzzleBackdropKey()` should now return the pixel-art region BG
+    // (ARRAY_PLAINS_BG / TWIN_RIVERS_BG / etc.) ...
+    const backdropKey = this.getPuzzleBackdropKey();
+    // ...
+    if (region) {
+      new RegionBackdrop(this, region.id, region.options);
+    }
+```
+
+```182:191:D:\algo\src\ui\RegionBackdrop.ts
+    // Static scenery ... is now baked into the pixel-art backdrop image ...
+    // RegionBackdrop's job here is just to layer subtle MOTION on top — no competing scenery.
+    // (Previously this method rendered a cartoonish flat-vector farmstead
+    // that clashed with the marketing-grade backdrop. ...
+```
+
+**2. Puzzle chrome is parameterized, not forked**
+
+`puzzleTheme.ts` codifies palettes per region/context (chamber vs parchment vs region themes). That’s the right abstraction for avoiding “every scene hand-picked colors” entropy.
+
+**3. Asset honesty is mechanically enforced**
+
+`assets.test.ts` tracks manifest shape and boot vs scene loading expectations—good guardrails when you’re versioning files (`*_v2`, `_v3`) aggressively.
+
+---
+
+## Where cohesion still feels pressured (honest tensions)
+
+**1. You’re running parallel visual eras on purpose—but the player silhouette is still on the old spine**
+
+Manifest has a `VISUAL_REVAMP_KEYS.PLAYER` path, yet the live `Player` class is explicitly bound to **`PROLOGUE_SHEET_KEYS`** and scaled spritesheet animations. Until those converge, reviewers will perceive a **hero vs world** mismatch in overworlds that already use revamped region cards and portals.
+
+```1:48:D:\algo\src\entities\Player.ts
+/**
+ * Player - Movement, animation, interaction state.
+ * Uses the Prologue player spritesheet for visual state.
+ */
+// ...
+    this.sprite = scene.add
+      .sprite(x, y, PROLOGUE_SHEET_KEYS.PLAYER, 0)
+```
+
+That’s fixable plumbing, but **right now it’s the single loudest continuity break** across the codebase story.
+
+**2. Prologue procedural layer vs design-system palette discipline**
+
+Docs (`CLAUDE.md`) reserve cyan for interactive accent. `RegionBackdrop`’s prologue build still paints stars and grid cues with **non–GameBoy** hex hues (`0x22d3ee`, `0xa78bfa`). That reads “premium sci‑fi UI ambient” layered on top of a Game Boy–rooted HUD—defensible if the prologue is *supposed* to feel alien, but it’s **the one backdrop path that escapes the restrained token set** unlike later regions where motion sticks to wheat dust / leaf blocks.
+
+```93:118:D:\algo\src\ui\RegionBackdrop.ts
+    const grid = this.scene.add.graphics()...setAlpha(0.08);
+    grid.lineStyle(1, 0x22d3ee, 0.6);
+    // ...
+      const hue = r > 0.7 ? 0xa78bfa : r > 0.4 ? 0x22d3ee : 0xffffff;
+```
+
+Visual second-opinion: **either own that as deliberate “outside the codex palette” lore**, or eventually token‑align those primitives to `COLORS` so the CRT + UI + ambient don’t fight.
+
+**3. Puzzle asset pipeline versioning is uneven—and that reads on screen**
+
+`VISUAL_REVAMP_IMAGE_ASSETS` mixes many `*_backdrop_v1` puzzle arts with selective `*_v2`/`_v3` on regions and a few puzzles. Codewise that’s neutral; visually it often means **lighting sharpness and ground-plane treatment won’t lock** region-to-region until the long tail catches up.
+
+**4. Narration vs implementation drift in comments**
+
+The JSDoc on `getRegionBackdrop()` still describes skipping static backdrops when a region procedural is chosen. The implementation **always** composites static + optional `RegionBackdrop`. That’s harmless at runtime but it’s exactly the sort of stale API story that slows the next engineer’s mental model—and “second‑opinion cohesion” absolutely includes docs matching behavior.
+
+---
+
+## Bottom line second opinion
+
+- **Architecturally**, the refactor toward **fullscreen handcrafted BG + light motion + themed chrome** is coherent and avoids the classic indie trap of “beautiful art under a distracting vector parallax.”  
+- **Aesthetically**, the codebase still embodies a **controlled transition**: revamped environments and NPC portraits vs **legacy-overworld locomotion visuals** (`Player`) vs **heterogeneous backdrop generations** (`v1`/`v2`/`v3` mix). The first is the sharper discontinuity today; the second is backlog polish that will unify perceived quality.
+
+---
+
+If you want this critique to lock to one region next (Array Plains puzzles only, Twin Rivers only, etc.), say which—you can get a sharper “does this subsystem read as one art direction?” pass with that scope.
+
+*(Ask mode: I can’t run the game or edit files; screenshots or a short clip would let me tighten the visual half further.)*
