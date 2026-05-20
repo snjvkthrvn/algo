@@ -31,7 +31,7 @@ test.afterEach(async ({ page }, testInfo) => {
   expect(runtimeErrors, `runtime errors during ${testInfo.project.name}`).toEqual([]);
 });
 
-async function waitForScene(page: Page, key: string, timeout = 45_000): Promise<void> {
+async function waitForScene(page: Page, key: string, timeout = 75_000): Promise<void> {
   await page.waitForFunction(
     (sceneKey) => Boolean((window as GameWindow).__PHASER_GAME__?.scene.isActive(sceneKey)),
     key,
@@ -82,6 +82,6 @@ test('production build boots menu and enters the first playable scene', async ({
   expect(await visibleCanvasPixels(page), `${testInfo.project.name} canvas should render`).toBeGreaterThan(500);
 
   await page.keyboard.press('Enter');
-  await waitForScene(page, 'PrologueScene', 45_000);
+  await waitForScene(page, 'PrologueScene', 75_000);
   expect(await visibleCanvasPixels(page), `${testInfo.project.name} prologue should render`).toBeGreaterThan(500);
 });

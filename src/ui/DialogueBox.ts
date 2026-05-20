@@ -6,7 +6,7 @@
  */
 
 import Phaser from 'phaser';
-import { FONTS } from '../config/constants';
+import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
 import { gameState } from '../core/GameStateManager';
 import { drawPanel, PANEL_PALETTE } from './panel';
 import { a11yManager } from '../core/A11yManager';
@@ -56,7 +56,17 @@ export class DialogueBox {
       this.BOX_Y,
       this.BOX_WIDTH,
       this.BOX_HEIGHT,
-      { depth: 5000, scrollFactor: 0, inner: PANEL_PALETTE.INNER }
+      {
+        depth: 5000,
+        scrollFactor: 0,
+        fill: COLORS.ERROR,
+        frame: COLORS.FRAME_BORDER_LIGHT,
+        inner: PANEL_PALETTE.ACCENT,
+        alpha: 0.94,
+        shadow: true,
+        shadowAlpha: 0.28,
+        accent: COLORS.CYAN_GLOW,
+      }
     );
     this.container.add(this.background);
 
@@ -70,14 +80,14 @@ export class DialogueBox {
     this.speakerText = scene.add.text(textX, speakerY, '', {
       fontSize: '14px',
       fontFamily: FONTS.RETRO,
-      color: '#346856',
+      color: COLOR_HEX.CYAN_GLOW,
     });
     this.container.add(this.speakerText);
 
     this.contentText = scene.add.text(textX, bodyY, '', {
       fontSize: '20px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: COLOR_HEX.TEXT_LIGHT,
       wordWrap: { width: wrapWidth },
       lineSpacing: 8,
     });
@@ -87,7 +97,7 @@ export class DialogueBox {
       this.BOX_X + this.BOX_WIDTH - 24,
       this.BOX_Y + this.BOX_HEIGHT - 24,
       '▼',
-      { fontSize: '12px', color: '#081820' }
+      { fontSize: '12px', color: COLOR_HEX.CYAN_GLOW }
     ).setOrigin(0.5);
     this.continuePrompt.setVisible(false);
     this.container.add(this.continuePrompt);

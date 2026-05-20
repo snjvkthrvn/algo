@@ -18,7 +18,7 @@
  */
 
 import Phaser from 'phaser';
-import { FONTS } from '../config/constants';
+import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
 import { drawPanel } from './panel';
 
 export interface PuzzlePreviewSidePanelOptions {
@@ -50,8 +50,8 @@ export class PuzzlePreviewSidePanel {
     this.scene = scene;
     const { width: cameraWidth, height: cameraHeight } = scene.cameras.main;
 
-    const panelWidth = options.width ?? 264;
-    const panelHeight = options.height ?? 280;
+    const panelWidth = options.width ?? 280;
+    const panelHeight = options.height ?? 304;
     const depth = options.depth ?? 1990;
     const side = options.side ?? 'right';
     const yOffset = options.yOffset ?? 0;
@@ -67,69 +67,72 @@ export class PuzzlePreviewSidePanel {
       depth,
       scrollFactor: 0,
       fill: 0x081820,
-      frame: 0x88c070,
-      inner: 0x346856,
+      frame: COLORS.FRAME_BORDER_LIGHT,
+      inner: COLORS.SUCCESS,
       alpha: 0.94,
+      shadow: true,
+      accent: COLORS.CYAN_GLOW,
     });
 
-    const padX = 14;
+    const padX = 18;
     const labelColor = '#06b6d4'; // CYAN_GLOW — reserved for interactive/preview state
-    const bodyColor = '#e0f8d0';
+    const bodyColor = COLOR_HEX.TEXT_LIGHT;
 
     this.titleText = scene.add
       .text(x + padX, y + 12, '▸ PREVIEW', {
         fontSize: '10px',
         fontFamily: FONTS.RETRO,
         color: labelColor,
+        wordWrap: { width: panelWidth - padX * 2 },
       })
       .setDepth(depth + 1)
       .setScrollFactor(0);
 
     // Section 1: current algorithm state
     this.stateLabel = scene.add
-      .text(x + padX, y + 36, 'STATE', {
+      .text(x + padX, y + 42, 'CURRENT STATE', {
         fontSize: '8px',
         fontFamily: FONTS.RETRO,
-        color: '#88c070',
+        color: COLOR_HEX.TEXT_MUTED,
       })
       .setDepth(depth + 1)
       .setScrollFactor(0);
 
     this.stateBody = scene.add
-      .text(x + padX, y + 52, '', {
-        fontSize: '10px',
+      .text(x + padX, y + 60, '', {
+        fontSize: '11px',
         fontFamily: FONTS.MONO,
         color: bodyColor,
         wordWrap: { width: panelWidth - padX * 2 },
-        lineSpacing: 4,
+        lineSpacing: 6,
       })
       .setDepth(depth + 1)
       .setScrollFactor(0);
 
     // Divider between state and next-action
     this.divider = scene.add
-      .rectangle(x + padX, y + panelHeight / 2 + 8, panelWidth - padX * 2, 1, 0x346856, 0.7)
+      .rectangle(x + padX, y + panelHeight / 2 + 12, panelWidth - padX * 2, 1, COLORS.FRAME_BORDER_LIGHT, 0.8)
       .setOrigin(0, 0.5)
       .setDepth(depth + 1)
       .setScrollFactor(0);
 
     // Section 2: next action preview
     this.nextLabel = scene.add
-      .text(x + padX, y + panelHeight / 2 + 18, 'NEXT', {
+      .text(x + padX, y + panelHeight / 2 + 24, 'NEXT ACTION', {
         fontSize: '8px',
         fontFamily: FONTS.RETRO,
-        color: '#88c070',
+        color: COLOR_HEX.CYAN_GLOW,
       })
       .setDepth(depth + 1)
       .setScrollFactor(0);
 
     this.nextBody = scene.add
-      .text(x + padX, y + panelHeight / 2 + 34, '', {
-        fontSize: '10px',
+      .text(x + padX, y + panelHeight / 2 + 44, '', {
+        fontSize: '11px',
         fontFamily: FONTS.MONO,
         color: bodyColor,
         wordWrap: { width: panelWidth - padX * 2 },
-        lineSpacing: 4,
+        lineSpacing: 6,
       })
       .setDepth(depth + 1)
       .setScrollFactor(0);

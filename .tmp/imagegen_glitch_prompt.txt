@@ -1,0 +1,46 @@
+Use the imagegen skill to produce a NEW Pokemon Red style GLITCH antagonist sprite for "Algorithmia: The Path of Logic". The Glitch is a corruption entity that appears in the overworld.
+
+=== WHY ===
+Current glitch.png is a HD shaded purple-haired anime character. Must be replaced with flat Pokemon Red style to match the chunky overworld.
+
+=== AESTHETIC ===
+Pokemon Red antagonist — think a Team Rocket grunt or a dungeon ghost. Chunky, flat-shaded, 16×16-effective.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\characters\glitch_v2.png
+- Dimensions: EXACTLY 256 × 256 pixels (matches NPC scale)
+- TRANSPARENT background
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, dark cloak, hair)
+- `#346856` medium dark (corrupt body, shadow)
+- `#88c070` light accent (rare — small corruption flash)
+- `#e0f8d0` lightest (face highlight, glitch shimmer)
+- `#06b6d4` cyan (corruption energy — the Glitch's signature crackle)
+
+=== SUBJECT ===
+A small dark corruption figure. The Glitch is a digital corruption — visualized as a shadowy figure with cyan static crackling around them.
+
+Composition:
+- Central dark figure (#081820 silhouette + #346856 inner shadow)
+- Triangular head + bulky body (no clear face — Glitch is "faceless corruption")
+- 2 cyan #06b6d4 eyes glowing
+- Small cyan crackle/static lines around the figure (4-6 short lines, 1px each)
+- 1px outline
+
+Mood: ominous, corrupted, slightly menacing but stylized
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO smooth gradients
+- NO anti-aliased edges
+- NO HD facial features (the face is faceless/shadow)
+- NO color count above 5+alpha
+- NO purple/magenta — use #346856 and #081820 instead
+
+=== SELF-VERIFICATION ===
+Report dimensions (256×256), color count (≤5+alpha), hex values, file size, hard-edge confirmation, transparent background.
+
+STOP after self-verification. DO NOT edit assets.ts.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.

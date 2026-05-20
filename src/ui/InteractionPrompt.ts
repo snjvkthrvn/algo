@@ -6,7 +6,7 @@
  */
 
 import Phaser from 'phaser';
-import { FONTS } from '../config/constants';
+import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
 import { drawPanel, PANEL_PALETTE } from './panel';
 import { a11yManager } from '../core/A11yManager';
 
@@ -33,7 +33,17 @@ export class InteractionPrompt {
       -PROMPT_HEIGHT / 2,
       INTERACTION_PROMPT_WIDTH,
       PROMPT_HEIGHT,
-      { depth: PROMPT_DEPTH, scrollFactor: 1, fill: PANEL_PALETTE.FILL }
+      {
+        depth: PROMPT_DEPTH,
+        scrollFactor: 1,
+        fill: COLORS.ERROR,
+        frame: COLORS.CYAN_GLOW,
+        inner: PANEL_PALETTE.ACCENT,
+        alpha: 0.94,
+        shadow: true,
+        shadowAlpha: 0.28,
+        accent: COLORS.CYAN_GLOW,
+      }
     );
     this.bobContainer.add(bg);
 
@@ -41,7 +51,7 @@ export class InteractionPrompt {
       .text(0, 0, '[SPACE] Talk', {
         fontSize: '12px',
         fontFamily: FONTS.RETRO,
-        color: '#081820',
+        color: COLOR_HEX.TEXT_LIGHT,
       })
       .setOrigin(0.5);
     this.bobContainer.add(this.text);

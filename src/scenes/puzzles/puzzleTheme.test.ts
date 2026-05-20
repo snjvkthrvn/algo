@@ -6,17 +6,16 @@ import {
 } from './puzzleTheme';
 
 describe('PuzzleTheme', () => {
-  it('parchment preserves the legacy cream-on-dark chrome literal values', () => {
-    // These exact bytes were the BasePuzzleScene defaults before themes were
-    // introduced. If a refactor changes them, every later-region puzzle's
-    // chrome shifts — this test catches that regression.
-    expect(PARCHMENT_PUZZLE_THEME.frameFill).toBe(0xe0f8d0);
-    expect(PARCHMENT_PUZZLE_THEME.frameOuterStroke).toBe(0x081820);
+  it('parchment now owns the default dark console chrome literal values', () => {
+    // These exact bytes are the BasePuzzleScene defaults for later-region
+    // puzzles. If a refactor changes them, the shared puzzle HUD shifts.
+    expect(PARCHMENT_PUZZLE_THEME.frameFill).toBe(0x081820);
+    expect(PARCHMENT_PUZZLE_THEME.frameOuterStroke).toBe(0x346856);
     expect(PARCHMENT_PUZZLE_THEME.frameOuterStrokeAlpha).toBe(0.9);
-    expect(PARCHMENT_PUZZLE_THEME.frameInnerStroke).toBe(0x346856);
-    expect(PARCHMENT_PUZZLE_THEME.titleColor).toBe('#081820');
-    expect(PARCHMENT_PUZZLE_THEME.titlePanelFill).toBe(0xe0f8d0);
-    expect(PARCHMENT_PUZZLE_THEME.scanlineAlpha).toBe(0.08);
+    expect(PARCHMENT_PUZZLE_THEME.frameInnerStroke).toBe(0x88c070);
+    expect(PARCHMENT_PUZZLE_THEME.titleColor).toBe('#e0f8d0');
+    expect(PARCHMENT_PUZZLE_THEME.titlePanelFill).toBe(0x081820);
+    expect(PARCHMENT_PUZZLE_THEME.scanlineAlpha).toBe(0.04);
   });
 
   it('chamber uses a darker play surface and a cyan-led palette', () => {
@@ -24,9 +23,8 @@ describe('PuzzleTheme', () => {
     expect(CHAMBER_PUZZLE_THEME.frameFillAlpha).toBeLessThan(PARCHMENT_PUZZLE_THEME.frameFillAlpha);
     expect(CHAMBER_PUZZLE_THEME.cornerAccent).toBe(0x06b6d4);
     expect(CHAMBER_PUZZLE_THEME.titleColor).toBe('#e0f8d0');
-    // Surface is darker, so scanline overlay is reduced — preserves CRT cue
-    // without mudding contrast.
-    expect(CHAMBER_PUZZLE_THEME.scanlineAlpha).toBeLessThan(PARCHMENT_PUZZLE_THEME.scanlineAlpha);
+    // Both dark themes keep scanlines low enough to preserve text contrast.
+    expect(CHAMBER_PUZZLE_THEME.scanlineAlpha).toBe(PARCHMENT_PUZZLE_THEME.scanlineAlpha);
   });
 
   it('exposes a stable id discriminant per theme', () => {

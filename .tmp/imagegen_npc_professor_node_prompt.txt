@@ -1,0 +1,35 @@
+Use the imagegen skill to produce a NEW Pokemon Red style NPC sprite for "PROFESSOR NODE" in "Algorithmia: The Path of Logic".
+
+=== AESTHETIC REFERENCE ===
+Pokemon Red/Blue NPC sprites — chunky, flat-shaded, 16×16 effective resolution. Think Professor Oak: small white-coated scholar with simple readable silhouette.
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\public\assets\prologue_sheets\characters\imagegen_professor_node_v2.png
+- Dimensions: EXACTLY 256 × 256 pixels (single frame, matches existing NPC sheet cell)
+- TRANSPARENT background
+
+=== EFFECTIVE RESOLUTION CONSTRAINT ===
+Character renders at EFFECTIVE 16×16 (each "logical pixel" = 16×16 actual). Every 16×16 actual-pixel block must be ONE SOLID COLOR from the 5-color palette.
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, dark hair/glasses)
+- `#346856` medium dark (lab coat shadow, hair)
+- `#88c070` light accent (rare)
+- `#e0f8d0` lightest (lab coat body, face)
+- `#06b6d4` cyan (a small clip/badge or holo accent — professor's distinctive interactive marker)
+
+=== CHARACTER ===
+Professor Node — an old-school computer-science professor figure in a lab coat. Front-facing. Has visible glasses, gray/dark hair, holding a small data tablet or pointer with cyan glow.
+
+Sparse pixel detail (Pokemon Red NPCs had ~50 pixels total of body). Recognizable silhouette: tall thin figure, lab coat fanning out at bottom, professor stance.
+
+=== PROHIBITIONS ===
+NO smooth gradients, NO AA, NO drop shadows, NO color count above 5+alpha, NO modern indie detail, NO HD facial features.
+
+=== SELF-VERIFICATION ===
+Report dimensions (256×256), color count (≤5+alpha), hex values, file size, hard-edge confirmation, transparent background, 16×16 block discipline.
+
+STOP after self-verification. DO NOT edit assets.ts or run build/tests.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names (`R`, `H`, `L` collide with PS aliases). Use Python/Pillow.

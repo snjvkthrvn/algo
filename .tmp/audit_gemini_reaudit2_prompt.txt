@@ -1,0 +1,48 @@
+@tests/screenshots/01-menu.png @tests/screenshots/02-prologue-region-card.png @tests/screenshots/03-prologue-settled.png @tests/screenshots/04-p0-1-layout.png @tests/screenshots/05-p0-1-glow.png @tests/screenshots/05-p0-1-pattern-showing.png @tests/screenshots/06-p0-1-player-turn.png @tests/screenshots/07-p0-2-layout.png @tests/screenshots/08-array-plains-continue.png @tests/screenshots/08c-codex-hotkey.png @tests/screenshots/10-p0-1-complete.png @tests/screenshots/11-p0-2-complete.png @tests/screenshots/12-gateway-unlocked.png @tests/screenshots/12a-boss-sentinel-layout.png @tests/screenshots/13-array-plains-marker-panel.png @tests/screenshots/13b-prologue-return.png @tests/screenshots/14-professor-node-intro-clean.png @tests/screenshots/15-rune-keeper-choice-ui.png @tests/screenshots/15-rune-keeper-puzzle-start.png @tests/screenshots/16-console-keeper-choice-ui.png @tests/screenshots/16-console-keeper-puzzle-start.png @tests/screenshots/17-ap1-sorting-shed-layout.png @tests/screenshots/18-ap2-indexing-barn-layout.png @tests/screenshots/19-ap3-grain-hopper-layout.png @tests/screenshots/20-ap4-pairing-grounds-layout.png @tests/screenshots/21-shuffler-domain-layout.png @tests/screenshots/22-twin-rivers-continue.png @tests/screenshots/23-tr1-mirror-walk-layout.png @tests/screenshots/24-tr2-pointer-bridge-layout.png @tests/screenshots/25-tr3-fixed-window-layout.png @tests/screenshots/26-tr4-current-rider-layout.png @tests/screenshots/27-mirror-serpent-layout.png @tests/screenshots/27b-twin-rivers-closure.png
+
+You are the SAME art director who scored this game previously. Your two prior verdicts were:
+
+**BASELINE** (before any regen): 1.9/5 average. "Frankenstein of palettes."
+**POST-OVERWORLD-REGEN** (only the 3 overworld backdrops were Pokemon-Red-ified): 1.4/5 average. "The regen failed catastrophically." Specifically: A1=1, A2=1, A3=1, A4=2, A5=1, A6=1, A7=3, A8=1.
+
+You explicitly recommended: "Regen player + NPC sprites to match tile density. Until the character matches the floor they are standing on, you do not have a game."
+
+== WHAT'S CHANGED SINCE YOUR LAST REVIEW ==
+
+Player + NPC sprites have NOT been touched (still HD, multi-shaded). BUT two additional changes were made:
+
+1. **All 3 BOSS ARENA BACKDROPS regenerated** as Pokemon Red 5-color flat:
+   - `litany_trial_backdrop_v2.png` (Prologue boss) — see `12a-boss-sentinel-layout.png` (note: this screenshot may show the SCRIPTED prologue boss, not the new backdrop — the new backdrop is used in different scenes)
+   - `shuffler_domain_backdrop_v2.png` (AP boss) — see `21-shuffler-domain-layout.png`
+   - `mirror_serpent_backdrop_v2.png` (TR boss) — see `27-mirror-serpent-layout.png`
+
+2. **Puzzle frame chrome unified** from rounded-parchment to sharp-edge panels (matches the canonical `drawPanel` style). `BasePuzzleScene.createPuzzleFrame` rewrote `fillRoundedRect`/`strokeRoundedRect` to `fillRect`/`strokeRect`. Also fixed the "Name It" beat card chrome. Visible in puzzle screenshots: 17-20, 23-26.
+
+Player sprite, NPC dialogue portraits, portal sprites — UNCHANGED. Menu screen — UNCHANGED.
+
+== YOUR JOB: RE-SCORE THE SAME 8 AXES ==
+
+For each axis:
+- New score (1-5)
+- Delta vs POST-OVERWORLD-REGEN baseline (e.g., "was 1, now 3 = +2")
+- Specific screenshot evidence
+
+Original axes:
+A1 PALETTE COHERENCE (was 1)
+A2 PIXEL DENSITY CONSISTENCY (was 1) — still the open issue, was Gemini's #1 fix
+A3 CHARACTER-VS-WORLD SCALE (was 1)
+A4 UI LANGUAGE CONSISTENCY (was 2) — chrome fix should help here
+A5 PUZZLE-VS-OVERWORLD TRANSITIONS (was 1) — boss arenas should help here
+A6 BOSS / GATEWAY MOMENT WEIGHT (was 1) — boss arenas DIRECTLY address this
+A7 TYPOGRAPHY + READABILITY (was 3)
+A8 LIGHTING / ATMOSPHERE (was 1)
+
+== ADDITIONAL ASKS ==
+
+1. **Did boss arenas address A5+A6?** Were they the right fix at the right time?
+2. **Did chrome fix address A4?** Was unifying rounded → sharp panels visible?
+3. **NEW WEAKEST and NEW STRONGEST** (specific screenshots, specific evidence)
+4. **NEXT-MOVE RECOMMENDATION** — what is the single highest-leverage NEXT fix to push to 4/5? Given that the player + NPC + portal regen would be the biggest visual area to convert, is that THE next move, or is there a higher-leverage smaller fix?
+5. **OVERALL SCORE ESTIMATE** — average of the 8 axes. Is the cohesion now LIVEABLE, or still SHIP-STOPPING?
+
+OUTPUT: structured markdown. Open with 1-sentence verdict ("worse than before / unchanged / improved"). Then 8-axis re-score with deltas. Then the 5 additional asks. Be specific, quote pixel details. No politeness.

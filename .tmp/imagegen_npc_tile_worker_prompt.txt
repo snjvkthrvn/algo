@@ -1,0 +1,35 @@
+Use the imagegen skill to produce a NEW Pokemon Red style NPC sprite for "TILE WORKER" — host of the AP2 Basket Indexing puzzle in "Algorithmia: The Path of Logic".
+
+=== AESTHETIC ===
+Pokemon Red NPC — a farm worker handling tiles/baskets. Chunky, flat-shaded, 16×16 effective.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\characters\tile_worker_v2.png
+- Dimensions: EXACTLY 256 × 256 pixels
+- TRANSPARENT background
+
+=== EFFECTIVE RESOLUTION ===
+EFFECTIVE 16×16. Every 16×16 actual-pixel block = ONE solid color.
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, dark pants, boots)
+- `#346856` medium dark (clothing body, hat)
+- `#88c070` light accent (apron — farm worker)
+- `#e0f8d0` lightest (face, light highlights, tile top)
+- `#06b6d4` cyan (the tile marker — the worker holds a labeled tile)
+
+=== CHARACTER ===
+A young farm worker holding a small numbered tile. Front-facing pose. Wears overalls or a work apron. Holds the tile in one hand at chest height (the tile has a cyan marker number on top).
+
+Pokemon Red sized: chunky and sparse. The numbered tile is the iconic feature.
+
+=== PROHIBITIONS ===
+NO smooth gradients, NO AA, NO drop shadows, NO color count above 5+alpha, NO modern detail.
+
+=== SELF-VERIFICATION ===
+Report dimensions, color count, hex values, file size, hard-edge confirmation, transparent background.
+
+STOP after self-verification. DO NOT edit assets.ts or run build/tests.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.

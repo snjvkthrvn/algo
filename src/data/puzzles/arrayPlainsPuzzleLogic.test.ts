@@ -14,6 +14,7 @@ import {
   isTwoSumPair,
   starsFromMistakesAndHints,
   swapAdjacent,
+  withOptimalityPenalty,
 } from './arrayPlainsPuzzleLogic';
 
 describe('arrayPlainsPuzzleLogic', () => {
@@ -93,30 +94,62 @@ describe('arrayPlainsPuzzleLogic', () => {
       expect(starsFromMistakesAndHints(0, 0)).toBe(3);
     });
     it('grants 2 stars for a near-clean run', () => {
+      // Tightened: 2 mistakes used to be 2 stars; now only ≤1 mistake earns 2.
       expect(starsFromMistakesAndHints(1, 0)).toBe(2);
-      expect(starsFromMistakesAndHints(2, 1)).toBe(2);
+      expect(starsFromMistakesAndHints(1, 1)).toBe(2);
+      expect(starsFromMistakesAndHints(0, 2)).toBe(2);
     });
     it('grants 1 star when mistakes or hints are high', () => {
+      expect(starsFromMistakesAndHints(2, 0)).toBe(1);
       expect(starsFromMistakesAndHints(3, 0)).toBe(1);
-      expect(starsFromMistakesAndHints(0, 2)).toBe(1);
+      expect(starsFromMistakesAndHints(0, 3)).toBe(1);
+    });
+  });
+
+  describe('withOptimalityPenalty', () => {
+    it('does not penalize when moves match the optimum', () => {
+      expect(withOptimalityPenalty(3, 8, 8)).toBe(3);
+    });
+    it('drops one star when the player overshoots', () => {
+      expect(withOptimalityPenalty(3, 12, 8)).toBe(2);
+      expect(withOptimalityPenalty(2, 12, 8)).toBe(1);
+    });
+    it('never falls below 1 star', () => {
+      expect(withOptimalityPenalty(1, 99, 8)).toBe(1);
+    });
+    it('treats optimal = 0 as "not measured"', () => {
+      expect(withOptimalityPenalty(3, 5, 0)).toBe(3);
     });
   });
 
   describe('round data shape', () => {
-    it('ships 3 bubble-sort rounds in difficulty order', () => {
-      expect(BUBBLE_SORT_ROUNDS.map((r) => r.label)).toEqual(['TEACH', 'TWIST', 'MASTER']);
+    // Each puzzle ships a 4-round MASTER+ difficulty curve after the overhaul.
+    it('ships 4 bubble-sort rounds with strictly named labels', () => {
+      expect(BUBBLE_SORT_ROUNDS.map((r) => r.label)).toEqual(['TEACH', 'TWIST', 'MASTER', 'MASTER+']);
       expect(BUBBLE_SORT_ROUNDS[0].values.length).toBeLessThan(BUBBLE_SORT_ROUNDS[2].values.length);
     });
-    it('ships 3 indexing rounds; only MASTER obscures labels', () => {
-      expect(INDEXING_ROUNDS).toHaveLength(3);
+    it('MASTER+ bubble-sort round is near-sorted (tests early-exit understanding)', () => {
+      const masterPlus = BUBBLE_SORT_ROUNDS[3];
+      expect(masterPlus.label).toBe('MASTER+');
+      expect(masterPlus.optimalSwaps).toBe(1);
+      expect(masterPlus.values.length).toBeGreaterThan(BUBBLE_SORT_ROUNDS[2].values.length);
+    });
+    it('ships 4 indexing rounds; MASTER+ hides labels instantly', () => {
+      expect(INDEXING_ROUNDS).toHaveLength(4);
       expect(INDEXING_ROUNDS[0].obscureLabels).toBe(false);
       expect(INDEXING_ROUNDS[1].obscureLabels).toBe(false);
       expect(INDEXING_ROUNDS[2].obscureLabels).toBe(true);
+      expect(INDEXING_ROUNDS[3].obscureLabels).toBe(true);
+      expect(INDEXING_ROUNDS[3].obscureAfterMs).toBe(0);
     });
-    it('ships 3 hash rounds with descending fall time', () => {
-      expect(HASH_ROUNDS).toHaveLength(3);
-      expect(HASH_ROUNDS[0].fallMs).toBeGreaterThan(HASH_ROUNDS[1].fallMs);
-      expect(HASH_ROUNDS[1].fallMs).toBeGreaterThan(HASH_ROUNDS[2].fallMs);
+    it('ships 4 hash rounds with monotonically faster falls', () => {
+      expect(HASH_ROUNDS).toHaveLength(4);
+      for (let i = 1; i < HASH_ROUNDS.length; i++) {
+        expect(HASH_ROUNDS[i].fallMs).toBeLessThan(HASH_ROUNDS[i - 1].fallMs);
+      }
+    });
+    it('MASTER+ hash round changes the modulus to teach distribution tuning', () => {
+      expect(HASH_ROUNDS[3].bucketCount).not.toBe(HASH_ROUNDS[2].bucketCount);
     });
     it('precomputes each crop bucket = letterIndex % bucketCount', () => {
       for (const round of HASH_ROUNDS) {
@@ -125,12 +158,28 @@ describe('arrayPlainsPuzzleLogic', () => {
         }
       }
     });
-    it('every two-sum round has at least one valid pair', () => {
+    it('ships 4 two-sum rounds and every one has at least one valid pair', () => {
+      expect(TWO_SUM_ROUND_CONFIGS).toHaveLength(4);
       for (const round of TWO_SUM_ROUND_CONFIGS) {
         expect(round.validPairs.length).toBeGreaterThan(0);
         for (const [a, b] of round.validPairs) {
           expect(a + b).toBe(round.target);
         }
+      }
+    });
+    it('MASTER+ two-sum has exactly one valid pair (no shortcuts)', () => {
+      expect(TWO_SUM_ROUND_CONFIGS[3].validPairs).toHaveLength(1);
+    });
+    it('every round carries a non-empty lesson with at least one bullet', () => {
+      const all = [
+        ...BUBBLE_SORT_ROUNDS,
+        ...INDEXING_ROUNDS,
+        ...HASH_ROUNDS,
+        ...TWO_SUM_ROUND_CONFIGS,
+      ];
+      for (const r of all) {
+        expect(r.lesson.title.length).toBeGreaterThan(0);
+        expect(r.lesson.bullets.length).toBeGreaterThan(0);
       }
     });
   });

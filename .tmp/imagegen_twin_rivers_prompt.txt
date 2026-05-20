@@ -1,0 +1,74 @@
+Use the imagegen skill to produce a NEW MARKETING-GRADE overworld backdrop for the TWIN RIVERS region (riverside) of the indie game "Algorithmia: The Path of Logic".
+
+=== WHY WE'RE REGENERATING ===
+A multi-CLI cohesion audit found the three overworld backdrops look like three different games. The current twin_rivers_grounded_v2.png was called out: "heavily saturated blues", "noisy dense river water clashes with chunkier dirt paths". The fix: rebuild as a POKEMON RED-style top-down overworld sharing a strict 5-color Game Boy palette with the Prologue and Array Plains regions.
+
+=== AESTHETIC REFERENCE (THIS IS THE BAR) ===
+**Pokemon Red/Blue (1996), running on original Game Boy hardware.**
+- Strict TOP-DOWN camera (90° straight down, NOT 3/4 isometric)
+- 16×16 tile-based maps; every map element snaps to the 16-pixel grid
+- 100% FLAT shading — no dithering, no gradients, no airbrush
+- Hard 1-pixel-wide darker outlines on distinct entities (no drop shadows)
+- Sparse decoration — wide open areas
+- THINK: Pokemon Red water routes (the Vermillion-to-Cinnabar sea route, the Cerulean City rivers). Flat water tiles, simple bridges, sparse reeds.
+
+DO NOT reference Stardew Valley, Hyper Light Drifter, Sea of Stars, Octopath Traveler. Pokemon Red is the WHOLE reference.
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\public\assets\visual_revamp\regions\twin_rivers_grounded_v3.png
+- Final image dimensions: EXACTLY 320 × 180 pixels (16:9 to match canvas)
+- This will be upscaled 4× by Phaser to 1280×720 at runtime
+- Opaque backdrop
+- True pixel art, hard edges only
+
+=== PALETTE — ABSOLUTELY 5 COLORS MAXIMUM ===
+You MUST use ONLY these 5 hex values. SAME palette as Array Plains and Prologue. No additional colors. No blue.
+- `#081820` darkest (outlines, deep shadow, water depth ripple lines)
+- `#346856` medium dark (water tile fill, reed clumps, deep grass)
+- `#88c070` light/accent (grass — the dominant land tile)
+- `#e0f8d0` lightest (sand/dock banks, bridge planks, water highlights)
+- `#06b6d4` cyan glow (INTERACTIVE ELEMENTS ONLY — dock altar tops)
+
+NOTE: Pokemon Red water was rendered with the same green palette as land — just darker shades arranged in a ripple pattern. We're doing the same: water is #346856 with #081820 ripple lines and #e0f8d0 occasional highlight. NO actual blue. This is the Game Boy constraint that makes everything cohere.
+
+=== SUBJECT MATTER FOR TWIN RIVERS ===
+A daytime water route with TWO rivers running through it. Top-down view of:
+- TWO rivers (the namesake — TWIN rivers) crossing the scene. Possibly meeting at a central confluence or running parallel.
+- Central island or stone arch where the rivers meet — has 1 cyan altar
+- 4 satellite docks at compass points, each with a #06b6d4 cyan altar top
+- Wooden bridges crossing the rivers (16×16 planks pattern, cream + dark outline)
+- Sand/dock banks along river edges (#e0f8d0)
+- Reed clumps along shore (#346856 vertical lines, sparse)
+- Grass land between/around rivers (#88c070)
+- Optional: 1-2 small rocks (#081820 outline + #346856 fill)
+Mood: "Pokemon Red water route" — calm, navigable, friendly
+
+Dominant tiles: 16×16 water (#346856 with ripple pattern) and 16×16 grass (#88c070).
+
+Composition: TWO rivers visible — they're the namesake. Make them prominent. Bridges at strategic crossings. 4 puzzle altars at the 4 cardinal docks.
+
+=== ABSOLUTE PROHIBITIONS — ANY VIOLATION FAILS THE ASSET ===
+- NO blue (#3088a8 etc) — water uses #346856, same as the rest of the palette
+- NO smooth gradients of any kind
+- NO anti-aliased edges (every pixel is a hard step between two solid colors from the 5-color palette)
+- NO drop shadows (use 1px outline in #081820 instead)
+- NO subpixel detail or half-pixel offsets
+- NO painted/airbrushed water textures
+- NO 3/4 perspective, NO isometric — strict TOP-DOWN ONLY
+- NO color count above 5
+- NO baked text, NO labels, NO UI elements drawn in
+- NO NPCs or characters in the image (they get drawn separately by the game)
+- NO modern detailed water sprites or "shimmer" effects — water is FLAT, just a tile pattern
+
+=== SELF-VERIFICATION ASK ===
+After saving the file, OPEN IT and report:
+1. Exact file dimensions (must be 320×180)
+2. Exact unique color count (must be ≤ 5)
+3. List the actual hex values found in the image
+4. File size in bytes
+5. Confirm: does every pixel boundary look like a hard color step? (no AA, no gradient)
+6. Tile alignment: are all distinct map elements snapping to a 16-pixel grid?
+
+If any of these checks fails, RETRY the generation with a more constrained prompt. Do not save a failing asset.
+
+STOP after self-verification. DO NOT edit src/config/assets.ts — the parent agent will wire the path swap once all three regenerations are complete. DO NOT run npm build or tests. DO NOT touch any other files.

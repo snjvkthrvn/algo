@@ -4,11 +4,10 @@
 
 import Phaser from 'phaser';
 import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
-// IMAGE_ASSETS = full eager-load set (every region). IMAGE_ASSETS exists in
-// assets.ts as a documented v1.1 target for a per-region lazy-load pipeline once
-// beta scenes gain their own preload() steps. Until then we eager-load everything
-// so beta regions past Hash Highlands still have textures available.
-import { SPRITE_ASSETS, IMAGE_ASSETS, TILEMAP_ASSETS, AUDIO_ASSETS } from '../config/assets';
+// Boot stays intentionally tiny. Region, puzzle, and player art is queued by
+// the scene that owns it so production Firefox does not block menu startup on
+// dozens of large image decodes.
+import { BOOT_IMAGE_ASSETS, BOOT_SPRITE_ASSETS, TILEMAP_ASSETS, AUDIO_ASSETS } from '../config/assets';
 
 const GLYPHS = '0123456789#%&*!?<>=+~^@$';
 const GAME_VERSION = 'v1.0.0';
@@ -25,7 +24,7 @@ export class BootScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.VOID_BLACK);
 
     const totalAssets =
-      SPRITE_ASSETS.length + IMAGE_ASSETS.length + TILEMAP_ASSETS.length + AUDIO_ASSETS.length;
+      BOOT_SPRITE_ASSETS.length + BOOT_IMAGE_ASSETS.length + TILEMAP_ASSETS.length + AUDIO_ASSETS.length;
 
     // Layout — all snapped to 8px grid
     const titleY = Math.round(height / 2 - 96);
@@ -137,13 +136,13 @@ export class BootScene extends Phaser.Scene {
       console.warn('Failed to load asset:', file.key, file.url);
     });
 
-    for (const asset of SPRITE_ASSETS) {
+    for (const asset of BOOT_SPRITE_ASSETS) {
       this.load.spritesheet(asset.key, asset.path, {
         frameWidth: asset.frameWidth || 32,
         frameHeight: asset.frameHeight || 48,
       });
     }
-    for (const asset of IMAGE_ASSETS) this.load.image(asset.key, asset.path);
+    for (const asset of BOOT_IMAGE_ASSETS) this.load.image(asset.key, asset.path);
     for (const asset of TILEMAP_ASSETS) this.load.tilemapTiledJSON(asset.key, asset.path);
     for (const asset of AUDIO_ASSETS) this.load.audio(asset.key, asset.path);
 

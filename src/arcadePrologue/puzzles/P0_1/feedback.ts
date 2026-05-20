@@ -36,32 +36,62 @@ export function chantPulse(scene: Phaser.Scene, glyph: Glyph, reduceMotion: bool
 }
 
 export function chantRing(scene: Phaser.Scene, at: Phaser.Math.Vector2): void {
+  // Outer expanding ring
   const ring = scene.add
     .circle(at.x, at.y, HEX_RADIUS + s(2), 0, 0)
-    .setStrokeStyle(s(1), COLORS.accent, 0.35)
+    .setStrokeStyle(s(1.2), COLORS.accent, 0.45)
     .setDepth(9);
   scene.tweens.add({
     targets: ring,
-    scale: 1.3,
+    scale: 1.4,
     alpha: 0,
     duration: TIMING.chantStep - 60,
     ease: MOTION.chant.ease,
     onComplete: () => ring.destroy(),
   });
+
+  // Inner dot flash — gives the "pointer lands here" feel
+  const dot = scene.add
+    .circle(at.x, at.y, s(5), COLORS.accent, 0.7)
+    .setDepth(9);
+  scene.tweens.add({
+    targets: dot,
+    alpha: 0,
+    scaleX: 2.5,
+    scaleY: 2.5,
+    duration: 280,
+    ease: 'Power2.easeOut',
+    onComplete: () => dot.destroy(),
+  });
 }
 
 export function stepCorrect(scene: Phaser.Scene, at: Phaser.Math.Vector2): void {
-  const ring = scene.add
-    .circle(at.x, at.y, HEX_RADIUS + s(4), 0, 0)
-    .setStrokeStyle(s(1.3), COLORS.accent, 0.55)
+  // Fast inner ring — snap of confirmation
+  const inner = scene.add
+    .circle(at.x, at.y, HEX_RADIUS + s(2), 0, 0)
+    .setStrokeStyle(s(1.5), COLORS.accent, 0.8)
     .setDepth(12);
   scene.tweens.add({
-    targets: ring,
-    scale: 1.08,
+    targets: inner,
+    scale: 1.12,
     alpha: 0,
-    duration: MOTION.settle.duration + 120,
+    duration: 200,
+    ease: 'Power2.easeOut',
+    onComplete: () => inner.destroy(),
+  });
+
+  // Slower outer ring — echo
+  const outer = scene.add
+    .circle(at.x, at.y, HEX_RADIUS + s(4), 0, 0)
+    .setStrokeStyle(s(1), COLORS.accent, 0.35)
+    .setDepth(12);
+  scene.tweens.add({
+    targets: outer,
+    scale: 1.4,
+    alpha: 0,
+    duration: MOTION.settle.duration + 180,
     ease: MOTION.settle.ease,
-    onComplete: () => ring.destroy(),
+    onComplete: () => outer.destroy(),
   });
 }
 
@@ -116,18 +146,33 @@ export async function winCascade(
 ): Promise<void> {
   const stagger = reduceMotion ? 36 : TIMING.winStaggerStep;
   for (const p of points) {
+    // Filled flash — tile "completes"
+    const flash = scene.add
+      .circle(p.x, p.y, HEX_RADIUS + s(2), COLORS.accent, 0.25)
+      .setDepth(12);
+    scene.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scale: 1.3,
+      duration: 320,
+      ease: 'Power2.easeOut',
+      onComplete: () => flash.destroy(),
+    });
+
+    // Expanding ring
     const ring = scene.add
       .circle(p.x, p.y, HEX_RADIUS + s(6), 0, 0)
-      .setStrokeStyle(s(1.4), COLORS.accent, 0.75)
+      .setStrokeStyle(s(1.6), COLORS.accent, 0.8)
       .setDepth(12);
     scene.tweens.add({
       targets: ring,
-      scale: 1.18,
+      scale: 1.4,
       alpha: 0,
-      duration: 560,
+      duration: 580,
       ease: MOTION.win.ease,
       onComplete: () => ring.destroy(),
     });
+
     /* eslint-disable-next-line no-await-in-loop */
     await new Promise<void>((resolve) => scene.time.delayedCall(stagger, () => resolve()));
   }

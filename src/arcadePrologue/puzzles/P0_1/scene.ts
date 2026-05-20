@@ -1,30 +1,34 @@
 import Phaser from 'phaser';
-import { COLORS, HEX_RADIUS, s } from './tokens';
+import { COLORS, s } from './tokens';
 import { TIMING } from './motion';
-import { ROUNDS } from './rounds';
-import { paintAtmosphere, type Atmosphere } from './visuals/atmosphere';
-import { ensureRuneTexture } from './visuals/rune';
-import { createRibbon, type Ribbon } from './visuals/ribbon';
-import { buildHud, type Hud } from './visuals/hud';
+import { paintAtmosphere } from './visuals/atmosphere';
+import { paintPlatform, paintEdgeVignette } from './visuals/platform';
+import { ensureTileTextures } from './visuals/runeTile';
+import { buildPrologueHud, type PrologueHud } from './visuals/prologueHud';
+import { createDialogueBox, type DialogueBox } from './visuals/dialogueBox';
+import { createSequencePanel, type SequencePanel } from './visuals/sequencePanel';
 import {
-  bestSteer,
-  coordsOf,
-  mountBoard,
-  nearestLegal,
-  unmountBoard,
-  type Board,
-} from './board';
+  cellKey,
+  cellWorldPos,
+  flashCellError,
+  getNeighbors,
+  IsoGrid,
+  dimPathTiles,
+  flashTileOn,
+  markCellDone,
+  mountIsoGrid,
+  nearestCell,
+  steerFrom,
+  TILE_H,
+  TILE_W,
+  unmountIsoGrid,
+  type GridPos,
+} from './isogrid';
+import { PATH_ROUNDS } from './pathRounds';
 import { bindInput } from './input';
 import { canAcceptStep, STATE_LABEL, type PuzzleState } from './state';
 import { readReduceMotion, writeReduceMotion } from './prefs';
-import {
-  chantPulse,
-  chantRing,
-  pressPulse,
-  stepCorrect,
-  stepMistake,
-  winCascade,
-} from './feedback';
+import { chantRing, stepCorrect, stepMistake, winCascade } from './feedback';
 import { GAME, PENALTIES, POINTS } from '../../game/state';
 import {
   completeAlgorithmiaPuzzle,
@@ -34,32 +38,39 @@ import {
 import { scorePopup } from '../../ui/popups';
 import { hexColorToNumber, sparkle } from '../../ui/particles';
 import { comboMilestone } from '../../game/milestone';
+import {
+  OVERWORLD_PLAYER_SPRITE_ASSETS,
+  P0_1_PUZZLE_ASSETS,
+  PROLOGUE_SHEET_KEYS,
+  VISUAL_REVAMP_KEYS,
+} from '../../../config/assets';
+import { MOTION } from './motion';
 import { SCENE_KEYS } from '../../../config/constants';
 
-const HIT_RADIUS = HEX_RADIUS + s(22);
-const SNAP_BIAS = s(18);
-const SEGMENT_REPLAY_TAIL = 3;
-const ALPHA_PATH_DIM = 0.55;
-const ALPHA_NONPATH_DIM = 0.32;
-const ALPHA_LEGAL = 0.85;
-const ALPHA_LEGAL_HOVER = 1;
+const HIT_RADIUS = Math.max(TILE_W, TILE_H) * 0.72;
 
-const ROUND_TIMERS = [25000, 30000, 35000];
-const TIME_BONUS_MAX = [200, 240, 280];
-const PERFECT_BONUS = [250, 280, 320];
+const ROUND_TIMERS = [22000, 28000, 35000, 40000];
+const TIME_BONUS_MAX = [200, 240, 280, 320];
+const PERFECT_BONUS = [250, 280, 320, 360];
 
 export class FollowThePathScene extends Phaser.Scene {
-  private atmosphere!: Atmosphere;
-  private ribbon!: Ribbon;
-  private hud!: Hud;
-  private board: Board | null = null;
+  private hud!: PrologueHud;
+  private dialogue!: DialogueBox;
+  private seqPanel: SequencePanel | null = null;
+  private grid: IsoGrid | null = null;
+  private traceG!: Phaser.GameObjects.Graphics;
+  private playerSprite!: Phaser.GameObjects.Sprite;
+  private playerGlow!: Phaser.GameObjects.Arc;
+  private runeKeeper: Phaser.GameObjects.Image | null = null;
+
   private state: PuzzleState = 'idle';
-  private station = '';
-  private hops = 0;
   private wave = 0;
+  private hopIndex = 0;
+  private playerPos: GridPos = { row: 5, col: 2 };
+
+  private hasArenaArt = false;
   private reduceMotion = false;
   private unbindInput?: () => void;
-  private stationRing?: Phaser.GameObjects.Arc;
   private returnScene: string = SCENE_KEYS.PROLOGUE;
   private startedAt = Date.now();
 
@@ -71,23 +82,57 @@ export class FollowThePathScene extends Phaser.Scene {
     this.returnScene = resolveReturnScene(data);
   }
 
+  preload(): void {
+    for (const asset of OVERWORLD_PLAYER_SPRITE_ASSETS) {
+      if (!this.textures.exists(asset.key)) {
+        this.load.spritesheet(asset.key, asset.path, {
+          frameWidth: asset.frameWidth ?? 32,
+          frameHeight: asset.frameHeight ?? 32,
+        });
+      }
+    }
+
+    for (const asset of P0_1_PUZZLE_ASSETS) {
+      if (this.textures.exists(asset.key)) continue;
+      if (asset.frameWidth && asset.frameHeight) {
+        this.load.spritesheet(asset.key, asset.path, {
+          frameWidth: asset.frameWidth,
+          frameHeight: asset.frameHeight,
+        });
+      } else {
+        this.load.image(asset.key, asset.path);
+      }
+    }
+  }
+
   create(): void {
     this.cameras.main.setBackgroundColor(COLORS.bg.deep);
     this.startedAt = Date.now();
     this.reduceMotion = readReduceMotion();
+
     GAME.reset();
     GAME.setCurrentPuzzle(this.scene.key);
     if (!this.scene.isActive(PROLOGUE_RUN_UI_KEY)) this.scene.launch(PROLOGUE_RUN_UI_KEY);
     this.scene.bringToTop(PROLOGUE_RUN_UI_KEY);
 
-    this.atmosphere = paintAtmosphere(this);
-    ensureRuneTexture(this);
-    this.ribbon = createRibbon(this);
-    this.hud = buildHud(this, {
-      eyebrow: 'LESSON 01  ·  SEQUENCING',
-      footerHint: '[R] replay   ·   WASD / arrows / click   ·   [M] reduce motion',
-    });
+    // ── Visual layers ────────────────────────────────────────────────────────
+    // paintPlatform returns true when the stone_arena art is used — in that case
+    // the baked-in space background makes procedural atmosphere / edge fog redundant.
+    this.hasArenaArt = paintPlatform(this);
+    if (!this.hasArenaArt) {
+      paintAtmosphere(this);
+      paintEdgeVignette(this);
+    }
+    ensureTileTextures(this);
 
+    this.traceG = this.add.graphics().setDepth(30);
+    this.spawnRuneKeeper();
+    this.buildPlayerSprite();
+
+    this.hud = buildPrologueHud(this);
+    this.dialogue = createDialogueBox(this);
+
+    // ── Input ────────────────────────────────────────────────────────────────
     this.unbindInput = bindInput(this, {
       onSteer: (dx, dy) => this.steer(dx, dy),
       onPickWorld: (x, y) => this.pickAt(x, y),
@@ -96,201 +141,112 @@ export class FollowThePathScene extends Phaser.Scene {
       onToggleReduceMotion: () => this.toggleReduceMotion(),
     });
 
-    const escape = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-    escape?.on('down', this.exitToReturnScene, this);
+    const esc = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    esc?.on('down', this.exitScene, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      escape?.removeAllListeners();
+      esc?.removeAllListeners();
       this.unbindInput?.();
     });
 
     void this.runRound(0);
   }
 
-  update(): void {
-    const node = this.board?.glyphs.get(this.station);
-    if (!node) return;
-    if (!this.stationRing) {
-      this.stationRing = this.add
-        .circle(node.x, node.y, HEX_RADIUS - s(4), 0, 0)
-        .setStrokeStyle(s(1.4), COLORS.accent, 0.7)
-        .setDepth(8);
-    } else {
-      this.stationRing.setPosition(node.x, node.y);
-    }
-    const breath = 0.55 + Math.sin(this.time.now / 600) * 0.12;
-    this.stationRing.setStrokeStyle(s(1.4), COLORS.accent, breath);
-  }
+  // ── Round lifecycle ─────────────────────────────────────────────────────────
 
   private async runRound(index: number): Promise<void> {
     this.wave = index;
     this.tearDown();
 
-    const def = ROUNDS[index]!;
-    this.hud.setRound(def.title, def.principle, def.teach);
-    this.board = mountBoard(this, def);
-    this.ribbon.paintGhost(this.board);
+    const round = PATH_ROUNDS[index]!;
+    this.grid = mountIsoGrid(this, round.field, round.path, this.hasArenaArt);
+    this.playerPos = { ...round.path[0]! };
+    this.hopIndex = 0;
 
-    this.station = this.board.walkKeys[0]!;
-    this.hops = 0;
+    // Sequence panel: one tile-lit-at-a-time panel — rebuild each round
+    this.seqPanel = createSequencePanel(this, round.path);
 
+    this.hud.setRound(index + 1, PATH_ROUNDS.length);
+    this.hud.showRoundTitle(round.principle);
+    this.dialogue.show('Rune Keeper', round.npcLine);
+
+    this.positionPlayer(this.playerPos);
+
+    // Start dark — flashTileOn in chantStep lights one tile at a time
+    dimPathTiles(this.grid, this);
     this.setState('preview');
-    this.applyPreviewAlphas();
-    await this.runPreview(0, this.board.walkKeys.length - 1);
-    this.applyTurnAlphas();
+    await this.runPreview();
+    this.positionPlayer(this.playerPos); // reset sprite to start after preview walk
+    // Tiles are already dark — flashTileOn faded them individually
     this.setState('turn');
-    GAME.startRound(ROUND_TIMERS[index] ?? 30000);
+    GAME.startRound(ROUND_TIMERS[index] ?? 28000);
   }
 
-  private async runPreview(from: number, to: number): Promise<void> {
-    if (!this.board) return;
-    this.atmosphere.setMood('preview');
-    this.applyPreviewAlphas();
-    for (let i = from; i <= to; i += 1) {
-      /* eslint-disable-next-line no-await-in-loop */
-      await this.chantOneStep(this.board.walkKeys[i]!);
+  private async runPreview(): Promise<void> {
+    if (!this.grid) return;
+    const path = PATH_ROUNDS[this.wave]!.path;
+    for (let i = 0; i < path.length; i++) {
+      await this.chantStep(path[i]!, i > 0 ? path[i - 1]! : undefined);
     }
-    this.atmosphere.setMood('normal');
   }
 
-  private chantOneStep(key: string): Promise<void> {
-    const node = this.board!.glyphs.get(key)!;
-    chantRing(this, new Phaser.Math.Vector2(node.x, node.y));
-    chantPulse(this, node, this.reduceMotion);
+  private chantStep(pos: GridPos, prevPos?: GridPos): Promise<void> {
+    const { x, y } = cellWorldPos(pos.row, pos.col);
+    chantRing(this, new Phaser.Math.Vector2(x, y));
+    // Sequential tile reveal — light this tile briefly then fade back out
+    if (this.grid) flashTileOn(this.grid, pos.row, pos.col, this, TIMING.chantStep - 100);
+    if (prevPos) void this.walkPlayerTo(prevPos, pos);
     return new Promise<void>((resolve) =>
       this.time.delayedCall(TIMING.chantStep, () => resolve()),
     );
   }
 
   private async replay(): Promise<void> {
-    if (this.state !== 'turn' || !this.board) return;
-    this.station = this.board.walkKeys[0]!;
-    this.hops = 0;
-    this.ribbon.paintTrace(this.board, this.hops);
+    if (this.state !== 'turn' || !this.grid) return;
+    this.hopIndex = 0;
+    this.playerPos = { ...PATH_ROUNDS[this.wave]!.path[0]! };
+    this.positionPlayer(this.playerPos);
+    this.traceG.clear();
+    dimPathTiles(this.grid, this);
     this.setState('preview');
-    await this.runPreview(0, this.board.walkKeys.length - 1);
-    this.applyTurnAlphas();
-    this.setState('turn');
-  }
-
-  private pickAt(worldX: number, worldY: number): void {
-    if (!canAcceptStep(this.state) || !this.board) return;
-    const match = nearestLegal(this.board, this.station, worldX, worldY, HIT_RADIUS, SNAP_BIAS);
-    if (!match) return;
-    this.tryHop(match.key);
-  }
-
-  private hoverAt(worldX: number, worldY: number): void {
-    if (!canAcceptStep(this.state) || !this.board) return;
-    const legal = this.board.neighbors.get(this.station);
-    if (!legal) return;
-    const match = nearestLegal(this.board, this.station, worldX, worldY, HIT_RADIUS + s(6), 0);
-    const hoverKey = match && legal.has(match.key) ? match.key : null;
-    this.board.glyphs.forEach((g, k) => {
-      if (k === this.station) g.setAlpha(1);
-      else if (legal.has(k)) g.setAlpha(hoverKey === k ? ALPHA_LEGAL_HOVER : ALPHA_LEGAL);
-      else g.setAlpha(ALPHA_PATH_DIM);
-    });
-  }
-
-  private steer(dx: number, dy: number): void {
-    if (!canAcceptStep(this.state) || !this.board) return;
-    const next = bestSteer(this.board, this.station, dx, dy);
-    if (next) this.tryHop(next);
-  }
-
-  private tryHop(candidate: string): void {
-    if (!this.board) return;
-    const legal = this.board.neighbors.get(this.station);
-    const node = this.board.glyphs.get(candidate);
-    if (!node || !legal?.has(candidate)) return;
-
-    pressPulse(this, node, this.reduceMotion);
-
-    const expected = this.board.walkKeys[this.hops + 1];
-    if (expected === undefined) return;
-
-    if (candidate !== expected) {
-      stepMistake(this, node, coordsOf(this.board, candidate), this.reduceMotion);
-      GAME.recordMistake();
-      GAME.losePoints(PENALTIES.p1Miss);
-      const dead = GAME.loseLife();
-      if (dead) {
-        this.time.delayedCall(420, () => {
-          GAME.reset();
-          this.scene.restart({ returnScene: this.returnScene });
-        });
-        return;
-      }
-      void this.afterMistake();
-      return;
-    }
-
-    this.hops += 1;
-    this.station = candidate;
-    stepCorrect(this, coordsOf(this.board, candidate));
-    this.ribbon.paintTrace(this.board, this.hops);
-    this.applyTurnAlphas();
-
-    GAME.bumpCombo();
-    const awarded = GAME.addScore(POINTS.step, 'step');
-    scorePopup(this, node.x, node.y - s(28), `+${awarded}`);
-    sparkle(this, node.x, node.y);
-
-    const milestone = comboMilestone(GAME.combo);
-    if (milestone) {
-      scorePopup(this, node.x, node.y - s(58), milestone.label, {
-        color: milestone.color,
-        size: 17,
-        rise: 38,
-        duration: 980,
-      });
-      sparkle(this, node.x, node.y, {
-        count: 12,
-        color: hexColorToNumber(milestone.color),
-        spread: 36,
-        duration: 700,
-      });
-    }
-
-    if (this.hops >= this.board.walkKeys.length - 1) {
-      void this.finishRound();
-    }
-  }
-
-  private async afterMistake(): Promise<void> {
-    if (!this.board || this.hops < SEGMENT_REPLAY_TAIL - 1) return;
-    this.setState('preview');
-    const start = Math.max(0, this.hops + 1 - SEGMENT_REPLAY_TAIL);
-    const end = Math.min(this.board.walkKeys.length - 1, this.hops + 1);
-    await new Promise<void>((resolve) =>
-      this.time.delayedCall(TIMING.segmentReplayPause, () => resolve()),
-    );
-    await this.runPreview(start, end);
-    this.applyTurnAlphas();
+    await this.runPreview();
     this.setState('turn');
   }
 
   private async finishRound(): Promise<void> {
-    if (!this.board) return;
+    if (!this.grid) return;
     this.setState('cleared');
 
-    const lastAt = coordsOf(this.board, this.station);
+    const path = PATH_ROUNDS[this.wave]!.path;
     const bonuses = GAME.endRound(
       TIME_BONUS_MAX[this.wave] ?? 240,
       PERFECT_BONUS[this.wave] ?? 280,
     );
-    this.spawnRoundBonusPopups(lastAt, bonuses);
 
-    const points = this.board.walkKeys.map((k) => coordsOf(this.board!, k));
-    await winCascade(this, points, this.reduceMotion);
-    await new Promise<void>((resolve) => this.time.delayedCall(TIMING.winHold, () => resolve()));
-    if (this.wave + 1 < ROUNDS.length) {
+    const lastPos = path[path.length - 1]!;
+    const lastAt = new Phaser.Math.Vector2(
+      cellWorldPos(lastPos.row, lastPos.col).x,
+      cellWorldPos(lastPos.row, lastPos.col).y,
+    );
+    this.spawnBonusPopups(lastAt, bonuses);
+
+    const pathPoints = path.map((p) => {
+      const w = cellWorldPos(p.row, p.col);
+      return new Phaser.Math.Vector2(w.x, w.y);
+    });
+    this.npcReact('win');
+    await winCascade(this, pathPoints, this.reduceMotion);
+    await this.wait(TIMING.winHold);
+
+    if (this.wave + 1 < PATH_ROUNDS.length) {
       void this.runRound(this.wave + 1);
       return;
     }
+
+    this.dialogue.hide();
     this.hud.showSummary('Sequencing learned. The chant is yours.');
     this.hud.showPromptNext('Return to the Chamber');
+
     this.time.delayedCall(1700, () =>
       completeAlgorithmiaPuzzle(this, {
         puzzleId: 'p0_1',
@@ -302,22 +258,313 @@ export class FollowThePathScene extends Phaser.Scene {
     );
   }
 
-  puzzleComplete(): void {
-    completeAlgorithmiaPuzzle(this, {
-      puzzleId: 'p0_1',
-      puzzleName: 'Follow the Path',
-      concept: 'Sequential Processing',
-      returnScene: this.returnScene,
-      startedAt: this.startedAt,
-      delayMs: 0,
+  // ── Input handlers ──────────────────────────────────────────────────────────
+
+  private pickAt(worldX: number, worldY: number): void {
+    if (!canAcceptStep(this.state) || !this.grid) return;
+    const cell = nearestCell(this.grid, worldX, worldY, HIT_RADIUS);
+    if (!cell) return;
+    this.tryHop({ row: cell.row, col: cell.col });
+  }
+
+  private hoverAt(worldX: number, worldY: number): void {
+    if (!canAcceptStep(this.state) || !this.grid) return;
+    const legal = new Set(
+      getNeighbors(this.grid, this.playerPos.row, this.playerPos.col).map((n) =>
+        cellKey(n.row, n.col),
+      ),
+    );
+    this.grid.cells.forEach((cell, key) => {
+      const isCurrentPos = cell.row === this.playerPos.row && cell.col === this.playerPos.col;
+      const isLegal = legal.has(key);
+      if (isCurrentPos) {
+        cell.base.setAlpha(1);
+      } else if (isLegal) {
+        const d = Phaser.Math.Distance.Between(worldX, worldY, cell.x, cell.y);
+        cell.base.setAlpha(d < HIT_RADIUS ? 1 : 0.78);
+      } else {
+        cell.base.setAlpha(0.42);
+      }
     });
   }
 
-  private spawnRoundBonusPopups(
+  private steer(dx: number, dy: number): void {
+    if (!canAcceptStep(this.state) || !this.grid) return;
+    const next = steerFrom(this.grid, this.playerPos.row, this.playerPos.col, dx, dy);
+    if (next) this.tryHop(next);
+  }
+
+  // ── Step validation ─────────────────────────────────────────────────────────
+
+  private tryHop(candidate: GridPos): void {
+    if (!this.grid) return;
+
+    // Must be a neighbor of the current position
+    const neighbors = getNeighbors(this.grid, this.playerPos.row, this.playerPos.col);
+    const isNeighbor = neighbors.some(
+      (n) => n.row === candidate.row && n.col === candidate.col,
+    );
+    if (!isNeighbor) return;
+
+    const path = PATH_ROUNDS[this.wave]!.path;
+    const expected = path[this.hopIndex + 1];
+    if (!expected) return;
+
+    const { x, y } = cellWorldPos(candidate.row, candidate.col);
+    const at = new Phaser.Math.Vector2(x, y);
+
+    if (candidate.row === expected.row && candidate.col === expected.col) {
+      this.onCorrectHop(candidate, at);
+    } else {
+      const cell = this.grid.cells.get(cellKey(candidate.row, candidate.col));
+      if (cell) {
+        stepMistake(this, cell.base, at, this.reduceMotion);
+      }
+      this.onWrongHop(candidate);
+    }
+  }
+
+  private onCorrectHop(pos: GridPos, at: Phaser.Math.Vector2): void {
+    if (!this.grid) return;
+    const prevPos = { ...this.playerPos };
+    this.hopIndex++;
+    this.playerPos = { ...pos };
+
+    markCellDone(this.grid, pos.row, pos.col, this);
+    stepCorrect(this, at);
+    this.paintTrace();
+    void this.walkPlayerTo(prevPos, pos);
+    this.seqPanel?.update(this.hopIndex);
+    this.npcReact('correct');
+
+    // Reset alpha dimming from hover
+    this.grid.cells.forEach((c) => c.base.setAlpha(1));
+
+    GAME.bumpCombo();
+    const awarded = GAME.addScore(POINTS.step, 'step');
+    this.hud.addScore(awarded);
+    scorePopup(this, at.x, at.y - s(28), `+${awarded}`);
+    sparkle(this, at.x, at.y);
+
+    const milestone = comboMilestone(GAME.combo);
+    if (milestone) {
+      scorePopup(this, at.x, at.y - s(58), milestone.label, {
+        color: milestone.color,
+        size: 17,
+        rise: 38,
+        duration: 980,
+      });
+      sparkle(this, at.x, at.y, {
+        count: 12,
+        color: hexColorToNumber(milestone.color),
+        spread: 36,
+        duration: 700,
+      });
+    }
+
+    if (this.hopIndex >= PATH_ROUNDS[this.wave]!.path.length - 1) {
+      void this.finishRound();
+    }
+  }
+
+  private onWrongHop(pos: GridPos): void {
+    GAME.recordMistake();
+    GAME.losePoints(PENALTIES.p1Miss);
+    flashCellError(this, pos.row, pos.col);
+    this.cameras.main.shake(140, 0.005);
+    this.npcReact('wrong');
+
+    const dead = GAME.loseLife();
+    if (dead) {
+      this.time.delayedCall(380, () => {
+        GAME.reset();
+        this.scene.restart({ returnScene: this.returnScene });
+      });
+      return;
+    }
+
+    void this.afterMistake();
+  }
+
+  private async afterMistake(): Promise<void> {
+    if (!this.grid) return;
+    const TAIL = 3;
+    this.setState('preview');
+    const path = PATH_ROUNDS[this.wave]!.path;
+    const start = Math.max(0, this.hopIndex + 1 - TAIL);
+    const end = Math.min(path.length - 1, this.hopIndex + 1);
+    await this.wait(TIMING.segmentReplayPause);
+    for (let i = start; i <= end; i++) {
+      await this.chantStep(path[i]!);
+    }
+    this.setState('turn');
+  }
+
+  // ── Character sprites ───────────────────────────────────────────────────────
+
+  private spawnRuneKeeper(): void {
+    const npcKey = VISUAL_REVAMP_KEYS.RUNE_KEEPER;
+    if (this.textures.exists(npcKey)) {
+      this.runeKeeper = this.add
+        .image(1040, 320, npcKey, 0)
+        .setScale(0.26)
+        .setDepth(48)
+        .setFlipX(true);
+    }
+  }
+
+  private npcReact(emotion: 'correct' | 'wrong' | 'win'): void {
+    if (!this.runeKeeper) return;
+    const npc = this.runeKeeper;
+    const baseX = npc.x;
+    const baseY = npc.y;
+    const baseScale = npc.scaleX;
+    this.tweens.killTweensOf(npc);
+
+    if (emotion === 'wrong') {
+      this.tweens.add({
+        targets: npc,
+        x: { from: baseX - 7, to: baseX + 7 },
+        duration: 55,
+        yoyo: true,
+        repeat: 2,
+        ease: 'Sine.easeInOut',
+        onComplete: () => npc.setX(baseX),
+      });
+    } else if (emotion === 'correct') {
+      this.tweens.add({
+        targets: npc,
+        y: baseY - 9,
+        scaleX: baseScale * 1.07,
+        scaleY: baseScale * 1.07,
+        duration: 110,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+        onComplete: () => npc.setY(baseY).setScale(baseScale),
+      });
+    } else {
+      this.tweens.add({
+        targets: npc,
+        y: baseY - 22,
+        scaleX: baseScale * 1.18,
+        scaleY: baseScale * 1.18,
+        duration: 280,
+        yoyo: true,
+        ease: 'Back.easeOut',
+        repeat: 1,
+        onComplete: () => npc.setY(baseY).setScale(baseScale),
+      });
+    }
+  }
+
+  private buildPlayerSprite(): void {
+    const startPos = PATH_ROUNDS[0]!.path[0]!;
+    const { x, y } = cellWorldPos(startPos.row, startPos.col);
+
+    // Soft position glow under the character
+    this.playerGlow = this.add.circle(x, y, 24, COLORS.accent, 0.22).setDepth(49);
+    this.tweens.add({
+      targets: this.playerGlow,
+      alpha: 0.06,
+      scaleX: 1.18,
+      scaleY: 1.18,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    const playerKey = PROLOGUE_SHEET_KEYS.PLAYER;
+    this.playerSprite = this.add
+      .sprite(x, y, playerKey, 0)
+      .setOrigin(0.5, 1)
+      .setScale(0.25)
+      .setDepth(50);
+
+    if (!this.anims.exists('p0-walk-down')) {
+      const gen = (start: number, end: number) =>
+        this.anims.generateFrameNumbers(playerKey, { start, end });
+      this.anims.create({ key: 'p0-walk-down',  frames: gen(0,  7),  frameRate: 10, repeat: -1 });
+      this.anims.create({ key: 'p0-walk-left',  frames: gen(8,  15), frameRate: 10, repeat: -1 });
+      this.anims.create({ key: 'p0-walk-right', frames: gen(16, 23), frameRate: 10, repeat: -1 });
+      this.anims.create({ key: 'p0-walk-up',    frames: gen(24, 31), frameRate: 10, repeat: -1 });
+    }
+  }
+
+  // ── Player movement ─────────────────────────────────────────────────────────
+
+  private positionPlayer(pos: GridPos): void {
+    const { x, y } = cellWorldPos(pos.row, pos.col);
+    this.playerSprite.setPosition(x, y).setFrame(0);
+    this.playerGlow.setPosition(x, y);
+  }
+
+  private walkPlayerTo(from: GridPos, to: GridPos): Promise<void> {
+    const dCol = to.col - from.col;
+    const dRow = to.row - from.row;
+    let animKey = 'p0-walk-down';
+    if (dCol > 0)      animKey = 'p0-walk-right';
+    else if (dCol < 0) animKey = 'p0-walk-left';
+    else if (dRow < 0) animKey = 'p0-walk-up';
+
+    this.playerSprite.play(animKey, true);
+
+    const { x, y } = cellWorldPos(to.row, to.col);
+    const dur = MOTION.settle.duration;
+
+    return new Promise<void>((resolve) => {
+      this.tweens.add({
+        targets: this.playerSprite,
+        x, y,
+        duration: dur,
+        ease: MOTION.settle.ease,
+        onComplete: () => {
+          this.playerSprite.stop().setFrame(0);
+          resolve();
+        },
+      });
+      this.tweens.add({ targets: this.playerGlow, x, y, duration: dur, ease: MOTION.settle.ease });
+    });
+  }
+
+  // ── Trace ribbon ────────────────────────────────────────────────────────────
+
+  private paintTrace(): void {
+    const path = PATH_ROUNDS[this.wave]!.path;
+    const chain = path.slice(0, this.hopIndex + 1);
+    this.traceG.clear();
+    if (chain.length < 2) return;
+
+    this.traceG.lineStyle(s(3), COLORS.accent, 0.82);
+    for (let i = 1; i < chain.length; i++) {
+      const a = cellWorldPos(chain[i - 1]!.row, chain[i - 1]!.col);
+      const b = cellWorldPos(chain[i]!.row, chain[i]!.col);
+      this.traceG.beginPath();
+      this.traceG.moveTo(a.x, a.y);
+      this.traceG.lineTo(b.x, b.y);
+      this.traceG.strokePath();
+      // Midpoint tick
+      this.traceG.fillStyle(COLORS.accent, 1);
+      this.traceG.fillCircle((a.x + b.x) / 2, (a.y + b.y) / 2, s(2.5));
+    }
+  }
+
+  // ── Utilities ───────────────────────────────────────────────────────────────
+
+  private wait(ms: number): Promise<void> {
+    return new Promise<void>((resolve) => this.time.delayedCall(ms, () => resolve()));
+  }
+
+  private setState(next: PuzzleState): void {
+    this.state = next;
+    this.hud.setState(STATE_LABEL[next] ?? '');
+  }
+
+  private spawnBonusPopups(
     at: Phaser.Math.Vector2,
     bonuses: { timeBonus: number; perfectBonus: number; wasPerfect: boolean },
   ): void {
-    let offset = 0;
+    let yOffset = 0;
     if (bonuses.timeBonus > 0) {
       scorePopup(this, at.x, at.y - s(46), `+${bonuses.timeBonus}  TIME`, {
         color: '#fde68a',
@@ -325,10 +572,10 @@ export class FollowThePathScene extends Phaser.Scene {
         rise: 36,
         duration: 1100,
       });
-      offset += s(26);
+      yOffset += s(26);
     }
     if (bonuses.wasPerfect && bonuses.perfectBonus > 0) {
-      scorePopup(this, at.x, at.y - s(46) - offset, `+${bonuses.perfectBonus}  PERFECT!`, {
+      scorePopup(this, at.x, at.y - s(46) - yOffset, `+${bonuses.perfectBonus}  PERFECT!`, {
         color: '#a3e635',
         size: 17,
         rise: 40,
@@ -338,27 +585,12 @@ export class FollowThePathScene extends Phaser.Scene {
     }
   }
 
-  private setState(next: PuzzleState): void {
-    this.state = next;
-    this.hud.setState(STATE_LABEL[next] ?? '');
-  }
-
-  private applyPreviewAlphas(): void {
-    if (!this.board) return;
-    const path = new Set(this.board.walkKeys);
-    this.board.glyphs.forEach((g, k) =>
-      g.setAlpha(path.has(k) ? ALPHA_PATH_DIM : ALPHA_NONPATH_DIM),
-    );
-  }
-
-  private applyTurnAlphas(): void {
-    if (!this.board) return;
-    const legal = this.board.neighbors.get(this.station) ?? new Set<string>();
-    this.board.glyphs.forEach((g, k) => {
-      if (k === this.station) g.setAlpha(1);
-      else if (legal.has(k)) g.setAlpha(ALPHA_LEGAL);
-      else g.setAlpha(ALPHA_PATH_DIM);
-    });
+  private tearDown(): void {
+    this.traceG.clear();
+    if (this.grid) unmountIsoGrid(this.grid);
+    this.grid = null;
+    this.seqPanel?.destroy();
+    this.seqPanel = null;
   }
 
   private toggleReduceMotion(): void {
@@ -366,17 +598,21 @@ export class FollowThePathScene extends Phaser.Scene {
     writeReduceMotion(this.reduceMotion);
   }
 
-  private exitToReturnScene(): void {
+  private exitScene(): void {
     if (this.scene.isActive(PROLOGUE_RUN_UI_KEY)) this.scene.stop(PROLOGUE_RUN_UI_KEY);
     GAME.reset();
     this.scene.start(this.returnScene);
   }
 
-  private tearDown(): void {
-    this.stationRing?.destroy();
-    this.stationRing = undefined;
-    this.ribbon.clear();
-    if (this.board) unmountBoard(this.board);
-    this.board = null;
+  /** Public hook for test injection (used by Playwright). */
+  puzzleComplete(): void {
+    completeAlgorithmiaPuzzle(this, {
+      puzzleId: 'p0_1',
+      puzzleName: 'Follow the Path',
+      concept: 'Sequential Processing',
+      returnScene: this.returnScene,
+      startedAt: this.startedAt,
+      delayMs: 0,
+    });
   }
 }

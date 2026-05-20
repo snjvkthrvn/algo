@@ -1,0 +1,810 @@
+Reading additional input from stdin...
+2026-05-18T13:34:32.004302Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer realm=\"OAuth\", resource_metadata=\"https://mcp.linear.app/.well-known/oauth-protected-resource/mcp\", error=\"invalid_token\", error_description=\"Missing or invalid access token\"" })
+OpenAI Codex v0.130.0
+--------
+2026-05-18T13:34:32.023277Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_token\", error_description=\"No authorization provided\", resource_metadata=\"https://mcp.vercel.com/.well-known/oauth-protected-resource\"" })
+2026-05-18T13:34:32.024141Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://mcp.supabase.com/.well-known/oauth-protected-resource/mcp\"" })
+2026-05-18T13:34:32.024152Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/\"" })
+workdir: D:\algo
+model: gpt-5.5
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, C:\Users\kathi\.codex\memories]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019e3b4b-9a5b-7a81-a7d1-2aca03f655c5
+--------
+user
+Use the imagegen skill to produce a NEW Pokemon Red style ARRAY MARKER puzzle prop for "Algorithmia: The Path of Logic" — marks indexed array tiles in Array Plains.
+
+=== AESTHETIC ===
+Pokemon Red style numbered marker tile. Flat-shaded, 16×16-effective, 5-color.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\objects\props\array_marker_v2.png
+- Dimensions: EXACTLY 64 × 64 pixels (square — it's a tile-like marker)
+- TRANSPARENT background
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, frame)
+- `#346856` medium dark (frame body, deeper)
+- `#88c070` light accent (rare)
+- `#e0f8d0` lightest (cream tile face)
+- `#06b6d4` cyan (number/glyph on the marker — interactive)
+
+=== SUBJECT ===
+A small square stone tile with a cyan glyph indicating an index position. Pokemon Red style — think the floor tile decorations in the dungeon.
+
+Composition:
+- Outer frame: dark #081820 + #346856 stone border
+- Tile face: cream #e0f8d0 inner square
+- Center: a cyan #06b6d4 number-glyph or "◇" pattern (universal "this is an indexed tile" marker)
+- 1px outline everywhere
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO smooth gradients, NO AA, NO drop shadows
+- NO HD painted style
+- NO color count above 5+alpha
+- NO baked numerals (the glyph is decorative, not legible)
+
+=== SELF-VERIFICATION ===
+Report dimensions, color count, hex values, file size, hard-edge confirmation.
+
+STOP after self-verification. DO NOT edit assets.ts.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.
+ERROR: The process "27656" not found.
+codex
+Using the `imagegen` skill because this is a new raster game asset with strict pixel-art constraints. I’ll also do a quick project-memory pass for `D:\algo` visual asset conventions, then generate and verify the PNG locally.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Path C:\\Users\\kathi\\.codex\\skills\\.system\\imagegen\\SKILL.md" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "rg -n \"visual_revamp|Array Plains|array_marker|assets.ts|Pokemon Red|prop\" C:\\Users\\kathi\\.codex\\memories\\MEMORY.md" in D:\algo
+ succeeded in 466ms:
+88:- The Firefox failure looked like a preload-scope problem, not a generic scene crash: the screenshot stayed on BootScene around `114 / 135` assets, and `src/scenes/BootScene.ts` still preloads `IMAGE_ASSETS` even though `src/config/assets.ts` already defines the smaller `BOOT_IMAGE_ASSETS` subset [Task 1]
+133:applies_to: cwd=D:\algo; reuse_rule=safe for follow-up work in this checkout while `src/config/assets.ts`, `BootScene`, region scene `preload()` hooks, and the preview-panel helper remain recognizable, but treat exact asset names, branch names, and cache/temp redirection paths as checkout or machine specific.
+153:- D:\algo, Firefox, BootScene, preload, asset manifest, src/config/assets.ts, PROLOGUE_SCENE_IMAGE_ASSETS, ARRAY_PLAINS_SCENE_IMAGE_ASSETS, TWIN_RIVERS_SCENE_IMAGE_ASSETS, OVERWORLD_PLAYER_SPRITE_ASSETS, Set<string>, ENOSPC, test:browsers:prod
+174:- The durable asset fix was to strip BootScene down to menu-critical art and move heavy region/player assets into scene-local `preload()` methods in `src/scenes/prologue/PrologueScene.ts`, `src/scenes/ArrayPlainsScene.ts`, `src/scenes/TwinRiversScene.ts`, and `src/scenes/FutureRegionScene.ts`, with targeted bundles in `src/config/assets.ts` such as `PROLOGUE_SCENE_*`, `ARRAY_PLAINS_SCENE_IMAGE_ASSETS`, `TWIN_RIVERS_SCENE_IMAGE_ASSETS`, and `OVERWORLD_PLAYER_SPRITE_ASSETS` [Task 2]
+181:- Symptom: refactoring the asset manifest breaks the build on `includes()` checks. Cause: TypeScript narrows the literal-array unions too aggressively in `src/config/assets.ts`. Fix: use `Set<string>`-based filters for the bundle splits instead of narrow literal-array `includes()` [Task 2]
+341:- docs/story/game_script.md, Prologue, Chamber of Flow, Array Plains, Twin Rivers, Hash Highlands, Stack Spires, Queue Canals, Tree Canopy, Graph Nexus, The Core, Bit, Glitch, Patch, Rewrite, Accept
+343:## Task 5: Audit architecture for scaling from Prologue and Array Plains to later regions, success
+362:- public/assets/array_plains/environment/array_plains_field.png, src/config/assets.ts, ARRAY_PLAINS_BASE, ARRAY_PLAINS_IMAGE_ASSETS, C:\Users\kathi\.codex\generated_images, public/assets/prologue_*, public/assets/array_plains
+384:- playwright, playwright-visual, 63 passed (14.7m), http://127.0.0.1:3001/, Protocol Omega, tests/screenshots/63-protocol-omega-layout.png, tmp-pw-final.exit, tmp-pw-full.exit, 23 - TR-1 Mirror Walk, 29 - HH-1 Nameplate Gates, 35 - SS-1 Scroll Stack, Array Plains, Twin Rivers, Graph Nexus, Core
+446:- The script-defined region order is: Prologue/Chamber of Flow -> Array Plains -> Twin Rivers -> Hash Highlands -> Stack Spires -> Queue Canals -> Tree Canopy -> Graph Nexus -> The Core [Task 2]
+447:- Prologue must include Bit, Professor Node, Rune Keeper, Console Keeper, Glitch, and the Watcher/Pattern threat; Array Plains must teach arrays, bubble sort, indexing, hashing, and Two Sum before the Shuffler boss [Task 2]
+455:- `public/assets/array_plains/environment/array_plains_field.png` already exists and is wired through `src/config/assets.ts`, but the Codex-generated cache under `C:\Users\kathi\.codex\generated_images\...` is not durable project state [Task 4]
+490:- Symptom: agents assume the repo is still only a Prologue/Array Plains foundation. Cause: older memory stopped before later-region implementation and full-route verification. Fix: treat the latest validated state as a visible progression through The Core, while keeping branch/worktree details checkout specific [Task 7]
+547:- when the user asks "why is the storage so low on C: disk" or "C: is dangerously low find out why and how to fix", start with a ranked root-cause explanation of the largest consumers before proposing cleanup actions [Task 1][Task 2]
+637:- rollout_summaries/2026-05-06T17-32-50-h9df-lenovo_vantage_valorant_fan_and_packetloss_tuning.md (cwd=C:\Users\kathi, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\06\rollout-2026-05-06T13-32-50-019dfe59-7d30-7a63-8f98-3ec6ec480d91.jsonl, updated_at=2026-05-06T17:55:41+00:00, thread_id=019dfe59-7d30-7a63-8f98-3ec6ec480d91, Realtek advanced-property latency tuning plus clean ping verification)
+721:- Symptom: Ethernet power-management tweaks do not apply cleanly on the Realtek adapter. Cause: the first guessed `Set-NetAdapterPowerManagement` flag shape was wrong or driver-owned. Fix: query the supported cmdlet/property surface first and prefer the adapter's advanced properties when they are the writable path [Task 7]
+955:- Symptom: registry/power readback for Game Bar values is ambiguous in PowerShell property output. Cause: the generic property display obscured the actual values during live verification. Fix: use direct `reg query` or `reg add` readback for those keys when the exact value matters [Task 6]
+1017:- docs/superpowers/specs/2026-04-20-prologue-route-in-the-void-design.md, docs/superpowers/plans/2026-04-20-prologue-route-in-the-void.md, 3c763a0, 2400x720, Awakening Platform, Central Hub, Boss Gate, Array Plains Portal, subagent driven
+1040:- The approved route structure was a horizontal `2400x720` layout: Awakening Platform -> Central Hub -> two branches -> Boss Gate -> Array Plains Portal [Task 2]
+1081:- when the user says "resume the last session of fixing the visuals of prolouge region", continue from the existing prologue-overhaul context and inspect the dirty tree/screenshot artifacts before proposing a reset [Task 1]
+
+ succeeded in 532ms:
+---
+name: "imagegen"
+description: "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas."
+---
+
+# Image Generation Skill
+
+Generates or edits images for the current project (for example website assets, game assets, UI mockups, product mockups, wireframes, logo design, photorealistic images, or infographics).
+
+## Top-level modes and rules
+
+This skill has exactly two top-level modes:
+
+- **Default built-in tool mode (preferred):** built-in `image_gen` tool for normal image generation, editing, and simple transparent-image requests. Does not require `OPENAI_API_KEY`.
+- **Fallback CLI mode:** `scripts/image_gen.py` CLI. Use when the user explicitly asks for the CLI/API/model path, or after the user explicitly confirms a true model-native transparency fallback with `gpt-image-1.5`. Requires `OPENAI_API_KEY`.
+
+Within CLI fallback, the CLI exposes three subcommands:
+
+- `generate`
+- `edit`
+- `generate-batch`
+
+Rules:
+- Use the built-in `image_gen` tool by default for normal image generation and editing requests.
+- Do not switch to CLI fallback for ordinary quality, size, or file-path control.
+- If the user explicitly asks for a transparent image/background, stay on built-in `image_gen` first: prompt for a flat removable chroma-key background, then remove it locally with the installed helper at `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`.
+- Never silently switch from built-in `image_gen` or CLI `gpt-image-2` to CLI `gpt-image-1.5`. Treat this as a model/path downgrade and ask the user before doing it, unless the user has already explicitly requested `gpt-image-1.5`, `scripts/image_gen.py`, or CLI fallback.
+- If a transparent request appears too complex for clean chroma-key removal, asks for true/native transparency, or local removal fails validation, explain that true transparency requires CLI `gpt-image-1.5 --background transparent --output-format png` because `gpt-image-2` does not support `background=transparent`, then ask whether to proceed. Run the CLI fallback only after the user confirms.
+- The word `batch` by itself does not mean CLI fallback. If the user asks for many assets or says to batch-generate assets without explicitly asking for CLI/API/model controls, stay on the built-in path and issue one built-in call per requested asset or variant.
+- If the built-in tool fails or is unavailable, tell the user the CLI fallback exists and that it requires `OPENAI_API_KEY`. Proceed only if the user explicitly asks for that fallback.
+- If the user explicitly asks for CLI mode, use the bundled `scripts/image_gen.py` workflow. Do not create one-off SDK runners.
+- Never modify `scripts/image_gen.py`. If something is missing, ask the user before doing anything else.
+
+Built-in save-path policy:
+- In built-in tool mode, Codex saves generated images under `$CODEX_HOME/*` by default.
+- Do not describe or rely on OS temp as the default built-in destination.
+- Do not describe or rely on a destination-path argument (if any) on the built-in `image_gen` tool. If a specific location is needed, generate first and then move or copy the selected output from `$CODEX_HOME/generated_images/...`.
+- Save-path precedence in built-in mode:
+  1. If the user names a destination, move or copy the selected output there.
+  2. If the image is meant for the current project, move or copy the final selected image into the workspace before finishing.
+  3. If the image is only for preview or brainstorming, render it inline; the underlying file can remain at the default `$CODEX_HOME/*` path.
+- Never leave a project-referenced asset only at the default `$CODEX_HOME/*` path.
+- Do not overwrite an existing asset unless the user explicitly asked for replacement; otherwise create a sibling versioned filename such as `hero-v2.png` or `item-icon-edited.png`.
+
+Shared prompt guidance for both modes lives in `references/prompting.md` and `references/sample-prompts.md`.
+
+Fallback-only docs/resources for CLI mode:
+- `references/cli.md`
+- `references/image-api.md`
+- `references/codex-network.md`
+- `scripts/image_gen.py`
+
+Local post-processing helper:
+- `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`: removes a flat chroma-key background from a generated image and writes a PNG/WebP with alpha. Prefer auto-key sampling, soft matte, and despill for antialiased edges.
+
+## When to use
+- Generate a new image (concept art, product shot, cover, website hero)
+- Generate a new image using one or more reference images for style, composition, or mood
+- Edit an existing image (inpainting, lighting or weather transformations, background replacement, object removal, compositing, transparent background)
+- Produce many assets or variants for one task
+
+## When not to use
+- Extending or matching an existing SVG/vector icon set, logo system, or illustration library inside the repo
+- Creating simple shapes, diagrams, wireframes, or icons that are better produced directly in SVG, HTML/CSS, or canvas
+- Making a small project-local asset edit when the source file already exists in an editable native format
+- Any task where the user clearly wants deterministic code-native output instead of a generated bitmap
+
+## Decision tree
+
+Think about two separate questions:
+
+1. **Intent:** is this a new image or an edit of an existing image?
+2. **Execution strategy:** is this one asset or many assets/variants?
+
+Intent:
+- If the user wants to modify an existing image while preserving parts of it, treat the request as **edit**.
+- If the user provides images only as references for style, composition, mood, or subject guidance, treat the request as **generate**.
+- If the user provides no images, treat the request as **generate**.
+
+Built-in edit semantics:
+- Built-in edit mode is for images already visible in the conversation context, such as attached images or images generated earlier in the thread.
+- If the user wants to edit a local image file with the built-in tool, first load it with built-in `view_image` tool so the image is visible in the conversation context, then proceed with the built-in edit flow.
+- Do not promise arbitrary filesystem-path editing through the built-in tool.
+- If a local file still needs direct file-path control, masks, or other explicit CLI-only parameters, use the explicit CLI fallback only when the user asks for it.
+- For edits, preserve invariants aggressively and save non-destructively by default.
+
+Execution strategy:
+- In the built-in default path, produce many assets or variants by issuing one `image_gen` call per requested asset or variant.
+- In the CLI fallback path, use the CLI `generate-batch` subcommand only when the user explicitly chose CLI mode and needs many prompts/assets.
+- For many distinct assets, do not use `n` as a substitute for separate prompts. `n` is for variants of one prompt; distinct assets need distinct built-in calls or distinct CLI `generate-batch` jobs.
+
+Assume the user wants a new image unless they clearly ask to change an existing one.
+
+## Workflow
+1. Decide the top-level mode: built-in by default, including simple transparent-output requests; fallback CLI only if explicitly requested or after the user explicitly confirms a transparent-output fallback.
+2. Decide the intent: `generate` or `edit`.
+3. Decide whether the output is preview-only or meant to be consumed by the current project.
+4. Decide the execution strategy: single asset vs repeated built-in calls vs CLI `generate-batch`.
+5. Collect inputs up front: prompt(s), exact text (verbatim), constraints/avoid list, and any input images.
+6. For every input image, label its role explicitly:
+   - reference image
+   - edit target
+   - supporting insert/style/compositing input
+7. If the edit target is only on the local filesystem and you are staying on the built-in path, inspect it with `view_image` first so the image is available in conversation context.
+8. If the user asked for a photo, illustration, sprite, product image, banner, or other explicitly raster-style asset, use `image_gen` rather than substituting SVG/HTML/CSS placeholders. If the request is for an icon, logo, or UI graphic that should match existing repo-native SVG/vector/code assets, prefer editing those directly instead.
+9. Augment the prompt based on specificity:
+   - If the user's prompt is already specific and detailed, normalize it into a clear spec without adding creative requirements.
+   - If the user's prompt is generic, add tasteful augmentation only when it materially improves output quality.
+10. Use the built-in `image_gen` tool by default.
+11. For transparent-output requests, follow the transparent image guidance below: generate with built-in `image_gen` on a flat chroma-key background, copy the selected output into the workspace or `tmp/imagegen/`, run the installed `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py` helper, and validate the alpha result before using it. If this path looks unsuitable or fails, ask before switching to CLI `gpt-image-1.5`.
+12. Inspect outputs and validate: subject, style, composition, text accuracy, and invariants/avoid items.
+13. Iterate with a single targeted change, then re-check.
+14. For preview-only work, render the image inline; the underlying file may remain at the default `$CODEX_HOME/generated_images/...` path.
+15. For project-bound work, move or copy the selected artifact into the workspace and update any consuming code or references. Never leave a project-referenced asset only at the default `$CODEX_HOME/generated_images/...` path.
+16. For batches or multi-asset requests, persist every requested deliverable final in the workspace unless the user explicitly asked to keep outputs preview-only. Discarded variants do not need to be kept unless requested.
+17. If the user explicitly chooses or confirms the CLI fallback, then use the fallback-only docs for model, quality, size, `input_fidelity`, masks, output format, output paths, and network setup.
+18. Always report the final saved path(s) for any workspace-bound asset(s), plus the final prompt or prompt set and whether the built-in tool or fallback CLI mode was used.
+
+## Transparent image requests
+
+Transparent-image requests still use built-in `image_gen` first. Because the built-in tool does not expose a true transparent-background control, create a removable chroma-key source image and then convert the key color to alpha locally.
+
+Default sequence:
+1. Use built-in `image_gen` to generate the requested subject on a perfectly flat solid chroma-key background.
+2. Choose a key color that is unlikely to appear in the subject: default `#00ff00`, use `#ff00ff` for green subjects, and avoid `#0000ff` for blue subjects.
+3. After generation, move or copy the selected source image from `$CODEX_HOME/generated_images/...` into the workspace or `tmp/imagegen/`.
+4. Run the installed helper path, not a project-relative script path:
+   ```bash
+   python "${CODEX_HOME:-$HOME/.codex}/skills/.system/imagegen/scripts/remove_chroma_key.py" \
+     --input <source> \
+     --out <final.png> \
+     --auto-key border \
+     --soft-matte \
+     --transparent-threshold 12 \
+     --opaque-threshold 220 \
+     --despill
+   ```
+5. Validate that the output has an alpha channel, transparent corners, plausible subject coverage, and no obvious key-color fringe. If a thin fringe remains, retry once with `--edge-contract 1`; use `--edge-feather 0.25` only when the edge is visibly stair-stepped and the subject is not shiny or reflective.
+6. Save the final alpha PNG/WebP in the project if the asset is project-bound. Never leave a project-referenced transparent asset only under `$CODEX_HOME/*`.
+
+Prompt transparent requests like this:
+
+```text
+Create the requested subject on a perfectly flat solid #00ff00 chroma-key background for background removal.
+The background must be one uniform color with no shadows, gradients, texture, reflections, floor plane, or lighting variation.
+Keep the subject fully separated from the background with crisp edges and generous padding.
+Do not use #00ff00 anywhere in the subject.
+No cast shadow, no contact shadow, no reflection, no watermark, and no text unless explicitly requested.
+```
+
+Do not automatically use CLI `gpt-image-1.5 --background transparent --output-format png` instead of chroma keying. Ask the user first when the user asks for true/native transparency, when local removal fails validation, or when the requested image is complex: hair, fur, feathers, smoke, glass, liquids, translucent materials, reflective objects, soft shadows, realistic product grounding, or subject colors that conflict with all practical key colors.
+
+Use a concise confirmation like:
+
+```text
+This likely needs true native transparency. The default built-in path uses a chroma-key background plus local removal, but true transparency requires the CLI fallback with gpt-image-1.5 because gpt-image-2 does not support background=transparent. It also requires OPENAI_API_KEY. Should I proceed with that CLI fallback?
+```
+
+## Prompt augmentation
+
+Reformat user prompts into a structured, production-oriented spec. Make the user's goal clearer and more actionable, but do not blindly add detail.
+
+Treat this as prompt-shaping guidance, not a closed schema. Use only the lines that help, and add a short extra labeled line when it materially improves clarity.
+
+### Specificity policy
+
+Use the user's prompt specificity to decide how much augmentation is appropriate:
+
+- If the prompt is already specific and detailed, preserve that specificity and only normalize/structure it.
+- If the prompt is generic, you may add tasteful augmentation when it will materially improve the result.
+
+Allowed augmentations:
+- composition or framing hints
+- polish level or intended-use hints
+- practical layout guidance
+- reasonable scene concreteness that supports the stated request
+
+Not allowed augmentations:
+- extra characters or objects that are not implied by the request
+- brand names, slogans, palettes, or narrative beats that are not implied
+- arbitrary side-specific placement unless the surrounding layout supports it
+
+## Use-case taxonomy (exact slugs)
+
+Classify each request into one of these buckets and keep the slug consistent across prompts and references.
+
+Generate:
+- photorealistic-natural â€” candid/editorial lifestyle scenes with real texture and natural lighting.
+- product-mockup â€” product/packaging shots, catalog imagery, merch concepts.
+- ui-mockup â€” app/web interface mockups and wireframes; specify the desired fidelity.
+- infographic-diagram â€” diagrams/infographics with structured layout and text.
+- scientific-educational â€” classroom explainers, scientific diagrams, and learning visuals with required labels and accuracy constraints.
+- ads-marketing â€” campaign concepts and ad creatives with audience, brand position, scene, and exact tagline/copy.
+- productivity-visual â€” slide, chart, workflow, and data-heavy business visuals.
+- logo-brand â€” logo/mark exploration, vector-friendly.
+- illustration-story â€” comics, childrenâ€™s book art, narrative scenes.
+- stylized-concept â€” style-driven concept art, 3D/stylized renders.
+- historical-scene â€” period-accurate/world-knowledge scenes.
+
+Edit:
+- text-localization â€” translate/replace in-image text, preserve layout.
+- identity-preserve â€” try-on, person-in-scene; lock face/body/pose.
+- precise-object-edit â€” remove/replace a specific element (including interior swaps).
+- lighting-weather â€” time-of-day/season/atmosphere changes only.
+- background-extraction â€” transparent background / clean cutout. Use built-in `image_gen` with chroma-key removal first for simple opaque subjects; ask before using CLI true transparency for complex subjects.
+- style-transfer â€” apply reference style while changing subject/scene.
+- compositing â€” multi-image insert/merge with matched lighting/perspective.
+- sketch-to-render â€” drawing/line art to photoreal render.
+
+## Shared prompt schema
+
+Use the following labeled spec as shared prompt scaffolding for both top-level modes:
+
+```text
+Use case: <taxonomy slug>
+Asset type: <where the asset will be used>
+Primary request: <user's main prompt>
+Input images: <Image 1: role; Image 2: role> (optional)
+Scene/backdrop: <environment>
+Subject: <main subject>
+Style/medium: <photo/illustration/3D/etc>
+Composition/framing: <wide/close/top-down; placement>
+Lighting/mood: <lighting + mood>
+Color palette: <palette notes>
+Materials/textures: <surface details>
+Text (verbatim): "<exact text>"
+Constraints: <must keep/must avoid>
+Avoid: <negative constraints>
+```
+
+Notes:
+- `Asset type` and `Input images` are prompt scaffolding, not dedicated CLI flags.
+- `Scene/backdrop` refers to the visual setting. It is not the same as the fallback CLI `background` parameter, which controls output transparency behavior.
+- Fallback-only execution notes such as `Quality:`, `Input fidelity:`, masks, output format, and output paths belong in the CLI path only. Do not treat them as built-in `image_gen` tool arguments.
+
+Augmentation rules:
+- Keep it short.
+- Add only the details needed to improve the prompt materially.
+- For edits, explicitly list invariants (`change only X; keep Y unchanged`).
+- If any critical detail is missing and blocks success, ask a question; otherwise proceed.
+
+## Examples
+
+### Generation example (hero image)
+```text
+Use case: product-mockup
+Asset type: landing page hero
+Primary request: a minimal hero image of a ceramic coffee mug
+Style/medium: clean product photography
+Composition/framing: wide composition with usable negative space for page copy if needed
+Lighting/mood: soft studio lighting
+Constraints: no logos, no text, no watermark
+```
+
+### Edit example (invariants)
+```text
+Use case: precise-object-edit
+Asset type: product photo background replacement
+Primary request: replace only the background with a warm sunset gradient
+Constraints: change only the background; keep the product and its edges unchanged; no text; no watermark
+```
+
+## Prompting best practices
+- Structure prompt as scene/backdrop -> subject -> details -> constraints.
+- Include intended use (ad, UI mock, infographic) to set the mode and polish level.
+- Use camera/composition language for photorealism.
+- Only use SVG/vector stand-ins when the user explicitly asked for vector output or a non-image placeholder.
+- Quote exact text and specify typography + placement.
+- For tricky words, spell them letter-by-letter and require verbatim rendering.
+- For multi-image inputs, reference images by index and describe how they should be used.
+- For edits, repeat invariants every iteration to reduce drift.
+- Iterate with single-change follow-ups.
+- If the prompt is generic, add only the extra detail that will materially help.
+- If the prompt is already detailed, normalize it instead of expanding it.
+- For CLI fallback only, see `references/cli.md` and `references/image-api.md` for model, `quality`, `input_fidelity`, masks, output format, and output-path guidance.
+- For transparent images, use the built-in-first chroma-key workflow unless the request is complex enough to need true CLI transparency; ask before switching to CLI `gpt-image-1.5`.
+
+More principles shared by both modes: `references/prompting.md`.
+Copy/paste specs shared by both modes: `references/sample-prompts.md`.
+
+## Guidance by asset type
+Asset-type templates (website assets, game assets, wireframes, logo) are consolidated in `references/sample-prompts.md`.
+
+## gpt-image-2 guidance for CLI fallback
+
+The fallback CLI defaults to `gpt-image-2`.
+
+- Use `gpt-image-2` for new CLI/API workflows unless the request needs true model-native transparent output.
+- If a transparent request may need CLI fallback, ask before using `gpt-image-1.5` unless the user already explicitly requested `gpt-image-1.5`, `scripts/image_gen.py`, or CLI fallback. Explain that the built-in chroma-key path is the default, but true transparency requires `gpt-image-1.5` because `gpt-image-2` does not support `background=transparent`.
+- `gpt-image-2` always uses high fidelity for image inputs; do not set `input_fidelity` with this model.
+- `gpt-image-2` supports `quality` values `low`, `medium`, `high`, and `auto`.
+- Use `quality low` for fast drafts, thumbnails, and quick iterations. Use `medium`, `high`, or `auto` for final assets, dense text, diagrams, identity-sensitive edits, or high-resolution outputs.
+- Square images are typically fastest to generate. Use `1024x1024` for fast square drafts.
+- If the user asks for 4K-style output, use `3840x2160` for landscape or `2160x3840` for portrait.
+- `gpt-image-2` size may be `auto` or `WIDTHxHEIGHT` if all constraints hold: max edge `<= 3840px`, both edges multiples of `16px`, long-to-short ratio `<= 3:1`, total pixels between `655,360` and `8,294,400`.
+
+Popular `gpt-image-2` sizes:
+- `1024x1024` square
+- `1536x1024` landscape
+- `1024x1536` portrait
+- `2048x2048` 2K square
+- `2048x1152` 2K landscape
+- `3840x2160` 4K landscape
+- `2160x3840` 4K portrait
+- `auto`
+
+## Fallback CLI mode only
+
+### Temp and output conventions
+These conventions apply only to the CLI fallback. They do not describe built-in `image_gen` output behavior.
+- Use `tmp/imagegen/` for intermediate files (for example JSONL batches); delete them when done.
+- Write final artifacts under `output/imagegen/`.
+- Use `--out` or `--out-dir` to control output paths; keep filenames stable and descriptive.
+
+### Dependencies
+Prefer `uv` for dependency management in this repo.
+
+Required Python package:
+```bash
+uv pip install openai
+```
+
+Required for local chroma-key removal and optional downscaling:
+```bash
+uv pip install pillow
+```
+
+Portability note:
+- If you are using the installed skill outside this repo, install dependencies into that environment with its package manager.
+- In uv-managed environments, `uv pip install ...` remains the preferred path.
+
+### Environment
+- `OPENAI_API_KEY` must be set for live API calls.
+- Do not ask the user for `OPENAI_API_KEY` when using the built-in `image_gen` tool.
+- Never ask the user to paste the full key in chat. Ask them to set it locally and confirm when ready.
+
+If the key is missing, give the user these steps:
+1. Create an API key in the OpenAI platform UI: https://platform.openai.com/api-keys
+2. Set `OPENAI_API_KEY` as an environment variable in their system.
+3. Offer to guide them through setting the environment variable for their OS/shell if needed.
+
+If installation is not possible in this environment, tell the user which dependency is missing and how to install it into their active environment.
+
+### Script-mode notes
+- CLI commands + examples: `references/cli.md`
+- API parameter quick reference: `references/image-api.md`
+- Network approvals / sandbox settings for CLI mode: `references/codex-network.md`
+
+## Reference map
+- `references/prompting.md`: shared prompting principles for both modes.
+- `references/sample-prompts.md`: shared copy/paste prompt recipes for both modes.
+- `references/cli.md`: fallback-only CLI usage via `scripts/image_gen.py`.
+- `references/image-api.md`: fallback-only API/CLI parameter reference.
+- `references/codex-network.md`: fallback-only network/sandbox troubleshooting for CLI mode.
+- `scripts/image_gen.py`: fallback-only CLI implementation. Do not load or use it unless the user explicitly chooses CLI mode or explicitly confirms a transparent request's true CLI transparency fallback.
+- `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`: local post-processing helper for built-in transparent-image requests.
+
+codex
+The memory pass confirms this checkout has Array Plains asset-bundle work around `src/config/assets.ts`, so I’ll keep this scoped to the requested PNG only and avoid manifest edits. Because the constraints require exact palette, hard edges, alpha, and 64×64 output, I’m going to construct the tile deterministically with Pillow instead of relying on a generative model and then fighting quantization.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -Force -Path public\\assets\\visual_revamp\\objects\\props | Select-Object Name,Length,LastWriteTime | Format-Table -AutoSize" in D:\algo
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$p='"'C:\\Users\\kathi\\.codex\\memories\\MEMORY.md'; "'$lines=Get-Content -Path $p; foreach($n in 153,174,455){ $start=[Math]::Max(1,$n-2); $end=[Math]::Min($lines.Count,$n+2); for($i=$start;$i -le $end;$i++){ '"'{0}:{1}' -f "'$i,$lines[$i-1] } }' in D:\algo
+ succeeded in 515ms:
+
+Name                    Length LastWriteTime        
+----                    ------ -------------        
+array_marker.png        117571 4/29/2026 1:20:01 PM 
+boss_gate_locked.png    219050 4/29/2026 1:20:00 PM 
+boss_gate_locked_v2.png   8795 5/17/2026 12:22:59 PM
+boss_gate_open.png      205925 4/29/2026 1:20:01 PM 
+core_terminal.png        83048 4/29/2026 1:20:01 PM 
+field_sign.png          125431 4/29/2026 1:20:00 PM 
+puzzle_shrine.png       146197 4/29/2026 1:20:00 PM 
+save_obelisk.png         98296 4/29/2026 1:20:01 PM 
+water_buoy.png           98230 4/29/2026 1:20:01 PM 
+
+
+
+ succeeded in 519ms:
+151:### keywords
+152:
+153:- D:\algo, Firefox, BootScene, preload, asset manifest, src/config/assets.ts, PROLOGUE_SCENE_IMAGE_ASSETS, ARRAY_PLAINS_SCENE_IMAGE_ASSETS, TWIN_RIVERS_SCENE_IMAGE_ASSETS, OVERWORLD_PLAYER_SPRITE_ASSETS, Set<string>, ENOSPC, test:browsers:prod
+154:
+155:## Task 3: Re-run build, unit tests, and the production browser matrix after cache/temp redirection, success
+172:- `src/ui/PuzzlePreviewSidePanel.ts` is the reusable helper for this UI pattern; it already exposes `setTitle()`, `setState()`, `setNextAction()`, `show()`, `hide()`, and `destroy()`, and Twin Rivers Mirror Walk uses it via `refreshStatus()` -> `refreshPreview()` so the panel stays aligned with the scene state source of truth [Task 1]
+173:- The Firefox blocker here was a loader-pressure problem, not a generic scene bug: the live probe showed BootScene stuck with `totalToLoad: 95`, `totalComplete: 47`, `inflightSize: 32`, and many large `prologue-rework-*` / `visual-revamp-*` assets still in flight [Task 2]
+174:- The durable asset fix was to strip BootScene down to menu-critical art and move heavy region/player assets into scene-local `preload()` methods in `src/scenes/prologue/PrologueScene.ts`, `src/scenes/ArrayPlainsScene.ts`, `src/scenes/TwinRiversScene.ts`, and `src/scenes/FutureRegionScene.ts`, with targeted bundles in `src/config/assets.ts` such as `PROLOGUE_SCENE_*`, `ARRAY_PLAINS_SCENE_IMAGE_ASSETS`, `TWIN_RIVERS_SCENE_IMAGE_ASSETS`, and `OVERWORLD_PLAYER_SPRITE_ASSETS` [Task 2]
+175:- On this machine, a full `C:` can masquerade as a repo problem during npm/build/test runs. Redirecting `NPM_CONFIG_CACHE=D:\algo\npm-cache`, `TEMP=D:\algo\.tmp`, and `TMP=D:\algo\.tmp` was enough to get `npm.cmd run build`, `npm.cmd run test:run`, and `npm.cmd run test:browsers:prod` working again after clearing only `C:\Users\kathi\AppData\Local\npm-cache\_cacache` and `...\_npx` [Task 2][Task 3]
+176:- The production-browser config that mattered for proof was `npm.cmd run test:browsers:prod`, covering Chromium, Firefox, and WebKit against the built app; this run passed after the preload split [Task 3]
+453:- `BitGuide` is now a visual helper, not a state emitter, so tests that still expect `gameState.setBitMood(...)` calls are stale and should be updated to the visual-helper contract instead of treated as runtime regressions [Task 1]
+454:- The repo uses Phaser 3 with tween-driven movement and Arcade bodies as position proxies, so movement fixes should preserve sprite/body sync and not assume a standard velocity-based controller [Task 8]
+455:- `public/assets/array_plains/environment/array_plains_field.png` already exists and is wired through `src/config/assets.ts`, but the Codex-generated cache under `C:\Users\kathi\.codex\generated_images\...` is not durable project state [Task 4]
+456:- `A11yManager` must tolerate non-DOM test environments; lazily resolving the announcer element avoids Vitest failures before the browser exists [Task 6]
+457:- `BitCompanion` can receive stale or unexpected stage values from saved state, so normalizing the stage on load and on evolve events to `BitStage.GRAPH` is a useful guard [Task 6]
+
+codex
+I found the existing props folder and an older `array_marker.png`; I’ll leave it untouched and write only `array_marker_v2.png`. The image will be authored as a 16×16 logical pixel tile and upscaled 4× with nearest-neighbor so every edge stays hard.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from pathlib import Path
+from PIL import Image
+
+output_path = Path(r\"D:\\algo\\public\\assets\\visual_revamp\\objects\\props\\array_marker_v2.png\")
+output_path.parent.mkdir(parents=True, exist_ok=True)
+
+palette = {
+    \"darkest\": (0x08, 0x18, 0x20, 0xff),
+    \"medium_dark\": (0x34, 0x68, 0x56, 0xff),
+    \"light_accent\": (0x88, 0xc0, 0x70, 0xff),
+    \"lightest\": (0xe0, 0xf8, 0xd0, 0xff),
+    \"cyan\": (0x06, 0xb6, 0xd4, 0xff),
+    \"transparent\": (0, 0, 0, 0),
+}
+
+logical_size = 16
+scale_factor = 4
+source_image = Image.new(\"RGBA\", (logical_size, logical_size), palette[\"transparent\"])
+pixels = source_image.load()
+
+def fill_rectangle(left, top, right, bottom, color_name):
+    color = palette[color_name]
+    for y_coord in range(top, bottom + 1):
+        for x_coord in range(left, right + 1):
+            pixels[x_coord, y_coord] = color
+
+def set_pixels(points, color_name):
+    color = palette[color_name]
+    for x_coord, y_coord in points:
+        pixels[x_coord, y_coord] = color
+
+# Outer 1-logical-pixel stone outline, with transparent padding around the prop.
+fill_rectangle(1, 1, 14, 14, \"darkest\")
+
+# Stone frame body.
+fill_rectangle(2, 2, 13, 13, \"medium_dark\")
+
+# Pixel-art chips and heavier dungeon-tile corners.
+set_pixels([
+    (2, 2), (13, 2), (2, 13), (13, 13),
+    (1, 4), (1, 11), (4, 1), (11, 1),
+    (14, 4), (14, 11), (4, 14), (11, 14),
+], \"darkest\")
+
+# Rare light moss/highlight accents on the frame.
+set_pixels([
+    (3, 2), (4, 2), (2, 3),
+    (12, 13), (13, 12),
+], \"light_accent\")
+
+# Inner cream tile face with a dark one-pixel inset outline.
+fill_rectangle(3, 3, 12, 12, \"darkest\")
+fill_rectangle(4, 4, 11, 11, \"lightest\")
+
+# Small face notches to keep the tile from reading as a flat UI button.
+set_pixels([
+    (4, 4), (11, 4), (4, 11), (11, 11),
+], \"medium_dark\")
+set_pixels([
+    (5, 4), (4, 5), (10, 11), (11, 10),
+], \"light_accent\")
+
+# Cyan decorative index glyph: diamond with side ticks, intentionally not a legible numeral.
+set_pixels([
+    (7, 5), (8, 5),
+    (6, 6), (9, 6),
+    (5, 7), (10, 7),
+    (5, 8), (10, 8),
+    (6, 9), (9, 9),
+    (7, 10), (8, 10),
+    (7, 7), (8, 8),
+], \"cyan\")
+
+final_image = source_image.resize((logical_size * scale_factor, logical_size * scale_factor), Image.Resampling.NEAREST)
+final_image.save(output_path, optimize=True)
+print(output_path)
+'@ | python -" in D:\algo
+ succeeded in 558ms:
+D:\algo\public\assets\visual_revamp\objects\props\array_marker_v2.png
+
+codex
+The PNG is written. I’m running a strict verification now: dimensions, palette membership, alpha values, transparent corners, 4× logical-pixel block uniformity, and file size.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from pathlib import Path
+from PIL import Image
+
+image_path = Path(r\"D:\\algo\\public\\assets\\visual_revamp\\objects\\props\\array_marker_v2.png\")
+allowed_rgb = {
+    \"#081820\": (0x08, 0x18, 0x20),
+    \"#346856\": (0x34, 0x68, 0x56),
+    \"#88c070\": (0x88, 0xc0, 0x70),
+    \"#e0f8d0\": (0xe0, 0xf8, 0xd0),
+    \"#06b6d4\": (0x06, 0xb6, 0xd4),
+}
+with Image.open(image_path) as opened_image:
+    rgba_image = opened_image.convert(\"RGBA\")
+    width, height = rgba_image.size
+    all_pixels = list(rgba_image.getdata())
+
+unique_rgba = sorted(set(all_pixels))
+opaque_rgba = sorted(color for color in unique_rgba if color[3] == 255)
+transparent_rgba = sorted(color for color in unique_rgba if color[3] == 0)
+alpha_values = sorted(set(color[3] for color in unique_rgba))
+opaque_hex_values = sorted(f\"#{red:02x}{green:02x}{blue:02x}\" for red, green, blue, alpha in opaque_rgba)
+unknown_hex_values = sorted(set(opaque_hex_values) - set(allowed_rgb.keys()))
+missing_hex_values = sorted(set(allowed_rgb.keys()) - set(opaque_hex_values))
+corner_values = [rgba_image.getpixel((0, 0)), rgba_image.getpixel((63, 0)), rgba_image.getpixel((0, 63)), rgba_image.getpixel((63, 63))]
+
+uniform_blocks = True
+bad_block = None
+for block_y in range(0, height, 4):
+    for block_x in range(0, width, 4):
+        block_colors = {
+            rgba_image.getpixel((pixel_x, pixel_y))
+            for pixel_y in range(block_y, block_y + 4)
+            for pixel_x in range(block_x, block_x + 4)
+        }
+        if len(block_colors) "'!= 1:
+            uniform_blocks = False
+            bad_block = (block_x, block_y, len(block_colors))
+            break
+    if not uniform_blocks:
+        break
+
+print(f"path={image_path}")
+print(f"dimensions={width}x{height}")
+print(f"mode=RGBA")
+print(f"file_size_bytes={image_path.stat().st_size}")
+print(f"unique_rgba_count={len(unique_rgba)}")
+print(f"opaque_color_count={len(opaque_rgba)}")
+print(f"transparent_color_count={len(transparent_rgba)}")
+print(f"opaque_hex_values={'"','.join(opaque_hex_values)}\")
+print(f\"alpha_values={','.join(str(value) for value in alpha_values)}\")
+print(f\"unknown_hex_values={','.join(unknown_hex_values) if unknown_hex_values else 'none'}\")
+print(f\"missing_hex_values={','.join(missing_hex_values) if missing_hex_values else 'none'}\")
+print(f\"transparent_corners={all(value[3] == 0 for value in corner_values)}\")
+print(f\"uniform_4x4_blocks={uniform_blocks}\")
+print(f\"bad_block={bad_block if bad_block else 'none'}\")
+print(f\"hard_edges_no_aa={(alpha_values == [0, 255]) and not unknown_hex_values and uniform_blocks}\")
+'@ | python -" in D:\algo
+ succeeded in 551ms:
+path=D:\algo\public\assets\visual_revamp\objects\props\array_marker_v2.png
+dimensions=64x64
+mode=RGBA
+file_size_bytes=375
+unique_rgba_count=6
+opaque_color_count=5
+transparent_color_count=1
+opaque_hex_values=#06b6d4,#081820,#346856,#88c070,#e0f8d0
+alpha_values=0,255
+unknown_hex_values=none
+missing_hex_values=none
+transparent_corners=True
+uniform_4x4_blocks=True
+bad_block=none
+hard_edges_no_aa=True
+<stdin>:15: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+
+codex
+The verification passed: the file is exactly 64×64, RGBA, five opaque palette colors plus transparency, and every 4×4 block is uniform from nearest-neighbor scaling. I’m just pulling the memory entry identifier for the required citation block before I stop.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$p='"'C:\\Users\\kathi\\.codex\\memories\\MEMORY.md'; "'$lines=Get-Content -Path $p; for($i=130;$i -le 180;$i++){ '"'{0}:{1}' -f "'$i,$lines[$i-1] }' in D:\algo
+ succeeded in 427ms:
+130:# Task Group: D:\algo Firefox boot stall, scene-level asset preload split, and preview-panel rollout context
+131:
+132:scope: debugging production browser startup stalls in the current Algorithmia Phaser/Vite checkout, preserving preview-panel teaching semantics, and proving asset-loading fixes with build/unit/browser verification before broadening UI rollout.
+133:applies_to: cwd=D:\algo; reuse_rule=safe for follow-up work in this checkout while `src/config/assets.ts`, `BootScene`, region scene `preload()` hooks, and the preview-panel helper remain recognizable, but treat exact asset names, branch names, and cache/temp redirection paths as checkout or machine specific.
+134:
+135:## Task 1: Inspect preview-panel rollout context and preserve predicted-state semantics, partial
+136:
+137:### rollout_summary_files
+138:
+139:- rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, preview-panel inspection before the rollout pivoted into the browser blocker)
+140:
+141:### keywords
+142:
+143:- D:\algo, PuzzlePreviewSidePanel, TwinRiversChoiceScenes.ts, refreshPreview, refreshStatus, predicted state, literal [8, 5, 2, 3], cyan interactive state
+144:
+145:## Task 2: Split BootScene asset loading to clear the Firefox production startup stall, partial
+146:
+147:### rollout_summary_files
+148:
+149:- rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, Firefox-specific boot stall traced to heavy BootScene preload pressure)
+150:
+151:### keywords
+152:
+153:- D:\algo, Firefox, BootScene, preload, asset manifest, src/config/assets.ts, PROLOGUE_SCENE_IMAGE_ASSETS, ARRAY_PLAINS_SCENE_IMAGE_ASSETS, TWIN_RIVERS_SCENE_IMAGE_ASSETS, OVERWORLD_PLAYER_SPRITE_ASSETS, Set<string>, ENOSPC, test:browsers:prod
+154:
+155:## Task 3: Re-run build, unit tests, and the production browser matrix after cache/temp redirection, success
+156:
+157:### rollout_summary_files
+158:
+159:- rollout_summaries/2026-05-14T16-33-26-Prlg-d_algo_firefox_boot_stall_lazy_preload_split.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\14\rollout-2026-05-14T12-33-26-019e2755-fbc5-7011-a267-ab7081518b1a.jsonl, updated_at=2026-05-15T01:46:44+00:00, thread_id=019e2755-fbc5-7011-a267-ab7081518b1a, build/unit/browser matrix passed but full Playwright completion was not captured)
+160:
+161:### keywords
+162:
+163:- D:\algo, npm.cmd run build, npm.cmd run test:run, npm.cmd run test:browsers:prod, Chromium, Firefox, WebKit, NPM_CONFIG_CACHE, TEMP, TMP, D:\algo\npm-cache, D:\algo\.tmp, 55 files, 302 tests
+164:
+165:## User preferences
+166:
+167:- when the user described the preview as showing the predicted state and asked whether to scale it to all nine puzzles or wait for dev-server confirmation, preserve the exact predicted-result semantics and get visible proof before broadening the rollout [Task 1]
+168:- when the user frames a UI rollout as "scale now or wait for dev-server confirmation", prefer browser/runtime confirmation before claiming the pattern is ready to spread across scenes [Task 1][Task 2]
+169:
+170:## Reusable knowledge
+171:
+172:- `src/ui/PuzzlePreviewSidePanel.ts` is the reusable helper for this UI pattern; it already exposes `setTitle()`, `setState()`, `setNextAction()`, `show()`, `hide()`, and `destroy()`, and Twin Rivers Mirror Walk uses it via `refreshStatus()` -> `refreshPreview()` so the panel stays aligned with the scene state source of truth [Task 1]
+173:- The Firefox blocker here was a loader-pressure problem, not a generic scene bug: the live probe showed BootScene stuck with `totalToLoad: 95`, `totalComplete: 47`, `inflightSize: 32`, and many large `prologue-rework-*` / `visual-revamp-*` assets still in flight [Task 2]
+174:- The durable asset fix was to strip BootScene down to menu-critical art and move heavy region/player assets into scene-local `preload()` methods in `src/scenes/prologue/PrologueScene.ts`, `src/scenes/ArrayPlainsScene.ts`, `src/scenes/TwinRiversScene.ts`, and `src/scenes/FutureRegionScene.ts`, with targeted bundles in `src/config/assets.ts` such as `PROLOGUE_SCENE_*`, `ARRAY_PLAINS_SCENE_IMAGE_ASSETS`, `TWIN_RIVERS_SCENE_IMAGE_ASSETS`, and `OVERWORLD_PLAYER_SPRITE_ASSETS` [Task 2]
+175:- On this machine, a full `C:` can masquerade as a repo problem during npm/build/test runs. Redirecting `NPM_CONFIG_CACHE=D:\algo\npm-cache`, `TEMP=D:\algo\.tmp`, and `TMP=D:\algo\.tmp` was enough to get `npm.cmd run build`, `npm.cmd run test:run`, and `npm.cmd run test:browsers:prod` working again after clearing only `C:\Users\kathi\AppData\Local\npm-cache\_cacache` and `...\_npx` [Task 2][Task 3]
+176:- The production-browser config that mattered for proof was `npm.cmd run test:browsers:prod`, covering Chromium, Firefox, and WebKit against the built app; this run passed after the preload split [Task 3]
+177:
+178:## Failures and how to do differently
+179:
+180:- Symptom: Firefox hangs on BootScene around half-loaded while Chromium/WebKit keep working. Cause: BootScene is decoding too many heavy assets up front. Fix: inspect the live loader state first, then move region/player art into scene-local `preload()` hooks instead of adding more global boot assets [Task 2]
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$p='"'C:\\Users\\kathi\\.codex\\memories\\MEMORY.md'; "'$lines=Get-Content -Path $p; for($i=360;$i -le 366;$i++){ '"'{0}:{1}' -f "'$i,$lines[$i-1] }; for($i=448;$i -le 456;$i++){ '"'{0}:{1}' -f "'$i,$lines[$i-1] }' in D:\algo
+ succeeded in 429ms:
+360:### keywords
+361:
+362:- public/assets/array_plains/environment/array_plains_field.png, src/config/assets.ts, ARRAY_PLAINS_BASE, ARRAY_PLAINS_IMAGE_ASSETS, C:\Users\kathi\.codex\generated_images, public/assets/prologue_*, public/assets/array_plains
+363:
+364:## Task 7: Fix real test/runtime regressions uncovered by baseline whole-game checks, success
+365:
+366:### rollout_summary_files
+448:- Later regions each have their own concept arc and boss/mastery checks; Bit is a mechanical teaching companion, Glitch is the brute-force foil, Codex entries should unlock only after lived interaction, and the endings are Patch / Rewrite / Accept [Task 2]
+449:- `RegionConfig` in `src/data/types.ts` is already the main region data contract, `Player` already supports region-specific movement via `canMoveTo`, and `InteractionSystem`, `InteractableObject`, `HUDManager`, `TransitionManager`, `BitCompanion`, `PrologueTilemapRenderer`, and `PrologueRouteRenderer` are the current reusable seams [Task 3]
+450:- Missing plumbing for later regions was explicit: a central region registry, region-aware continue routing, a `BaseRegionScene` shell, and lazy or region-bundled asset loading [Task 3]
+451:- `ArrayPlainsScene` is still a manually wired prototype and should not be treated as the finished template until the registry/base-scene layer exists [Task 3]
+452:- The later-region choice-family duplication was real: Twin Rivers, Hash Highlands, and Stack Spires had copied scene control flow while Queue/Tree/Graph/Core already used `ScriptedChoiceScene`; consolidating the copied family into `ScriptedChoiceScene` is the current architecture direction for reusable choice UX [Task 4]
+453:- `BitGuide` is now a visual helper, not a state emitter, so tests that still expect `gameState.setBitMood(...)` calls are stale and should be updated to the visual-helper contract instead of treated as runtime regressions [Task 1]
+454:- The repo uses Phaser 3 with tween-driven movement and Arcade bodies as position proxies, so movement fixes should preserve sprite/body sync and not assume a standard velocity-based controller [Task 8]
+455:- `public/assets/array_plains/environment/array_plains_field.png` already exists and is wired through `src/config/assets.ts`, but the Codex-generated cache under `C:\Users\kathi\.codex\generated_images\...` is not durable project state [Task 4]
+456:- `A11yManager` must tolerate non-DOM test environments; lazily resolving the announcer element avoids Vitest failures before the browser exists [Task 6]
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$p='"'C:\\Users\\kathi\\.codex\\memories\\MEMORY.md'; "'$lines=Get-Content -Path $p; for($i=320;$i -le 370;$i++){ '"'{0}:{1}' -f "'$i,$lines[$i-1] }' in D:\algo
+ succeeded in 432ms:
+320:
+321:## Task 3: Stabilize and re-anchor the whole-game visual audit flow, partial
+322:
+323:### rollout_summary_files
+324:
+325:- rollout_summaries/2026-05-06T21-45-25-x0nV-d_algo_critical_full_game_audit_shared_choice_refactor.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\06\rollout-2026-05-06T17-45-25-019dff40-ba14-7160-b6a2-d9cffe1f19c3.jsonl, updated_at=2026-05-06T22:48:48+00:00, thread_id=019dff40-ba14-7160-b6a2-d9cffe1f19c3, durable audit log plus baseline route/build/test proof)
+326:- rollout_summaries/2026-05-05T17-22-56-nQ5p-d_algo_full_game_prologue_to_core_production_pass.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\05\rollout-2026-05-05T13-22-56-019df92a-103a-7432-b87e-5da910312387.jsonl, updated_at=2026-05-05T18:31:01+00:00, thread_id=019df92a-103a-7432-b87e-5da910312387, current dirty-branch re-anchor plus baseline test/build pass)
+327:- rollout_summaries/2026-04-28T17-10-37-69MR-full_game_prologue_array_plains_production_pass.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\04\28\rollout-2026-04-28T13-10-37-019dd512-45cb-7c23-9fee-775e72955ce9.jsonl, updated_at=2026-04-28T22:14:31+00:00, thread_id=019dd512-45cb-7c23-9fee-775e72955ce9, earlier prologue timing fix and screenshot-churn baseline)
+328:
+329:### keywords
+330:
+331:- D:\algo, tests/prologue-visual.spec.ts, playwright.config.ts, timeout=45000, npm.cmd, npm.cmd run test:run, npm.cmd run build, npx.cmd playwright test tests/prologue-visual.spec.ts, docs/agent_progress.md, git status --short, tests/screenshots, dirty branch
+332:
+333:## Task 4: Extract the full-game script into the region build order, success
+334:
+335:### rollout_summary_files
+336:
+337:- rollout_summaries/2026-04-28T17-10-37-69MR-full_game_prologue_array_plains_production_pass.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\04\28\rollout-2026-04-28T13-10-37-019dd512-45cb-7c23-9fee-775e72955ce9.jsonl, updated_at=2026-04-28T22:14:31+00:00, thread_id=019dd512-45cb-7c23-9fee-775e72955ce9, script-derived progression and concept beats)
+338:
+339:### keywords
+340:
+341:- docs/story/game_script.md, Prologue, Chamber of Flow, Array Plains, Twin Rivers, Hash Highlands, Stack Spires, Queue Canals, Tree Canopy, Graph Nexus, The Core, Bit, Glitch, Patch, Rewrite, Accept
+342:
+343:## Task 5: Audit architecture for scaling from Prologue and Array Plains to later regions, success
+344:
+345:### rollout_summary_files
+346:
+347:- rollout_summaries/2026-05-06T21-45-25-x0nV-d_algo_critical_full_game_audit_shared_choice_refactor.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\06\rollout-2026-05-06T17-45-25-019dff40-ba14-7160-b6a2-d9cffe1f19c3.jsonl, updated_at=2026-05-06T22:48:48+00:00, thread_id=019dff40-ba14-7160-b6a2-d9cffe1f19c3, later-region choice duplication collapsed onto shared scene architecture)
+348:- rollout_summaries/2026-04-28T17-10-37-69MR-full_game_prologue_array_plains_production_pass.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\04\28\rollout-2026-04-28T13-10-37-019dd512-45cb-7c23-9fee-775e72955ce9.jsonl, updated_at=2026-04-28T22:14:31+00:00, thread_id=019dd512-45cb-7c23-9fee-775e72955ce9, reusable seams plus missing registry/routing/base-scene layer)
+349:
+350:### keywords
+351:
+352:- RegionConfig, src/data/types.ts, src/data/regions/prologue.ts, src/data/regions/arrayPlains.ts, src/scenes/ArrayPlainsScene.ts, BaseRegionScene, region registry, MenuScene.continueGame, ConceptBridgeScene, TransitionManager, lazy loading, ScriptedChoiceScene, choiceSceneArchitecture.test, TwinRiversChoiceScenes.ts, HashHighlandsChoiceScenes.ts, StackSpiresChoiceScenes.ts
+353:
+354:## Task 6: Track project asset paths versus Codex generated-image cache, partial
+355:
+356:### rollout_summary_files
+357:
+358:- rollout_summaries/2026-04-28T17-10-37-69MR-full_game_prologue_array_plains_production_pass.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\04\28\rollout-2026-04-28T13-10-37-019dd512-45cb-7c23-9fee-775e72955ce9.jsonl, updated_at=2026-04-28T22:14:31+00:00, thread_id=019dd512-45cb-7c23-9fee-775e72955ce9, asset durability and QA-artifact split)
+359:
+360:### keywords
+361:
+362:- public/assets/array_plains/environment/array_plains_field.png, src/config/assets.ts, ARRAY_PLAINS_BASE, ARRAY_PLAINS_IMAGE_ASSETS, C:\Users\kathi\.codex\generated_images, public/assets/prologue_*, public/assets/array_plains
+363:
+364:## Task 7: Fix real test/runtime regressions uncovered by baseline whole-game checks, success
+365:
+366:### rollout_summary_files
+367:
+368:- rollout_summaries/2026-05-06T21-45-25-x0nV-d_algo_critical_full_game_audit_shared_choice_refactor.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\06\rollout-2026-05-06T17-45-25-019dff40-ba14-7160-b6a2-d9cffe1f19c3.jsonl, updated_at=2026-05-06T22:48:48+00:00, thread_id=019dff40-ba14-7160-b6a2-d9cffe1f19c3, runtime-error guard added so browser passes fail on `pageerror` / `console.error`)
+369:- rollout_summaries/2026-05-05T17-22-56-nQ5p-d_algo_full_game_prologue_to_core_production_pass.md (cwd=D:\algo, rollout_path=C:\Users\kathi\.codex\sessions\2026\05\05\rollout-2026-05-05T13-22-56-019df92a-103a-7432-b87e-5da910312387.jsonl, updated_at=2026-05-05T18:31:01+00:00, thread_id=019df92a-103a-7432-b87e-5da910312387, DOM-safe accessibility fix plus contract-drift cleanup)
+370:
+
+codex
+Saved `D:\algo\public\assets\visual_revamp\objects\props\array_marker_v2.png`.
+
+Self-verification:
+- Dimensions: `64 x 64`
+- Mode: `RGBA`, transparent background
+- File size: `375 bytes`
+- Color count: `5` opaque colors + `1` transparent RGBA entry
+- Hex values: `#081820`, `#346856`, `#88c070`, `#e0f8d0`, `#06b6d4`
+- Alpha values: `0, 255` only
+- Hard-edge confirmation: passed, no AA, no gradients, all 4x4 logical pixel blocks are uniform
+- `assets.ts`: not edited
+
+
+SUCCESS: The process with PID 228 (child process of PID 23424) has been terminated.
+SUCCESS: The process with PID 23424 (child process of PID 16604) has been terminated.
+SUCCESS: The process with PID 16604 (child process of PID 20148) has been terminated.
+SUCCESS: The process with PID 20148 (child process of PID 16440) has been terminated.
+tokens used
+89,276
+Saved `D:\algo\public\assets\visual_revamp\objects\props\array_marker_v2.png`.
+
+Self-verification:
+- Dimensions: `64 x 64`
+- Mode: `RGBA`, transparent background
+- File size: `375 bytes`
+- Color count: `5` opaque colors + `1` transparent RGBA entry
+- Hex values: `#081820`, `#346856`, `#88c070`, `#e0f8d0`, `#06b6d4`
+- Alpha values: `0, 255` only
+- Hard-edge confirmation: passed, no AA, no gradients, all 4x4 logical pixel blocks are uniform
+- `assets.ts`: not edited
+
+

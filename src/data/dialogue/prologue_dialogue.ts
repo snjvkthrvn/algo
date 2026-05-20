@@ -142,28 +142,37 @@ export const professorNodePostPuzzle: DialogueTree = {
 // ─── Rune Keeper ───────────────────────────────────────────────────────────────
 // Voice: ancient, poetic — "wind through crystal" — sparse, not chatty
 
+// Reframed for the Brute Force Wakeup opening. The Rune Keeper acknowledges
+// the cinematic damage and points the player at the literal repair task —
+// carrying the cold open's momentum into P0_1 without leaking the algorithm
+// name (that still lives in `runeKeeperPostPuzzle`).
 export const runeKeeperDialogue: DialogueTree = {
   startNodeId: 'rk_intro_1',
   nodes: [
-    // Scene 0-4 from the script
     {
       id: 'rk_intro_1',
       speaker: 'Rune Keeper',
-      text: 'The runes remember. They remember the order of all things.',
+      text: 'You are awake. Good. Glitch was here — kicking through anything they could not solve.',
       nextNodeId: 'rk_intro_2',
     },
     {
       id: 'rk_intro_2',
       speaker: 'Rune Keeper',
-      text: 'Watch them glow. Walk where they showed you. In order.',
+      text: 'The runes remember the order of all things. But Glitch tried every wrong hop, and the chant fell apart.',
+      nextNodeId: 'rk_intro_3',
+    },
+    {
+      id: 'rk_intro_3',
+      speaker: 'Rune Keeper',
+      text: 'Watch the runes glow. Walk where they show you, in the order they showed you. Repair what brute force broke.',
       nextNodeId: 'rk_challenge',
     },
     {
       id: 'rk_challenge',
       speaker: 'Rune Keeper',
-      text: 'One step at a time. That is how all journeys begin.',
+      text: 'One step at a time. That is the secret Glitch never learned.',
       choices: [
-        { text: 'I\'m ready.', nextNodeId: 'rk_start_puzzle' },
+        { text: 'Let me repair it.', nextNodeId: 'rk_start_puzzle' },
         { text: 'Tell me more.', nextNodeId: 'rk_explain' },
       ],
     },
@@ -171,8 +180,8 @@ export const runeKeeperDialogue: DialogueTree = {
       id: 'rk_explain',
       speaker: 'Rune Keeper',
       text: [
-        'The runes light in sequence. Three rounds, each longer than the last.',
-        'Your companion will move near each glowing tile. Trust what it shows you.',
+        'Four chants. Each longer than the last. Each tests whether you remember the order.',
+        'Your spark companion will move near the next glowing rune. Trust what it shows you.',
         'When you are ready.',
       ],
       nextNodeId: 'rk_challenge',
@@ -180,29 +189,33 @@ export const runeKeeperDialogue: DialogueTree = {
     {
       id: 'rk_start_puzzle',
       speaker: 'Rune Keeper',
-      text: 'Step forward. The runes await.',
+      text: 'Step forward. The runes await — in order.',
       actions: [{ type: 'start_puzzle', value: 'p0_1' }],
     },
   ],
 };
 
+// Post-puzzle naming. This is the load-bearing educational beat for P0_1 —
+// the moment "you walked some hexes in order" gets reframed as the
+// foundational CS atom of *sequence*. Strengthened to (a) explicitly contrast
+// the player vs. Glitch, (b) plant the "two atoms of logic" framing that
+// P0_2's mapping puzzle will complete, and (c) make the educational payload
+// land harder than the puzzle's surface mechanic suggests.
 export const runeKeeperPostPuzzle: DialogueTree = {
   startNodeId: 'rk_post_1',
   nodes: [
-    // Post-puzzle naming from the script (FEEL → NAME moment)
     {
       id: 'rk_post_1',
       speaker: 'Rune Keeper',
-      text: 'You hear the pattern. You walk the sequence.',
+      text: 'You heard the pattern. You walked the sequence — in order.',
       nextNodeId: 'rk_post_2',
     },
     {
       id: 'rk_post_2',
       speaker: 'Rune Keeper',
       text: [
-        'What you did is the most fundamental act in all of logic: follow instructions in order.',
-        'First this. Then that. Then the next.',
-        'Computer scientists call it Sequential Processing. And it is the heartbeat of every program ever written.',
+        'Glitch hopped the same runes you did. But in the wrong order.',
+        'That is the difference between you and them. Not what — but when.',
       ],
       nextNodeId: 'rk_post_3',
     },
@@ -210,8 +223,28 @@ export const runeKeeperPostPuzzle: DialogueTree = {
       id: 'rk_post_3',
       speaker: 'Rune Keeper',
       text: [
+        'What you just did is the most fundamental act in all of logic: follow instructions in order.',
+        'First this. Then that. Then the next.',
+        'It has a name. SEQUENCE. The first atom of every program ever written.',
+      ],
+      nextNodeId: 'rk_post_4',
+    },
+    {
+      id: 'rk_post_4',
+      speaker: 'Rune Keeper',
+      text: [
+        'Sequence alone is not enough. A program must also choose — which path, which fork, which door.',
+        'That is the second atom. SELECTION. The Console Keeper will show you.',
+        'When you hold both — sequence and selection — you hold everything Glitch needs but cannot grasp.',
+      ],
+      nextNodeId: 'rk_post_5',
+    },
+    {
+      id: 'rk_post_5',
+      speaker: 'Rune Keeper',
+      text: [
         'A shard of understanding. Take it.',
-        'Seek the Console Keeper next. Mapping awaits you.',
+        'Seek the Console Keeper next. The chamber still has more to repair.',
       ],
     },
   ],
@@ -264,23 +297,27 @@ export const consoleKeeperDialogue: DialogueTree = {
   ],
 };
 
+// Post-puzzle naming for P0_2. Reconciled with the current puzzle mechanic
+// (fork-routing / pulse-through-switches), which is SELECTION / control flow,
+// NOT key-value mapping. Calls back explicitly to the Rune Keeper's SEQUENCE
+// naming so the prologue's two-atoms-of-logic trilogy lands by the time the
+// player meets the Sentinel.
 export const consoleKeeperPostPuzzle: DialogueTree = {
   startNodeId: 'ck_post_1',
   nodes: [
-    // Post-puzzle naming + Glitch choice from the script
     {
       id: 'ck_post_1',
       speaker: 'Console Keeper',
-      text: 'Perfect mapping. Every shard to its console.',
+      text: 'Every fork set. Every pulse home. The signal flows again.',
       nextNodeId: 'ck_post_2',
     },
     {
       id: 'ck_post_2',
       speaker: 'Console Keeper',
       text: [
-        'What you just did is called mapping. Every key has a value. Every input has an output.',
-        'When you know the mapping, you don\'t need to search. You just... go there.',
-        'Hash maps, dictionaries, lookup tables — they all begin with this idea.',
+        'What you just did has a name. SELECTION.',
+        'At every fork the signal could go two ways. You chose. And the choice you made for one fork constrained the next.',
+        'It is the second atom of every program ever written. The Rune Keeper showed you the first — sequence. Now you have both.',
       ],
       nextNodeId: 'ck_glitch_appears',
     },
@@ -303,8 +340,8 @@ export const consoleKeeperPostPuzzle: DialogueTree = {
       id: 'ck_response_a',
       speaker: 'Glitch',
       text: [
-        'Huh. So instead of trying everything... you figure out the RULE first.',
-        'Then you only need one try per piece.',
+        'Huh. So instead of trying every fork at random... you read each one and CHOSE.',
+        'And once you chose, the next fork only had one right answer.',
         '...That\'s annoyingly smart.',
       ],
       nextNodeId: 'ck_glitch_exit',
@@ -313,8 +350,8 @@ export const consoleKeeperPostPuzzle: DialogueTree = {
       id: 'ck_response_b',
       speaker: 'Glitch',
       text: [
-        'Yeah, but LONGER isn\'t BETTER. Even I know that.',
-        'Maybe I should pay more attention to patterns instead of just... smashing buttons.',
+        'Yeah, but SMASHING every fork until something works gets you there too. Sometimes.',
+        'Maybe. ...Fine. Maybe I should READ the forks before I kick them.',
       ],
       nextNodeId: 'ck_glitch_exit',
     },

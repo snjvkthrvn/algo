@@ -47,7 +47,14 @@ describe('first three regions quality guards', () => {
 
     expect(noSwapIndex).toBeGreaterThan(-1);
     expect(swapIndex).toBeGreaterThan(noSwapIndex);
-    expect(source).toContain('Already in order: compare, then leave this pair alone.');
+    // Inspecting a sorted pair is part of how bubble sort terminates, so we
+    // give a soft confirmation rather than a penalty. The test asserts:
+    //   (a) the player gets feedback that the pair is fine, and
+    //   (b) the no-op path doesn't increment mistakesTotal / attempts.
+    expect(source).toMatch(/Already in order[\s\S]*Move on/);
+    const noSwapBlock = source.slice(noSwapIndex, swapIndex);
+    expect(noSwapBlock).not.toContain('this.mistakesTotal++');
+    expect(noSwapBlock).not.toContain('this.attempts++');
   });
 
   it('locks Two Sum input while a wrong pair is being cleared', () => {

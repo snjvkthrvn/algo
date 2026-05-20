@@ -1,0 +1,54 @@
+Warning: True color (24-bit) support not detected. Using a terminal with true color enabled will result in a better visual experience.
+Ripgrep is not available. Falling back to GrepTool.
+**VERDICT:** Not ship-ready; asset clashing is still catastrophic and the typography has significantly regressed.
+
+### SCORES
+
+**A1 PALETTE COHERENCE:** 2/5 (Delta -0.1)
+The colors are somewhat grouped by region (green for Array Plains, blue/purple for Prologue), but the asset styles completely shatter the cohesion. You have a 4-color retro pixel player, 1-bit or 2-bit NPCs (`17-ap1-sorting-shed-layout.png`), flat vector floors with scanlines, and highly shaded, detailed stone portals. It looks like a game jam project where assets were sourced from five different free packs. 
+
+**A2 PIXEL DENSITY CONSISTENCY:** 1/5 (Delta 0)
+Still a total failure. The player in `08-array-plains-continue.png` is made of massive, chunky pixels. The floor beneath them is a smooth vector plane with high-res anti-aliased scanlines. In `27b-twin-rivers-closure.png`, the portal has microscopic sub-pixels in the swirling vortex compared to the player's giant blocky eyes. The game is rendering at four different virtual resolutions simultaneously.
+
+**A3 CHARACTER-VS-WORLD SCALE:** 2/5 (Delta +1)
+Slightly improved because the player isn't a towering anime protagonist anymore, but still broken. Look at `27b-twin-rivers-closure.png`: The player sprite is taller than the fully rendered, highly detailed pine trees flanking the portal. Either the player is a 40-foot giant, or the portal is a tabletop miniature. 
+
+**A4 UI LANGUAGE CONSISTENCY:** 2/5 (Delta -1)
+Regressed. The overworld UI is clean, cyan-bordered monospace (`08`, `17`). But the puzzle UI (`04-p0-1-layout.png`) uses a completely out-of-place, elegant serif font ("LESSON 01"). Why is there a Victorian-style serif font in a game about algorithms, nodes, and arrays? It looks like two different UI designers worked on the game without talking to each other.
+
+**A5 PUZZLE-VS-OVERWORLD TRANSITIONS:** 3/5 (Delta +1)
+Mechanically acceptable. The puzzle UI (when ignoring the typographic nightmare) looks solid and distinct, acting as a deep-dive into the technical terminal layer of the world.
+
+**A6 BOSS WEIGHT:** 3/5 (Delta 0)
+The Shuffler (`21-shuffler-domain-layout.png`) and Mirror Serpent (`27-mirror-serpent-layout.png`) layouts are decent UI-driven boss fights. The complex panels and data readouts look imposing and structured.
+
+**A7 TYPOGRAPHY:** 1/5 (Delta -2)
+Horrible regression. The mix of sharp monospace in dialogue (`14-professor-node-intro-clean.png`), blocky pixel fonts in the HUD (`08-array-plains-continue.png`), and the sudden appearance of elegant serif fonts in the core gameplay loop (`04-p0-1-layout.png`) is a typographic car crash. Choose ONE design language.
+
+**A8 LIGHTING:** 1/5 (Delta -1)
+Glows are smooth, high-res radial gradients (`05-p0-1-glow.png`, the blue lights in `12-gateway-unlocked.png`). They look extremely cheap when placed over blocky pixel art or flat vector floors. The companion "Bit" has a soft, anti-aliased glow that completely breaks the hard-edged retro aesthetic you're trying to force onto the player sprite.
+
+***
+
+### SPECIFIC ASKS
+
+**1. Did Wave 4 fix A2+A3?**
+No. It swapped one flavor of broken for another. You replaced the HD anime sprite with a 16x16 pixel sprite, but you did not change the environment to match. The player is now pixel art, but the world is smooth vector shapes with a high-res scanline filter. The scale fails because the highly detailed environment assets (like the portal in `27b`) make the simplistic pixel art player look like a placeholder sticker.
+
+**2. Does the player sprite (v8) read as 16x16-effective?**
+No. It looks like a 16x16 sprite scaled up and pasted onto an un-pixelated background. In `08-array-plains-continue.png`, the chunky square pixels of the player sit on top of a smooth, anti-aliased gradient green floor. In `03-prologue-settled.png`, the pixel size of the player's black outline is massive compared to the fine, high-res cracks in the stone altar they are standing on. They do not share a virtual canvas.
+
+**3. Which screenshot is now the WORST?**
+`27b-twin-rivers-closure.png`. The portal on the right is a blatantly AI-generated hallucination. The hyper-detailed rock shading, the smooth golden swirl, and the microscopic, sub-pixel pine trees make the flat, blocky player sprite standing next to it look absolutely ridiculous. 
+
+**4. Which screenshot is the new BEST?**
+`21-shuffler-domain-layout.png`. The UI here is cohesive. It's a complex, technical interface. The dark background with cyan circuit-like lines, the monospace text, and the clear data panels feel like a complete, intentional, and unified design.
+
+**5. REGEN LIST (Priority Order)**
+1. **`water_v2` portal (seen in `27b-twin-rivers-closure.png`)**: Needs immediate regen. **Failure:** Blatantly AI-generated, hyper-detailed, soft gradients, sub-pixel trees. **Guidance:** Must be a hard-edged, flat, 16x16-style pixel art object. No smooth shading. Remove the realistic trees entirely. Match the 4-color blocky aesthetic of the player.
+2. **Puzzle UI Typography (seen in `04-p0-1-layout.png`, `07-p0-2-layout.png`)**: Not a sprite regen, but a code/CSS fix. **Failure:** The serif font ("LESSON 01", "I. First Choice") clashes horribly with the sci-fi monospace theme. **Guidance:** Replace all serif fonts with the monospace font used in the Codex and dialogue boxes.
+3. **Prologue Altar / Floor Tiles (seen in `03-prologue-settled.png`, `12-gateway-unlocked.png`)**: **Failure:** The stone texture has fine, high-res cracks and details that are much smaller than the player's pixels. **Guidance:** Redraw the altar and stone floors to match the chunky pixel density of the v8 player sprite. If the player's outline is 4 virtual pixels wide, the smallest crack in the stone must also be 4 virtual pixels wide. 
+4. **Lighting effects / Companion "Bit" (seen in `05-p0-1-glow.png`, `12-gateway-unlocked.png`, `17-ap1-sorting-shed-layout.png`)**: **Failure:** Smooth, high-resolution radial gradients used for glows. **Guidance:** Replace smooth gradients with stepped, hard-edged pixel lighting or dithered transparency. The companion must not emit an anti-aliased Photoshop outer glow.
+
+**6. Ship verdict**
+**Not shippable.** The gap to a 3.5/5 is massive. To reach shippable quality, you must unify the virtual resolution across the entire rendering pipeline. You cannot have chunky pixel art characters walking on smooth vector floors next to highly-rendered AI props illuminated by high-res gradient lights. Pick one rendering paradigm (either pure 16x16 pixel art scaled up perfectly, or crisp hi-res vector) and enforce it ruthlessly across 100% of the assets on screen.

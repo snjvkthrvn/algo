@@ -17,15 +17,23 @@
 
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
+import { VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { audioManager } from '../../core/AudioManager';
+import { a11yManager } from '../../core/A11yManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { drawPanel } from '../../ui/panel';
 import { BitHint } from '../../entities/BitHint';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
 import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
+import { showLessonCard } from '../../ui/LessonCard';
+import { BitCompanion } from '../../ui/BitCompanion';
+import { GlitchCorner } from '../../ui/GlitchCorner';
+import { ComplexityMeter } from '../../ui/ComplexityMeter';
+import { AlgorithmTrace } from '../../ui/AlgorithmTrace';
+import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
+import type { RegionBackdropId, RegionBackdropOptions } from '../../ui/RegionBackdrop';
 import {
   TWO_SUM_ROUND_CONFIGS,
   complementOf,
@@ -35,6 +43,8 @@ import {
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
 import { buildTwoSumPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
+import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
+import { PuzzlePhase } from '../../data/types';
 
 interface NumberTile {
   index: number;
@@ -67,6 +77,24 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private softTimeBudgetMs = 0;
   private timerBar!: Phaser.GameObjects.Rectangle;
   private preview: PuzzlePreviewSidePanel | null = null;
+  /** Brute force pair-check count per round vs the player's click count. */
+  private complexity: ComplexityMeter | null = null;
+  /** Number of pair-checks the player has *consumed* — each anchor-then-target click is one check. */
+  private checksUsed = 0;
+  /**
+   * Live trace of the hash-set two-sum algorithm. The player sees `need`
+   * computed from their anchor pick and `seen` accumulating tiles they've
+   * tried — turning "I clicked a tile" into "I just executed step 3 of the
+   * algorithm".
+   */
+  private trace: AlgorithmTrace | null = null;
+  /** Values the player has anchored at least once this round (the algorithm's `seen` set). */
+  private seenValues: number[] = [];
+  /** Glitch as visible co-actor during FEEL_IT round 1. Null in USE_IT rounds. */
+  private bruteForce: BruteForceActor | null = null;
+  /** True between FEEL_IT round completion and USE_IT round mount. Guards
+   *  against re-firing the NAME_IT beat on restart. */
+  private namedYet = false;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_4 });
@@ -76,24 +104,34 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_PAIRING_GROUNDS_BG;
+    return VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG;
   }
   protected getPuzzleFrameFillAlpha(): number {
-    return 0.02;
+    return 0;
+  }
+  protected getPuzzleTheme(): PuzzleTheme {
+    return ARRAY_PLAINS_PUZZLE_THEME;
+  }
+  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+    return { id: 'array-plains', options: { intensity: 0.7 } };
   }
 
   create(): void {
+    // FEEL_IT first-principles guard: strip "complement" / "two sum" framing
+    // from the title subtitle when round 0 is FEEL_IT. The player should
+    // derive the complement insight, not read about it before playing.
+    if (TWO_SUM_ROUND_CONFIGS[0].lesson.phase === PuzzlePhase.FEEL_IT) {
+      this.puzzleDescription = 'Find two runestones that add to the target. A Tile Worker waits.';
+    }
     super.create();
-    new PuzzleAmbience(this, 'farmland', { intensity: 0.7 });
+    new PuzzleAmbience(this, 'farmland', { intensity: 0.30 });
 
     const { width } = this.cameras.main;
 
     this.buildRoundBadge(width);
     this.buildTargetPanel(width);
     this.buildTimerBar(width);
-    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
-    this.preview.setTitle('PAIR PREVIEW');
-    this.preview.show();
+    new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40 });
 
     this.beam = this.add.graphics().setDepth(25);
 
@@ -108,6 +146,8 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.softTimer?.destroy();
       this.preview?.destroy();
       this.preview = null;
+      this.bruteForce?.destroy();
+      this.bruteForce = null;
     });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -156,31 +196,143 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   }
 
   // ──────────────────────────────────────────────────────────────────
+  // Phase gating (FEEL_IT vs USE_IT)
+  // ──────────────────────────────────────────────────────────────────
+
+  /** Phase helper — true when the current round is FEEL_IT. Used to gate
+   *  algorithmic hand-holding (NEED badge, trace binding, complement hint)
+   *  that would name the technique before the player has felt it. */
+  private isFeelItRound(): boolean {
+    return TWO_SUM_ROUND_CONFIGS[this.roundIndex]?.lesson.phase === PuzzlePhase.FEEL_IT;
+  }
+
+  /** FEEL_IT mounts: only the brute-force co-actor. NO trace, NO complexity
+   *  meter, NO GlitchCorner copy that says "n(n-1)/2 checks" — the player
+   *  must derive the contrast from Glitch's visibly mounting pair count. */
+  private mountFeelItPanels(): void {
+    if (this.bruteForce) return;
+    const { height } = this.cameras.main;
+    this.bruteForce = new BruteForceActor(this, {
+      x: 152, y: height - 92,
+      strategy: makeTwoSumBruteStrategy(),
+      heading: "⚠ GLITCH'S APPROACH",
+      subtitle: '(checking every pair in turn...)',
+      notDoneLabel: 'still flailing',
+      doneLabel: 'gave up',
+      verbLabel: 'pair checks',
+      depth: 40,
+    });
+  }
+
+  /** USE_IT mounts: the full teaching toolkit. Idempotent — safe to call on
+   *  every round-2-onward start. Holds the AlgorithmTrace, ComplexityMeter,
+   *  GlitchCorner ("n × (n−1) / 2 checks") and the pair-preview panel that
+   *  used to mount unconditionally in create(). */
+  private mountUseItPanels(): void {
+    const { width, height } = this.cameras.main;
+    if (!this.preview) {
+      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
+      this.preview.setTitle('PAIR PREVIEW');
+      this.preview.show();
+    }
+    if (!this.trace) {
+      new GlitchCorner(this, {
+        x: 152, y: height - 92,
+        width: 240, height: 74,
+        variant: 'parchment',
+        heading: 'Glitch Tries Every Pair',
+        body: 'n × (n−1) / 2 checks. You can do better.',
+        depth: 40,
+      });
+
+      this.trace = new AlgorithmTrace(this, {
+        x: 64, y: 270, width: 240,
+        title: 'twoSum(arr, target)',
+        lines: [
+          'seen = {}',
+          'for v in arr:',
+          '  need = target - v',
+          '  v = {v}, need = {need}',
+          '  if need in seen: return',
+          '  seen.add(v)',
+          'seen = {seen}',
+        ],
+      });
+    }
+    if (!this.complexity) {
+      const initialBrute = pairCount(TWO_SUM_ROUND_CONFIGS[this.roundIndex].values.length);
+      this.complexity = new ComplexityMeter(this, {
+        x: width / 2, y: 230,
+        width: 320,
+        bruteLabel: 'pair checks',
+        bruteCost: initialBrute,
+        algoLabel: 'your picks',
+        algoCost: 0,
+        variant: 'parchment',
+        depth: 40,
+      });
+    }
+  }
+
+  // showNameItBeat lifted to BasePuzzleScene.
+
+  // ──────────────────────────────────────────────────────────────────
   // Round lifecycle
   // ──────────────────────────────────────────────────────────────────
 
   private async startRound(idx: number): Promise<void> {
     this.roundIndex = idx;
     this.selectedIndices = [];
+    this.checksUsed = 0;
+    this.seenValues = [];
     this.beam.clear();
     this.isResolving = true;
     this.actionLocked = false;
 
     const round = TWO_SUM_ROUND_CONFIGS[idx];
-    this.roundBadge.setText(`ROUND ${idx + 1}/3 · ${round.label} · find any pair that sums to target`);
+    const total = TWO_SUM_ROUND_CONFIGS.length;
+    const isFeelIt = round.lesson.phase === PuzzlePhase.FEEL_IT;
+    // FEEL_IT strips "find any pair that sums to target" — even that phrasing
+    // names the technique. The target panel is enough; the player figures out
+    // "I need two" from the puzzle's name and the brute-force counter.
+    this.roundBadge.setText(
+      isFeelIt
+        ? `ROUND ${idx + 1}/${total}  ·  the Tile Worker waits`
+        : `ROUND ${idx + 1}/${total} · ${round.label} · find any pair that sums to target`
+    );
     this.targetText.setText(`TARGET  =  ${round.target}`);
+
+    if (isFeelIt) {
+      this.mountFeelItPanels();
+    } else {
+      this.mountUseItPanels();
+      // Coming from FEEL_IT into USE_IT — fade Glitch out of focus instead of
+      // destroying. Keeping them dim-visible cements that they're still the
+      // worse approach, even after the player has the technique.
+      this.bruteForce?.fadeTo(0.32);
+    }
 
     this.layoutTiles(round);
     this.refreshPreview();
+    this.bindTraceState();
+    this.trace?.highlightLine(0); // seen = {}
+    this.complexity?.reset({
+      bruteCost: pairCount(round.values.length),
+      algoCost: 0,
+      bruteLabel: 'pair checks',
+      algoLabel: 'your picks',
+    });
 
-    const subtitle = idx === 2
+    const subtitle = idx >= total - 2
       ? `${round.label}  ·  target ${round.target}  ·  ${round.values.length} runestones, ${round.seconds}s on the clock`
       : `${round.label}  ·  target ${round.target}  ·  pick one, find its complement`;
 
+    await showLessonCard(this, round.lesson, 'parchment');
+
     await showRoundBanner(this, {
-      label: `ROUND ${idx + 1} / 3`,
+      label: `ROUND ${idx + 1} / ${total}`,
       subtitle,
-      accent: idx === 2 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
+      accent: idx >= total - 1 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
     });
 
     this.isResolving = false;
@@ -266,6 +418,28 @@ export class P1_4_TwoSum extends BasePuzzleScene {
 
     container.add([shadow, box, decor, label, key, needBadge]);
     box.on('pointerdown', () => this.chooseTile(index));
+    // Hover affordance — the click target lifts slightly and brightens so the
+    // player can scan complements with their eye instead of clicking blind.
+    // We tween scale on the container, not the box, so the decor + label
+    // come along for the ride.
+    box.on('pointerover', () => {
+      if (this.isResolving || this.actionLocked) return;
+      if (this.selectedIndices.includes(index)) return;
+      this.tweens.add({ targets: container, scale: 1.06, duration: 90, ease: 'Sine.easeOut' });
+      box.setFillStyle(0xfde68a, 0.6);
+    });
+    box.on('pointerout', () => {
+      this.tweens.add({ targets: container, scale: 1, duration: 110, ease: 'Sine.easeIn' });
+      // Restore the appropriate fill — selection state takes precedence over
+      // the hover preview.
+      if (this.selectedIndices.includes(index)) {
+        box.setFillStyle(COLORS.GOLD_ACCENT, 0.96);
+        box.setStrokeStyle(3, COLORS.CYAN_GLOW, 0.95);
+      } else {
+        box.setFillStyle(0xe0f8d0, 0.96);
+        box.setStrokeStyle(3, 0x346856, 1);
+      }
+    });
 
     // Entrance: small cascade so the field assembles, not just appears.
     container.setScale(0.6);
@@ -325,11 +499,16 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.hideNeedBadge(tile);
       this.redrawBeam();
       this.refreshPreview();
+      this.bindTraceState();
       return;
     }
 
     this.selectedIndices.push(index);
     this.styleTile(tile, true);
+    // The picked value joins the algorithm's `seen` set on first selection.
+    if (!this.seenValues.includes(tile.value)) {
+      this.seenValues.push(tile.value);
+    }
 
     if (this.selectedIndices.length === 1) {
       const need = complementOf(tile.value, round.target);
@@ -338,18 +517,55 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.bitHint?.showWarm();
       this.redrawBeam();
       this.refreshPreview();
+      this.bindTraceState();
+      // Highlight the "compute need" line — the player is at step 3 of the algo.
+      this.trace?.highlightLines(3, 2);
+      // Need badge appears silently — announce the anchor + complement so
+      // screen-reader players know what value to look for next.
+      a11yManager.announce(`Anchored ${tile.value}. Need ${need} to reach target ${round.target}.`, false);
       return;
     }
 
     // Two tiles selected — evaluate.
     this.redrawBeam();
     this.refreshPreview();
+    this.checksUsed++;
+    this.complexity?.setAlgoCost(this.checksUsed);
+    if (!this.seenValues.includes(tile.value)) {
+      this.seenValues.push(tile.value);
+    }
+    this.bindTraceState();
     const values = this.selectedIndices.map((i) => this.tiles[i].value);
     if (isTwoSumPair(round.values, round.target, values)) {
+      // The algorithm found target − v in `seen`: line 4 fires.
+      this.trace?.highlightLine(4);
+      this.complexity?.celebrate();
       this.handleCorrectPair();
     } else {
+      // Algorithm path didn't terminate yet — line 5 (seen.add) fires, then
+      // we'd loop back to line 1 in a real implementation. The wrong-pair
+      // visual shake makes the "no match" reading clear.
+      this.trace?.highlightLine(5);
       this.handleWrongPair();
     }
+  }
+
+  /** Push current scene state into the trace so {v}, {need}, {seen} update live. */
+  private bindTraceState(): void {
+    // FEEL_IT has no trace mounted (and shouldn't — `seen = {}` and
+    // `need = target - v` are pure algorithm vocabulary). Guard against both
+    // the unmounted-trace case and the per-round bail-out.
+    if (this.isFeelItRound() || !this.trace) return;
+    const round = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
+    const anchorIdx = this.selectedIndices[0];
+    const anchor = anchorIdx !== undefined ? this.tiles[anchorIdx]?.value ?? null : null;
+    const need = anchor !== null ? complementOf(anchor, round.target) : null;
+    this.trace.bindState({
+      target: round.target,
+      v: anchor,
+      need,
+      seen: this.seenValues.length ? `{${this.seenValues.join(', ')}}` : '{}',
+    });
   }
 
   private styleTile(tile: NumberTile, selected: boolean): void {
@@ -363,6 +579,10 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   }
 
   private showNeedBadge(tile: NumberTile, need: number): void {
+    // FEEL_IT suppresses the NEED badge entirely — it's a literal printout of
+    // target − v, which IS the complement technique. The whole point of round
+    // 1 is the player computing this in their head.
+    if (this.isFeelItRound()) return;
     const textObj = tile.needBadge.getData('text') as Phaser.GameObjects.Text;
     textObj.setText(`NEED ${need}`);
     tile.needBadge.setAlpha(0);
@@ -475,7 +695,23 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       return;
     }
 
-    this.time.delayedCall(1400, () => this.startRound(this.roundIndex + 1).catch(() => undefined));
+    // FEEL_IT completion → fire the NAME_IT script beat once before round 2
+    // starts. This is the moment Glitch (the speaker for AP-4) cracks and
+    // names the technique. Freezing Glitch's brute-force counter lands the
+    // "you won the contrast" beat right before they speak.
+    this.time.delayedCall(1400, async () => {
+      const finishedRound = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
+      if (
+        finishedRound?.lesson.phase === PuzzlePhase.FEEL_IT &&
+        finishedRound.lesson.nameItBeat &&
+        !this.namedYet
+      ) {
+        this.namedYet = true;
+        this.bruteForce?.freeze();
+        await this.showNameItBeat(finishedRound.lesson.nameItBeat);
+      }
+      this.startRound(this.roundIndex + 1).catch(() => undefined);
+    });
   }
 
   private handleWrongPair(): void {
@@ -525,8 +761,14 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   protected displayHint(hintNumber: number): void {
     const round = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
     const firstPair = round.validPairs[0];
+    // FEEL_IT keeps the first hint diegetic — "target minus that value" names
+    // the technique. Hints 2 and 3 give a concrete pair anyway (the player
+    // already triggered the assist), so they're identical across phases.
+    const firstHint = this.isFeelItRound()
+      ? 'Pick a runestone. The one that finishes the pair is somewhere in the row.'
+      : 'Pick one tile, then look for target minus that value.';
     const messages = [
-      'Pick one tile, then look for target minus that value.',
+      firstHint,
       this.selectedIndices.length === 1
         ? `You picked ${this.tiles[this.selectedIndices[0]].value}. Look for ${complementOf(this.tiles[this.selectedIndices[0]].value, round.target)}.`
         : `One valid pair: ${firstPair[0]} and ${firstPair[1]} → ${round.target}.`,
@@ -538,4 +780,29 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   protected getConceptName(): string {
     return 'Two Sum';
   }
+}
+
+/** n(n-1)/2 — the number of unordered pairs in a row of n values. */
+function pairCount(n: number): number {
+  return Math.max(1, (n * (n - 1)) / 2);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Brute-force strategy — fed to BruteForceActor during FEEL_IT round 1.
+//
+// Two-sum's brute-force foil is "check every pair (i, j)". The tile field is
+// already visually busy (5+ runestones, target panel, beam, soft timer), so
+// we run BruteForceActor in degenerate-row mode (no tile row); the counter
+// ticks up as Glitch racks up pair checks. The visible chaos is implied —
+// while the player picks one tile and *knows* its complement, Glitch is
+// grinding through every combination.
+// ──────────────────────────────────────────────────────────────────────────
+
+function makeTwoSumBruteStrategy(): BruteForceStrategy {
+  return {
+    initialValues: [],
+    nextMove: (vals) => vals,
+    isSolved: () => false,
+    tickIntervalMs: 800,
+  };
 }

@@ -11,7 +11,7 @@
  */
 
 import Phaser from 'phaser';
-import { COLORS, FONTS } from '../config/constants';
+import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
 
 export interface RoundBannerOptions {
   /** Primary label, e.g. "ROUND 2 / 3". */
@@ -42,7 +42,9 @@ export function showRoundBanner(scene: Phaser.Scene, options: RoundBannerOptions
   const plateW = width + 200;
   const plateH = 64;
   const plate = scene.add.graphics();
-  plate.fillStyle(0x081820, 0.94);
+  plate.fillStyle(COLORS.PURE_BLACK, 0.28);
+  plate.fillRect(-plateW / 2 + 8, -plateH / 2 + 8, plateW, plateH);
+  plate.fillStyle(COLORS.ERROR, 0.94);
   plate.fillRect(-plateW / 2, -plateH / 2, plateW, plateH);
   plate.lineStyle(2, accent, 1);
   plate.beginPath();
@@ -70,15 +72,15 @@ export function showRoundBanner(scene: Phaser.Scene, options: RoundBannerOptions
   const labelText = scene.add.text(0, -10, options.label, {
     fontSize: '20px',
     fontFamily: FONTS.RETRO,
-    color: '#e0f8d0',
-    stroke: '#06b6d4',
+    color: COLOR_HEX.TEXT_LIGHT,
+    stroke: COLOR_HEX.CYAN_GLOW,
     strokeThickness: 2,
   }).setOrigin(0.5);
 
   const subtitleText = scene.add.text(0, 13, options.subtitle, {
     fontSize: '10px',
     fontFamily: FONTS.MONO,
-    color: '#88c070',
+    color: COLOR_HEX.TEXT_MUTED,
     align: 'center',
   }).setOrigin(0.5);
 

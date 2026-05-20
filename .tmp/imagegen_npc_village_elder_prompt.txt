@@ -1,0 +1,38 @@
+Use the imagegen skill to produce a NEW Pokemon Red style NPC sprite for "VILLAGE ELDER" in "Algorithmia: The Path of Logic".
+
+=== WHY ===
+Gemini's brutal cohesion audit called Village Elder THE worst offender ("a towering, anatomically proportioned giant compared to the blocky super-deformed player"). The current asset is 1024×1024 HD shaded old man with white beard, staff, robe. Must be replaced with a flat Pokemon Red 5-color version.
+
+=== AESTHETIC ===
+Pokemon Red elder/sage sprite — think Mr. Fuji or Bill's grandfather: small chunky robed figure, simple silhouette, easily recognizable from above.
+
+=== OUTPUT FILE ===
+- Save to: D:\algo\public\assets\visual_revamp\characters\village_elder_v2.png
+- Dimensions: EXACTLY 256 × 256 pixels (single frame, matches other NPC sprites for scale consistency)
+- TRANSPARENT background
+
+=== EFFECTIVE RESOLUTION ===
+EFFECTIVE 16×16. Every 16×16 actual-pixel block = ONE solid color. Each "logical pixel" = 16×16 file pixels.
+
+=== PALETTE — 5 COLORS + ALPHA ===
+- `#081820` darkest (outlines, dark robe folds, hair/beard)
+- `#346856` medium dark (robe body, hat shadow)
+- `#88c070` light accent (a sash or amulet — optional)
+- `#e0f8d0` lightest (long white beard, face, robe highlights)
+- `#06b6d4` cyan (staff crystal — the elder carries a staff with cyan top)
+
+=== CHARACTER ===
+An old wise elder. Bent slightly. Long white beard (#e0f8d0 dominant). Robe (#346856). Holding a tall wooden staff with a cyan #06b6d4 crystal at the top. No hat (or a small skullcap in #081820). Front-facing pose, hands clasped on staff.
+
+Pokemon Red sized: small chunky character, ~50 pixels of total body detail at 16×16 effective scale. The beard is the iconic feature.
+
+=== PROHIBITIONS ===
+NO smooth gradients, NO AA, NO drop shadows, NO color count above 5+alpha, NO modern detail, NO HD facial features, NO HD beard rendering.
+
+=== SELF-VERIFICATION ===
+Report dimensions (256×256), color count (≤5+alpha), hex values, file size, hard-edge confirmation, transparent background, 16×16 block discipline.
+
+STOP after self-verification. DO NOT edit assets.ts or run build/tests.
+
+== POWERSHELL NOTE ==
+Avoid one-letter function names. Use Python/Pillow.

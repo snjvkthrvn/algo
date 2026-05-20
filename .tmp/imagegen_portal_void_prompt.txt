@@ -1,0 +1,54 @@
+Use the imagegen skill to produce a new MARKETING-GRADE Pokemon Red style portal sprite for the PROLOGUE region of "Algorithmia: The Path of Logic".
+
+=== AESTHETIC REFERENCE ===
+**Pokemon Red/Blue (1996)** stone gateway / cave entrance sprites. Sparse, flat-shaded, 16×16-grid scaled.
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\public\assets\visual_revamp\objects\portals\void_v2.png
+- Final image dimensions: EXACTLY 32 × 48 pixels (portrait, will be upscaled 4× to 128×192)
+- TRANSPARENT background (alpha 0 outside the sprite, no halo)
+- True pixel art, hard edges only
+
+=== PALETTE — ABSOLUTELY 5 COLORS MAX ===
+- `#081820` darkest (stone outlines, void interior)
+- `#346856` medium dark (stone body)
+- `#88c070` light/accent (rare moss highlight)
+- `#e0f8d0` lightest (top stone highlight, rim)
+- `#06b6d4` cyan glow (the portal energy — the central glowing rune/swirl)
+
+Plus alpha 0 (transparent) for the background.
+
+=== SUBJECT ===
+A stone gateway / arch portal for the Prologue (cosmic temple ruins). Looks like a vertical archway carved from dark stone with a cyan rune-glow filling the interior of the arch.
+
+Composition:
+- A vertical stone arch silhouette
+- Two stone pillars + a curved top
+- Interior of the arch filled with cyan #06b6d4 (the portal energy)
+- Optional: 1-2 small cyan rune glyphs etched into the pillars
+- A flat stone base (1-2px tall) at the bottom
+- Outline: 1px #081820 around the entire silhouette
+- ~32 pixels wide, ~48 pixels tall
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO smooth gradients
+- NO anti-aliased edges (every pixel is a hard step)
+- NO drop shadows (use 1px outline)
+- NO subpixel detail
+- NO color count above 5
+- NO purple, NO gold (the current portal asset was bright purple — that was the WRONG palette; the new must be in the 5-color GameBoy set)
+- NO modern indie pixel art detail level
+
+=== SELF-VERIFICATION ASK ===
+After saving, report:
+1. Exact file dimensions (must be 32×48)
+2. Exact unique color count (must be ≤ 5, plus alpha transparency)
+3. List the actual hex values found
+4. File size in bytes
+5. Confirm: every pixel boundary is a hard color step
+6. Transparent background outside sprite (no halo)
+
+STOP after self-verification. DO NOT edit src/config/assets.ts. DO NOT run npm build or tests. DO NOT touch any other files.
+
+== IMPORTANT TECHNICAL NOTE FOR THIS PROJECT'S WINDOWS ENVIRONMENT ==
+The shell is PowerShell on Windows. Avoid one-letter helper function names like `R`, `H`, `L` — they collide with PowerShell built-in aliases (`R` = `Invoke-History` etc.). Prefer Python/Pillow-based renderer over PowerShell helpers.

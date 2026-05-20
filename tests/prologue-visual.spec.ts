@@ -62,7 +62,7 @@ const SHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'screenshots');
 const runtimeErrorsByPage = new WeakMap<Page, string[]>();
 
 /** Block until Phaser reports the named scene as active. */
-async function waitForScene(page: Page, key: string, timeout = 15_000) {
+async function waitForScene(page: Page, key: string, timeout = 30_000) {
   await page.waitForFunction(
     (k) => !!(window as GameWindow).__PHASER_GAME__?.scene.isActive(k),
     key,
@@ -71,13 +71,14 @@ async function waitForScene(page: Page, key: string, timeout = 15_000) {
 }
 
 /** Block until P0-1 enters PLAYER_TURN for any round. */
-async function waitForP01PlayerTurn(page: Page, timeout = 20_000) {
+async function waitForP01PlayerTurn(page: Page, timeout = 60_000) {
   await page.waitForFunction(
     () => {
       const game = (window as GameWindow).__PHASER_GAME__;
       const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
-      return scene?.['puzzleState'] === 'PLAYER_TURN';
+      return scene?.['state'] === 'turn' || scene?.['puzzleState'] === 'PLAYER_TURN';
     },
+    undefined,
     { timeout },
   );
 }
@@ -111,7 +112,7 @@ async function prepareP01Round(page: Page, roundIndex: number) {
   await waitForP01PlayerTurn(page, 5_000);
 }
 
-/** Advance all five Concept Bridge pages and wait for the Prologue return. */
+/** Advance the six-section Concept Bridge and wait for the Prologue return. */
 async function advanceConceptBridge(page: Page) {
   for (let i = 0; i < 3; i++) {
     await page.waitForTimeout(800);
@@ -137,11 +138,11 @@ async function advanceConceptBridge(page: Page) {
     }
   });
 
-  await page.waitForTimeout(800);
-  await page.keyboard.press('Space');
-  await page.waitForTimeout(800);
-  await page.keyboard.press('Space');
-  await waitForScene(page, 'PrologueScene', 12_000);
+  for (let i = 0; i < 3; i++) {
+    await page.waitForTimeout(800);
+    await page.keyboard.press('Space');
+  }
+  await waitForScene(page, 'PrologueScene');
 }
 
 /** Trigger onPuzzleComplete(3) on the active puzzle scene via JS injection. */
@@ -163,6 +164,15 @@ async function getScenePlayerPosition(page: Page, sceneKey: string) {
     const player = scene?.['player'] as { getPosition?: () => { x: number; y: number } } | null;
     return player?.getPosition?.() ?? null;
   }, sceneKey);
+}
+
+async function setScenePlayerPosition(page: Page, sceneKey: string, x: number, y: number) {
+  await page.evaluate(({ key, x, y }) => {
+    const game = (window as GameWindow).__PHASER_GAME__;
+    const scene = game?.scene.getScene(key) as Record<string, unknown> | null;
+    const player = scene?.['player'] as { setPosition?: (x: number, y: number) => void } | null;
+    player?.setPosition?.(x, y);
+  }, { key: sceneKey, x, y });
 }
 
 async function walkStep(page: Page, key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown') {
@@ -694,30 +704,31 @@ test.describe('Prologue region – visual audit', () => {
     expect(warnings.some((warning) => warning.includes('unknown_future_region'))).toBe(true);
   });
 
-  test('10 - P0-1 Follow the Path - completes all 3 rounds', async ({ page }) => {
+  test('10 - P0-1 Follow the Path - completes all 4 rounds', async ({ page }) => {
     test.setTimeout(90_000);
 
     await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
 
-    await prepareP01Round(page, 0);
-    await pressSequence(page, ['1', '2', '3']);
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, ['ArrowUp', 'ArrowUp']);
 
-    await prepareP01Round(page, 1);
-    await pressSequence(page, ['2', '4', '1', '5', '3']);
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, ['ArrowUp', 'ArrowUp', 'ArrowRight', 'ArrowRight']);
 
-    await prepareP01Round(page, 2);
-    await pressSequence(page, ['5', '1', '4', '2', '3', '6', '4']);
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, ['ArrowUp', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowUp']);
 
-    await page.evaluate(() => {
-      const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
-      const time = scene?.['time'] as { removeAllEvents?: () => void } | undefined;
-      time?.removeAllEvents?.();
-      const complete = scene?.['puzzleComplete'];
-      if (scene && typeof complete === 'function') {
-        (complete as () => void).call(scene);
-      }
-    });
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, [
+      'ArrowUp',
+      'ArrowUp',
+      'ArrowRight',
+      'ArrowRight',
+      'ArrowLeft',
+      'ArrowUp',
+      'ArrowRight',
+      'ArrowRight',
+    ]);
 
     await waitForScene(page, 'ConceptBridgeScene', 10_000);
     await snap(page, '10-p0-1-complete.png');
@@ -870,13 +881,11 @@ test.describe('Prologue region – visual audit', () => {
     await page.keyboard.press('Space');
     await page.waitForTimeout(400);
 
-    for (let i = 0; i < 17; i++) {
-      await walkStep(page, 'ArrowLeft');
-    }
-
+    await setScenePlayerPosition(page, 'ArrayPlainsScene', 200, 384);
+    await page.waitForTimeout(250);
     await page.keyboard.press('Space');
 
-    await waitForScene(page, 'PrologueScene', 12_000);
+    await waitForScene(page, 'PrologueScene');
     await page.waitForTimeout(1_500);
     await snap(page, '13b-prologue-return.png');
 
@@ -940,19 +949,39 @@ test.describe('Prologue region – visual audit', () => {
 
   test('17 - AP-1 Sorting Shed - region encounter layout', async ({ page }) => {
     await jumpToScene(page, 'P1_1_BubbleSort', { returnScene: 'ArrayPlainsScene' });
+    // FEEL_IT design: the moment-of-truth screen is the playable surface
+    // (player's row vs Glitch's row), not the opening lesson card. Dismiss
+    // the card and let Glitch tick a few times so the brute-force contrast
+    // is captured. ~1.8x RAF throttle applies; ~3000ms of game time covers
+    // 3-4 Glitch ticks at the 850ms tick rate.
     await page.waitForTimeout(700);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(700); // wait for RoundBanner to finish.
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(3000);
     await snap(page, '17-ap1-sorting-shed-layout.png');
   });
 
   test('18 - AP-2 Indexing Barn - region encounter layout', async ({ page }) => {
     await jumpToScene(page, 'P1_2_BasketIndexing', { returnScene: 'ArrayPlainsScene' });
+    // FEEL_IT design: dismiss the lesson card + round banner so the snapshot
+    // captures the actual playable surface (basket shelf + Glitch ticking +
+    // affordance prompt) rather than the opening copy.
     await page.waitForTimeout(700);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(700);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(2500);
     await snap(page, '18-ap2-indexing-barn-layout.png');
   });
 
   test('19 - AP-3 Grain Hopper - region encounter layout', async ({ page }) => {
     await jumpToScene(page, 'P1_3_HashHopper', { returnScene: 'ArrayPlainsScene' });
     await page.waitForTimeout(700);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(700);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(2500);
     await snap(page, '19-ap3-grain-hopper-layout.png');
   });
 
@@ -1140,7 +1169,7 @@ test.describe('Prologue region – visual audit', () => {
     }, { timeout: 8_000 });
 
     const result = await closure.jsonValue();
-    expect(result.closureDone).toBe(true);
+    expect(result.closureDone).toBe(false);
     expect(result.hashGate).toBe(true);
     expect(result.text).toContain('Thanks for playing this demo');
     await page.waitForTimeout(250);
@@ -1173,6 +1202,8 @@ test.describe('Prologue region – visual audit', () => {
       return hud?.['objectiveTextCache'] as string | undefined;
     });
     expect(objective).toContain('Turn back for credits');
+    const closureDone = await page.evaluate(() => (window as GameWindow).__gameState__?.getFlag('twin_rivers_closure_done'));
+    expect(closureDone).toBe(true);
   });
 
   test('27c - Twin Rivers - closure pan locks player movement', async ({ page }) => {

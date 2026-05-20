@@ -70,6 +70,23 @@ describe('Twin Rivers puzzle logic', () => {
     }
   });
 
+  it('every region puzzle ships at least 4 rounds with a MASTER+ tier', () => {
+    const all = [
+      MIRROR_WALK_ROUNDS,
+      POINTER_BRIDGE_ROUNDS,
+      FIXED_WINDOW_ROUNDS,
+      CURRENT_RIDER_ROUNDS,
+    ];
+    for (const rounds of all) {
+      expect(rounds.length).toBeGreaterThanOrEqual(4);
+      const last = rounds[rounds.length - 1];
+      expect(last.label).toBe('MASTER+');
+      // The lesson layer is required on every round so the LessonCard surfaces
+      // the algorithmic 'why' between every challenge.
+      expect(last.lesson?.bullets.length ?? 0).toBeGreaterThan(0);
+    }
+  });
+
   it('Boss Mirror Serpent defines all three phase inputs', () => {
     expect(MIRROR_SERPENT_PHASES.reverse.values.length).toBeGreaterThan(0);
     expect(MIRROR_SERPENT_PHASES.twoSum.target).toBeGreaterThan(0);

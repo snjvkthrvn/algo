@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { VISUAL_REVAMP_KEYS } from '../../../../config/assets';
+import { P0_1_PUZZLE_KEYS, VISUAL_REVAMP_KEYS } from '../../../../config/assets';
 import { SCENE_KEYS } from '../../../../config/constants';
 import { COLORS, s, STAGE } from '../tokens';
 
@@ -17,7 +17,8 @@ export type Atmosphere = {
 const STAR_KEY = 'p0_1_stars';
 const NEBULA_KEY = 'p0_1_nebula';
 const BACKDROP_BY_SCENE: Partial<Record<string, string>> = {
-  [SCENE_KEYS.PUZZLE_P0_1]: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG,
+  // P0-1 uses its own cosmic-void art; fall back to the generic rune-memory bg if not present
+  [SCENE_KEYS.PUZZLE_P0_1]: P0_1_PUZZLE_KEYS.COSMIC_VOID,
   [SCENE_KEYS.PUZZLE_P0_2]: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG,
   [SCENE_KEYS.BOSS_SENTINEL]: VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG,
 };
@@ -57,7 +58,18 @@ export function paintAtmosphere(scene: Phaser.Scene): Atmosphere {
 }
 
 function paintBackdrop(scene: Phaser.Scene): boolean {
-  const backdropKey = BACKDROP_BY_SCENE[scene.scene.key];
+  // For P0-1 fall back to the legacy key if the dedicated art hasn't been placed yet
+  const primary = BACKDROP_BY_SCENE[scene.scene.key];
+  const fallback =
+    scene.scene.key === SCENE_KEYS.PUZZLE_P0_1
+      ? VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG
+      : undefined;
+  const backdropKey =
+    primary && scene.textures.exists(primary)
+      ? primary
+      : fallback && scene.textures.exists(fallback)
+        ? fallback
+        : undefined;
   if (backdropKey && scene.textures.exists(backdropKey)) {
     scene.add
       .image(STAGE.width / 2, STAGE.height / 2, backdropKey)

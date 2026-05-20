@@ -1,0 +1,70 @@
+Use the imagegen skill to produce a NEW MARKETING-GRADE boss arena backdrop for "THE LITANY" — the climactic PROLOGUE boss encounter in "Algorithmia: The Path of Logic".
+
+=== WHY WE'RE REGENERATING ===
+The 3 production-region overworld backdrops were recently regenerated as POKEMON RED-style top-down maps using a strict 5-color Game Boy palette. The boss arena backdrops were NOT updated, so they now look like "HD high-fantasy dioramas" sitting in the middle of a Game Boy game (Gemini cohesion re-audit: "completely breaks immersion"). The fix: bring all 3 boss arenas down to the same Pokemon Red palette + flat-shading discipline.
+
+=== AESTHETIC REFERENCE (THIS IS THE BAR) ===
+**Pokemon Red/Blue (1996)** + Pokemon Crystal trainer battle scenes (the slightly-more-detailed boss screens).
+
+- Strict top-down OR slight 3/4 — but FLAT-SHADED throughout
+- 16×16 tile-based feel
+- 100% FLAT colors — NO dithering, NO gradients, NO airbrush
+- Hard 1-pixel-wide darker outlines
+- Pokemon Red BOSS SCENES were arena-style: a focal antagonist in the center, often raised on a stone platform or in a chamber. Think the trainer battle screens or the Mewtwo chamber.
+
+DO NOT reference Stardew Valley, Hollow Knight, Hyper Light Drifter, Sea of Stars — those are wrong reference.
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\public\assets\visual_revamp\puzzles\litany_trial_backdrop_v2.png
+- Final image dimensions: EXACTLY 320 × 180 pixels (16:9 to match canvas)
+- Will be upscaled 4× by Phaser to 1280×720
+- Opaque backdrop
+- True pixel art, hard edges only
+
+=== PALETTE — ABSOLUTELY 5 COLORS MAXIMUM ===
+SAME palette as the Prologue overworld (prologue_chamber_v3.png).
+- `#081820` darkest (void, outlines, deep shadow)
+- `#346856` medium dark (stone tile, deeper void interior)
+- `#88c070` light/accent (very sparse use here — maybe mossy crystal)
+- `#e0f8d0` lightest (rune highlights, cream edges)
+- `#06b6d4` cyan glow (THE LITANY itself — boss energy, central altar, glowing eyes)
+
+NO purple, NO gold, NO blue. Just these 5 hexes.
+
+=== SUBJECT MATTER ===
+The boss arena where the player faces "The Litany" — the climactic Prologue antagonist who tests sequence + selection logic.
+
+Composition:
+- Central RAISED HEXAGONAL or CIRCULAR platform where the antagonist manifests
+- 6-8 cyan rune nodes orbiting the central platform (the "hex grid" the puzzle uses) — render these as flat #06b6d4 hexagons with #081820 outlines
+- Stone tile floor (#346856) extending outward
+- Surrounding void (#081820) — deep cosmic space
+- A subtle central "Litany" presence: maybe a tall vertical pillar of #06b6d4 cyan light rising from the center platform, or scattered cyan rune-glyphs
+- Cosmic feel: this is the chamber at the end of the Prologue
+
+Mood: "the antagonist's lair at the end of the tutorial — solemn, focused, technological-ruined"
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO smooth gradients of any kind
+- NO anti-aliased edges
+- NO drop shadows (use 1px outline)
+- NO subpixel detail
+- NO painted/airbrushed textures
+- NO photographic shading or volumetric lighting
+- NO color count above 5
+- NO purple, gold, blue, red — only the 5 listed hexes
+- NO baked text/labels/UI
+- NO modern indie pixel art detail level
+
+=== SELF-VERIFICATION ASK ===
+After saving the file, OPEN IT and report:
+1. Exact file dimensions (must be 320×180)
+2. Exact unique color count (must be ≤ 5)
+3. List the actual hex values found
+4. File size in bytes
+5. Confirm: every pixel boundary is a hard color step (no AA, no gradient)
+6. Tile alignment: distinct elements snap to 16-pixel grid
+
+If any check fails, RETRY with a more constrained prompt. Do not save a failing asset.
+
+STOP after self-verification. DO NOT edit src/config/assets.ts — the parent agent will wire the path swap. DO NOT run npm build or tests. DO NOT touch any other files.

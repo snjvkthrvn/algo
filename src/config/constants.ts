@@ -34,6 +34,32 @@ export const COLORS = {
   FRAME_BORDER_LIGHT: 0x346856,
   FRAME_BORDER_DARK: 0x0a0a1a,
   OVERLAY_BG: 0x0a0a1a, // Void backdrop
+
+  // Concept Bridge / shared nav chrome
+  NAV_DOT_INACTIVE: 0x3a3a5a,
+  BRIDGE_PATTERN: 0x22c55e,
+  BRIDGE_WRONG: 0xef4444,
+  PURE_BLACK: 0x000000,
+} as const;
+
+/** CSS hex strings for Phaser.Text `color` / `stroke` (paired with `COLORS`). */
+export const COLOR_HEX = {
+  TEXT_LIGHT: '#e0f8d0',
+  TEXT_DARK: '#081820',
+  TEXT_MUTED: '#88c070',
+  WARNING: '#346856',
+  SUCCESS: '#88c070',
+  CYAN_GLOW: '#06b6d4',
+  PURPLE_CRYSTAL: '#8b5cf6',
+  GOLD: '#fbbf24',
+  ORANGE: '#f97316',
+  BRIDGE_PATTERN: '#22c55e',
+  BRIDGE_WRONG: '#ef4444',
+  FRAME_BG: '#e0f8d0',
+  FRAME_BORDER: '#081820',
+  FRAME_BORDER_LIGHT: '#346856',
+  OVERLAY_BG: '#0a0a1a',
+  PURE_BLACK: '#000000',
 } as const;
 
 export const REGIONS = {

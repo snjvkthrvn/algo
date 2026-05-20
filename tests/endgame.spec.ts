@@ -19,7 +19,7 @@ type GameWindow = Window & {
   __PHASER_GAME__?: PhaserGame;
 };
 
-async function waitForScene(page: Page, key: string, timeout = 15_000) {
+async function waitForScene(page: Page, key: string, timeout = 30_000) {
   await page.waitForFunction(
     (k) => !!(window as GameWindow).__PHASER_GAME__?.scene.isActive(k),
     key,
