@@ -22,8 +22,26 @@ export type DialogueBox = {
   hide(): void;
 };
 
-// Resolve which portrait texture key to use: prefer the real Rune Keeper sprite
-function resolvePortraitKey(scene: Phaser.Scene): string {
+export type DialogueBoxOptions = {
+  /**
+   * Which character's portrait to render. When omitted, defaults to the Rune
+   * Keeper (P0_1). P0_2 uses 'console_keeper'.
+   */
+  portrait?: 'rune_keeper' | 'console_keeper';
+};
+
+// Resolve which portrait texture key to use: prefer the real character sprite
+function resolvePortraitKey(
+  scene: Phaser.Scene,
+  portrait: 'rune_keeper' | 'console_keeper',
+): string {
+  if (portrait === 'console_keeper') {
+    if (scene.textures.exists(VISUAL_REVAMP_KEYS.CONSOLE_KEEPER)) {
+      return VISUAL_REVAMP_KEYS.CONSOLE_KEEPER;
+    }
+    ensureConsoleKeeperPortrait(scene);
+    return 'portrait_console_keeper';
+  }
   if (scene.textures.exists(VISUAL_REVAMP_KEYS.RUNE_KEEPER)) {
     return VISUAL_REVAMP_KEYS.RUNE_KEEPER;
   }
@@ -31,8 +49,11 @@ function resolvePortraitKey(scene: Phaser.Scene): string {
   return 'portrait_rune_keeper';
 }
 
-export function createDialogueBox(scene: Phaser.Scene): DialogueBox {
-  const PORTRAIT_KEY = resolvePortraitKey(scene);
+export function createDialogueBox(
+  scene: Phaser.Scene,
+  options: DialogueBoxOptions = {},
+): DialogueBox {
+  const PORTRAIT_KEY = resolvePortraitKey(scene, options.portrait ?? 'rune_keeper');
 
   const container = scene.add.container(0, STAGE.height).setDepth(200);
 
@@ -189,6 +210,71 @@ function ensurePortraitTexture(scene: Phaser.Scene): void {
   g.moveTo(cx, 57);
   g.lineTo(cx, 63);
   g.strokePath();
+
+  g.generateTexture(KEY, size, size);
+  g.destroy();
+}
+
+/** Procedural Console Keeper portrait — bespectacled engineer in a hood. */
+function ensureConsoleKeeperPortrait(scene: Phaser.Scene): void {
+  const KEY = 'portrait_console_keeper';
+  if (scene.textures.exists(KEY)) return;
+
+  const size = PORTRAIT;
+  const g = scene.make.graphics(undefined, false);
+  const cx = size / 2;
+
+  // Dark backdrop
+  g.fillStyle(0x081229, 1);
+  g.fillRect(0, 0, size, size);
+
+  // Robe trapezoid (slightly more teal than Rune Keeper)
+  g.fillStyle(0x123250, 1);
+  g.fillTriangle(cx, 14, 6, size - 2, size - 6, size - 2);
+
+  // Hood inner shadow
+  g.fillStyle(0x081e36, 0.9);
+  g.fillCircle(cx, 32, 20);
+
+  // Face — slightly visible (not a void like Rune Keeper)
+  g.fillStyle(0x1a2a3e, 1);
+  g.fillEllipse(cx, 34, 22, 24);
+
+  // Round goggles (the bespectacled engineer look)
+  g.fillStyle(0x06b6d4, 1);
+  g.fillCircle(cx - 6, 33, 4.5);
+  g.fillCircle(cx + 6, 33, 4.5);
+  g.lineStyle(1.2, 0x2a8fa0, 0.9);
+  g.strokeCircle(cx - 6, 33, 5);
+  g.strokeCircle(cx + 6, 33, 5);
+  // Goggle bridge
+  g.beginPath();
+  g.moveTo(cx - 2, 33);
+  g.lineTo(cx + 2, 33);
+  g.strokePath();
+
+  // Hood rim
+  g.lineStyle(1, 0x2a6080, 0.55);
+  g.strokeCircle(cx, 26, 21);
+
+  // Robe creases
+  g.lineStyle(1, 0x1a3855, 0.4);
+  g.beginPath();
+  g.moveTo(cx, 46);
+  g.lineTo(cx - 10, size - 4);
+  g.moveTo(cx, 46);
+  g.lineTo(cx + 10, size - 4);
+  g.strokePath();
+
+  // Toolbelt console icon on chest (a small panel with two buttons)
+  g.fillStyle(0x07b0c8, 0.18);
+  g.fillRect(cx - 8, 54, 16, 12);
+  g.lineStyle(1, 0x2a8fa0, 0.65);
+  g.strokeRect(cx - 8, 54, 16, 12);
+  g.fillStyle(0xff5d6c, 1);
+  g.fillCircle(cx - 3, 60, 1.4);
+  g.fillStyle(0x6cffa6, 1);
+  g.fillCircle(cx + 3, 60, 1.4);
 
   g.generateTexture(KEY, size, size);
   g.destroy();

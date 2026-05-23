@@ -1,169 +1,118 @@
 /**
- * Four rounds for P0_2 Forks.
+ * Three rounds of console-match.
  *
- * R1 The First Choice  — one fork, two exits, only one reaches the sink.
- * R2 In Series         — two forks in cascade.
- * R3 Cascade           — three forks in a row, all three must be set.
- * R4 Maze              — four forks with hidden dead ends and back-tracking
- *                        decisions. MASTER+ tier: every fork is "live", no
- *                        single choice is obvious in isolation.
+ * Each shard has a `symbol` and a `tint`. Each console has the SAME pair.
+ * Match a shard to the console whose symbol matches → progress.
+ *
+ *  ┌── R1 The First Pairing ── 3 shards / 3 consoles, all colors distinct (matches the reference screenshot).
+ *  │
+ *  ├── R2 The Fourth Voice ─── 4 shards / 4 consoles — adds violet.
+ *  │
+ *  └── R3 Tangled Lookup ───── 5 shards, 2 share a color (only the symbol distinguishes).
+ *                              This forces the lesson: "lookup is by KEY, not by color."
  */
 
-export type Axial = { q: number; r: number };
+import { ARENA } from './tokens';
 
-export type EdgeDef = { from: Axial; to: Axial };
+export type ShardSymbol = 'peak' | 'diamond' | 'lines' | 'star' | 'wave';
 
-/**
- * A fork's `choices` are the legal outgoing axial coordinates from `at`.
- * They MUST match outgoing edges of `at` in the round's edge list.
- */
-export type ForkDef = { at: Axial; choices: Axial[] };
+export type ShardTint = 'red' | 'blue' | 'green' | 'violet' | 'amber';
+
+export type Pose = { x: number; y: number };
+
+export type ConsoleDef = {
+  id: string;
+  pose: Pose;
+  symbol: ShardSymbol;
+  tint: ShardTint;
+};
+
+export type ShardDef = {
+  id: string;
+  pose: Pose;
+  symbol: ShardSymbol;
+  tint: ShardTint;
+  /** Which console.id this shard belongs in. */
+  targetId: string;
+};
 
 export type FlowRound = {
   title: string;
   principle: string;
   teach: string;
-  field: Axial[];
-  source: Axial;
-  sink: Axial;
-  edges: EdgeDef[];
-  forks: ForkDef[];
+  npcLine: string;
+  consoles: ConsoleDef[];
+  shards: ShardDef[];
+  playerSpawn: Pose;
 };
 
-const A1 = { q: -2, r: 0 };
-const B1 = { q: -1, r: 0 };
-const C1 = { q: 0, r: 0 };
-const D1 = { q: 1, r: 0 };
-const E1 = { q: -1, r: 1 };
+// Layout helpers ─ positions are anchored to the arena ellipse.
+const C = ARENA.cx;
+const Y = ARENA.cy;
 
+// ── Round 1: 3 / 3 — the screenshot ─────────────────────────────────────────
 const round1: FlowRound = {
-  title: 'I. First Choice',
-  // Diegetic copy \u2014 frames P0_2 as continuing the "Glitch broke the chamber"
-  // arc from the cold open. The forks were left scrambled when Glitch
-  // tried to brute-force the consoles.
-  principle: 'Glitch slammed every fork open. The pulse cannot find its way home.',
-  teach: 'Click the fork to rotate where the signal flows. Send the pulse to the sink.',
-  field: [A1, B1, C1, D1, E1],
-  source: A1,
-  sink: D1,
-  edges: [
-    { from: A1, to: B1 },
-    { from: B1, to: C1 },
-    { from: B1, to: E1 },
-    { from: C1, to: D1 },
+  title: 'I. The First Pairing',
+  principle: 'Each shard has one true home. Look at the rune, not the color.',
+  teach: 'Walk up to a shard, press E to lift it, walk to its console, press E to place.',
+  npcLine: 'Each shard has one correct console. Match the symbols.',
+  playerSpawn: { x: C, y: Y + 20 },
+  consoles: [
+    { id: 'c_red',   pose: { x: C,       y: Y - 132 }, symbol: 'peak',    tint: 'red'   },
+    { id: 'c_blue',  pose: { x: C - 174, y: Y + 18  }, symbol: 'diamond', tint: 'blue'  },
+    { id: 'c_green', pose: { x: C + 174, y: Y + 18  }, symbol: 'lines',   tint: 'green' },
   ],
-  // Initial choice index 0 = E (dead-end) — player must rotate to C.
-  forks: [{ at: B1, choices: [E1, C1] }],
+  shards: [
+    { id: 's_red',   pose: { x: C - 96, y: Y + 132 }, symbol: 'peak',    tint: 'red',   targetId: 'c_red'   },
+    { id: 's_blue',  pose: { x: C,      y: Y + 132 }, symbol: 'diamond', tint: 'blue',  targetId: 'c_blue'  },
+    { id: 's_green', pose: { x: C + 96, y: Y + 132 }, symbol: 'lines',   tint: 'green', targetId: 'c_green' },
+  ],
 };
 
-const A2 = { q: -2, r: 0 };
-const B2 = { q: -1, r: 0 };
-const C2 = { q: 0, r: 0 };
-const D2 = { q: 1, r: 0 };
-const E2 = { q: 2, r: 0 };
-const F2 = { q: -1, r: 1 };
-const G2 = { q: 1, r: 1 };
-
+// ── Round 2: 4 / 4 — adds violet ────────────────────────────────────────────
 const round2: FlowRound = {
-  title: 'II. Two Forks in a Row',
-  principle: 'The pulse must clear both forks. Each gate you set guards the next.',
-  teach: 'Two forks in series — the signal must pass both. Set each one correctly.',
-  field: [A2, B2, C2, D2, E2, F2, G2],
-  source: A2,
-  sink: E2,
-  edges: [
-    { from: A2, to: B2 },
-    { from: B2, to: C2 },
-    { from: B2, to: F2 },
-    { from: C2, to: D2 },
-    { from: D2, to: E2 },
-    { from: D2, to: G2 },
+  title: 'II. The Fourth Voice',
+  principle: 'A new voice joins the chorus. The lookup pattern is the same — match the rune.',
+  teach: 'Four shards, four consoles. Find each home.',
+  npcLine: 'The chamber learns. A fourth shard, a fourth socket — still one each.',
+  playerSpawn: { x: C, y: Y + 20 },
+  consoles: [
+    { id: 'c_red',    pose: { x: C - 86,  y: Y - 132 }, symbol: 'peak',    tint: 'red'    },
+    { id: 'c_violet', pose: { x: C + 86,  y: Y - 132 }, symbol: 'star',    tint: 'violet' },
+    { id: 'c_blue',   pose: { x: C - 196, y: Y + 18  }, symbol: 'diamond', tint: 'blue'   },
+    { id: 'c_green',  pose: { x: C + 196, y: Y + 18  }, symbol: 'lines',   tint: 'green'  },
   ],
-  forks: [
-    { at: B2, choices: [F2, C2] },
-    { at: D2, choices: [G2, E2] },
+  shards: [
+    { id: 's_red',    pose: { x: C - 150, y: Y + 132 }, symbol: 'peak',    tint: 'red',    targetId: 'c_red'    },
+    { id: 's_blue',   pose: { x: C - 50,  y: Y + 132 }, symbol: 'diamond', tint: 'blue',   targetId: 'c_blue'   },
+    { id: 's_green',  pose: { x: C + 50,  y: Y + 132 }, symbol: 'lines',   tint: 'green',  targetId: 'c_green'  },
+    { id: 's_violet', pose: { x: C + 150, y: Y + 132 }, symbol: 'star',    tint: 'violet', targetId: 'c_violet' },
   ],
 };
 
-const A3 = { q: -2, r: 0 };
-const B3 = { q: -1, r: 0 };
-const C3 = { q: 0, r: 0 };
-const D3 = { q: 1, r: 0 };
-const S3 = { q: 2, r: 0 };
-const X3 = { q: -1, r: 1 };
-const Y3 = { q: 0, r: 1 };
-const Z3 = { q: 1, r: 1 };
-
+// ── Round 3: 5 / 5 — two shards share a tint, symbol is the real key ────────
 const round3: FlowRound = {
-  title: 'III. The Cascade',
-  principle: 'Each fork stands between the pulse and its home. Open them all the right way and the way appears.',
-  teach: 'Three forks. Each must point onward — not down — for the pulse to reach the sink.',
-  field: [A3, B3, C3, D3, S3, X3, Y3, Z3],
-  source: A3,
-  sink: S3,
-  edges: [
-    { from: A3, to: B3 },
-    { from: B3, to: C3 },
-    { from: B3, to: X3 },
-    { from: C3, to: D3 },
-    { from: C3, to: Y3 },
-    { from: D3, to: S3 },
-    { from: D3, to: Z3 },
+  title: 'III. Tangled Lookup',
+  principle: 'Two shards look the same. The rune is the only true key.',
+  teach: 'Five shards. Two share a color — the symbol decides where they go.',
+  npcLine: 'Trust the rune. Two of these wear the same coat — only one shape opens each socket.',
+  playerSpawn: { x: C, y: Y + 20 },
+  consoles: [
+    { id: 'c_red',     pose: { x: C,       y: Y - 138 }, symbol: 'peak',    tint: 'red'    },
+    { id: 'c_violet',  pose: { x: C - 140, y: Y - 84  }, symbol: 'star',    tint: 'violet' },
+    { id: 'c_amber',   pose: { x: C + 140, y: Y - 84  }, symbol: 'wave',    tint: 'amber'  },
+    { id: 'c_blue',    pose: { x: C - 210, y: Y + 32  }, symbol: 'diamond', tint: 'blue'   },
+    // Second blue console — same color, different symbol (the trick!)
+    { id: 'c_blue2',   pose: { x: C + 210, y: Y + 32  }, symbol: 'lines',   tint: 'blue'   },
   ],
-  forks: [
-    { at: B3, choices: [X3, C3] },
-    { at: C3, choices: [Y3, D3] },
-    { at: D3, choices: [Z3, S3] },
-  ],
-};
-
-// ─────────────────────────────────────────────────────────────────────────
-// Round 4 — Maze
-//
-// Four forks; the sink sits across a wider field. Every fork has at least
-// one wrong choice that leads to a dead-end branch. Only by reasoning the
-// whole chain in advance (or playing through with backtracking) can the
-// player set all four correctly.
-// ─────────────────────────────────────────────────────────────────────────
-
-const A4 = { q: -3, r: 0 };
-const B4 = { q: -2, r: 0 };
-const C4 = { q: -1, r: 0 };
-const D4 = { q: 0, r: 0 };
-const E4 = { q: 1, r: 0 };
-const F4 = { q: 2, r: 0 };
-const G4 = { q: 3, r: 0 };
-// Dead-end branches off each interior fork.
-const DA4 = { q: -2, r: 1 };
-const DB4 = { q: -1, r: 1 };
-const DC4 = { q: 0, r: 1 };
-const DD4 = { q: 1, r: 1 };
-
-const round4: FlowRound = {
-  title: 'IV. The Tangled Network',
-  principle: 'A long chain of forks is still one chain. Trace it through — or play and find the way.',
-  teach: 'Four forks, four dead ends. Each fork has two outgoing paths; pick the one that keeps the signal alive.',
-  field: [A4, B4, C4, D4, E4, F4, G4, DA4, DB4, DC4, DD4],
-  source: A4,
-  sink: G4,
-  edges: [
-    { from: A4, to: B4 },
-    { from: B4, to: C4 },
-    { from: B4, to: DA4 },
-    { from: C4, to: D4 },
-    { from: C4, to: DB4 },
-    { from: D4, to: E4 },
-    { from: D4, to: DC4 },
-    { from: E4, to: F4 },
-    { from: E4, to: DD4 },
-    { from: F4, to: G4 },
-  ],
-  forks: [
-    { at: B4, choices: [DA4, C4] },
-    { at: C4, choices: [DB4, D4] },
-    { at: D4, choices: [DC4, E4] },
-    { at: E4, choices: [DD4, F4] },
+  shards: [
+    { id: 's_red',     pose: { x: C - 192, y: Y + 132 }, symbol: 'peak',    tint: 'red',    targetId: 'c_red'    },
+    { id: 's_violet',  pose: { x: C - 96,  y: Y + 132 }, symbol: 'star',    tint: 'violet', targetId: 'c_violet' },
+    { id: 's_amber',   pose: { x: C,       y: Y + 132 }, symbol: 'wave',    tint: 'amber',  targetId: 'c_amber'  },
+    // Two blue shards — only their symbol tells you which slot they belong in.
+    { id: 's_blue_d',  pose: { x: C + 96,  y: Y + 132 }, symbol: 'diamond', tint: 'blue',   targetId: 'c_blue'   },
+    { id: 's_blue_l',  pose: { x: C + 192, y: Y + 132 }, symbol: 'lines',   tint: 'blue',   targetId: 'c_blue2'  },
   ],
 };
 
-export const FLOW_ROUNDS: FlowRound[] = [round1, round2, round3, round4];
+export const FLOW_ROUNDS: FlowRound[] = [round1, round2, round3];

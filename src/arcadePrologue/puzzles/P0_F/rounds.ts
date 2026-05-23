@@ -1,4 +1,4 @@
-import type { FlowRound, Axial } from '../P0_2/rounds';
+import type { FlowRound, Axial } from './_pulseFlow/types';
 
 /**
  * A LitanyRound extends a FlowRound with ordered altars the pulse must visit

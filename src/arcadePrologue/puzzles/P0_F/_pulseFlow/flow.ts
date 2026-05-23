@@ -1,5 +1,5 @@
-import { axialKey } from '../hexLayout';
-import type { FlowRound } from './rounds';
+import { axialKey } from '../../hexLayout';
+import type { FlowRound } from './types';
 
 /**
  * Routing helpers for the reactive flow.

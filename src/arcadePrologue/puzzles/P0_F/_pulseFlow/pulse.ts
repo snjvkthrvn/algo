@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, HEX_RADIUS, s } from '../../P0_1/tokens';
-import { coordsOf, type FlowBoard } from '../board';
+import { coordsOf, type FlowBoard } from './board';
 
 /**
  * Reactive pulse runner.

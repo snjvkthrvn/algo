@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { COLORS, s } from '../../P0_1/tokens';
 import { axialKey } from '../../hexLayout';
-import type { FlowRound } from '../rounds';
-import { coordsOf, type FlowBoard } from '../board';
+import type { FlowRound } from './types';
+import { coordsOf, type FlowBoard } from './board';
 
 /**
  * Role overlays for reactive flow:

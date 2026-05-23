@@ -583,6 +583,118 @@ test.describe('Prologue region – visual audit', () => {
     await snap(page, '07-p0-2-layout.png');
   });
 
+  test('07b – P0-2 Flow Consoles – pickup blue shard', async ({ page }) => {
+    await jumpToScene(page, 'P0_2_FlowConsoles', { returnScene: 'PrologueScene' });
+    // Wait past the 'instruct' beat (~900ms) so the scene is in 'playing'
+    await page.waitForTimeout(1800);
+    // Walk straight down to reach the blue shard at the bottom-center of the
+    // arena. The puzzle's MOVE.speed is 230 px/s; the shard is ~110px below
+    // the player spawn, so ~500ms held should be enough.
+    await page.keyboard.down('s');
+    await page.waitForTimeout(800);
+    await page.keyboard.up('s');
+    await page.waitForTimeout(150);
+    // Pick up
+    await page.keyboard.press('e');
+    await page.waitForTimeout(450);
+    await snap(page, '07b-p0-2-pickup.png');
+  });
+
+  test('07d – P0-2 Flow Consoles – all three placed', async ({ page }) => {
+    await jumpToScene(page, 'P0_2_FlowConsoles', { returnScene: 'PrologueScene' });
+    await page.waitForTimeout(1800);
+
+    type SceneShim = {
+      playerPos?: { x: number; y: number };
+      placedCount?: number;
+    };
+    const teleport = async (x: number, y: number) => {
+      await page.evaluate(([px, py]) => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene('P0_2_FlowConsoles') as SceneShim | null;
+        if (scene?.playerPos) {
+          scene.playerPos.x = px as number;
+          scene.playerPos.y = py as number;
+        }
+      }, [x, y] as const);
+      // Give the scene's update() at least 3 ticks to recompute nearestShard/Console
+      await page.waitForTimeout(220);
+    };
+    const placeOne = async (
+      _label: string,
+      shardX: number,
+      shardY: number,
+      consoleX: number,
+      consoleY: number,
+    ) => {
+      await teleport(shardX, shardY);
+      await page.keyboard.press('e');
+      await page.waitForTimeout(280);
+      await teleport(consoleX, consoleY);
+      await page.keyboard.press('e');
+      await page.waitForTimeout(420);
+    };
+
+    // R1 layout (from rounds.ts): C = ARENA.cx = 640, Y = ARENA.cy = 360
+    //   shards at (C - 96, Y + 132), (C, Y + 132), (C + 96, Y + 132)
+    //   consoles at (C, Y - 132), (C - 174, Y + 18), (C + 174, Y + 18)
+    // Red shard -> red console (top center, pose (640, 228), approach from below)
+    await placeOne('red', 544, 492, 640, 270);
+    // Blue shard -> blue console (left middle, pose (466, 378))
+    await placeOne('blue', 640, 492, 466, 420);
+    // Green shard -> green console (right middle, pose (814, 378))
+    await placeOne('green', 736, 492, 814, 420);
+
+    const placed = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_2_FlowConsoles') as { placedCount?: number } | null;
+      return scene?.placedCount ?? -1;
+    });
+    expect(placed).toBe(3);
+    // Wait through the win cascade so the cleared HUD shows
+    await page.waitForTimeout(600);
+    await snap(page, '07d-p0-2-all-placed.png');
+  });
+
+  test('07c – P0-2 Flow Consoles – correct placement', async ({ page }) => {
+    await jumpToScene(page, 'P0_2_FlowConsoles', { returnScene: 'PrologueScene' });
+    await page.waitForTimeout(1800);
+    // Down → pick up blue shard
+    await page.keyboard.down('s');
+    await page.waitForTimeout(800);
+    await page.keyboard.up('s');
+    await page.keyboard.press('e');
+    await page.waitForTimeout(200);
+    const heldAfterPickup = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_2_FlowConsoles') as { heldShard?: { def: { id: string } } | null } | null;
+      return scene?.heldShard?.def.id ?? null;
+    });
+    expect(heldAfterPickup).toBe('s_blue');
+
+    // Teleport player adjacent to the blue console (the console's pose is at
+    // (466, 378); approach from below so we're not standing on its base).
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_2_FlowConsoles') as { playerPos?: { x: number; y: number } } | null;
+      if (scene?.playerPos) {
+        scene.playerPos.x = 466;
+        scene.playerPos.y = 420;
+      }
+    });
+    await page.waitForTimeout(120);
+    // Place
+    await page.keyboard.press('e');
+    await page.waitForTimeout(550);
+    const placedCount = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene('P0_2_FlowConsoles') as { placedCount?: number } | null;
+      return scene?.placedCount ?? -1;
+    });
+    expect(placedCount).toBe(1);
+    await snap(page, '07c-p0-2-placed.png');
+  });
+
   // ── Array Plains ───────────────────────────────────────────────────────────
 
   test('08 – Array Plains – Continue from save', async ({ page }) => {

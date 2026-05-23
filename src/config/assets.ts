@@ -276,6 +276,7 @@ export const TWIN_RIVERS_IMAGE_ASSETS: AssetEntry[] = [
 ];
 
 const P0_1_BASE = `${VISUAL_REVAMP_BASE}/puzzles/p0_1`;
+const P0_2_BASE = `${VISUAL_REVAMP_BASE}/puzzles/p0_2`;
 
 export const P0_1_PUZZLE_KEYS = {
   COSMIC_VOID: 'p0-1-cosmic-void',
@@ -287,6 +288,28 @@ export const P0_1_PUZZLE_ASSETS: AssetEntry[] = [
   { key: P0_1_PUZZLE_KEYS.COSMIC_VOID, path: `${P0_1_BASE}/cosmic_void.png` },
   { key: P0_1_PUZZLE_KEYS.STONE_ARENA, path: `${P0_1_BASE}/stone_arena.png` },
   { key: P0_1_PUZZLE_KEYS.RUNE_TILES, path: `${P0_1_BASE}/rune_tiles.png`, frameWidth: 512, frameHeight: 512 },
+];
+
+export const P0_2_PUZZLE_KEYS = {
+  CONSOLES_SHEET: 'p0-2-consoles-sheet',
+  CONSOLES_EXTRA: 'p0-2-consoles-extra',
+  SHARDS_SHEET: 'p0-2-shards-sheet',
+  SHARDS_EXTRA: 'p0-2-shards-extra',
+  BIT_COMPANION: 'p0-2-bit-companion',
+  ARENA_RUNES: 'p0-2-arena-runes',
+} as const;
+
+// Primary consoles sheet (3 cells): 0=red/peak, 1=blue/diamond, 2=green/lines.
+// Extra consoles sheet (2 cells):   0=violet/star, 1=amber/wave.
+// Primary shards sheet (3 cells):   0=red/peak, 1=blue/diamond, 2=green/lines.
+// Extra shards sheet (3 cells):     0=violet/star, 1=amber/wave, 2=blue/lines.
+export const P0_2_PUZZLE_ASSETS: AssetEntry[] = [
+  { key: P0_2_PUZZLE_KEYS.CONSOLES_SHEET, path: `${P0_2_BASE}/flow_consoles_sheet.png`, frameWidth: 256, frameHeight: 320 },
+  { key: P0_2_PUZZLE_KEYS.CONSOLES_EXTRA, path: `${P0_2_BASE}/flow_consoles_extra.png`, frameWidth: 256, frameHeight: 320 },
+  { key: P0_2_PUZZLE_KEYS.SHARDS_SHEET, path: `${P0_2_BASE}/flow_shards_sheet.png`, frameWidth: 128, frameHeight: 192 },
+  { key: P0_2_PUZZLE_KEYS.SHARDS_EXTRA, path: `${P0_2_BASE}/flow_shards_extra.png`, frameWidth: 128, frameHeight: 192 },
+  { key: P0_2_PUZZLE_KEYS.BIT_COMPANION, path: `${P0_2_BASE}/bit_companion.png` },
+  { key: P0_2_PUZZLE_KEYS.ARENA_RUNES, path: `${P0_2_BASE}/arena_runes.png` },
 ];
 
 export const PROLOGUE_SHEET_KEYS = {
@@ -374,6 +397,7 @@ export const IMAGE_ASSETS: AssetEntry[] = [
   ...ARRAY_PLAINS_IMAGE_ASSETS,
   ...TWIN_RIVERS_IMAGE_ASSETS,
   ...P0_1_PUZZLE_ASSETS,
+  ...P0_2_PUZZLE_ASSETS,
 ];
 
 export const BOOT_IMAGE_ASSETS: AssetEntry[] = [

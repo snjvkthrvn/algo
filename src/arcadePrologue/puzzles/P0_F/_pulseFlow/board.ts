@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { axialKey, axialToPxFlatTop } from '../hexLayout';
-import { HEX_RADIUS, s, STAGE } from '../P0_1/tokens';
-import { placeRune } from '../P0_1/visuals/rune';
-import type { FlowRound } from './rounds';
+import { axialKey, axialToPxFlatTop } from '../../hexLayout';
+import { HEX_RADIUS, s, STAGE } from '../../P0_1/tokens';
+import { placeRune } from '../../P0_1/visuals/rune';
+import type { FlowRound } from './types';
 
 /**
  * Role-aware board mount for P0_2.

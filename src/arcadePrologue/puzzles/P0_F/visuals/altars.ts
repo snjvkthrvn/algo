@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { COLORS, HEX_RADIUS, s } from '../../P0_1/tokens';
 import { MOTION } from '../../P0_1/motion';
 import { axialKey } from '../../hexLayout';
-import { coordsOf, type FlowBoard } from '../../P0_2/board';
+import { coordsOf, type FlowBoard } from '../_pulseFlow/board';
 import type { LitanyRound } from '../rounds';
 
 /**

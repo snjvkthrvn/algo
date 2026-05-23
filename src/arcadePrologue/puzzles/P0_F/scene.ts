@@ -4,21 +4,21 @@ import { paintAtmosphere, type Atmosphere } from '../P0_1/visuals/atmosphere';
 import { ensureRuneTexture } from '../P0_1/visuals/rune';
 import { buildHud, type Hud } from '../P0_1/visuals/hud';
 import { readReduceMotion, writeReduceMotion } from '../P0_1/prefs';
-import { buildOutMap, forkKeySet } from '../P0_2/flow';
+import { buildOutMap, forkKeySet } from './_pulseFlow/flow';
 import {
   coordsOf,
   mountFlowBoard,
   type FlowBoard,
-} from '../P0_2/board';
-import { createEdges, type EdgeLayer } from '../P0_2/visuals/edges';
-import { createMarkers, type Markers } from '../P0_2/visuals/markers';
+} from './_pulseFlow/board';
+import { createEdges, type EdgeLayer } from './_pulseFlow/edges';
+import { createMarkers, type Markers } from './_pulseFlow/markers';
 import {
   clearHighlights,
   createPulse,
   highlightChoices,
   type Pulse,
-} from '../P0_2/visuals/pulse';
-import { deadEndShimmer } from '../P0_2/feedback';
+} from './_pulseFlow/pulse';
+import { deadEndShimmer } from './_pulseFlow/feedback';
 import { LITANY_ROUND, type LitanyRound } from './rounds';
 import { altarKeys, altarsSatisfied, missedAltarKeys } from './flow';
 import { LITANY_LABEL, type LitanyState } from './state';
