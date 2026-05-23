@@ -1,0 +1,64 @@
+Use the imagegen skill to produce a circular stone platform sprite for Algorithmia Puzzle P0-1 "The Path of Sequences". This puzzle has its own distinct visual genre (cosmic mystical-temple) and does NOT need to share aesthetics with other puzzles. This sprite replaces the procedural ellipse drawn in ribbon.ts paintPlatform().
+
+=== DESIGN INTENT ===
+A single LARGE circular stone disc viewed from a 3/4 top-down camera angle, isolated on a transparent background. The 6×6 rune-tile grid will be composited on top of this platform in-engine, so leave the central area mostly empty/uncluttered.
+
+REFERENCE IMAGES — for pixel-art QUALITY only:
+- D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\characters\rune_keeper.png (pixel-art purity reference — hard 1:1 edges, deliberate limited palette)
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\p0_1_cosmic\platform_v1.png
+- Final image dimensions: 1000 x 700 px
+- TRANSPARENT background outside the platform silhouette (alpha 0 only — no near-transparent halo)
+- True pixel art, hard 1:1 edges throughout
+
+=== COMPOSITION BRIEF ===
+A large circular stone platform viewed from a 3/4 top-down camera (so it reads as a vertically-squashed ellipse, ~0.7× height-to-width ratio). The platform is carved from ancient deep-purple-grey stone, weathered and rune-inscribed.
+
+Layered structure (outer → inner):
+1. OUTER RIM (~12% radial thickness): wider lighter ridge of stone carved with intricate arcane runes glowing softly in cyan. The runes form an unbroken ring of 16-20 distinct rune glyphs visible around the rim.
+2. INNER RING GROOVE: a recessed channel etched into the platform top, glowing brightly cyan. This ring sits about halfway between the rim and center.
+3. MAIN PLATFORM TOP: deep purple-grey stone with subtle weathering, cracks, dust accumulation. Mostly EMPTY — the rune-tile grid will be composited on top in-engine, so leave the central area uncluttered.
+4. INNER RUNE INSCRIPTIONS (subtle): faint mystical glyphs carved deeper into the platform stone, faded cyan at low intensity, in concentric patterns around the center.
+
+EDGE: a thin cyan glow halo just outside the outer rim (~2-4 pixels of glow) so the platform reads against the dark cosmic sky.
+
+NO floor decorations, NO furniture, NO sitting characters, NO chairs, NO tables — pure stone platform geometry only.
+
+PALETTE — TIGHTLY LIMITED (use ONLY these 12 colors):
+- Stone shadow: #1a0f3a
+- Stone base: #2a2a4a
+- Stone mid: #3a2d5a
+- Stone rim highlight: #4a3a6a
+- Stone bevel highlight: #5a4a7a
+- Rune carve deep: #0792a6
+- Rune glow base: #06b6d4
+- Rune glow bright: #67e8f9
+- Rune glow brightest: #c8f8ff
+- Crack/weathering dark: #14091e
+- Halo glow outer: #06b6d4 at low alpha (via dither, not transparency)
+- Black for deepest shadows: #0a0420
+
+MAX 12 colors.
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO soft brush, NO airbrush, NO Gaussian-blur lighting
+- NO anti-aliased edges (every boundary is a hard step between two solid colors)
+- NO smooth gradients — all shading via 2-4 deliberate dither tones per material
+- NO color count above 12
+- NO hallucinated UI text, NO real-language words written on the platform
+- NO foreground characters
+- NO architectural details on the platform top (it must be navigable empty space for the tile grid overlay)
+- NO mixed perspective (LOCK to 3/4 top-down throughout)
+- NO painted/airbrushed textures — every pixel is deliberate
+
+=== TECHNICAL CONSTRAINTS ===
+- Transparent background outside platform silhouette
+- Dimensions exactly 1000 x 700 px
+- Platform centered horizontally and vertically in the frame
+- The platform's elliptical outline should fill ~90% of the image width and ~85% of the image height
+
+After saving, verify the file dimensions are exactly 1000x700 and report:
+- on-disk file size in bytes
+- unique color count (must be ≤ 12)
+- approximate percentage of pixels that are fully transparent (alpha=0)

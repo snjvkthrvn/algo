@@ -1,11 +1,20 @@
 import Phaser from 'phaser';
 import { COLORS, s } from '../tokens';
+import { GRID_BOUNDS, gridOrigin } from '../gridLayout';
+import { setRuneLit } from './rune';
+import { VISUAL_REVAMP_KEYS } from '../../../../config/assets';
 import type { Board } from '../board';
 
 /**
- * Two-layer ribbon:
- *  - ghost   dashed surface line of the full walk (low-key, persistent)
- *  - trace   solid accent stroke of the player's traced portion + midpoint ticks
+ * Cosmic-rune board renderer.
+ *
+ * Three responsibilities:
+ *  1. Paint the circular stone platform that holds the tile grid.
+ *  2. Highlight which tiles are part of the current path (paintGhost).
+ *  3. Light up tiles walked so far and draw the connecting cyan trail (paintTrace).
+ *
+ * The "Ribbon" name survives from the previous horizontal-ribbon design — it
+ * still describes the connecting trail between consecutive walked tiles.
  */
 
 export type Ribbon = {
@@ -15,48 +24,50 @@ export type Ribbon = {
 };
 
 export function createRibbon(scene: Phaser.Scene): Ribbon {
-  const ghost = scene.add.graphics().setDepth(4);
-  const trace = scene.add.graphics().setDepth(7);
+  paintPlatform(scene);
+
+  const trail = scene.add.graphics().setDepth(7);
 
   function paintGhost(board: Board): void {
-    ghost.clear();
-    if (board.walkKeys.length < 2) return;
-    ghost.lineStyle(s(1.5), COLORS.surface.line, 0.55);
-    for (let i = 1; i < board.walkKeys.length; i += 1) {
-      const a = coordsOf(board, board.walkKeys[i - 1]!);
-      const b = coordsOf(board, board.walkKeys[i]!);
-      strokeDashed(ghost, a, b, s(5), s(9));
-    }
+    // All path tiles glow softly throughout the round so the player can see
+    // the route. The "chant" preview pulses individual tiles in sequence;
+    // paintTrace then re-paints to brighten walked + next-expected tiles.
+    const path = new Set(board.walkKeys);
+    board.glyphs.forEach((g, k) => {
+      setRuneLit(g, path.has(k));
+      g.setAlpha(path.has(k) ? 0.55 : 0.6);
+    });
   }
 
   function paintTrace(board: Board, throughHop: number): void {
-    trace.clear();
+    trail.clear();
     const chain = board.walkKeys.slice(0, throughHop + 1);
+    const walked = new Set(chain);
+    const nextExpected = board.walkKeys[throughHop + 1];
+    const path = new Set(board.walkKeys);
+
+    board.glyphs.forEach((g, k) => {
+      const onPath = path.has(k);
+      setRuneLit(g, onPath);
+      if (walked.has(k) || k === nextExpected) g.setAlpha(1);
+      else if (onPath) g.setAlpha(0.5);
+      else g.setAlpha(0.85);
+    });
+
     if (chain.length < 2) return;
-
-    trace.lineStyle(s(3), COLORS.accent, 0.9);
+    trail.lineStyle(s(3), COLORS.tile.lit, 0.9);
     for (let i = 1; i < chain.length; i += 1) {
       const a = coordsOf(board, chain[i - 1]!);
       const b = coordsOf(board, chain[i]!);
-      trace.beginPath();
-      trace.moveTo(a.x, a.y);
-      trace.lineTo(b.x, b.y);
-      trace.strokePath();
-    }
-
-    for (let i = 1; i < chain.length; i += 1) {
-      const a = coordsOf(board, chain[i - 1]!);
-      const b = coordsOf(board, chain[i]!);
-      const mx = (a.x + b.x) / 2;
-      const my = (a.y + b.y) / 2;
-      trace.fillStyle(COLORS.accent, 1);
-      trace.fillCircle(mx, my, s(2.5));
+      trail.beginPath();
+      trail.moveTo(a.x, a.y);
+      trail.lineTo(b.x, b.y);
+      trail.strokePath();
     }
   }
 
   function clear(): void {
-    ghost.clear();
-    trace.clear();
+    trail.clear();
   }
 
   return { paintGhost, paintTrace, clear };
@@ -67,31 +78,26 @@ function coordsOf(board: Board, key: string): Phaser.Math.Vector2 {
   return new Phaser.Math.Vector2(node.x, node.y);
 }
 
-function strokeDashed(
-  g: Phaser.GameObjects.Graphics,
-  a: Phaser.Math.Vector2,
-  b: Phaser.Math.Vector2,
-  dash: number,
-  gap: number,
-): void {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy);
-  if (len < 0.5) return;
-  const ux = dx / len;
-  const uy = dy / len;
-  let t = 0;
-  let on = true;
-  while (t < len) {
-    const seg = on ? dash : gap;
-    const next = Math.min(t + seg, len);
-    if (on) {
-      g.beginPath();
-      g.moveTo(a.x + ux * t, a.y + uy * t);
-      g.lineTo(a.x + ux * next, a.y + uy * next);
-      g.strokePath();
-    }
-    t = next;
-    on = !on;
-  }
+/**
+ * Place the circular stone platform asset behind the tile grid.
+ * The asset is a 1000×700 pre-rendered pixel-art sprite; we display-size it
+ * so the grid fits cleanly inside the platform's inner glowing ring.
+ */
+function paintPlatform(scene: Phaser.Scene): void {
+  const origin = gridOrigin();
+  const cx = origin.x + GRID_BOUNDS.width / 2;
+  const cy = origin.y + GRID_BOUNDS.height / 2;
+  // Size the platform so the grid (with some breathing room) fits within the
+  // inner glowing ring of the asset, while the rune-inscribed rim extends well
+  // beyond the grid edge for the marketing-grade silhouette.
+  const platformWidth = GRID_BOUNDS.width * 2.0 + s(80);
+  const platformHeight = GRID_BOUNDS.height * 2.4 + s(60);
+  scene.add
+    .image(cx, cy, VISUAL_REVAMP_KEYS.P0_1_COSMIC_PLATFORM)
+    .setOrigin(0.5)
+    .setDepth(3)
+    .setDisplaySize(platformWidth, platformHeight);
+  // Hint to keep the COLORS import used by paintGhost/paintTrace from being
+  // flagged as unused — the platform itself is now an asset, no procedural draw.
+  void COLORS;
 }

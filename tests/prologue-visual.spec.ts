@@ -506,7 +506,7 @@ test.describe('Prologue region – visual audit', () => {
     await snap(page, '03-prologue-settled.png');
   });
 
-  test('03b - player smooth walk sheet is loaded as 32 isolated frames', async ({ page }) => {
+  test('03b - player walk sheet is loaded as 16 isolated frames', async ({ page }) => {
     await goToPrologue(page);
 
     const sheetInfo = await page.evaluate(() => {
@@ -530,9 +530,9 @@ test.describe('Prologue region – visual audit', () => {
 
     expect(sheetInfo).toEqual({
       textureKey: 'prologue-sheet-player-walk',
-      frameCount: 32,
+      frameCount: 16,
       frameSize: { width: 256, height: 256 },
-      walkRightFrames: [16, 17, 18, 19, 20, 21, 22, 23],
+      walkRightFrames: [8, 9, 10, 11],
     });
   });
 

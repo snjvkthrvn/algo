@@ -99,6 +99,12 @@ export const VISUAL_REVAMP_KEYS = {
   PUZZLE_CORE_GRAND_ARCHIVE_BG: 'visual-revamp-puzzle-core-grand-archive-bg',
   PUZZLE_CORE_HALL_OF_PATTERNS_BG: 'visual-revamp-puzzle-core-hall-of-patterns-bg',
   PUZZLE_CORE_PROTOCOL_OMEGA_BG: 'visual-revamp-puzzle-core-protocol-omega-bg',
+  // P0-1 cosmic-rune rebuild — see src/arcadePrologue/puzzles/P0_1/visuals/.
+  P0_1_COSMIC_BG: 'visual-revamp-p0-1-cosmic-bg',
+  P0_1_COSMIC_PLATFORM: 'visual-revamp-p0-1-cosmic-platform',
+  P0_1_COSMIC_TILE_DIM: 'visual-revamp-p0-1-cosmic-tile-dim',
+  P0_1_COSMIC_TILE_LIT: 'visual-revamp-p0-1-cosmic-tile-lit',
+  P0_1_COSMIC_RUNESTONE: 'visual-revamp-p0-1-cosmic-runestone',
 } as const;
 
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
@@ -183,6 +189,11 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PUZZLE_CORE_GRAND_ARCHIVE_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/core_grand_archive_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_CORE_HALL_OF_PATTERNS_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/core_hall_of_patterns_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_CORE_PROTOCOL_OMEGA_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/core_protocol_omega_backdrop_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.P0_1_COSMIC_BG, path: `${VISUAL_REVAMP_BASE}/p0_1_cosmic/cosmic_nebula_bg_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.P0_1_COSMIC_PLATFORM, path: `${VISUAL_REVAMP_BASE}/p0_1_cosmic/platform_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.P0_1_COSMIC_TILE_DIM, path: `${VISUAL_REVAMP_BASE}/p0_1_cosmic/rune_tile_dim_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.P0_1_COSMIC_TILE_LIT, path: `${VISUAL_REVAMP_BASE}/p0_1_cosmic/rune_tile_lit_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.P0_1_COSMIC_RUNESTONE, path: `${VISUAL_REVAMP_BASE}/p0_1_cosmic/runestone_v1.png` },
 ];
 
 /**
@@ -282,7 +293,7 @@ export const PROLOGUE_SHEET_KEYS = {
 
 export const PROLOGUE_SHEET_SPRITE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_SHEET_KEYS.ROUTE_TILESET, path: `${SHEET_BASE}/environment/prologue_route_tileset_v3.png`, frameWidth: 32, frameHeight: 32 },
-  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_smooth_v3.png`, frameWidth: 256, frameHeight: 256 },
+  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_v2.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.NPCS, path: `${SHEET_BASE}/characters/imagegen_npc_idle.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.COMPANIONS, path: `${SHEET_BASE}/characters/companion_sheet.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.OBJECTS, path: `${SHEET_BASE}/objects/object_sheet.png`, frameWidth: 256, frameHeight: 256 },

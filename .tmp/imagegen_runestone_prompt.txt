@@ -1,0 +1,59 @@
+Use the imagegen skill to produce a floating runestone artifact sprite for Algorithmia Puzzle P0-1 "The Path of Sequences". This stands next to the Rune Keeper NPC beside the cosmic platform, hovering and pulsing with magical cyan energy. P0-1 has its own cosmic visual genre; this sprite doesn't need to match other puzzles.
+
+REFERENCE — for pixel-art QUALITY anchor only:
+- D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\characters\rune_keeper.png (pixel-art purity reference — hard 1:1 edges, deliberate limited palette)
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\p0_1_cosmic\runestone_v1.png
+- Final image dimensions: 120 x 180 px
+- TRANSPARENT background outside the runestone + its glow halo
+- True pixel art, hard 1:1 edges throughout
+
+=== DESIGN BRIEF ===
+A vertical floating runestone tablet — roughly twice as tall as it is wide. The stone is dark cosmic-purple, ancient, hovering slightly above an invisible ground. A single luminous cyan rune is etched deeply into its face, glowing strongly.
+
+Structure:
+1. STONE TABLET: a vertical block with slightly rounded corners. Dark cosmic-purple stone (#2a2a4a base, #1a0f3a shadows, #4a3a6a highlights on top edges). 5-pixel beveled edge so it reads as 3D.
+2. CARVED RUNE: a stylized cross-shaped sigil etched DEEPLY into the tablet face — like a Norse rune or alchemical mark. The rune itself glows brilliant cyan (#06b6d4 base, #e0f8ff core). The carving has visible depth — you can see the rune is below the stone surface.
+3. RIM CYAN GLOW: a soft cyan halo around the entire stone (~4-6 pixels of glow extending outward), brightest just outside the stone silhouette and fading to transparent.
+4. LEVITATION INDICATOR: below the stone, a small cluster of cyan-glowing motes / sparkles drifting downward — the magical "energy trail" of the floating stone. 6-10 small bright pixels in a roughly conical arrangement below the tablet.
+5. SUBTLE WEAR: tiny carved decorative lines on the stone face — corner brackets, edge notches — to suggest ancient stonework.
+
+The runestone reads instantly as a magical artifact, not just a stone block.
+
+PALETTE — TIGHTLY LIMITED (use ONLY these 10 colors):
+- Stone deep shadow: #14091e
+- Stone shadow: #1a0f3a
+- Stone base: #2a2a4a
+- Stone mid: #3a2d5a
+- Stone highlight: #4a3a6a
+- Cyan deep (in carved groove): #0792a6
+- Cyan base (rune glow): #06b6d4
+- Cyan bright (rune core): #67e8f9
+- Cyan brightest (rune brightest pixels): #c8f8ff
+- Pure white (single hottest highlight only): #ffffff
+
+MAX 10 colors total.
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO soft brush, NO airbrush, NO Gaussian-blur lighting
+- NO anti-aliased edges (every boundary is a hard step)
+- NO smooth color gradients
+- NO color count above 10
+- NO hallucinated text or letters carved into the stone — the rune is a SYMBOL, not a word
+- NO ground beneath the stone (it's floating in mid-air)
+- NO shadow rendered into the image
+- NO painted/airbrushed textures
+- The rune must be a single coherent geometric symbol, NOT a complex multi-glyph composition
+
+=== TECHNICAL CONSTRAINTS ===
+- Transparent background outside stone + halo
+- Dimensions exactly 120 x 180 px
+- Stone occupies ~50-60% of the image area, vertically centered with slight bias upward (energy motes occupy the lower 20%)
+- Halo rendered with crisp pixel-art edges via dithering, NOT alpha blend
+
+After saving, verify the file dimensions are exactly 120x180 and report:
+- on-disk file size in bytes
+- unique color count (must be ≤ 10)
+- approximate percentage of pixels that are fully transparent (alpha=0)
+- brief description of the rune symbol shape you carved

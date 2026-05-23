@@ -1,0 +1,55 @@
+Use the imagegen skill to produce a single dim/inactive stone-rune tile for Algorithmia Puzzle P0-1 "The Path of Sequences". This puzzle is its own visual genre (cosmic mystical-temple) and does NOT need to share aesthetics with other puzzles.
+
+This tile is one cell of a 6×6 grid on a circular stone platform. Other tiles will reuse this same texture — variations in glyph are painted on top in-engine using text, so this base must read as a generic mystical stone tile with no specific carved glyph.
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\p0_1_cosmic\rune_tile_dim_v1.png
+- Final image dimensions: 256 x 220 px
+- TRANSPARENT background outside the tile silhouette (alpha 0 only, no near-transparent halo)
+- True pixel art, hard 1:1 edges throughout
+
+=== DESIGN BRIEF ===
+A single square stone tile viewed from a 3/4 top-down camera angle, vertically squashed to ~0.85× height-to-width ratio. The tile reads as a deeply-carved block of ancient stone with a recessed inset where a glyph could be engraved (but the glyph itself is intentionally absent — it will be painted on top in-engine).
+
+Layered structure:
+1. OUTER BEVEL: a 2-3 pixel raised edge of lighter purple stone forming the tile's silhouette
+2. STONE FACE: deep purple-grey weathered stone, deliberately textured with 2-3 dither tones for surface variation
+3. INNER INSET: a recessed darker rectangular area in the center, ~70% of the tile's interior, where the glyph would sit. This recess should be unmistakably "engraved" — visibly deeper than the outer stone face
+4. CORNER NICKS: small carved decorative notches in the four corners of the inset, like ancient stonemason marks
+5. SUBTLE WEATHERING: 2-3 pixel cracks, scratches, dust specks on the stone face — sparingly placed
+
+Read clearly as a discrete tile (not part of a tiled pattern). Could sit on a stone platform without disappearing into it.
+
+PALETTE — TIGHTLY LIMITED (use ONLY these 8 colors):
+- Outer bevel highlight: #5a4a7a
+- Stone face main: #2a2a4a
+- Stone face mid: #3a2d5a
+- Stone face shadow: #1a0f3a
+- Inset deep: #16122a
+- Inset shadow: #0a0820
+- Crack/weathering: #14091e
+- Pure black (deepest shadow): #050010
+
+MAX 8 colors total.
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO soft brush, NO airbrush, NO Gaussian-blur shading
+- NO anti-aliased edges (every pixel boundary is a hard step)
+- NO smooth color gradients
+- NO color count above 8
+- NO glyph carved into the center inset (must be empty)
+- NO cyan glow (this is the DIM state — the LIT state is a separate asset)
+- NO drop shadow rendered into the image
+- NO painted/airbrushed textures
+- NO halo or near-transparent edge — clean alpha boundary
+
+=== TECHNICAL CONSTRAINTS ===
+- Transparent background outside tile silhouette
+- Dimensions exactly 256 x 220 px
+- Tile centered in frame, fills ~92% of width and ~92% of height
+- Designed to be tinted/recolored slightly in-engine; pure-stone palette only
+
+After saving, verify the file dimensions are exactly 256x220 and report:
+- on-disk file size in bytes
+- unique color count (must be ≤ 8)
+- approximate percentage of pixels that are fully transparent (alpha=0)

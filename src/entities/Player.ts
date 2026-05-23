@@ -10,7 +10,7 @@ import { PlayerState } from '../data/types';
 const PLAYER_SPRITE_SCALE = 0.25;
 export const PLAYER_GRID_STEP = 32;
 const PLAYER_STEP_DURATION_MS = 160;
-const PLAYER_WALK_FRAME_RATE = 25; // 4 frames per 160ms step, full 8-frame cycle over 2 chained tiles
+const PLAYER_WALK_FRAME_RATE = 25; // 4-frame cycle plays in one 160ms tile step
 
 type FacingDirection = 'down' | 'up' | 'left' | 'right';
 
@@ -162,13 +162,13 @@ export class Player {
 
   private createAnimations(): void {
     this.createAnimationIfMissing('player-idle-down', 0, 0, 1);
-    this.createAnimationIfMissing('player-idle-left', 8, 8, 1);
-    this.createAnimationIfMissing('player-idle-right', 16, 16, 1);
-    this.createAnimationIfMissing('player-idle-up', 24, 24, 1);
-    this.createAnimationIfMissing('player-walk-down', 0, 7, PLAYER_WALK_FRAME_RATE, -1);
-    this.createAnimationIfMissing('player-walk-left', 8, 15, PLAYER_WALK_FRAME_RATE, -1);
-    this.createAnimationIfMissing('player-walk-right', 16, 23, PLAYER_WALK_FRAME_RATE, -1);
-    this.createAnimationIfMissing('player-walk-up', 24, 31, PLAYER_WALK_FRAME_RATE, -1);
+    this.createAnimationIfMissing('player-idle-left', 4, 4, 1);
+    this.createAnimationIfMissing('player-idle-right', 8, 8, 1);
+    this.createAnimationIfMissing('player-idle-up', 12, 12, 1);
+    this.createAnimationIfMissing('player-walk-down', 0, 3, PLAYER_WALK_FRAME_RATE, -1);
+    this.createAnimationIfMissing('player-walk-left', 4, 7, PLAYER_WALK_FRAME_RATE, -1);
+    this.createAnimationIfMissing('player-walk-right', 8, 11, PLAYER_WALK_FRAME_RATE, -1);
+    this.createAnimationIfMissing('player-walk-up', 12, 15, PLAYER_WALK_FRAME_RATE, -1);
   }
 
   private createAnimationIfMissing(

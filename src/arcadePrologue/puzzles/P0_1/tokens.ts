@@ -16,10 +16,17 @@ export const STAGE = { width: Math.round(960 * SCALE), height: Math.round(540 * 
 
 export const HEX_RADIUS = 44 * SCALE;
 
+// Cosmic-rune grid: 6×6 tiles, perspective-squashed for a 3/4 isometric feel.
+export const GRID_COLS = 6;
+export const GRID_ROWS = 6;
+export const TILE_SIZE = 48 * SCALE;
+export const TILE_GAP = 4 * SCALE;
+export const PERSPECTIVE_Y = 0.82;
+
 export const COLORS = {
   bg: {
-    deep: 0x05060c,
-    fog: 0x10132a,
+    deep: 0x0a0420,
+    fog: 0x1a0f3a,
   },
   surface: {
     glass: 0x0c1024,
@@ -33,6 +40,22 @@ export const COLORS = {
   },
   accent: 0x7dd3fc,
   warn: 0xf87171,
+  platform: {
+    stone: 0x2a2a4a,
+    stoneRim: 0x4a3a6a,
+    runeEngrave: 0x6a5a9a,
+  },
+  tile: {
+    dim: 0x1f1a35,
+    dimEdge: 0x4a3a6a,
+    lit: 0x06b6d4,
+    litEdge: 0x67e8f9,
+  },
+  nebula: {
+    purple: 0x6c52d6,
+    magenta: 0xb04dd6,
+    cyan: 0x2b8fd6,
+  },
 } as const;
 
 const FAMILY_DISPLAY = '"Cinzel", Georgia, "Times New Roman", serif';

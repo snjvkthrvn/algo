@@ -268,14 +268,14 @@ describe('Player', () => {
     expect(animationPlays[0]).toBe('player-idle-down');
   });
 
-  it('creates eight-frame directional walk cycles that stay smooth across two tile steps', () => {
+  it('creates four-frame directional walk cycles that play once per tile step', () => {
     const { animationConfigs } = createPlayer();
     const configByKey = new Map(animationConfigs.map((config) => [config.key, config]));
 
     expect(configByKey.get('player-idle-down')?.frames.map((frame) => frame.frame)).toEqual([0]);
-    expect(configByKey.get('player-idle-left')?.frames.map((frame) => frame.frame)).toEqual([8]);
-    expect(configByKey.get('player-idle-right')?.frames.map((frame) => frame.frame)).toEqual([16]);
-    expect(configByKey.get('player-idle-up')?.frames.map((frame) => frame.frame)).toEqual([24]);
+    expect(configByKey.get('player-idle-left')?.frames.map((frame) => frame.frame)).toEqual([4]);
+    expect(configByKey.get('player-idle-right')?.frames.map((frame) => frame.frame)).toEqual([8]);
+    expect(configByKey.get('player-idle-up')?.frames.map((frame) => frame.frame)).toEqual([12]);
 
     expect(configByKey.get('player-walk-down')).toMatchObject({
       frameRate: 25,
@@ -285,15 +285,11 @@ describe('Player', () => {
         { key: 'prologue-sheet-player-walk', frame: 1 },
         { key: 'prologue-sheet-player-walk', frame: 2 },
         { key: 'prologue-sheet-player-walk', frame: 3 },
-        { key: 'prologue-sheet-player-walk', frame: 4 },
-        { key: 'prologue-sheet-player-walk', frame: 5 },
-        { key: 'prologue-sheet-player-walk', frame: 6 },
-        { key: 'prologue-sheet-player-walk', frame: 7 },
       ],
     });
-    expect(configByKey.get('player-walk-left')?.frames.map((frame) => frame.frame)).toEqual([8, 9, 10, 11, 12, 13, 14, 15]);
-    expect(configByKey.get('player-walk-right')?.frames.map((frame) => frame.frame)).toEqual([16, 17, 18, 19, 20, 21, 22, 23]);
-    expect(configByKey.get('player-walk-up')?.frames.map((frame) => frame.frame)).toEqual([24, 25, 26, 27, 28, 29, 30, 31]);
+    expect(configByKey.get('player-walk-left')?.frames.map((frame) => frame.frame)).toEqual([4, 5, 6, 7]);
+    expect(configByKey.get('player-walk-right')?.frames.map((frame) => frame.frame)).toEqual([8, 9, 10, 11]);
+    expect(configByKey.get('player-walk-up')?.frames.map((frame) => frame.frame)).toEqual([12, 13, 14, 15]);
   });
 
   it('moves exactly one grid tile toward the newest horizontal input', () => {

@@ -1,0 +1,61 @@
+Use the imagegen skill to produce a deep-cosmic-purple nebula backdrop for Algorithmia Puzzle P0-1 "The Path of Sequences". This puzzle has its own distinct visual genre (a cosmic mystical-temple) that does NOT need to match other puzzles in the game — every puzzle in this project is its own aesthetic. We're rebuilding P0-1 from a circuit/teal look to a cosmic-purple-stone look. This file replaces the procedural starfield drawn in atmosphere.ts.
+
+=== DESIGN INTENT ===
+The composition is a pure sky/space backdrop. The stone platform (separate asset) and the rune tile grid (rendered in-engine) will be composited on top, so this image must NOT include any foreground architecture. Read as an alien sky viewed from a mystical rune sanctuary.
+
+REFERENCE IMAGES — for pixel-art QUALITY only, not for color/composition:
+- D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\characters\rune_keeper.png (pixel-art purity reference — hard 1:1 edges, deliberate limited palette, no AI smudge)
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\p0_1_cosmic\cosmic_nebula_bg_v1.png
+- Final image dimensions: 1280 x 720 px (16:9 game stage)
+- OPAQUE background (this fills the entire game window)
+- True pixel art, hard 1:1 edges throughout
+
+=== COMPOSITION BRIEF ===
+A wide cosmic sky composition. Empty of any foreground objects — only sky.
+- Upper-left: large soft violet nebula cloud (~30% of image area)
+- Upper-right: smaller magenta-pink nebula tendril
+- Lower-left: cool cyan-blue nebula wisp
+- Center: a darker calmer void with the densest concentration of distant stars
+- Bottom edge: slightly darker so the platform (added in-engine) reads clearly against it
+
+Star field: hundreds of pixel stars of varying brightness. ~70% small 1px stars, ~25% medium 2-3px stars, ~5% large bright stars with subtle 4-point cross flare. Star colors vary: white, pale blue, pale gold, soft pink — never uniform.
+
+Nebulae: rendered as pixel-art dithered clouds with crisp pixel boundaries, NOT smooth gradients. Use 3-4 tones per nebula color, dithered for transitions. Soft cloudy SHAPES but every pixel is one of a few solid colors.
+
+Mood: calm, contemplative, mystical-cosmic — like an ancient sage's observatory at the edge of space. Not chaotic, not action-packed.
+
+PALETTE — TIGHTLY LIMITED (use ONLY these 14 colors):
+- Sky base darkest: #050218
+- Sky base dark: #0a0420
+- Sky base mid: #140832
+- Sky base light: #2a1158
+- Nebula violet: #6c52d6 (with dither tones #4a37a0, #8a72e0)
+- Nebula magenta: #b04dd6 (with #8a3aa8)
+- Nebula cyan: #2b8fd6 (with #1a6ba8)
+- Star white: #ffffff
+- Star pale blue: #b8d8ff
+- Star pale gold: #ffeac0
+- Star soft pink: #ffd6f6
+
+MAX 14 colors total.
+
+=== ABSOLUTE PROHIBITIONS — these will fail the asset ===
+- NO soft brush, NO airbrush, NO Gaussian-blur lighting
+- NO anti-aliased edges (every pixel boundary is a hard step between two solid colors)
+- NO sub-pixel rendering, NO half-pixel offsets
+- NO smooth color gradients — all nebula shading via 2-4 deliberate dither tones per cloud
+- NO color count above 14
+- NO foreground architecture (no platforms, towers, islands, ground)
+- NO hallucinated UI text or numerals anywhere in the sky
+- NO realistic-photo aesthetic — must read as deliberate pixel art
+
+=== TECHNICAL CONSTRAINTS ===
+- Opaque background (fills 1280x720 entirely)
+- Dimensions exactly 1280 x 720
+
+After saving, verify the file dimensions are exactly 1280x720 and report:
+- on-disk file size in bytes
+- unique color count (must be ≤ 14)
+- brief description of where the three nebulae landed in the composition

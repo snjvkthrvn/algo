@@ -1,0 +1,60 @@
+Use the imagegen skill to produce a single LIT/active stone-rune tile for Algorithmia Puzzle P0-1 "The Path of Sequences". This is the active state matching the dim tile (rune_tile_dim_v1.png) — same silhouette, same scale, same perspective, but glowing intensely with cyan magical energy.
+
+=== DESIGN INTENT ===
+This tile is what a player sees when they step onto a path tile or when a tile is part of the active sequence preview. It should read DRAMATICALLY brighter than the dim tile — strong cyan glow filling the center inset, edges catching the light, a clear halo of cyan energy.
+
+REFERENCE — for matching the dim variant silhouette:
+- D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\p0_1_cosmic\rune_tile_dim_v1.png (the dim variant — match its silhouette, perspective, and tile geometry exactly; only the lighting/color changes)
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\p0_1_cosmic\rune_tile_lit_v1.png
+- Final image dimensions: 256 x 220 px (matches dim variant)
+- TRANSPARENT background outside the tile silhouette + halo
+- True pixel art, hard 1:1 edges throughout
+
+=== DESIGN BRIEF ===
+Same square stone tile as the dim variant — 3/4 top-down view, ~0.85× height-to-width ratio. Same outer bevel structure, same inner inset geometry, same corner nicks, same weathering. But the entire INSET is now flooded with bright cyan magical light:
+
+1. INNER INSET (center): brilliant cyan-white at its core (#c8f8ff), fading through bright cyan (#67e8f9) to base cyan (#06b6d4) at the inset edges. Dithered transitions — NOT smooth gradients.
+2. STONE FACE: still deep purple-grey, but the top edges and bevels near the inset catch a cyan rim-light (3-5 pixels of pale cyan highlight where light spills out from the inset)
+3. OUTER BEVEL: lighter purple stone, with cyan light catching its top edges
+4. HALO: a ~6 pixel outer glow ring of cyan that extends beyond the stone silhouette. This halo is the only thing rendered outside the tile's stone boundary — the rest must be transparent.
+
+Read instantly as "activated", "lit", "energized" — strong silhouette contrast vs the dim variant.
+
+PALETTE — TIGHTLY LIMITED (use ONLY these 11 colors):
+- Outer bevel highlight: #5a4a7a
+- Stone face main: #2a2a4a
+- Stone face mid: #3a2d5a
+- Stone face shadow: #1a0f3a
+- Cyan rim-light on stone: #2b8fd6 (subtle, ~10% of stone face)
+- Glow halo outer: #06b6d4
+- Cyan deep: #0792a6
+- Cyan base: #06b6d4
+- Cyan bright: #67e8f9
+- Cyan brightest: #c8f8ff
+- Pure white core: #ffffff
+
+MAX 11 colors total.
+
+=== ABSOLUTE PROHIBITIONS ===
+- NO soft brush, NO airbrush, NO Gaussian-blur lighting
+- NO anti-aliased edges (every boundary is a hard step between two solid colors)
+- NO smooth gradients — all light transitions via deliberate dither tones
+- NO color count above 11
+- NO glyph carved or painted into the inset (the inset is filled with pure light, no glyph form)
+- NO drop shadow
+- NO painted/airbrushed textures
+- The silhouette must match the dim variant — same tile geometry
+
+=== TECHNICAL CONSTRAINTS ===
+- Transparent background outside the tile + halo
+- Dimensions exactly 256 x 220 px
+- Tile geometry matches the dim variant 1:1 (overlay them and stone shapes align)
+- Halo rendered into the alpha-positive area, NOT via low-alpha bleed
+
+After saving, verify the file dimensions are exactly 256x220 and report:
+- on-disk file size in bytes
+- unique color count (must be ≤ 11)
+- approximate percentage of pixels that are fully transparent (alpha=0)
+- confirm silhouette matches the dim variant's bounding box

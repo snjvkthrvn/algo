@@ -1,49 +1,57 @@
 import Phaser from 'phaser';
-import { COLORS, HEX_RADIUS, s } from '../tokens';
+import { PERSPECTIVE_Y, TILE_SIZE, s } from '../tokens';
+import { VISUAL_REVAMP_KEYS } from '../../../../config/assets';
 
 /**
- * Cached rune sprite.
+ * Rune-tile rendering — both DIM and LIT use generated cosmic stone tile
+ * assets (P0_1_COSMIC_TILE_DIM / P0_1_COSMIC_TILE_LIT). The LIT variant was
+ * deterministically derived from the DIM source so silhouettes overlay 1:1.
  *
- * Four layers — shadow, stone, inner facet, accent rim — baked once into a single
- * texture. Every glyph on the board is a cheap Image referencing it.
+ * Glyphs are painted on top of the stone with Phaser text so each tile reads
+ * as a unique rune carving even though the base texture is shared.
  */
 
-const RUNE_KEY = 'p0_1_rune';
+const RUNE_DIM_KEY = VISUAL_REVAMP_KEYS.P0_1_COSMIC_TILE_DIM;
+const RUNE_LIT_KEY = VISUAL_REVAMP_KEYS.P0_1_COSMIC_TILE_LIT;
 
-export function ensureRuneTexture(scene: Phaser.Scene): string {
-  if (scene.textures.exists(RUNE_KEY)) return RUNE_KEY;
+const GLYPHS = ['◇', '◆', '◈', '✦', '✧', '⟁', '⟡', '⟢', '◉', '✺'];
 
-  const pad = s(14);
-  const size = (HEX_RADIUS + pad) * 2;
-  const cx = size / 2;
-  const cy = size / 2;
-
-  const g = scene.make.graphics(undefined, false);
-
-  const corners = (radius: number, dx = 0, dy = 0): Phaser.Math.Vector2[] =>
-    Array.from({ length: 6 }, (_, i) => {
-      const a = Phaser.Math.DegToRad(60 * i - 90);
-      return new Phaser.Math.Vector2(cx + dx + Math.cos(a) * radius, cy + dy + Math.sin(a) * radius);
-    });
-
-  g.fillStyle(0x000000, 0.32);
-  g.fillPoints(corners(HEX_RADIUS - s(2), s(1), s(5)), true);
-
-  g.fillStyle(COLORS.surface.glass, 1);
-  g.fillPoints(corners(HEX_RADIUS - s(2)), true);
-
-  g.lineStyle(s(1), COLORS.surface.line, 0.55);
-  g.strokePoints(corners(HEX_RADIUS - s(10)), true);
-
-  g.lineStyle(s(1.5), COLORS.accent, 0.4);
-  g.strokePoints(corners(HEX_RADIUS - s(2)), true);
-
-  g.generateTexture(RUNE_KEY, size, size);
-  g.destroy();
-
-  return RUNE_KEY;
+export function ensureRuneTexture(_scene: Phaser.Scene): string {
+  // Both DIM and LIT are now generated assets preloaded by BootScene; no
+  // procedural fallback is needed. Function kept for symmetry with the
+  // scene.create() call sequence.
+  return RUNE_DIM_KEY;
 }
 
 export function placeRune(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image {
-  return scene.add.image(x, y, RUNE_KEY).setDepth(6);
+  const image = scene.add.image(x, y, RUNE_DIM_KEY).setDepth(6);
+  // The generated cosmic_tile asset is 256x220 px; fit it into the in-engine
+  // tile slot which is TILE_SIZE wide × TILE_SIZE*PERSPECTIVE_Y tall.
+  image.setDisplaySize(TILE_SIZE + s(6) * 2, TILE_SIZE * PERSPECTIVE_Y + s(6) * 2);
+  // Stamp a glyph on top so each tile reads as "a rune-engraved stone, not just a square."
+  const glyph = GLYPHS[Math.floor(Math.random() * GLYPHS.length)]!;
+  const glyphText = scene.add
+    .text(x, y, glyph, {
+      fontFamily: '"Cinzel", Georgia, serif',
+      fontSize: `${Math.round(TILE_SIZE * 0.45)}px`,
+      color: '#6a5a9a',
+    })
+    .setOrigin(0.5)
+    .setDepth(6.5)
+    .setAlpha(0.7);
+  image.setData('glyphText', glyphText);
+  image.setData('lit', false);
+  return image;
 }
+
+export function setRuneLit(image: Phaser.GameObjects.Image, lit: boolean): void {
+  if (image.getData('lit') === lit) return;
+  image.setTexture(lit ? RUNE_LIT_KEY : RUNE_DIM_KEY);
+  image.setData('lit', lit);
+  const glyphText = image.getData('glyphText') as Phaser.GameObjects.Text | undefined;
+  if (glyphText) {
+    glyphText.setColor(lit ? '#e0f8ff' : '#6a5a9a');
+    glyphText.setAlpha(lit ? 1 : 0.7);
+  }
+}
+

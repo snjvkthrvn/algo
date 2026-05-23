@@ -1,0 +1,619 @@
+Reading additional input from stdin...
+2026-05-19T16:04:21.252113Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer realm=\"OAuth\", resource_metadata=\"https://mcp.linear.app/.well-known/oauth-protected-resource/mcp\", error=\"invalid_token\", error_description=\"Missing or invalid access token\"" })
+2026-05-19T16:04:21.271917Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://mcp.supabase.com/.well-known/oauth-protected-resource/mcp\"" })
+2026-05-19T16:04:21.288614Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_token\", error_description=\"No authorization provided\", resource_metadata=\"https://mcp.vercel.com/.well-known/oauth-protected-resource\"" })
+2026-05-19T16:04:21.387008Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/\"" })
+OpenAI Codex v0.130.0
+--------
+workdir: D:\algo\.claude\worktrees\romantic-jackson-590e96
+model: gpt-5.5
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, C:\Users\kathi\.codex\memories]
+reasoning effort: xhigh
+reasoning summaries: none
+session id: 019e40fb-2215-7270-9dd8-1fdfaf63d96d
+--------
+user
+Use the imagegen skill to produce a deep-cosmic-purple nebula backdrop for Algorithmia Puzzle P0-1 "The Path of Sequences". This puzzle has its own distinct visual genre (a cosmic mystical-temple) that does NOT need to match other puzzles in the game — every puzzle in this project is its own aesthetic. We're rebuilding P0-1 from a circuit/teal look to a cosmic-purple-stone look. This file replaces the procedural starfield drawn in atmosphere.ts.
+
+=== DESIGN INTENT ===
+The composition is a pure sky/space backdrop. The stone platform (separate asset) and the rune tile grid (rendered in-engine) will be composited on top, so this image must NOT include any foreground architecture. Read as an alien sky viewed from a mystical rune sanctuary.
+
+REFERENCE IMAGES — for pixel-art QUALITY only, not for color/composition:
+- D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\characters\rune_keeper.png (pixel-art purity reference — hard 1:1 edges, deliberate limited palette, no AI smudge)
+
+=== OUTPUT FILE (EXACT) ===
+- Save to: D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\p0_1_cosmic\cosmic_nebula_bg_v1.png
+- Final image dimensions: 1280 x 720 px (16:9 game stage)
+- OPAQUE background (this fills the entire game window)
+- True pixel art, hard 1:1 edges throughout
+
+=== COMPOSITION BRIEF ===
+A wide cosmic sky composition. Empty of any foreground objects — only sky.
+- Upper-left: large soft violet nebula cloud (~30% of image area)
+- Upper-right: smaller magenta-pink nebula tendril
+- Lower-left: cool cyan-blue nebula wisp
+- Center: a darker calmer void with the densest concentration of distant stars
+- Bottom edge: slightly darker so the platform (added in-engine) reads clearly against it
+
+Star field: hundreds of pixel stars of varying brightness. ~70% small 1px stars, ~25% medium 2-3px stars, ~5% large bright stars with subtle 4-point cross flare. Star colors vary: white, pale blue, pale gold, soft pink — never uniform.
+
+Nebulae: rendered as pixel-art dithered clouds with crisp pixel boundaries, NOT smooth gradients. Use 3-4 tones per nebula color, dithered for transitions. Soft cloudy SHAPES but every pixel is one of a few solid colors.
+
+Mood: calm, contemplative, mystical-cosmic — like an ancient sage's observatory at the edge of space. Not chaotic, not action-packed.
+
+PALETTE — TIGHTLY LIMITED (use ONLY these 14 colors):
+- Sky base darkest: #050218
+- Sky base dark: #0a0420
+- Sky base mid: #140832
+- Sky base light: #2a1158
+- Nebula violet: #6c52d6 (with dither tones #4a37a0, #8a72e0)
+- Nebula magenta: #b04dd6 (with #8a3aa8)
+- Nebula cyan: #2b8fd6 (with #1a6ba8)
+- Star white: #ffffff
+- Star pale blue: #b8d8ff
+- Star pale gold: #ffeac0
+- Star soft pink: #ffd6f6
+
+MAX 14 colors total.
+
+=== ABSOLUTE PROHIBITIONS — these will fail the asset ===
+- NO soft brush, NO airbrush, NO Gaussian-blur lighting
+- NO anti-aliased edges (every pixel boundary is a hard step between two solid colors)
+- NO sub-pixel rendering, NO half-pixel offsets
+- NO smooth color gradients — all nebula shading via 2-4 deliberate dither tones per cloud
+- NO color count above 14
+- NO foreground architecture (no platforms, towers, islands, ground)
+- NO hallucinated UI text or numerals anywhere in the sky
+- NO realistic-photo aesthetic — must read as deliberate pixel art
+
+=== TECHNICAL CONSTRAINTS ===
+- Opaque background (fills 1280x720 entirely)
+- Dimensions exactly 1280 x 720
+
+After saving, verify the file dimensions are exactly 1280x720 and report:
+- on-disk file size in bytes
+- unique color count (must be ≤ 14)
+- brief description of where the three nebulae landed in the composition
+ERROR: The process "25932" not found.
+codex
+I’ll use the local `imagegen` skill first, then create the asset in the requested path and run direct file validation for dimensions, size, and palette count.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Content -Raw C:\\Users\\kathi\\.codex\\skills\\.system\\imagegen\\SKILL.md" in D:\algo\.claude\worktrees\romantic-jackson-590e96
+ succeeded in 11300ms:
+---
+name: "imagegen"
+description: "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas."
+---
+
+# Image Generation Skill
+
+Generates or edits images for the current project (for example website assets, game assets, UI mockups, product mockups, wireframes, logo design, photorealistic images, or infographics).
+
+## Top-level modes and rules
+
+This skill has exactly two top-level modes:
+
+- **Default built-in tool mode (preferred):** built-in `image_gen` tool for normal image generation, editing, and simple transparent-image requests. Does not require `OPENAI_API_KEY`.
+- **Fallback CLI mode:** `scripts/image_gen.py` CLI. Use when the user explicitly asks for the CLI/API/model path, or after the user explicitly confirms a true model-native transparency fallback with `gpt-image-1.5`. Requires `OPENAI_API_KEY`.
+
+Within CLI fallback, the CLI exposes three subcommands:
+
+- `generate`
+- `edit`
+- `generate-batch`
+
+Rules:
+- Use the built-in `image_gen` tool by default for normal image generation and editing requests.
+- Do not switch to CLI fallback for ordinary quality, size, or file-path control.
+- If the user explicitly asks for a transparent image/background, stay on built-in `image_gen` first: prompt for a flat removable chroma-key background, then remove it locally with the installed helper at `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`.
+- Never silently switch from built-in `image_gen` or CLI `gpt-image-2` to CLI `gpt-image-1.5`. Treat this as a model/path downgrade and ask the user before doing it, unless the user has already explicitly requested `gpt-image-1.5`, `scripts/image_gen.py`, or CLI fallback.
+- If a transparent request appears too complex for clean chroma-key removal, asks for true/native transparency, or local removal fails validation, explain that true transparency requires CLI `gpt-image-1.5 --background transparent --output-format png` because `gpt-image-2` does not support `background=transparent`, then ask whether to proceed. Run the CLI fallback only after the user confirms.
+- The word `batch` by itself does not mean CLI fallback. If the user asks for many assets or says to batch-generate assets without explicitly asking for CLI/API/model controls, stay on the built-in path and issue one built-in call per requested asset or variant.
+- If the built-in tool fails or is unavailable, tell the user the CLI fallback exists and that it requires `OPENAI_API_KEY`. Proceed only if the user explicitly asks for that fallback.
+- If the user explicitly asks for CLI mode, use the bundled `scripts/image_gen.py` workflow. Do not create one-off SDK runners.
+- Never modify `scripts/image_gen.py`. If something is missing, ask the user before doing anything else.
+
+Built-in save-path policy:
+- In built-in tool mode, Codex saves generated images under `$CODEX_HOME/*` by default.
+- Do not describe or rely on OS temp as the default built-in destination.
+- Do not describe or rely on a destination-path argument (if any) on the built-in `image_gen` tool. If a specific location is needed, generate first and then move or copy the selected output from `$CODEX_HOME/generated_images/...`.
+- Save-path precedence in built-in mode:
+  1. If the user names a destination, move or copy the selected output there.
+  2. If the image is meant for the current project, move or copy the final selected image into the workspace before finishing.
+  3. If the image is only for preview or brainstorming, render it inline; the underlying file can remain at the default `$CODEX_HOME/*` path.
+- Never leave a project-referenced asset only at the default `$CODEX_HOME/*` path.
+- Do not overwrite an existing asset unless the user explicitly asked for replacement; otherwise create a sibling versioned filename such as `hero-v2.png` or `item-icon-edited.png`.
+
+Shared prompt guidance for both modes lives in `references/prompting.md` and `references/sample-prompts.md`.
+
+Fallback-only docs/resources for CLI mode:
+- `references/cli.md`
+- `references/image-api.md`
+- `references/codex-network.md`
+- `scripts/image_gen.py`
+
+Local post-processing helper:
+- `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`: removes a flat chroma-key background from a generated image and writes a PNG/WebP with alpha. Prefer auto-key sampling, soft matte, and despill for antialiased edges.
+
+## When to use
+- Generate a new image (concept art, product shot, cover, website hero)
+- Generate a new image using one or more reference images for style, composition, or mood
+- Edit an existing image (inpainting, lighting or weather transformations, background replacement, object removal, compositing, transparent background)
+- Produce many assets or variants for one task
+
+## When not to use
+- Extending or matching an existing SVG/vector icon set, logo system, or illustration library inside the repo
+- Creating simple shapes, diagrams, wireframes, or icons that are better produced directly in SVG, HTML/CSS, or canvas
+- Making a small project-local asset edit when the source file already exists in an editable native format
+- Any task where the user clearly wants deterministic code-native output instead of a generated bitmap
+
+## Decision tree
+
+Think about two separate questions:
+
+1. **Intent:** is this a new image or an edit of an existing image?
+2. **Execution strategy:** is this one asset or many assets/variants?
+
+Intent:
+- If the user wants to modify an existing image while preserving parts of it, treat the request as **edit**.
+- If the user provides images only as references for style, composition, mood, or subject guidance, treat the request as **generate**.
+- If the user provides no images, treat the request as **generate**.
+
+Built-in edit semantics:
+- Built-in edit mode is for images already visible in the conversation context, such as attached images or images generated earlier in the thread.
+- If the user wants to edit a local image file with the built-in tool, first load it with built-in `view_image` tool so the image is visible in the conversation context, then proceed with the built-in edit flow.
+- Do not promise arbitrary filesystem-path editing through the built-in tool.
+- If a local file still needs direct file-path control, masks, or other explicit CLI-only parameters, use the explicit CLI fallback only when the user asks for it.
+- For edits, preserve invariants aggressively and save non-destructively by default.
+
+Execution strategy:
+- In the built-in default path, produce many assets or variants by issuing one `image_gen` call per requested asset or variant.
+- In the CLI fallback path, use the CLI `generate-batch` subcommand only when the user explicitly chose CLI mode and needs many prompts/assets.
+- For many distinct assets, do not use `n` as a substitute for separate prompts. `n` is for variants of one prompt; distinct assets need distinct built-in calls or distinct CLI `generate-batch` jobs.
+
+Assume the user wants a new image unless they clearly ask to change an existing one.
+
+## Workflow
+1. Decide the top-level mode: built-in by default, including simple transparent-output requests; fallback CLI only if explicitly requested or after the user explicitly confirms a transparent-output fallback.
+2. Decide the intent: `generate` or `edit`.
+3. Decide whether the output is preview-only or meant to be consumed by the current project.
+4. Decide the execution strategy: single asset vs repeated built-in calls vs CLI `generate-batch`.
+5. Collect inputs up front: prompt(s), exact text (verbatim), constraints/avoid list, and any input images.
+6. For every input image, label its role explicitly:
+   - reference image
+   - edit target
+   - supporting insert/style/compositing input
+7. If the edit target is only on the local filesystem and you are staying on the built-in path, inspect it with `view_image` first so the image is available in conversation context.
+8. If the user asked for a photo, illustration, sprite, product image, banner, or other explicitly raster-style asset, use `image_gen` rather than substituting SVG/HTML/CSS placeholders. If the request is for an icon, logo, or UI graphic that should match existing repo-native SVG/vector/code assets, prefer editing those directly instead.
+9. Augment the prompt based on specificity:
+   - If the user's prompt is already specific and detailed, normalize it into a clear spec without adding creative requirements.
+   - If the user's prompt is generic, add tasteful augmentation only when it materially improves output quality.
+10. Use the built-in `image_gen` tool by default.
+11. For transparent-output requests, follow the transparent image guidance below: generate with built-in `image_gen` on a flat chroma-key background, copy the selected output into the workspace or `tmp/imagegen/`, run the installed `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py` helper, and validate the alpha result before using it. If this path looks unsuitable or fails, ask before switching to CLI `gpt-image-1.5`.
+12. Inspect outputs and validate: subject, style, composition, text accuracy, and invariants/avoid items.
+13. Iterate with a single targeted change, then re-check.
+14. For preview-only work, render the image inline; the underlying file may remain at the default `$CODEX_HOME/generated_images/...` path.
+15. For project-bound work, move or copy the selected artifact into the workspace and update any consuming code or references. Never leave a project-referenced asset only at the default `$CODEX_HOME/generated_images/...` path.
+16. For batches or multi-asset requests, persist every requested deliverable final in the workspace unless the user explicitly asked to keep outputs preview-only. Discarded variants do not need to be kept unless requested.
+17. If the user explicitly chooses or confirms the CLI fallback, then use the fallback-only docs for model, quality, size, `input_fidelity`, masks, output format, output paths, and network setup.
+18. Always report the final saved path(s) for any workspace-bound asset(s), plus the final prompt or prompt set and whether the built-in tool or fallback CLI mode was used.
+
+## Transparent image requests
+
+Transparent-image requests still use built-in `image_gen` first. Because the built-in tool does not expose a true transparent-background control, create a removable chroma-key source image and then convert the key color to alpha locally.
+
+Default sequence:
+1. Use built-in `image_gen` to generate the requested subject on a perfectly flat solid chroma-key background.
+2. Choose a key color that is unlikely to appear in the subject: default `#00ff00`, use `#ff00ff` for green subjects, and avoid `#0000ff` for blue subjects.
+3. After generation, move or copy the selected source image from `$CODEX_HOME/generated_images/...` into the workspace or `tmp/imagegen/`.
+4. Run the installed helper path, not a project-relative script path:
+   ```bash
+   python "${CODEX_HOME:-$HOME/.codex}/skills/.system/imagegen/scripts/remove_chroma_key.py" \
+     --input <source> \
+     --out <final.png> \
+     --auto-key border \
+     --soft-matte \
+     --transparent-threshold 12 \
+     --opaque-threshold 220 \
+     --despill
+   ```
+5. Validate that the output has an alpha channel, transparent corners, plausible subject coverage, and no obvious key-color fringe. If a thin fringe remains, retry once with `--edge-contract 1`; use `--edge-feather 0.25` only when the edge is visibly stair-stepped and the subject is not shiny or reflective.
+6. Save the final alpha PNG/WebP in the project if the asset is project-bound. Never leave a project-referenced transparent asset only under `$CODEX_HOME/*`.
+
+Prompt transparent requests like this:
+
+```text
+Create the requested subject on a perfectly flat solid #00ff00 chroma-key background for background removal.
+The background must be one uniform color with no shadows, gradients, texture, reflections, floor plane, or lighting variation.
+Keep the subject fully separated from the background with crisp edges and generous padding.
+Do not use #00ff00 anywhere in the subject.
+No cast shadow, no contact shadow, no reflection, no watermark, and no text unless explicitly requested.
+```
+
+Do not automatically use CLI `gpt-image-1.5 --background transparent --output-format png` instead of chroma keying. Ask the user first when the user asks for true/native transparency, when local removal fails validation, or when the requested image is complex: hair, fur, feathers, smoke, glass, liquids, translucent materials, reflective objects, soft shadows, realistic product grounding, or subject colors that conflict with all practical key colors.
+
+Use a concise confirmation like:
+
+```text
+This likely needs true native transparency. The default built-in path uses a chroma-key background plus local removal, but true transparency requires the CLI fallback with gpt-image-1.5 because gpt-image-2 does not support background=transparent. It also requires OPENAI_API_KEY. Should I proceed with that CLI fallback?
+```
+
+## Prompt augmentation
+
+Reformat user prompts into a structured, production-oriented spec. Make the user's goal clearer and more actionable, but do not blindly add detail.
+
+Treat this as prompt-shaping guidance, not a closed schema. Use only the lines that help, and add a short extra labeled line when it materially improves clarity.
+
+### Specificity policy
+
+Use the user's prompt specificity to decide how much augmentation is appropriate:
+
+- If the prompt is already specific and detailed, preserve that specificity and only normalize/structure it.
+- If the prompt is generic, you may add tasteful augmentation when it will materially improve the result.
+
+Allowed augmentations:
+- composition or framing hints
+- polish level or intended-use hints
+- practical layout guidance
+- reasonable scene concreteness that supports the stated request
+
+Not allowed augmentations:
+- extra characters or objects that are not implied by the request
+- brand names, slogans, palettes, or narrative beats that are not implied
+- arbitrary side-specific placement unless the surrounding layout supports it
+
+## Use-case taxonomy (exact slugs)
+
+Classify each request into one of these buckets and keep the slug consistent across prompts and references.
+
+Generate:
+- photorealistic-natural â€” candid/editorial lifestyle scenes with real texture and natural lighting.
+- product-mockup â€” product/packaging shots, catalog imagery, merch concepts.
+- ui-mockup â€” app/web interface mockups and wireframes; specify the desired fidelity.
+- infographic-diagram â€” diagrams/infographics with structured layout and text.
+- scientific-educational â€” classroom explainers, scientific diagrams, and learning visuals with required labels and accuracy constraints.
+- ads-marketing â€” campaign concepts and ad creatives with audience, brand position, scene, and exact tagline/copy.
+- productivity-visual â€” slide, chart, workflow, and data-heavy business visuals.
+- logo-brand â€” logo/mark exploration, vector-friendly.
+- illustration-story â€” comics, childrenâ€™s book art, narrative scenes.
+- stylized-concept â€” style-driven concept art, 3D/stylized renders.
+- historical-scene â€” period-accurate/world-knowledge scenes.
+
+Edit:
+- text-localization â€” translate/replace in-image text, preserve layout.
+- identity-preserve â€” try-on, person-in-scene; lock face/body/pose.
+- precise-object-edit â€” remove/replace a specific element (including interior swaps).
+- lighting-weather â€” time-of-day/season/atmosphere changes only.
+- background-extraction â€” transparent background / clean cutout. Use built-in `image_gen` with chroma-key removal first for simple opaque subjects; ask before using CLI true transparency for complex subjects.
+- style-transfer â€” apply reference style while changing subject/scene.
+- compositing â€” multi-image insert/merge with matched lighting/perspective.
+- sketch-to-render â€” drawing/line art to photoreal render.
+
+## Shared prompt schema
+
+Use the following labeled spec as shared prompt scaffolding for both top-level modes:
+
+```text
+Use case: <taxonomy slug>
+Asset type: <where the asset will be used>
+Primary request: <user's main prompt>
+Input images: <Image 1: role; Image 2: role> (optional)
+Scene/backdrop: <environment>
+Subject: <main subject>
+Style/medium: <photo/illustration/3D/etc>
+Composition/framing: <wide/close/top-down; placement>
+Lighting/mood: <lighting + mood>
+Color palette: <palette notes>
+Materials/textures: <surface details>
+Text (verbatim): "<exact text>"
+Constraints: <must keep/must avoid>
+Avoid: <negative constraints>
+```
+
+Notes:
+- `Asset type` and `Input images` are prompt scaffolding, not dedicated CLI flags.
+- `Scene/backdrop` refers to the visual setting. It is not the same as the fallback CLI `background` parameter, which controls output transparency behavior.
+- Fallback-only execution notes such as `Quality:`, `Input fidelity:`, masks, output format, and output paths belong in the CLI path only. Do not treat them as built-in `image_gen` tool arguments.
+
+Augmentation rules:
+- Keep it short.
+- Add only the details needed to improve the prompt materially.
+- For edits, explicitly list invariants (`change only X; keep Y unchanged`).
+- If any critical detail is missing and blocks success, ask a question; otherwise proceed.
+
+## Examples
+
+### Generation example (hero image)
+```text
+Use case: product-mockup
+Asset type: landing page hero
+Primary request: a minimal hero image of a ceramic coffee mug
+Style/medium: clean product photography
+Composition/framing: wide composition with usable negative space for page copy if needed
+Lighting/mood: soft studio lighting
+Constraints: no logos, no text, no watermark
+```
+
+### Edit example (invariants)
+```text
+Use case: precise-object-edit
+Asset type: product photo background replacement
+Primary request: replace only the background with a warm sunset gradient
+Constraints: change only the background; keep the product and its edges unchanged; no text; no watermark
+```
+
+## Prompting best practices
+- Structure prompt as scene/backdrop -> subject -> details -> constraints.
+- Include intended use (ad, UI mock, infographic) to set the mode and polish level.
+- Use camera/composition language for photorealism.
+- Only use SVG/vector stand-ins when the user explicitly asked for vector output or a non-image placeholder.
+- Quote exact text and specify typography + placement.
+- For tricky words, spell them letter-by-letter and require verbatim rendering.
+- For multi-image inputs, reference images by index and describe how they should be used.
+- For edits, repeat invariants every iteration to reduce drift.
+- Iterate with single-change follow-ups.
+- If the prompt is generic, add only the extra detail that will materially help.
+- If the prompt is already detailed, normalize it instead of expanding it.
+- For CLI fallback only, see `references/cli.md` and `references/image-api.md` for model, `quality`, `input_fidelity`, masks, output format, and output-path guidance.
+- For transparent images, use the built-in-first chroma-key workflow unless the request is complex enough to need true CLI transparency; ask before switching to CLI `gpt-image-1.5`.
+
+More principles shared by both modes: `references/prompting.md`.
+Copy/paste specs shared by both modes: `references/sample-prompts.md`.
+
+## Guidance by asset type
+Asset-type templates (website assets, game assets, wireframes, logo) are consolidated in `references/sample-prompts.md`.
+
+## gpt-image-2 guidance for CLI fallback
+
+The fallback CLI defaults to `gpt-image-2`.
+
+- Use `gpt-image-2` for new CLI/API workflows unless the request needs true model-native transparent output.
+- If a transparent request may need CLI fallback, ask before using `gpt-image-1.5` unless the user already explicitly requested `gpt-image-1.5`, `scripts/image_gen.py`, or CLI fallback. Explain that the built-in chroma-key path is the default, but true transparency requires `gpt-image-1.5` because `gpt-image-2` does not support `background=transparent`.
+- `gpt-image-2` always uses high fidelity for image inputs; do not set `input_fidelity` with this model.
+- `gpt-image-2` supports `quality` values `low`, `medium`, `high`, and `auto`.
+- Use `quality low` for fast drafts, thumbnails, and quick iterations. Use `medium`, `high`, or `auto` for final assets, dense text, diagrams, identity-sensitive edits, or high-resolution outputs.
+- Square images are typically fastest to generate. Use `1024x1024` for fast square drafts.
+- If the user asks for 4K-style output, use `3840x2160` for landscape or `2160x3840` for portrait.
+- `gpt-image-2` size may be `auto` or `WIDTHxHEIGHT` if all constraints hold: max edge `<= 3840px`, both edges multiples of `16px`, long-to-short ratio `<= 3:1`, total pixels between `655,360` and `8,294,400`.
+
+Popular `gpt-image-2` sizes:
+- `1024x1024` square
+- `1536x1024` landscape
+- `1024x1536` portrait
+- `2048x2048` 2K square
+- `2048x1152` 2K landscape
+- `3840x2160` 4K landscape
+- `2160x3840` 4K portrait
+- `auto`
+
+## Fallback CLI mode only
+
+### Temp and output conventions
+These conventions apply only to the CLI fallback. They do not describe built-in `image_gen` output behavior.
+- Use `tmp/imagegen/` for intermediate files (for example JSONL batches); delete them when done.
+- Write final artifacts under `output/imagegen/`.
+- Use `--out` or `--out-dir` to control output paths; keep filenames stable and descriptive.
+
+### Dependencies
+Prefer `uv` for dependency management in this repo.
+
+Required Python package:
+```bash
+uv pip install openai
+```
+
+Required for local chroma-key removal and optional downscaling:
+```bash
+uv pip install pillow
+```
+
+Portability note:
+- If you are using the installed skill outside this repo, install dependencies into that environment with its package manager.
+- In uv-managed environments, `uv pip install ...` remains the preferred path.
+
+### Environment
+- `OPENAI_API_KEY` must be set for live API calls.
+- Do not ask the user for `OPENAI_API_KEY` when using the built-in `image_gen` tool.
+- Never ask the user to paste the full key in chat. Ask them to set it locally and confirm when ready.
+
+If the key is missing, give the user these steps:
+1. Create an API key in the OpenAI platform UI: https://platform.openai.com/api-keys
+2. Set `OPENAI_API_KEY` as an environment variable in their system.
+3. Offer to guide them through setting the environment variable for their OS/shell if needed.
+
+If installation is not possible in this environment, tell the user which dependency is missing and how to install it into their active environment.
+
+### Script-mode notes
+- CLI commands + examples: `references/cli.md`
+- API parameter quick reference: `references/image-api.md`
+- Network approvals / sandbox settings for CLI mode: `references/codex-network.md`
+
+## Reference map
+- `references/prompting.md`: shared prompting principles for both modes.
+- `references/sample-prompts.md`: shared copy/paste prompt recipes for both modes.
+- `references/cli.md`: fallback-only CLI usage via `scripts/image_gen.py`.
+- `references/image-api.md`: fallback-only API/CLI parameter reference.
+- `references/codex-network.md`: fallback-only network/sandbox troubleshooting for CLI mode.
+- `scripts/image_gen.py`: fallback-only CLI implementation. Do not load or use it unless the user explicitly chooses CLI mode or explicitly confirms a transparent request's true CLI transparency fallback.
+- `$CODEX_HOME/skills/.system/imagegen/scripts/remove_chroma_key.py`: local post-processing helper for built-in transparent-image requests.
+
+
+codex
+The skill says the built-in image generator is the default path, with project assets moved into the workspace afterward. I’m also loading the provided rune keeper image only as a pixel-art purity reference, not as a subject/composition target.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$homePath = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '"'.codex' }
+Get-ChildItem -Path (Join-Path "'$homePath '"'generated_images') -Recurse -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 10 FullName,Length,LastWriteTime" in D:\algo\.claude\worktrees\romantic-jackson-590e96
+ succeeded in 2937ms:
+
+FullName                                                                                                               
+--------                                                                                                               
+C:\Users\kathi\.codex\generated_images\019e40fb-2215-7270-9dd8-1fdfaf63d96d\ig_0a719af01b5baf5d016a0c8a452de8819692f...
+C:\Users\kathi\.codex\generated_images\019e40fb-223f-71d3-98ce-7a884a4b3678\ig_0ae1ca0c4e7f86ac016a0c8a4209ec8190bae...
+C:\Users\kathi\.codex\generated_images\019e3e42-ce1e-7171-9854-980f75471ae3\ig_0ff6371a9f7dcbbc016a0bd935eb6c81938fc...
+C:\Users\kathi\.codex\generated_images\019e3b37-4955-7e42-bc36-402538ac1ea6\ig_0c1994ffa6c7470b016a0b105de3088193946...
+C:\Users\kathi\.codex\generated_images\019e3930-9ca6-73e1-a61e-133ee79d0931\ig_07b79a257a901adf016a0a8b92388c8194b42...
+C:\Users\kathi\.codex\generated_images\019e392e-b820-77e1-8811-7ad90250e227\ig_003da09ddb81cc0b016a0a8b108ac08197ba0...
+C:\Users\kathi\.codex\generated_images\019e3901-a29b-7a82-8d4a-c98b94ce129d\ig_0c9214410229940f016a0a7fab625c8197bd8...
+C:\Users\kathi\.codex\generated_images\019e3901-a2a1-71e0-8c50-6113c2a3e61e\ig_038ae200c7ed6400016a0a7f943f808195a73...
+C:\Users\kathi\.codex\generated_images\019e36b9-f81a-7e10-ae8b-aa2ead5b59cd\ig_0f5358c2999422ea016a09ea42db288194aba...
+C:\Users\kathi\.codex\generated_images\019e36b4-ebeb-7ad0-98c8-8e15c5935b72\ig_03895f09545ef954016a09ea2803908197b6d...
+
+
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$homePath = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '"'.codex' }
+Get-ChildItem -Path (Join-Path "'$homePath '"'generated_images') -Recurse -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 3 | ForEach-Object { "'$_.FullName; $_.Length; $_.LastWriteTime.ToString('"'o') }" in D:\algo\.claude\worktrees\romantic-jackson-590e96
+ succeeded in 1106ms:
+C:\Users\kathi\.codex\generated_images\019e40fb-2215-7270-9dd8-1fdfaf63d96d\ig_0a719af01b5baf5d016a0c8a452de8819692f2a68e0a9c84d8.png
+2102130
+2026-05-19T12:06:24.2248418-04:00
+C:\Users\kathi\.codex\generated_images\019e40fb-223f-71d3-98ce-7a884a4b3678\ig_0ae1ca0c4e7f86ac016a0c8a4209ec8190bae7adbdc7e7938b.png
+2186723
+2026-05-19T12:06:17.8385415-04:00
+C:\Users\kathi\.codex\generated_images\019e3e42-ce1e-7171-9854-980f75471ae3\ig_0ff6371a9f7dcbbc016a0bd935eb6c81938fc8fb4d66007b63.png
+2727821
+2026-05-18T23:32:46.2579910-04:00
+
+codex
+The generated backdrop already matches the requested layout closely, but it needs deterministic cleanup for the hard requirements. I’m copying it into the project path through a local pixel-art post-process: 16:9 crop/nearest resize, opaque PNG, and nearest mapping to a 14-color subset of the requested palette.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from pathlib import Path
+from PIL import Image
+import math
+
+src = Path(r'C:\\Users\\kathi\\.codex\\generated_images\\019e40fb-2215-7270-9dd8-1fdfaf63d96d\\ig_0a719af01b5baf5d016a0c8a452de8819692f2a68e0a9c84d8.png')
+out = Path(r'D:\\algo\\.claude\\worktrees\\romantic-jackson-590e96\\public\\assets\\visual_revamp\\p0_1_cosmic\\cosmic_nebula_bg_v1.png')
+out.parent.mkdir(parents=True, exist_ok=True)
+
+# The prompt lists 15 hex values while also requiring max 14 colors.
+# Omit the least essential sky highlight and keep the distinct star colors.
+palette_hex = [
+    '#050218', '#0a0420', '#140832',
+    '#6c52d6', '#4a37a0', '#8a72e0',
+    '#b04dd6', '#8a3aa8',
+    '#2b8fd6', '#1a6ba8',
+    '#ffffff', '#b8d8ff', '#ffeac0', '#ffd6f6',
+]
+palette = [tuple(int(h[i:i+2], 16) for i in (1, 3, 5)) for h in palette_hex]
+
+img = Image.open(src).convert('RGB')
+w, h = img.size
+target_ratio = 16 / 9
+if w / h > target_ratio:
+    new_w = int(round(h * target_ratio))
+    left = (w - new_w) // 2
+    img = img.crop((left, 0, left + new_w, h))
+elif w / h < target_ratio:
+    new_h = int(round(w / target_ratio))
+    top = (h - new_h) // 2
+    img = img.crop((0, top, w, top + new_h))
+
+img = img.resize((1280, 720), Image.Resampling.NEAREST)
+
+pix = img.load()
+width, height = img.size
+for y in range(height):
+    for x in range(width):
+        r, g, b = pix[x, y]
+        best = min(palette, key=lambda c: (r-c[0])*(r-c[0]) + (g-c[1])*(g-c[1]) + (b-c[2])*(b-c[2]))
+        pix[x, y] = best
+
+# Preserve a darker bottom read zone for the platform by remapping the lowest band to sky dark tones.
+# Keep occasional stars intact, but clamp nebula/background colors in the bottom edge.
+star_set = {palette[10], palette[11], palette[12], palette[13]}
+bottom_y = int(height * 0.90)
+for y in range(bottom_y, height):
+    t = (y - bottom_y) / max(1, (height - bottom_y - 1))
+    for x in range(width):
+        c = pix[x, y]
+        if c in star_set:
+            continue
+        if t > 0.55:
+            pix[x, y] = palette[0]
+        elif c in {palette[3], palette[4], palette[5], palette[6], palette[7], palette[8], palette[9]}:
+            pix[x, y] = palette[1] if (x + y) % 3 else palette[2]
+
+# Ensure the output is opaque RGB PNG with no alpha channel.
+img.save(out, format='PNG', optimize=True)
+
+colors = img.getcolors(maxcolors=1_000_000)
+print(f'source={src}')
+print(f'output={out}')
+print(f'dimensions={img.size[0]}x{img.size[1]}')
+print(f'unique_colors={len(colors)}')
+print(f'file_size={out.stat().st_size}')
+print('palette_used=' + ','.join('#%02x%02x%02x' % c[1] for c in sorted(colors, key=lambda item: item[1])))
+'@ | python -" in D:\algo\.claude\worktrees\romantic-jackson-590e96
+ succeeded in 9975ms:
+source=C:\Users\kathi\.codex\generated_images\019e40fb-2215-7270-9dd8-1fdfaf63d96d\ig_0a719af01b5baf5d016a0c8a452de8819692f2a68e0a9c84d8.png
+output=D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\p0_1_cosmic\cosmic_nebula_bg_v1.png
+dimensions=1280x720
+unique_colors=14
+file_size=153936
+palette_used=#050218,#0a0420,#140832,#1a6ba8,#2b8fd6,#4a37a0,#6c52d6,#8a3aa8,#8a72e0,#b04dd6,#b8d8ff,#ffd6f6,#ffeac0,#ffffff
+
+codex
+The saved version visually keeps the requested empty-sky composition: violet upper-left, magenta upper-right, cyan lower-left, darker star-dense center, and a darker bottom band. I’m doing a final readback from the project file now rather than trusting the write step.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+from pathlib import Path
+from PIL import Image
+path = Path(r'D:\\algo\\.claude\\worktrees\\romantic-jackson-590e96\\public\\assets\\visual_revamp\\p0_1_cosmic\\cosmic_nebula_bg_v1.png')
+img = Image.open(path)
+colors = img.convert('RGBA').getcolors(maxcolors=1_000_000)
+unique_rgba = {rgba for _, rgba in colors}
+opaque = all(a == 255 for r, g, b, a in unique_rgba)
+print(f'path={path}')
+print(f'dimensions={img.size[0]}x{img.size[1]}')
+print(f'mode={img.mode}')
+print(f'opaque={opaque}')
+print(f'file_size_bytes={path.stat().st_size}')
+print(f'unique_color_count={len(unique_rgba)}')
+print('colors=' + ','.join(sorted('#%02x%02x%02x' % rgba[:3] for rgba in unique_rgba)))
+'@ | python -" in D:\algo\.claude\worktrees\romantic-jackson-590e96
+ succeeded in 1347ms:
+path=D:\algo\.claude\worktrees\romantic-jackson-590e96\public\assets\visual_revamp\p0_1_cosmic\cosmic_nebula_bg_v1.png
+dimensions=1280x720
+mode=RGB
+opaque=True
+file_size_bytes=153936
+unique_color_count=14
+colors=#050218,#0a0420,#140832,#1a6ba8,#2b8fd6,#4a37a0,#6c52d6,#8a3aa8,#8a72e0,#b04dd6,#b8d8ff,#ffd6f6,#ffeac0,#ffffff
+
+codex
+Created and saved the asset here:
+
+[cosmic_nebula_bg_v1.png](</abs/path? no need? need actual path>)
+
+Verification:
+- Dimensions: `1280x720`
+- On-disk file size: `153,936` bytes
+- Unique color count: `14`
+- Opaque: yes, RGB PNG
+
+Composition readback: large violet nebula in the upper-left, smaller magenta tendril in the upper-right, cyan wisp in the lower-left, darker star-dense void through the center, and a darker bottom band for the platform overlay.
+
+Used the `imagegen` skill’s built-in image generation path, then post-processed into a strict 14-color pixel-art PNG from the requested palette.
+SUCCESS: The process with PID 23008 (child process of PID 31076) has been terminated.
+SUCCESS: The process with PID 25528 (child process of PID 20852) has been terminated.
+SUCCESS: The process with PID 20852 (child process of PID 17852) has been terminated.
+SUCCESS: The process with PID 17852 (child process of PID 31144) has been terminated.
+SUCCESS: The process with PID 31144 (child process of PID 31076) has been terminated.
+tokens used
+70,886
+Created and saved the asset here:
+
+[cosmic_nebula_bg_v1.png](</abs/path? no need? need actual path>)
+
+Verification:
+- Dimensions: `1280x720`
+- On-disk file size: `153,936` bytes
+- Unique color count: `14`
+- Opaque: yes, RGB PNG
+
+Composition readback: large violet nebula in the upper-left, smaller magenta tendril in the upper-right, cyan wisp in the lower-left, darker star-dense void through the center, and a darker bottom band for the platform overlay.
+
+Used the `imagegen` skill’s built-in image generation path, then post-processed into a strict 14-color pixel-art PNG from the requested palette.
