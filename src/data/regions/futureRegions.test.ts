@@ -60,7 +60,7 @@ describe('future region visual configs', () => {
     for (const point of [
       { x: 112, y: 448 },
       { x: 960, y: 336 },
-      { x: 960, y: 536 },
+      { x: 960, y: 416 },
       { x: 1784, y: 416 },
     ]) {
       expect(isPointOnFutureRegionRoute(point), `${point.x},${point.y}`).toBe(true);

@@ -519,7 +519,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   private getShrinePosition(): { x: number; y: number } {
-    return this.regionConfig.shrinePosition ?? { x: 960, y: 536 };
+    return this.regionConfig.shrinePosition ?? { x: 960, y: 416 };
   }
 
   private createEncounterObjects(): void {
@@ -636,11 +636,6 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 }
 
-export class HashHighlandsScene extends BaseFutureRegionScene {
-  constructor() {
-    super(FUTURE_REGION_SCENE_CONFIGS[SCENE_KEYS.HASH_HIGHLANDS]);
-  }
-}
 
 export class StackSpiresScene extends BaseFutureRegionScene {
   constructor() {

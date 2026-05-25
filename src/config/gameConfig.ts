@@ -5,10 +5,10 @@ import { DebugSelectScene } from '../scenes/DebugSelectScene';
 import { PrologueScene } from '../scenes/prologue/PrologueScene';
 import { ArrayPlainsScene } from '../scenes/ArrayPlainsScene';
 import { TwinRiversScene } from '../scenes/TwinRiversScene';
+import { HashHighlandsScene } from '../scenes/HashHighlandsScene';
 import {
   CoreScene,
   GraphNexusScene,
-  HashHighlandsScene,
   QueueCanalsScene,
   StackSpiresScene,
   TreeCanopyScene,

@@ -83,3 +83,6 @@ public/brainstorm/
 # Python bytecode (slicer scripts)
 __pycache__/
 *.pyc
+
+# AI tool transient outputs (imagegen logs, prompt drafts)
+.tmp/

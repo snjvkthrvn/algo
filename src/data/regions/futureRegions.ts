@@ -184,7 +184,7 @@ export const FUTURE_REGION_SCENE_CONFIGS: Record<string, FutureRegionSceneConfig
       {
         id: 'hh_1',
         title: 'Nameplate Gates',
-        position: { x: 544, y: 416 },
+        position: { x: 480, y: 416 },
         sceneKey: SCENE_KEYS.PUZZLE_HH_1,
         prompt: '[SPACE] Name',
       },
