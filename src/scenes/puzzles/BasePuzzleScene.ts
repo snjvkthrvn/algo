@@ -532,12 +532,16 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     }
 
     this.hintsUsed++;
-    updateButtonText(this.hintButton, `HINT (${this.maxHints - this.hintsUsed})`);
+    updateButtonText(this.hintButton, `HINT -1★ (${this.maxHints - this.hintsUsed})`);
 
     if (this.hintsUsed >= this.maxHints) {
       disableButton(this.hintButton);
     }
 
+    // Using a hint breaks the zero-hint mastery streak. Mirror that the
+    // restartPuzzle() path also resets — both signal "the player needed
+    // help on this one", so neither counts as a clean solve.
+    gameState.resetStreak();
     this.displayHint(this.hintsUsed);
   }
 
@@ -567,6 +571,9 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected restartPuzzle(): void {
     this.attempts++;
+    // Restarting also breaks the mastery streak — a clean solve means
+    // first-attempt + no hints.
+    gameState.resetStreak();
     // Glitch heckles on restart — gated on (a) the player having met Glitch
     // (post P0_1, otherwise the taunt has no source) and (b) a randomness
     // factor so taunts feel like reactions, not a nag. The taunt is queued
@@ -593,6 +600,89 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   private shouldQueueFailureTaunt(): boolean {
     if (!gameState.isPuzzleCompleted('p0_1')) return false;
     return Math.random() < 0.55;
+  }
+
+  /**
+   * Visible mastery-streak indicator on puzzle complete. Always shows the
+   * current streak (small, top-left). Crosses a milestone threshold (3, 5,
+   * 10) and you get a celebration burst with the streak number called out
+   * — the dopamine reward for sustained zero-hint play. Below the
+   * threshold, this is just a quiet receipt.
+   */
+  protected showStreakIndicator(streak: number): void {
+    const milestones = [3, 5, 10, 15, 20];
+    const isMilestone = milestones.includes(streak);
+
+    const chip = this.add
+      .text(80, 110, `STREAK ×${streak}`, {
+        fontSize: '10px',
+        fontFamily: FONTS.RETRO,
+        color: isMilestone ? '#fbbf24' : '#88c070',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(9998)
+      .setScrollFactor(0)
+      .setAlpha(0);
+
+    this.tweens.add({
+      targets: chip,
+      alpha: 1,
+      y: 100,
+      duration: 280,
+      ease: 'Sine.easeOut',
+    });
+
+    if (isMilestone) {
+      // Big celebration burst: gold rain + an extra correct burst at the
+      // chip position. The streak number itself scales-bounces to make
+      // sure the player sees the milestone-vs-routine distinction.
+      const { width } = this.cameras.main;
+      JuiceSystem.goldRain?.(this);
+      JuiceSystem.correctBurst(this, width / 2, 200);
+      audioManager.playCorrectTone?.();
+      this.tweens.add({
+        targets: chip,
+        scale: { from: 1, to: 1.6 },
+        duration: 320,
+        yoyo: true,
+        ease: 'Back.easeOut',
+        delay: 280,
+      });
+      // Floating "MILESTONE" tag above the chip.
+      const tag = this.add
+        .text(80, 70, 'MILESTONE', {
+          fontSize: '9px',
+          fontFamily: FONTS.RETRO,
+          color: '#fbbf24',
+          stroke: '#000000',
+          strokeThickness: 3,
+        })
+        .setOrigin(0.5)
+        .setDepth(9998)
+        .setScrollFactor(0)
+        .setAlpha(0);
+      this.tweens.add({
+        targets: tag,
+        alpha: { from: 0, to: 1 },
+        duration: 320,
+        delay: 600,
+        onComplete: () => {
+          this.time.delayedCall(1800, () => {
+            this.tweens.add({
+              targets: tag,
+              alpha: 0,
+              duration: 400,
+              onComplete: () => tag.destroy(),
+            });
+          });
+        },
+      });
+      a11yManager.announce(`Mastery streak ${streak}. Milestone reached.`, true);
+    } else {
+      a11yManager.announce(`Mastery streak ${streak}.`, false);
+    }
   }
 
   /**
@@ -733,6 +823,17 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     // save-checkpoint indicator" as a real problem. setPuzzleResult
     // triggers the autosave; this is the player-facing receipt.
     this.showSaveIndicator();
+
+    // Mastery streak: a "clean" solve is first-attempt + zero hints.
+    // Anything else doesn't count; the streak is the patient-mastery
+    // signal, not a "you finished the puzzle" signal. attempts==0 means
+    // the player got it on the first try (restartPuzzle increments it
+    // and also calls resetStreak, so we double-check here).
+    const isCleanSolve = this.attempts === 0 && this.hintsUsed === 0 && !alreadyCompleted;
+    if (isCleanSolve) {
+      const newStreak = gameState.recordCleanSolve(stars);
+      this.showStreakIndicator(newStreak);
+    }
 
     if (this.shouldSkipConceptBridge()) {
       const { width: bw, height: bh } = this.cameras.main;

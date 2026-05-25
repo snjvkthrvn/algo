@@ -408,8 +408,24 @@ export interface GameState {
   npcStates: Record<string, string>;
   flags: Record<string, boolean>;
   settings: GameSettings;
+  /**
+   * Cross-puzzle mastery tracker. Drives the streak indicator and
+   * milestone celebrations that fire on consecutive zero-hint solves.
+   * The streak resets whenever the player uses a hint or restarts a
+   * puzzle — only clean solves count.
+   */
+  mastery: MasteryState;
   saveVersion: number;
   playTime: number;
+}
+
+export interface MasteryState {
+  /** Consecutive puzzles solved with zero hints + zero restarts. */
+  currentZeroHintStreak: number;
+  /** Highest streak achieved across the whole save. */
+  bestZeroHintStreak: number;
+  /** Total puzzles solved with 3 stars (perfect performance). */
+  perfectSolves: number;
 }
 
 export interface GameSettings {

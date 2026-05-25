@@ -31,6 +31,11 @@ function createDefaultState(): GameState {
     npcStates: {},
     flags: {},
     settings: { ...DEFAULT_SETTINGS },
+    mastery: {
+      currentZeroHintStreak: 0,
+      bestZeroHintStreak: 0,
+      perfectSolves: 0,
+    },
     saveVersion: 1,
     playTime: 0,
   };
@@ -127,6 +132,44 @@ class GameStateManagerClass {
 
   getSettings(): Readonly<GameSettings> {
     return this.state.settings;
+  }
+
+  // Mastery / streak tracking. The streak counts consecutive zero-hint,
+  // zero-restart puzzle completions across the whole save — the player's
+  // mastery signal. Milestones at 3, 5, 10 trigger celebration bursts.
+  // Backwards-compat: legacy saves predate the mastery field; lazy-init
+  // on first read so existing players don't crash on load.
+  private ensureMastery(): void {
+    if (!this.state.mastery) {
+      this.state.mastery = {
+        currentZeroHintStreak: 0,
+        bestZeroHintStreak: 0,
+        perfectSolves: 0,
+      };
+    }
+  }
+
+  getMastery(): Readonly<{ currentZeroHintStreak: number; bestZeroHintStreak: number; perfectSolves: number }> {
+    this.ensureMastery();
+    return this.state.mastery;
+  }
+
+  /** Returns the new streak value after recording the result. Callers can
+   *  inspect this directly to decide whether a milestone was crossed. */
+  recordCleanSolve(stars: number): number {
+    this.ensureMastery();
+    this.state.mastery.currentZeroHintStreak += 1;
+    if (this.state.mastery.currentZeroHintStreak > this.state.mastery.bestZeroHintStreak) {
+      this.state.mastery.bestZeroHintStreak = this.state.mastery.currentZeroHintStreak;
+    }
+    if (stars >= 3) this.state.mastery.perfectSolves += 1;
+    return this.state.mastery.currentZeroHintStreak;
+  }
+
+  /** Called when the player uses a hint or restarts — the streak breaks. */
+  resetStreak(): void {
+    this.ensureMastery();
+    this.state.mastery.currentZeroHintStreak = 0;
   }
 
   // Play time
