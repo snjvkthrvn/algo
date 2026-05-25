@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { ARRAY_PLAINS_SCENE_IMAGE_ASSETS, OVERWORLD_PLAYER_SPRITE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
-import { CAMERA_TUNING, COLORS, FONTS, REGIONS, SCENE_KEYS } from '../config/constants';
+import { ARRAY_PLAINS_SCENE_IMAGE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
+import { COLORS, FONTS, REGIONS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { eventBus } from '../core/EventBus';
 import { gameState } from '../core/GameStateManager';
@@ -9,7 +9,6 @@ import { BitCompanion } from '../entities/BitCompanion';
 import { GlitchRival } from '../entities/GlitchRival';
 import { InteractableObject } from '../entities/InteractableObject';
 import { Player } from '../entities/Player';
-import { GLITCH_DIALOGUE, GLITCH_EXIT_LINES } from '../data/dialogue/glitch_dialogue';
 import {
   ARRAY_PLAINS_CONFIG,
   ARRAY_PLAINS_ROUTE_RECTS,
@@ -21,8 +20,9 @@ import {
 } from '../data/regions/arrayPlains';
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { HUDManager } from '../systems/HUDManager';
+import { JuiceSystem } from '../systems/JuiceSystem';
 import { OverworldAmbience } from '../ui/OverworldAmbience';
-import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
+import { InteractionSystem } from '../systems/InteractionSystem';
 import { progressionSystem } from '../systems/ProgressionSystem';
 import {
   ROUTE_SURFACE_STYLES,
@@ -33,29 +33,37 @@ import type { DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
 import { ObjectPool } from '../utils/ObjectPool';
 import { openPauseOverlay } from './titleNavigation';
+import { BaseOverworldScene } from './BaseOverworldScene';
+import {
+  sortingFarmerDialogue,
+  sortingFarmerPostDialogue,
+  basketKeeperDialogue,
+  basketKeeperPostDialogue,
+  cropSorterDialogue,
+  cropSorterPostDialogue,
+  tileWorkerDialogue,
+  tileWorkerPostDialogue,
+} from '../data/dialogue/array_plains_dialogue';
+import {
+  GLITCH_DIALOGUE,
+  GLITCH_EXIT_LINES,
+  glitchAP1Dialogue,
+  glitchAP4Dialogue,
+} from '../data/dialogue/glitch_dialogue';
 
-export class ArrayPlainsScene extends Phaser.Scene {
-  private player!: Player;
-  private bit!: BitCompanion;
-  private interactionSystem!: InteractionSystem;
-  private dialogueSystem!: DialogueSystem;
-  private hud!: HUDManager;
-  private hasShutdown = false;
+export class ArrayPlainsScene extends BaseOverworldScene {
   private returnGateway: InteractableObject | null = null;
   private twinRiversGateway: InteractableObject | null = null;
   private shufflerGate: InteractableObject | null = null;
   private markerObjects: InteractableObject[] = [];
   private puzzleObjects: InteractableObject[] = [];
-  private labelObjects: Phaser.GameObjects.Text[] = [];
-  private lastPlayerX: number = NaN;
-  private lastPlayerY: number = NaN;
-  private interactablePool!: ObjectPool<InteractableObject>;
-  private interactionEnabledTime = 0;
+  private onDialogueAction!: (...args: any[]) => void;
 
   // Overworld sequence puzzle
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];
   private currentSequenceIndex = 0;
   private sequenceSolved = false;
+
 
   // Glitch cameo (Stage 3 — first AP visit after Sentinel)
   private glitch: GlitchRival | null = null;
@@ -72,24 +80,8 @@ export class ArrayPlainsScene extends Phaser.Scene {
     super({ key: SCENE_KEYS.ARRAY_PLAINS });
   }
 
-  init(data: { spawnX?: number; spawnY?: number }): void {
-    if (data.spawnX !== undefined && data.spawnY !== undefined) {
-      gameState.setPlayerPosition(data.spawnX, data.spawnY);
-    }
-  }
-
-  preload(): void {
-    for (const asset of OVERWORLD_PLAYER_SPRITE_ASSETS) {
-      if (this.textures.exists(asset.key)) continue;
-      this.load.spritesheet(asset.key, asset.path, {
-        frameWidth: asset.frameWidth || 32,
-        frameHeight: asset.frameHeight || 48,
-      });
-    }
-
-    for (const asset of ARRAY_PLAINS_SCENE_IMAGE_ASSETS) {
-      if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
-    }
+  protected getRegionImageAssets(): ReadonlyArray<{ key: string; path: string }> {
+    return ARRAY_PLAINS_SCENE_IMAGE_ASSETS;
   }
 
   create(): void {
@@ -130,6 +122,26 @@ export class ArrayPlainsScene extends Phaser.Scene {
 
     this.interactionSystem = new InteractionSystem(this, this.player);
     this.dialogueSystem = new DialogueSystem(this);
+
+    this.onDialogueAction = ((...args: unknown[]) => {
+      const data = args[0] as { type: string; value: string };
+      if (data.type === 'start_puzzle') {
+        const puzzleId = data.value;
+        const puzzleLabels: Record<string, string> = {
+          ap_1: SCENE_KEYS.PUZZLE_AP_1,
+          ap_2: SCENE_KEYS.PUZZLE_AP_2,
+          ap_3: SCENE_KEYS.PUZZLE_AP_3,
+          ap_4: SCENE_KEYS.PUZZLE_AP_4,
+        };
+        const sceneKey = puzzleLabels[puzzleId];
+        if (sceneKey) {
+          this.player.setInteracting(false);
+          this.startPuzzle(sceneKey);
+        }
+      }
+    });
+    eventBus.on('dialogue:action', this.onDialogueAction, this);
+
     this.createInteractables();
     this.createFarmerNPCs();
     this.renderPortalHaloes();
@@ -141,18 +153,16 @@ export class ArrayPlainsScene extends Phaser.Scene {
     this.hud = new HUDManager(this);
     setupUICamera(this);
 
-    const camera = this.cameras.main;
-    camera.setBounds(0, 0, ARRAY_PLAINS_WORLD_WIDTH, ARRAY_PLAINS_WORLD_HEIGHT);
-    camera.setZoom(CAMERA_TUNING.ZOOM);
-    camera.startFollow(this.player.sprite, true, CAMERA_TUNING.FOLLOW_LERP, CAMERA_TUNING.FOLLOW_LERP);
-    camera.setDeadzone(CAMERA_TUNING.DEADZONE_WIDTH, CAMERA_TUNING.DEADZONE_HEIGHT);
+    this.setupOverworldCamera(ARRAY_PLAINS_WORLD_WIDTH, ARRAY_PLAINS_WORLD_HEIGHT);
 
-    TransitionManager.fadeIn(this, 700);
-    this.interactionEnabledTime = this.time.now + 700;
+    this.playEntranceFade();
     this.hud.showRegionCard('Array Plains', 'Where order becomes addressable.');
     this.input.keyboard?.on('keydown-ESC', this.onEscPause);
     this.input.keyboard?.on('keydown-C', this.onOpenCodex);
+
+    this.checkCameos();
   }
+
 
   private createSequencePuzzle(): void {
     const startX = 460;
@@ -213,6 +223,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
       name: string;
       intro: string;
       thanks: string;
+      spriteKey: string;
     }> = [
       {
         farmerId: 'farmer_sorter',
@@ -220,6 +231,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
         name: 'Sorting Farmer',
         intro: 'My furrows are tangled. Compare each pair of neighbors — swap the ones in the wrong order. Eventually the row settles.',
         thanks: 'Sorted! Compare and swap. Simple, but the field knows the order now.',
+        spriteKey: VISUAL_REVAMP_KEYS.SORTING_FARMER,
       },
       {
         farmerId: 'farmer_basket',
@@ -227,6 +239,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
         name: 'Basket Keeper',
         intro: 'I keep losing my tools. If I just knew the basket number, I could go straight to it instead of rummaging.',
         thanks: 'Right to the slot. Index is everything once you know the address.',
+        spriteKey: VISUAL_REVAMP_KEYS.BASKET_KEEPER,
       },
       {
         farmerId: 'farmer_crop',
@@ -234,6 +247,7 @@ export class ArrayPlainsScene extends Phaser.Scene {
         name: 'Crop Sorter',
         intro: 'A hundred crops, only four bins. There must be a rule that sends every crop to the same place every time.',
         thanks: 'Every crop hashed to its bin. The formula did the thinking for us.',
+        spriteKey: VISUAL_REVAMP_KEYS.CROP_SORTER,
       },
       {
         farmerId: 'farmer_tile',
@@ -241,13 +255,14 @@ export class ArrayPlainsScene extends Phaser.Scene {
         name: 'Tile Worker',
         intro: "These tiles come in pairs that sum to my target. For any tile I pick, the only partner that fits is the complement.",
         thanks: 'Pairs found, target met. Knowing the complement saved the search.',
+        spriteKey: VISUAL_REVAMP_KEYS.TILE_WORKER,
       },
     ];
 
     for (const farmer of farmers) {
       const puzzle = ARRAY_PLAINS_CONFIG.puzzles.find((p) => p.id === farmer.puzzleId);
       if (!puzzle) continue;
-      const x = puzzle.position.x - 64;
+      const x = puzzle.position.x - 80;
       const y = puzzle.position.y + 12;
 
       const obj = this.interactablePool.acquire({
@@ -257,20 +272,25 @@ export class ArrayPlainsScene extends Phaser.Scene {
         y,
         prompt: `[SPACE] Speak with ${farmer.name}`,
         locked: false,
-        spriteImageKey: VISUAL_REVAMP_KEYS.PROP_FIELD_SIGN,
-        imageScale: 0.13,
+        spriteImageKey: farmer.spriteKey,
+        imageScale: 0.14,
         imageOriginY: 0.86,
         onInteract: () => {
-          const completed = gameState.isPuzzleCompleted(farmer.puzzleId);
-          this.showFieldNote(farmer.name, completed ? farmer.thanks : farmer.intro);
+          const tree = this.getDialogueTreeForPuzzle(farmer.puzzleId);
+          if (tree) {
+            this.player.setInteracting(true);
+            this.dialogueSystem.startDialogue(tree, farmer.farmerId, () => {
+              this.player.setInteracting(false);
+            });
+          }
         },
       });
       this.markerObjects.push(obj);
       this.interactionSystem.addObject(obj);
 
-      // Name plaque so the farmer's identity is unmistakable even with placeholder sprite
+      // Name plaque above each farmer.
       this.labelObjects.push(
-        this.add.text(x, y - 60, farmer.name.toUpperCase(), {
+        this.add.text(x, y - 74, farmer.name.toUpperCase(), {
           fontSize: '8px',
           fontFamily: FONTS.RETRO,
           color: '#e0f8d0',
@@ -376,20 +396,32 @@ export class ArrayPlainsScene extends Phaser.Scene {
             // Correct step
             tile.setFillStyle(COLORS.SUCCESS, 0.8);
             audioManager.playTone(300 + i * 50, 100, 'sine');
+            if (!this.prefersReducedMotion()) {
+              JuiceSystem.burst(this, tile.x, tile.y, COLORS.SUCCESS, 8, 34);
+            }
             this.currentSequenceIndex++;
 
             if (this.currentSequenceIndex >= this.sequenceTiles.length) {
               this.sequenceSolved = true;
               audioManager.playCorrectTone();
-              this.cameras.main.shake(200, 0.005);
-              this.showFieldNote('System', 'Sequence recognized. Overworld traversal complete.');
 
               // Light them all up
               this.sequenceTiles.forEach(t => t.setFillStyle(COLORS.GOLD_ACCENT, 0.9));
+
+              if (!this.prefersReducedMotion()) {
+                JuiceSystem.cameraShake(this, 200, 0.005);
+                JuiceSystem.correctBurst(this, tile.x, tile.y);
+              }
+
+              this.showFieldNote('System', 'Sequence recognized. Overworld traversal complete.');
             }
           } else if (i > this.currentSequenceIndex) {
             // Out of order
             audioManager.playWrongTone();
+            if (!this.prefersReducedMotion()) {
+              JuiceSystem.wrongBurst(this, tile.x, tile.y);
+              JuiceSystem.cameraShake(this, 80, 0.003);
+            }
             this.currentSequenceIndex = 0;
             this.sequenceTiles.forEach(t => {
               if (t !== tile) t.setData('active', false);
@@ -633,7 +665,15 @@ export class ArrayPlainsScene extends Phaser.Scene {
         spriteImageKey: VISUAL_REVAMP_KEYS.PROP_PUZZLE_SHRINE,
         imageScale: 0.13,
         imageOriginY: 0.84,
-        onInteract: () => this.startPuzzle(meta.scene),
+        onInteract: () => {
+          const tree = this.getDialogueTreeForPuzzle(puzzle.id);
+          if (tree) {
+            this.player.setInteracting(true);
+            this.dialogueSystem.startDialogue(tree, puzzle.id, () => {
+              this.player.setInteracting(false);
+            });
+          }
+        },
       });
       this.puzzleObjects.push(object);
       this.interactionSystem.addObject(object);
@@ -798,31 +838,6 @@ export class ArrayPlainsScene extends Phaser.Scene {
     }
   }
 
-  private handleInteract(entry: InteractableEntry): void {
-    if (this.dialogueSystem.isDialogueActive()) return;
-    if (entry.type !== 'object') return;
-    const object = entry.target as InteractableObject;
-    object.config.onInteract?.();
-  }
-
-  private showFieldNote(speaker: string, body: string | string[]): void {
-    if (this.dialogueSystem.isDialogueActive()) return;
-    const tree: DialogueTree = {
-      startNodeId: 'note',
-      nodes: [{ id: 'note', speaker, text: body }],
-    };
-    this.dialogueSystem.startDialogue(tree, `field_${speaker.toLowerCase().replace(/\s+/g, '_')}`);
-  }
-
-  private startPuzzle(sceneKey: string): void {
-    TransitionManager.pixelDissolve(this, sceneKey, { returnScene: SCENE_KEYS.ARRAY_PLAINS });
-  }
-
-  private openCodex(): void {
-    if (this.dialogueSystem?.isDialogueActive()) return;
-    TransitionManager.fade(this, SCENE_KEYS.CODEX, { returnScene: SCENE_KEYS.ARRAY_PLAINS }, 260);
-  }
-
   private onGateOpen(data: unknown): void {
     const gateId = (data as { gateId?: string }).gateId;
     if (gateId === 'shuffler_gate') {
@@ -863,9 +878,48 @@ export class ArrayPlainsScene extends Phaser.Scene {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
+  private getDialogueTreeForPuzzle(puzzleId: string): DialogueTree | null {
+    const completed = gameState.isPuzzleCompleted(puzzleId);
+    switch (puzzleId) {
+      case 'ap_1': return completed ? sortingFarmerPostDialogue : sortingFarmerDialogue;
+      case 'ap_2': return completed ? basketKeeperPostDialogue : basketKeeperDialogue;
+      case 'ap_3': return completed ? cropSorterPostDialogue : cropSorterDialogue;
+      case 'ap_4': return completed ? tileWorkerPostDialogue : tileWorkerDialogue;
+      default: return null;
+    }
+  }
+
+  private checkCameos(): void {
+    if (gameState.isPuzzleCompleted('ap_1') && !gameState.getFlag('glitch_ap_1_done')) {
+      this.runGlitchCameo('ap_1', glitchAP1Dialogue, 570, 320, 'glitch_ap_1_done');
+      return;
+    }
+    if (gameState.isPuzzleCompleted('ap_4') && !gameState.getFlag('glitch_ap_4_done')) {
+      this.runGlitchCameo('ap_4', glitchAP4Dialogue, 1492, 320, 'glitch_ap_4_done');
+      return;
+    }
+  }
+
+  private runGlitchCameo(puzzleId: string, dialogueTree: DialogueTree, spawnX: number, spawnY: number, flagKey: string): void {
+    this.player.setInteracting(true);
+
+    const cameoGlitch = new GlitchRival(this);
+    cameoGlitch.spawnIn(spawnX, spawnY, () => {
+      this.dialogueSystem.startDialogue(dialogueTree, `glitch_cameo_${puzzleId}`, () => {
+        cameoGlitch.exit(() => {
+          cameoGlitch.destroy();
+          this.player.setInteracting(false);
+          this.syncArrayPlainsObjectiveHint();
+        });
+        gameState.setFlag(flagKey, true);
+      });
+    });
+  }
+
   shutdown(): void {
     this.hasShutdown = true;
     eventBus.off('progression:gate-open', this.onGateOpen, this);
+    eventBus.off('dialogue:action', this.onDialogueAction, this);
     this.input.keyboard?.off('keydown-ESC', this.onEscPause);
     this.input.keyboard?.off('keydown-C', this.onOpenCodex);
 

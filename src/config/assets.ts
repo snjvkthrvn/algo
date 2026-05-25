@@ -34,6 +34,15 @@ export const VISUAL_REVAMP_KEYS = {
   RUNE_KEEPER: 'visual-revamp-rune-keeper',
   CONSOLE_KEEPER: 'visual-revamp-console-keeper',
   VILLAGE_ELDER: 'visual-revamp-village-elder',
+  HASH_KEEPER: 'visual-revamp-hash-keeper',
+  SORTING_FARMER: 'visual-revamp-sorting-farmer',
+  BASKET_KEEPER: 'visual-revamp-basket-keeper',
+  CROP_SORTER: 'visual-revamp-crop-sorter',
+  TILE_WORKER: 'visual-revamp-tile-worker',
+  MIRROR_WALKER: 'visual-revamp-mirror-walker',
+  BRIDGE_KEEPER: 'visual-revamp-bridge-keeper',
+  WINDOW_FISHER: 'visual-revamp-window-fisher',
+  CURRENT_RIDER: 'visual-revamp-current-rider',
   GLITCH: 'visual-revamp-glitch',
   WATCHER: 'visual-revamp-watcher',
   BIT_SPARK: 'visual-revamp-bit-spark',
@@ -118,6 +127,15 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.RUNE_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/rune_keeper.png` },
   { key: VISUAL_REVAMP_KEYS.CONSOLE_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/console_keeper.png` },
   { key: VISUAL_REVAMP_KEYS.VILLAGE_ELDER, path: `${VISUAL_REVAMP_BASE}/characters/village_elder.png` },
+  { key: VISUAL_REVAMP_KEYS.HASH_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/hash_keeper_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.SORTING_FARMER, path: `${VISUAL_REVAMP_BASE}/characters/sorting_farmer.png` },
+  { key: VISUAL_REVAMP_KEYS.BASKET_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/basket_keeper.png` },
+  { key: VISUAL_REVAMP_KEYS.CROP_SORTER, path: `${VISUAL_REVAMP_BASE}/characters/crop_sorter.png` },
+  { key: VISUAL_REVAMP_KEYS.TILE_WORKER, path: `${VISUAL_REVAMP_BASE}/characters/tile_worker.png` },
+  { key: VISUAL_REVAMP_KEYS.MIRROR_WALKER, path: `${VISUAL_REVAMP_BASE}/characters/mirror_walker_v2.png` },
+  { key: VISUAL_REVAMP_KEYS.BRIDGE_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/bridge_keeper_v2.png` },
+  { key: VISUAL_REVAMP_KEYS.WINDOW_FISHER, path: `${VISUAL_REVAMP_BASE}/characters/window_fisher_v2.png` },
+  { key: VISUAL_REVAMP_KEYS.CURRENT_RIDER, path: `${VISUAL_REVAMP_BASE}/characters/current_rider_v2.png` },
   { key: VISUAL_REVAMP_KEYS.GLITCH, path: `${VISUAL_REVAMP_BASE}/characters/glitch.png` },
   { key: VISUAL_REVAMP_KEYS.WATCHER, path: `${VISUAL_REVAMP_BASE}/characters/watcher.png` },
   { key: VISUAL_REVAMP_KEYS.BIT_SPARK, path: `${VISUAL_REVAMP_BASE}/characters/bit_spark.png` },
@@ -416,6 +434,10 @@ const ARRAY_PLAINS_SCENE_VISUAL_KEYS = new Set<string>([
   VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG,
   VISUAL_REVAMP_KEYS.ROUTE_MATERIALS,
   VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
+  VISUAL_REVAMP_KEYS.SORTING_FARMER,
+  VISUAL_REVAMP_KEYS.BASKET_KEEPER,
+  VISUAL_REVAMP_KEYS.CROP_SORTER,
+  VISUAL_REVAMP_KEYS.TILE_WORKER,
   VISUAL_REVAMP_KEYS.GLITCH,
   VISUAL_REVAMP_KEYS.BIT_SPARK,
   VISUAL_REVAMP_KEYS.BIT_BYTE,
@@ -444,12 +466,36 @@ const TWIN_RIVERS_SCENE_VISUAL_KEYS = new Set<string>([
   VISUAL_REVAMP_KEYS.PORTAL_MOUNTAIN,
   VISUAL_REVAMP_KEYS.PORTAL_WATER,
   VISUAL_REVAMP_KEYS.PROP_WATER_BUOY,
+  VISUAL_REVAMP_KEYS.MIRROR_WALKER,
+  VISUAL_REVAMP_KEYS.BRIDGE_KEEPER,
+  VISUAL_REVAMP_KEYS.WINDOW_FISHER,
+  VISUAL_REVAMP_KEYS.CURRENT_RIDER,
+  VISUAL_REVAMP_KEYS.GLITCH,
 ]);
 
 export const TWIN_RIVERS_SCENE_IMAGE_ASSETS: AssetEntry[] = [
   ...TWIN_RIVERS_IMAGE_ASSETS,
   ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) => TWIN_RIVERS_SCENE_VISUAL_KEYS.has(asset.key)),
 ];
+
+const HASH_HIGHLANDS_SCENE_VISUAL_KEYS = new Set<string>([
+  VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG,
+  VISUAL_REVAMP_KEYS.ROUTE_MATERIALS,
+  VISUAL_REVAMP_KEYS.HASH_KEEPER,
+  VISUAL_REVAMP_KEYS.GLITCH,
+  VISUAL_REVAMP_KEYS.BIT_SPARK,
+  VISUAL_REVAMP_KEYS.BIT_BYTE,
+  VISUAL_REVAMP_KEYS.BIT_FRAME,
+  VISUAL_REVAMP_KEYS.PORTAL_WATER,
+  VISUAL_REVAMP_KEYS.PORTAL_MOUNTAIN,
+  VISUAL_REVAMP_KEYS.PROP_ARRAY_MARKER,
+  VISUAL_REVAMP_KEYS.PROP_PUZZLE_SHRINE,
+  VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
+  VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_OPEN,
+]);
+
+export const HASH_HIGHLANDS_SCENE_IMAGE_ASSETS: AssetEntry[] =
+  VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) => HASH_HIGHLANDS_SCENE_VISUAL_KEYS.has(asset.key));
 
 export function getImageAssetPath(key: string): string | undefined {
   return IMAGE_ASSETS.find((asset) => asset.key === key)?.path;

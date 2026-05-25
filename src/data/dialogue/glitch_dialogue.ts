@@ -5,6 +5,8 @@
  * Stage 3+: reserved for later acts.
  */
 
+import type { DialogueTree } from '../types';
+
 export interface GlitchLine {
   /** Optional speaker override — used to attribute narrator asides without breaking voice. */
   speaker?: string;
@@ -41,3 +43,98 @@ export const GLITCH_EXIT_LINES: string[] = [
   "I'm not impressed.",
   "Whatever.",
 ];
+
+// --- Cameo Dialogue Trees ---
+
+export const glitchAP1Dialogue: DialogueTree = {
+  startNodeId: 'start',
+  nodes: [
+    {
+      id: 'start',
+      speaker: 'Glitch',
+      text: 'Swapping neighbors? That is what you call a strategy?',
+      nextNodeId: 'next_1',
+    },
+    {
+      id: 'next_1',
+      speaker: 'Glitch',
+      text: 'I could swap tiles all day, faster than you! I just swap until it looks good.',
+      nextNodeId: 'next_2',
+    },
+    {
+      id: 'next_2',
+      speaker: 'Glitch',
+      text: 'You think you are clever just because the field is sorted? Pff. I am heading to the deeper fields.',
+    },
+  ],
+};
+
+export const glitchAP4Dialogue: DialogueTree = {
+  startNodeId: 'start',
+  nodes: [
+    {
+      id: 'start',
+      speaker: 'Glitch',
+      text: 'Complements? Targets? Sounds like you are overcomplicating simple arithmetic!',
+      nextNodeId: 'next_1',
+    },
+    {
+      id: 'next_1',
+      speaker: 'Glitch',
+      text: 'I just guess numbers until they add up. It is way more organic.',
+      nextNodeId: 'next_2',
+    },
+    {
+      id: 'next_2',
+      speaker: 'Glitch',
+      text: 'Whatever. The gate to Twin Rivers is unlocked. I am going to find some real challenges.',
+    },
+  ],
+};
+
+export const glitchTR1Dialogue: DialogueTree = {
+  startNodeId: 'start',
+  nodes: [
+    {
+      id: 'start',
+      speaker: 'Glitch',
+      text: 'Walking from both ends at the same time? Why not just walk normally?',
+      nextNodeId: 'next_1',
+    },
+    {
+      id: 'next_1',
+      speaker: 'Glitch',
+      text: 'You are trying to meet in the middle? I walk wherever I want, anyway.',
+      nextNodeId: 'next_2',
+    },
+    {
+      id: 'next_2',
+      speaker: 'Glitch',
+      text: 'There is a bridge ahead. I bet I cross it before you even figure out where to step.',
+    },
+  ],
+};
+
+export const glitchTR3Dialogue: DialogueTree = {
+  startNodeId: 'start',
+  nodes: [
+    {
+      id: 'start',
+      speaker: 'Glitch',
+      text: 'A sliding net? You are trapping fish by keeping the size constant?',
+      nextNodeId: 'next_1',
+    },
+    {
+      id: 'next_1',
+      speaker: 'Glitch',
+      text: 'I just throw a massive net over the whole river! Who cares about constant size?',
+      nextNodeId: 'next_2',
+    },
+    {
+      id: 'next_2',
+      speaker: 'Glitch',
+      text: 'This river is too small for me anyway. I am heading upstream!',
+    },
+  ],
+};
+

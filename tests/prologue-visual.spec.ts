@@ -1140,6 +1140,8 @@ test.describe('Prologue region – visual audit', () => {
           mirror_serpent_gate_open: true,
           puzzle_boss_mirror_serpent_complete: true,
           hash_highlands_gateway_open: true,
+          glitch_tr_1_done: true,
+          glitch_tr_3_done: true,
         },
         settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
         saveVersion: 2,
@@ -1230,6 +1232,8 @@ test.describe('Prologue region – visual audit', () => {
           mirror_serpent_gate_open: true,
           puzzle_boss_mirror_serpent_complete: true,
           hash_highlands_gateway_open: true,
+          glitch_tr_1_done: true,
+          glitch_tr_3_done: true,
         },
         settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
         saveVersion: 2,
@@ -1592,6 +1596,7 @@ test.describe('Prologue region – visual audit', () => {
       return ds?.isDialogueActive?.() === true;
     }, { timeout: 15_000 });
 
+    await page.waitForTimeout(150);
     await page.keyboard.press('Space');
     await page.waitForTimeout(250);
 

@@ -95,36 +95,6 @@ export function buildPrologueHud(scene: Phaser.Scene): PrologueHud {
     .setOrigin(0.5)
     .setDepth(101);
 
-  // ── Top-right gem counter ────────────────────────────────────────────────────
-  const GEM_X = STAGE.width - 156;
-  const GEM_Y = 16;
-  const GEM_W = 140;
-  const GEM_H = 68;
-
-  const gemBg = scene.add.graphics().setDepth(100);
-  paintPanel(gemBg, GEM_X, GEM_Y, GEM_W, GEM_H);
-
-  // Crystal icon (two triangles)
-  const crystalG = scene.add.graphics().setDepth(101);
-  const cix = GEM_X + 34;
-  const ciy = GEM_Y + GEM_H / 2;
-  crystalG.fillStyle(0x06b6d4, 1);
-  crystalG.fillTriangle(cix, ciy - 15, cix + 13, ciy - 1, cix - 13, ciy - 1);
-  crystalG.fillStyle(0x0891b2, 1);
-  crystalG.fillTriangle(cix - 13, ciy - 1, cix + 13, ciy - 1, cix, ciy + 13);
-  crystalG.lineStyle(1, 0x7ffcff, 0.55);
-  crystalG.strokeTriangle(cix, ciy - 15, cix + 13, ciy - 1, cix - 13, ciy - 1);
-
-  const gemCount = scene.add
-    .text(GEM_X + 54, ciy, 'x 00', {
-      fontFamily: (TYPE.display as { fontFamily: string }).fontFamily,
-      fontSize: s(17) + 'px',
-      fontStyle: 'bold',
-      color: '#e6ecff',
-    })
-    .setOrigin(0, 0.5)
-    .setDepth(101);
-
   // ── Top-centre round principle text ──────────────────────────────────────────
   const principleText = scene.add
     .text(STAGE.width / 2, PANEL_Y + 6, '', {
@@ -150,7 +120,6 @@ export function buildPrologueHud(scene: Phaser.Scene): PrologueHud {
 
   function addScore(delta: number): void {
     scoreValue += delta;
-    gemCount.setText(`x ${String(scoreValue).padStart(2, '0')}`);
   }
 
   function setState(label: string): void {

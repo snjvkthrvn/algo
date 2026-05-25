@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
-import { OVERWORLD_PLAYER_SPRITE_ASSETS, TWIN_RIVERS_SCENE_IMAGE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
+import { TWIN_RIVERS_SCENE_IMAGE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
 import { CAMERA_TUNING, COLORS, FONTS, REGIONS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
+import { eventBus } from '../core/EventBus';
 import { gameState } from '../core/GameStateManager';
 import { TransitionManager } from '../core/TransitionManager';
 import { BitCompanion } from '../entities/BitCompanion';
+import { GlitchRival } from '../entities/GlitchRival';
 import { InteractableObject } from '../entities/InteractableObject';
 import { Player } from '../entities/Player';
 import {
@@ -19,7 +21,8 @@ import {
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { OverworldAmbience } from '../ui/OverworldAmbience';
 import { HUDManager } from '../systems/HUDManager';
-import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
+import { JuiceSystem } from '../systems/JuiceSystem';
+import { InteractionSystem } from '../systems/InteractionSystem';
 import {
   ROUTE_SURFACE_STYLES,
   renderRouteStopPads,
@@ -30,23 +33,31 @@ import { setupUICamera } from '../utils/uiCamera';
 import { openPauseOverlay } from './titleNavigation';
 import { ObjectPool } from '../utils/ObjectPool';
 import { drawPanel } from '../ui/panel';
+import { BaseOverworldScene } from './BaseOverworldScene';
+import {
+  mirrorWalkerDialogue,
+  mirrorWalkerPostDialogue,
+  bridgeKeeperDialogue,
+  bridgeKeeperPostDialogue,
+  windowFisherDialogue,
+  windowFisherPostDialogue,
+  currentRiderDialogue,
+  currentRiderPostDialogue,
+  riverGuideIntroDialogue,
+  riverGuideMidDialogue,
+  riverGuideCompleteDialogue,
+} from '../data/dialogue/twin_rivers_dialogue';
+import {
+  glitchTR1Dialogue,
+  glitchTR3Dialogue,
+} from '../data/dialogue/glitch_dialogue';
 
-export class TwinRiversScene extends Phaser.Scene {
-  private player!: Player;
-  private bit!: BitCompanion;
-  private hud!: HUDManager;
-  private hasShutdown = false;
-  private interactionSystem!: InteractionSystem;
-  private dialogueSystem!: DialogueSystem;
+export class TwinRiversScene extends BaseOverworldScene {
   private returnGateway: InteractableObject | null = null;
   private nextGateway: InteractableObject | null = null;
   private guide: InteractableObject | null = null;
   private puzzleObjects: InteractableObject[] = [];
-  private labelObjects: Phaser.GameObjects.Text[] = [];
-  private lastPlayerX: number = NaN;
-  private lastPlayerY: number = NaN;
-  private interactablePool!: ObjectPool<InteractableObject>;
-  private interactionEnabledTime = 0;
+  private onDialogueAction!: (...args: any[]) => void;
   private closeBetaGateModal: (() => void) | null = null;
   private twinRiversClosureStarted = false;
   private twinRiversClosureInProgress = false;
@@ -72,24 +83,8 @@ export class TwinRiversScene extends Phaser.Scene {
     super({ key: SCENE_KEYS.TWIN_RIVERS });
   }
 
-  init(data: { spawnX?: number; spawnY?: number }): void {
-    if (data.spawnX !== undefined && data.spawnY !== undefined) {
-      gameState.setPlayerPosition(data.spawnX, data.spawnY);
-    }
-  }
-
-  preload(): void {
-    for (const asset of OVERWORLD_PLAYER_SPRITE_ASSETS) {
-      if (this.textures.exists(asset.key)) continue;
-      this.load.spritesheet(asset.key, asset.path, {
-        frameWidth: asset.frameWidth || 32,
-        frameHeight: asset.frameHeight || 48,
-      });
-    }
-
-    for (const asset of TWIN_RIVERS_SCENE_IMAGE_ASSETS) {
-      if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
-    }
+  protected getRegionImageAssets(): ReadonlyArray<{ key: string; path: string }> {
+    return TWIN_RIVERS_SCENE_IMAGE_ASSETS;
   }
 
   create(): void {
@@ -133,6 +128,26 @@ export class TwinRiversScene extends Phaser.Scene {
 
     this.interactionSystem = new InteractionSystem(this, this.player);
     this.dialogueSystem = new DialogueSystem(this);
+
+    this.onDialogueAction = ((...args: unknown[]) => {
+      const data = args[0] as { type: string; value: string };
+      if (data.type === 'start_puzzle') {
+        const puzzleId = data.value;
+        const puzzleLabels: Record<string, string> = {
+          tr_1: SCENE_KEYS.PUZZLE_TR_1,
+          tr_2: SCENE_KEYS.PUZZLE_TR_2,
+          tr_3: SCENE_KEYS.PUZZLE_TR_3,
+          tr_4: SCENE_KEYS.PUZZLE_TR_4,
+        };
+        const sceneKey = puzzleLabels[puzzleId];
+        if (sceneKey) {
+          this.player.setInteracting(false);
+          this.startPuzzle(sceneKey);
+        }
+      }
+    });
+    eventBus.on('dialogue:action', this.onDialogueAction, this);
+
     this.createInteractables();
     this.createSequencePuzzle();
     this.interactionSystem.onInteract((entry) => this.handleInteract(entry));
@@ -140,17 +155,14 @@ export class TwinRiversScene extends Phaser.Scene {
     this.hud = new HUDManager(this);
     setupUICamera(this);
 
-    const camera = this.cameras.main;
-    camera.setBounds(0, 0, TWIN_RIVERS_WORLD_WIDTH, TWIN_RIVERS_WORLD_HEIGHT);
-    camera.setZoom(CAMERA_TUNING.ZOOM);
-    camera.startFollow(this.player.sprite, true, CAMERA_TUNING.FOLLOW_LERP, CAMERA_TUNING.FOLLOW_LERP);
-    camera.setDeadzone(CAMERA_TUNING.DEADZONE_WIDTH, CAMERA_TUNING.DEADZONE_HEIGHT);
+    this.setupOverworldCamera(TWIN_RIVERS_WORLD_WIDTH, TWIN_RIVERS_WORLD_HEIGHT);
 
-    TransitionManager.fadeIn(this, 700);
-    this.interactionEnabledTime = this.time.now + 700;
+    this.playEntranceFade();
     this.hud.showRegionCard('Twin Rivers', 'Where two paths learn to move as one.');
     this.input.keyboard?.on('keydown-ESC', this.onEscPause);
     this.input.keyboard?.on('keydown-C', this.onOpenCodex);
+
+    this.checkCameos();
   }
 
   private createSequencePuzzle(): void {
@@ -333,20 +345,32 @@ export class TwinRiversScene extends Phaser.Scene {
             // Correct step
             tile.setFillStyle(COLORS.SUCCESS, 0.8);
             audioManager.playTone(300 + i * 50, 100, 'sine');
+            if (!this.prefersReducedMotion()) {
+              JuiceSystem.burst(this, tile.x, tile.y, COLORS.SUCCESS, 8, 34);
+            }
             this.currentSequenceIndex++;
 
             if (this.currentSequenceIndex >= this.sequenceTiles.length) {
               this.sequenceSolved = true;
               audioManager.playCorrectTone();
-              this.cameras.main.shake(200, 0.005);
-              this.showFieldNote('System', 'Outside pointers met in the middle. Twin traversal complete.');
 
               // Light them all up
               this.sequenceTiles.forEach(t => t.setFillStyle(COLORS.GOLD_ACCENT, 0.9));
+
+              if (!this.prefersReducedMotion()) {
+                JuiceSystem.cameraShake(this, 200, 0.005);
+                JuiceSystem.correctBurst(this, tile.x, tile.y);
+              }
+
+              this.showFieldNote('System', 'Outside pointers met in the middle. Twin traversal complete.');
             }
           } else {
             // Out of order
             audioManager.playWrongTone();
+            if (!this.prefersReducedMotion()) {
+              JuiceSystem.wrongBurst(this, tile.x, tile.y);
+              JuiceSystem.cameraShake(this, 80, 0.003);
+            }
             this.currentSequenceIndex = 0;
             this.sequenceTiles.forEach(t => {
               if (t !== tile) t.setData('active', false);
@@ -466,15 +490,25 @@ export class TwinRiversScene extends Phaser.Scene {
       type: 'sign',
       x: TWIN_RIVERS_CONFIG.npcs[0].position.x,
       y: TWIN_RIVERS_CONFIG.npcs[0].position.y,
-      prompt: '[SPACE] Listen',
+      prompt: '[SPACE] Speak with River Guide',
       locked: false,
-      spriteImageKey: VISUAL_REVAMP_KEYS.PROP_WATER_BUOY,
-      imageScale: 0.13,
-      imageOriginY: 0.82,
-      onInteract: () => this.showFieldNote(
-        'River Guide',
-        'Twin Rivers is alive now: two paths, one current, and the mountain road opening beyond the water.'
-      ),
+      spriteImageKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
+      imageScale: 0.14,
+      imageOriginY: 0.86,
+      onInteract: () => {
+        const riverIds = ['tr_1', 'tr_2', 'tr_3', 'tr_4'] as const;
+        const done = riverIds.filter((id) => gameState.isPuzzleCompleted(id)).length;
+        let tree = riverGuideIntroDialogue;
+        if (done >= 4) {
+          tree = riverGuideCompleteDialogue;
+        } else if (done >= 2) {
+          tree = riverGuideMidDialogue;
+        }
+        this.player.setInteracting(true);
+        this.dialogueSystem.startDialogue(tree, 'river_guide', () => {
+          this.player.setInteracting(false);
+        });
+      },
     });
     this.interactionSystem.addObject(this.guide);
 
@@ -482,36 +516,77 @@ export class TwinRiversScene extends Phaser.Scene {
   }
 
   private createPuzzleObjects(): void {
-    const puzzleLabels: Record<string, { title: string; scene: string; prompt: string }> = {
-      tr_1: { title: 'Mirror Walk', scene: SCENE_KEYS.PUZZLE_TR_1, prompt: '[SPACE] Mirror' },
-      tr_2: { title: 'Pointer Bridge', scene: SCENE_KEYS.PUZZLE_TR_2, prompt: '[SPACE] Pair' },
-      tr_3: { title: 'Fixed Window Dock', scene: SCENE_KEYS.PUZZLE_TR_3, prompt: '[SPACE] Window' },
-      tr_4: { title: 'Current Rider', scene: SCENE_KEYS.PUZZLE_TR_4, prompt: '[SPACE] Ride' },
-      boss_mirror_serpent: { title: 'Mirror Serpent', scene: SCENE_KEYS.BOSS_MIRROR_SERPENT, prompt: '[SPACE] Challenge' },
+    const puzzleMeta: Record<
+      string,
+      { title: string; scene: string; prompt: string; spriteKey?: string; name?: string }
+    > = {
+      tr_1: {
+        title: 'Mirror Walk',
+        scene: SCENE_KEYS.PUZZLE_TR_1,
+        prompt: '[SPACE] Speak with Mirror Walker',
+        spriteKey: VISUAL_REVAMP_KEYS.MIRROR_WALKER,
+        name: 'Mirror Walker',
+      },
+      tr_2: {
+        title: 'Pointer Bridge',
+        scene: SCENE_KEYS.PUZZLE_TR_2,
+        prompt: '[SPACE] Speak with Bridge Keeper',
+        spriteKey: VISUAL_REVAMP_KEYS.BRIDGE_KEEPER,
+        name: 'Bridge Keeper',
+      },
+      tr_3: {
+        title: 'Fixed Window Dock',
+        scene: SCENE_KEYS.PUZZLE_TR_3,
+        prompt: '[SPACE] Speak with Window Fisher',
+        spriteKey: VISUAL_REVAMP_KEYS.WINDOW_FISHER,
+        name: 'Window Fisher',
+      },
+      tr_4: {
+        title: 'Current Rider',
+        scene: SCENE_KEYS.PUZZLE_TR_4,
+        prompt: '[SPACE] Speak with Current Rider',
+        spriteKey: VISUAL_REVAMP_KEYS.CURRENT_RIDER,
+        name: 'Current Rider',
+      },
+      boss_mirror_serpent: {
+        title: 'Mirror Serpent',
+        scene: SCENE_KEYS.BOSS_MIRROR_SERPENT,
+        prompt: '[SPACE] Challenge',
+      },
     };
 
     for (const puzzle of TWIN_RIVERS_CONFIG.puzzles) {
-      const meta = puzzleLabels[puzzle.id];
+      const meta = puzzleMeta[puzzle.id];
       if (!meta) continue;
 
       const completed = gameState.isPuzzleCompleted(puzzle.id);
+      const isBoss = puzzle.id === 'boss_mirror_serpent';
+
       const object = this.interactablePool.acquire({
         id: puzzle.id,
-        type: puzzle.id === 'boss_mirror_serpent' ? 'portal' : 'sign',
+        type: isBoss ? 'portal' : 'sign',
         x: puzzle.position.x,
         y: puzzle.position.y,
-        prompt: completed ? '[SPACE] Replay' : meta.prompt,
+        prompt: isBoss ? (completed ? '[SPACE] Replay' : meta.prompt) : meta.prompt,
         locked: false,
-        spriteImageKey: puzzle.id === 'boss_mirror_serpent'
-          ? undefined
-          : VISUAL_REVAMP_KEYS.PROP_WATER_BUOY,
-        imageByState: puzzle.id === 'boss_mirror_serpent'
-          ? { unlocked: VISUAL_REVAMP_KEYS.PORTAL_WATER }
-          : undefined,
-        imageScale: puzzle.id === 'boss_mirror_serpent' ? 0.24 : 0.13,
-        imageOriginY: 0.84,
+        spriteImageKey: isBoss ? undefined : meta.spriteKey,
+        imageByState: isBoss ? { unlocked: VISUAL_REVAMP_KEYS.PORTAL_WATER } : undefined,
+        imageScale: isBoss ? 0.24 : 0.14,
+        imageOriginY: isBoss ? 0.84 : 0.86,
         initialState: 'unlocked',
-        onInteract: () => this.startPuzzle(meta.scene),
+        onInteract: () => {
+          if (isBoss) {
+            this.startPuzzle(meta.scene);
+          } else {
+            const tree = this.getDialogueTreeForPuzzle(puzzle.id);
+            if (tree) {
+              this.player.setInteracting(true);
+              this.dialogueSystem.startDialogue(tree, puzzle.id, () => {
+                this.player.setInteracting(false);
+              });
+            }
+          }
+        },
       });
       this.puzzleObjects.push(object);
       this.interactionSystem.addObject(object);
@@ -548,23 +623,13 @@ export class TwinRiversScene extends Phaser.Scene {
     }
   }
 
-  private handleInteract(entry: InteractableEntry): void {
-    if (this.closeBetaGateModal) return;
-    if (this.dialogueSystem.isDialogueActive()) return;
-    if (entry.type !== 'object') return;
-    const object = entry.target as InteractableObject;
-    object.config.onInteract?.();
-  }
-
-  private startPuzzle(sceneKey: string): void {
-    TransitionManager.pixelDissolve(this, sceneKey, { returnScene: SCENE_KEYS.TWIN_RIVERS });
-  }
-
-  private openCodex(): void {
-    if (this.twinRiversClosureInProgress) return;
-    if (this.closeBetaGateModal) return;
-    if (this.dialogueSystem?.isDialogueActive()) return;
-    TransitionManager.fade(this, SCENE_KEYS.CODEX, { returnScene: SCENE_KEYS.TWIN_RIVERS }, 260);
+  /** Twin Rivers also blocks overlays during the beta-gate modal and closure beat. */
+  protected canOpenOverlay(): boolean {
+    return (
+      super.canOpenOverlay() &&
+      !this.closeBetaGateModal &&
+      !this.twinRiversClosureInProgress
+    );
   }
 
   private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
@@ -737,34 +802,61 @@ export class TwinRiversScene extends Phaser.Scene {
     };
   }
 
-  private showFieldNote(speaker: string, body: string | string[]): void {
-    if (this.dialogueSystem.isDialogueActive()) return;
-    const tree: DialogueTree = {
-      startNodeId: 'note',
-      nodes: [{ id: 'note', speaker, text: body }],
-    };
-    this.dialogueSystem.startDialogue(tree, `field_${speaker.toLowerCase().replace(/\s+/g, '_')}`);
-  }
-
   private prefersReducedMotion(): boolean {
     return typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
+  private getDialogueTreeForPuzzle(puzzleId: string): DialogueTree | null {
+    const completed = gameState.isPuzzleCompleted(puzzleId);
+    switch (puzzleId) {
+      case 'tr_1': return completed ? mirrorWalkerPostDialogue : mirrorWalkerDialogue;
+      case 'tr_2': return completed ? bridgeKeeperPostDialogue : bridgeKeeperDialogue;
+      case 'tr_3': return completed ? windowFisherPostDialogue : windowFisherDialogue;
+      case 'tr_4': return completed ? currentRiderPostDialogue : currentRiderDialogue;
+      default: return null;
+    }
+  }
+
+  private checkCameos(): void {
+    if (gameState.isPuzzleCompleted('tr_1') && !gameState.getFlag('glitch_tr_1_done')) {
+      this.runGlitchCameo('tr_1', glitchTR1Dialogue, 604, 384, 'glitch_tr_1_done');
+      return;
+    }
+    if (gameState.isPuzzleCompleted('tr_3') && !gameState.getFlag('glitch_tr_3_done')) {
+      this.runGlitchCameo('tr_3', glitchTR3Dialogue, 1068, 384, 'glitch_tr_3_done');
+      return;
+    }
+  }
+
+  private runGlitchCameo(puzzleId: string, dialogueTree: DialogueTree, spawnX: number, spawnY: number, flagKey: string): void {
+    this.player.setInteracting(true);
+
+    const cameoGlitch = new GlitchRival(this);
+    cameoGlitch.spawnIn(spawnX, spawnY, () => {
+      this.dialogueSystem.startDialogue(dialogueTree, `glitch_cameo_${puzzleId}`, () => {
+        cameoGlitch.exit(() => {
+          cameoGlitch.destroy();
+          this.player.setInteracting(false);
+          this.syncTwinRiversObjectiveHint();
+        });
+        gameState.setFlag(flagKey, true);
+      });
+    });
+  }
+
   shutdown(): void {
     this.hasShutdown = true;
+    eventBus.off('dialogue:action', this.onDialogueAction, this);
     this.input.keyboard?.off('keydown-ESC', this.onEscPause);
     this.input.keyboard?.off('keydown-C', this.onOpenCodex);
     this.dialogueSystem?.destroy();
     this.interactionSystem?.destroy();
     this.hud?.destroy();
-    this.interactablePool.release(this.returnGateway!);
-    this.interactablePool.release(this.nextGateway!);
-    this.interactablePool.release(this.guide!);
-    this.returnGateway = null;
-    this.nextGateway = null;
-    this.guide = null;
+    if (this.returnGateway) { this.interactablePool.release(this.returnGateway); this.returnGateway = null; }
+    if (this.nextGateway) { this.interactablePool.release(this.nextGateway); this.nextGateway = null; }
+    if (this.guide) { this.interactablePool.release(this.guide); this.guide = null; }
     for (const object of this.puzzleObjects) this.interactablePool.release(object);
     this.puzzleObjects = [];
     for (const label of this.labelObjects) label.destroy();

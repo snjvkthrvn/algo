@@ -18,6 +18,11 @@ const TB_W = s(720);
 const TB_H = s(3);
 const TB_Y = s(5);
 
+const GEM_X = STAGE.width - 156;
+const GEM_Y = 16;
+const GEM_W = 140;
+const GEM_H = 68;
+
 export class UIScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private comboText!: Phaser.GameObjects.Text;
@@ -33,24 +38,33 @@ export class UIScene extends Phaser.Scene {
   }
 
   create(): void {
+    // ── Top-right HUD panel ────────────────────────────────────────────────────
+    const panelBg = this.add.graphics().setDepth(39);
+    panelBg.fillStyle(0x0c1024, 0.78);
+    panelBg.fillRoundedRect(GEM_X, GEM_Y, GEM_W, GEM_H, s(12));
+    panelBg.lineStyle(s(1), 0x2a3a6f, 0.45);
+    panelBg.strokeRoundedRect(GEM_X, GEM_Y, GEM_W, GEM_H, s(12));
+
     this.hearts = [];
+    const heartsWidth = (GAME.maxLives - 1) * s(20);
+    const startX = GEM_X + (GEM_W - heartsWidth) / 2;
     for (let i = 0; i < GAME.maxLives; i += 1) {
       const heart = this.add.graphics();
-      heart.x = STAGE.width - PAD_X - s(18) - (GAME.maxLives - 1 - i) * s(22);
-      heart.y = PAD_Y + s(9);
+      heart.x = startX + i * s(20);
+      heart.y = GEM_Y + s(20);
       heart.setDepth(40);
       this.paintHeart(heart, i < GAME.lives);
       this.hearts.push(heart);
     }
 
     this.scoreText = this.add
-      .text(STAGE.width - PAD_X, PAD_Y + s(26), this.formatScore(GAME.score), {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
-        fontSize: px(18),
-        fontStyle: '700',
-        color: COLORS.text.primary,
+      .text(GEM_X + GEM_W / 2, GEM_Y + s(44), this.formatScore(GAME.score), {
+        fontFamily: (TYPE.display as { fontFamily: string }).fontFamily,
+        fontSize: s(13) + 'px',
+        fontStyle: 'bold',
+        color: '#e6ecff',
       })
-      .setOrigin(1, 0)
+      .setOrigin(0.5)
       .setDepth(40);
 
     this.comboChip = this.add.container(STAGE.width - PAD_X - s(100), PAD_Y + s(56)).setDepth(40);
