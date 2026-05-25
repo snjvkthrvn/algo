@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.7,
   sfxVolume: 0.8,
   textSpeed: 45, // chars per second
+  reduceMotion: false,
 };
 
 function createDefaultState(): GameState {

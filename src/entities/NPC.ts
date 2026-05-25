@@ -16,6 +16,7 @@ import Phaser from 'phaser';
 import { COLORS, FONTS } from '../config/constants';
 import { PROLOGUE_REWORK_KEYS, PROLOGUE_SHEET_KEYS, VISUAL_REVAMP_KEYS } from '../config/assets';
 import { eventBus, GameEvents } from '../core/EventBus';
+import { gameState } from '../core/GameStateManager';
 import type { NPCConfig } from '../data/types';
 
 export type { NPCConfig };
@@ -117,34 +118,40 @@ export class NPC {
     this.body.setSize(28, 32);
     this.body.setImmovable(true);
 
-    // Idle bob — gentle vertical hop. Slight per-NPC offset so a crowd of
-    // NPCs doesn't bob in lockstep (the choreography looks robotic).
-    const bobOffset = Math.random() * 600;
-    this.activeTweens.push(scene.tweens.add({
-      targets: this.sprite,
-      y: y - 2,
-      duration: 2000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-      delay: bobOffset,
-    }));
+    // Idle bob + breath — skipped under reduceMotion. The setting is read
+    // at construction time; toggling mid-session won't retroactively start
+    // bobbing previously-quiet NPCs (next region transition picks up the
+    // new value when scenes rebuild).
+    if (!gameState.getSettings().reduceMotion) {
+      // Idle bob — gentle vertical hop. Slight per-NPC offset so a crowd of
+      // NPCs doesn't bob in lockstep (the choreography looks robotic).
+      const bobOffset = Math.random() * 600;
+      this.activeTweens.push(scene.tweens.add({
+        targets: this.sprite,
+        y: y - 2,
+        duration: 2000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: bobOffset,
+      }));
 
-    // Idle breath — subtle scale tween layered on top of the bob so NPCs
-    // feel alive even when motionless. The breath rate is slower than the
-    // bob so the two combine asymmetrically (no obvious rhythm) — this is
-    // the cheapest possible "this character is breathing" effect.
-    const baseScale = this.sprite.scaleX || 1;
-    this.activeTweens.push(scene.tweens.add({
-      targets: this.sprite,
-      scaleX: baseScale * 1.015,
-      scaleY: baseScale * 1.015,
-      duration: 2800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-      delay: bobOffset + 350,
-    }));
+      // Idle breath — subtle scale tween layered on top of the bob so NPCs
+      // feel alive even when motionless. The breath rate is slower than the
+      // bob so the two combine asymmetrically (no obvious rhythm) — this is
+      // the cheapest possible "this character is breathing" effect.
+      const baseScale = this.sprite.scaleX || 1;
+      this.activeTweens.push(scene.tweens.add({
+        targets: this.sprite,
+        scaleX: baseScale * 1.015,
+        scaleY: baseScale * 1.015,
+        duration: 2800,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: bobOffset + 350,
+      }));
+    }
 
     // Subscribe to dialogue lifecycle so this NPC can pulse when speaking.
     eventBus.on(GameEvents.DIALOGUE_START, this.onDialogueStart, this);

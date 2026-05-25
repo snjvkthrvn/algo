@@ -1,9 +1,24 @@
 /**
  * JuiceSystem — Particle bursts, screen flash, and camera shake for player action feedback.
  * All methods are stateless — call them from any Phaser scene.
+ *
+ * Reduce-motion gating: cameraShake and screenFlash are the two effects most
+ * likely to trigger vestibular discomfort. Both check the reduceMotion
+ * setting and short-circuit when it's on. Particle bursts are kept — they
+ * are localized and don't move the player's frame of reference.
  */
 
 import Phaser from 'phaser';
+import { gameState } from '../core/GameStateManager';
+
+const motionReduced = (): boolean => {
+  try {
+    return gameState.getSettings().reduceMotion;
+  } catch {
+    // gameState may not be initialized in test mocks — fail safe (false).
+    return false;
+  }
+};
 
 export const JuiceSystem = {
 
@@ -97,9 +112,12 @@ export const JuiceSystem = {
     duration: number = 140,
   ): void {
     if (!scene?.cameras?.main || !scene?.add?.rectangle || !scene?.tweens) return;
+    // Reduce-motion: cut the flash alpha in half — the visual cue is
+    // still readable but doesn't fill the screen as aggressively.
+    const effectiveAlpha = motionReduced() ? alpha * 0.4 : alpha;
     const { width, height } = scene.cameras.main;
     const flash = scene.add
-      .rectangle(0, 0, width, height, color, alpha)
+      .rectangle(0, 0, width, height, color, effectiveAlpha)
       .setOrigin(0)
       .setDepth(9000);
     scene.tweens.add({
@@ -113,6 +131,10 @@ export const JuiceSystem = {
 
   cameraShake(scene: Phaser.Scene, duration: number = 90, intensity: number = 0.004): void {
     if (!scene?.cameras?.main) return;
+    // Reduce-motion: skip camera shake entirely. This is the single biggest
+    // vestibular trigger in the project — there is no useful "less shake"
+    // intermediate; either you shake or you don't.
+    if (motionReduced()) return;
     scene.cameras.main.shake(duration, intensity);
   },
 

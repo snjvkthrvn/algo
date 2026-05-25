@@ -20,9 +20,19 @@
  */
 
 import Phaser from 'phaser';
+import { gameState } from '../core/GameStateManager';
 
 const DEPTH_LOW = -8;
 const DEPTH_HIGH = 90;
+
+/**
+ * True when the player has opted into the reduce-motion setting.
+ * Build-time particles still spawn — they're scenic — but the drift /
+ * twinkle / sway tweens are skipped. The result is a static-yet-
+ * atmospheric world that doesn't trigger vestibular discomfort or
+ * compete with the puzzle UI for attention.
+ */
+const motionReduced = (): boolean => gameState.getSettings().reduceMotion;
 
 export type AmbientFlavour = 'cosmic' | 'farmland' | 'river' | 'meadow' | 'menu';
 
@@ -86,6 +96,7 @@ export class OverworldAmbience {
         size, size, hue, 0.7,
       ).setDepth(DEPTH_LOW).setScrollFactor(0);
       this.children.push(star);
+      if (motionReduced()) continue;
       const dur = 7000 + Math.random() * 8000;
       this.tweens.push(this.scene.tweens.add({
         targets: star,
@@ -118,6 +129,7 @@ export class OverworldAmbience {
         .setStrokeStyle(1, 0x67e8f9, def.alpha * 1.5);
       ring.setFillStyle(); // outline only — fill would dim the foreground
       this.children.push(ring);
+      if (motionReduced()) continue;
       this.tweens.push(this.scene.tweens.add({
         targets: ring,
         scale: { from: 1, to: 1.08 },
@@ -149,6 +161,7 @@ export class OverworldAmbience {
         0.55,
       ).setDepth(DEPTH_LOW).setScrollFactor(0);
       this.children.push(mote);
+      if (motionReduced()) continue;
       this.tweens.push(this.scene.tweens.add({
         targets: mote,
         x: mote.x + (Math.random() - 0.5) * 80,
@@ -165,7 +178,9 @@ export class OverworldAmbience {
     }
 
     // Occasional butterflies — small sprites that bob in a wandering path.
-    const butterflies = Math.max(2, Math.floor(3 * intensity));
+    // Skipped entirely under reduceMotion: a butterfly that isn't flapping
+    // looks like a bug carcass on the lawn, which is the wrong vibe.
+    const butterflies = motionReduced() ? 0 : Math.max(2, Math.floor(3 * intensity));
     for (let i = 0; i < butterflies; i++) {
       const colors = [0xf97316, 0xfbbf24, 0xa78bfa, 0xef4444];
       const color = colors[i % colors.length];
@@ -216,6 +231,7 @@ export class OverworldAmbience {
       // Pivot at the base so the rotation reads as sway, not tumble.
       stalk.setOrigin(0.5, 1);
       this.children.push(stalk);
+      if (motionReduced()) continue;
       this.tweens.push(this.scene.tweens.add({
         targets: stalk,
         angle: { from: -6, to: 6 },
@@ -244,6 +260,7 @@ export class OverworldAmbience {
         3, 1.5, 0xffffff, 0.7,
       ).setDepth(DEPTH_LOW).setScrollFactor(0);
       this.children.push(fleck);
+      if (motionReduced()) continue;
       const dur = 6000 + Math.random() * 3500;
       this.tweens.push(this.scene.tweens.add({
         targets: fleck,
@@ -260,8 +277,9 @@ export class OverworldAmbience {
       }));
     }
 
-    // Drifting leaves — coloured 4×2 sprites.
-    const leaves = Math.max(2, Math.floor(4 * intensity));
+    // Drifting leaves — skipped under reduceMotion (a leaf that isn't
+    // drifting reads as a stain on the river surface).
+    const leaves = motionReduced() ? 0 : Math.max(2, Math.floor(4 * intensity));
     for (let i = 0; i < leaves; i++) {
       const palette = [0x6cb060, 0xf5b06a, 0xd97a3a, 0x4a8a3a];
       const color = palette[i % palette.length];
@@ -285,8 +303,8 @@ export class OverworldAmbience {
     // Water shimmer — short horizontal light bands that fade in then drift
     // sideways and fade out. Cheap "sun glints on the surface" effect.
     // Multiple bands fire on staggered timers so the river always has a
-    // few catching the light at any moment.
-    const shimmerCount = Math.floor(8 * intensity);
+    // few catching the light at any moment. Skipped under reduceMotion.
+    const shimmerCount = motionReduced() ? 0 : Math.floor(8 * intensity);
     for (let i = 0; i < shimmerCount; i++) {
       const startY = yMin + Math.random() * (yMax - yMin);
       const startX = Math.random() * width;

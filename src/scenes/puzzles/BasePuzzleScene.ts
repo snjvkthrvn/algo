@@ -435,8 +435,12 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.exitButton = createRetroButton(
       this, width - 88, 60, 'EXIT', COLORS.ERROR, () => this.exitPuzzle(), 112
     );
+    // Hint cost surfaced in the button text — the audit flagged that
+    // "hoarding hints vs burning hints" was an opaque choice. Including
+    // "-1★" in the label makes the trade-off legible at the moment of
+    // decision, not retroactive at the star-rating screen.
     this.hintButton = createRetroButton(
-      this, 96, 60, `HINT (${this.maxHints - this.hintsUsed})`, COLORS.GOLD_ACCENT, () => this.showHint(), 128
+      this, 96, 60, `HINT -1★ (${this.maxHints - this.hintsUsed})`, COLORS.GOLD_ACCENT, () => this.showHint(), 152
     );
 
     this.exitButton.setScale(0);
@@ -592,6 +596,49 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   /**
+   * Brief "Progress saved" floating receipt at the top-right corner. Fires
+   * after setPuzzleResult triggers the autosave. The indicator is small
+   * and corner-anchored so it doesn't compete with the star rating /
+   * complete celebration in the center.
+   */
+  protected showSaveIndicator(): void {
+    const { width } = this.cameras.main;
+    const x = width - 80;
+    const y = 110;
+    const indicator = this.add
+      .text(x, y, '✓ Progress saved', {
+        fontSize: '9px',
+        fontFamily: FONTS.RETRO,
+        color: '#88c070',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(9998)
+      .setScrollFactor(0)
+      .setAlpha(0);
+
+    this.tweens.add({
+      targets: indicator,
+      alpha: { from: 0, to: 1 },
+      y: y - 6,
+      duration: 280,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        this.time.delayedCall(1800, () => {
+          this.tweens.add({
+            targets: indicator,
+            alpha: 0,
+            duration: 340,
+            onComplete: () => indicator.destroy(),
+          });
+        });
+      },
+    });
+    a11yManager.announce('Progress saved.', false);
+  }
+
+  /**
    * Pick up a queued Glitch failure taunt from the previous scene instance
    * and float it briefly at the top of the puzzle screen. Should be called
    * from create() after the puzzle UI is mounted (subclasses opt in by
@@ -682,6 +729,10 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       attempts: this.attempts,
       hintsUsed: this.hintsUsed,
     });
+    // Visible save confirmation — audit Minor #15 flagged "no visible
+    // save-checkpoint indicator" as a real problem. setPuzzleResult
+    // triggers the autosave; this is the player-facing receipt.
+    this.showSaveIndicator();
 
     if (this.shouldSkipConceptBridge()) {
       const { width: bw, height: bh } = this.cameras.main;

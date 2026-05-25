@@ -416,6 +416,14 @@ export interface GameSettings {
   musicVolume: number;
   sfxVolume: number;
   textSpeed: number;
+  /**
+   * When true, OverworldAmbience suppresses drifting-particle motion
+   * and NPC idle bob/breath tweens render at reduced amplitude. Pause
+   * overlay surfaces this as a single toggle. Default false. Useful
+   * for players with vestibular sensitivity or who find the ambient
+   * motion distracting on long sessions.
+   */
+  reduceMotion: boolean;
 }
 
 // ============================================================================
