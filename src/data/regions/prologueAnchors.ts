@@ -66,6 +66,17 @@ export const PROLOGUE_ANCHORS = {
     position: { x: 2000, y: 395 },
     objectiveLabel: 'Step through the Gateway',
   },
+  // Watcher stands inside the gate_courtyard (cols 53-67, rows 9-15), off
+  // to the north of the main travel line between bossGate and arrayGateway.
+  // Position picked so the player walks past them naturally on the way out
+  // of the Prologue without any detour. Constrained to the walkable
+  // tilemap route — the prologueAnchors.test.ts invariant enforces this.
+  watcherCliff: {
+    id: 'watcher_cliff',
+    position: { x: 1808, y: 320 },
+    objectiveLabel: 'Approach the Watcher',
+    proximityRadiusTiles: 4,
+  },
 } as const satisfies Record<string, PrologueAnchor>;
 
 export type PrologueAnchorId = keyof typeof PROLOGUE_ANCHORS;

@@ -14,117 +14,64 @@ import type { DialogueTree } from '../types';
 
 // ─── Professor Node ────────────────────────────────────────────────────────────
 
+// Intro trimmed from the original 9-node branching tree to 4 short
+// auto-advancing lines. The previous version held the player still for
+// 60-90 seconds of cosmic exposition before they had moved an inch; the
+// "what's on your mind" choice branched into three paragraphs that
+// converged on the same guidance, so the choice was decoration rather
+// than agency. The cut lore ("space between thought and understanding",
+// "two halves of the same process", "every concept you master your
+// Construct absorbs") now lives in professorNodePostPuzzle where the
+// player has earned the meaning of those phrases.
 export const professorNodeDialogue: DialogueTree = {
   startNodeId: 'intro_1',
   nodes: [
-    // Scene 0-2 from the script
     {
       id: 'intro_1',
       speaker: 'Professor Node',
-      text: 'There you are! I was starting to worry.',
+      text: 'There you are! I was starting to worry. And — a Construct already at your side. Good.',
       nextNodeId: 'intro_2',
     },
     {
       id: 'intro_2',
       speaker: 'Professor Node',
-      text: [
-        'And who\'s this little one? A companion construct! Born alongside you, by the look of it.',
-        'That means you two are linked.',
-      ],
+      text: "I'm Professor Node. This is the Chamber of Flow — every Path-walker's first morning. There's time to learn what that means. There isn't much time to stand still.",
       nextNodeId: 'intro_3',
     },
     {
       id: 'intro_3',
       speaker: 'Professor Node',
-      text: 'Welcome to the space between thought and understanding. I\'m Professor Node.',
-      nextNodeId: 'intro_4',
-    },
-    {
-      id: 'intro_4',
-      speaker: 'Professor Node',
-      text: [
-        'This is Algorithmia — a world built on logic. Where patterns have shape. Where ideas have weight.',
-        'Where the rules that govern everything... can be learned.',
-      ],
-      nextNodeId: 'intro_choice',
-    },
-    {
-      id: 'intro_choice',
-      speaker: 'Professor Node',
-      text: 'Lots of questions, I imagine. What\'s on your mind?',
-      choices: [
-        { text: 'Where am I?', nextNodeId: 'where_am_i' },
-        { text: 'What\'s this little light following me?', nextNodeId: 'what_is_bit' },
-        { text: 'What do I do here?', nextNodeId: 'what_to_do' },
-      ],
-    },
-    {
-      id: 'where_am_i',
-      speaker: 'Professor Node',
-      text: [
-        'The Chamber of Flow! Think of it as a starting area. The first page of a very long, very exciting book.',
-        'Everyone who walks the Path of Logic begins here. The world beyond this Chamber is full of regions to explore.',
-      ],
-      nextNodeId: 'intro_guidance',
-    },
-    {
-      id: 'what_is_bit',
-      speaker: 'Professor Node',
-      text: [
-        'This is a Construct. A living fragment of logic.',
-        'It was born when you were restored — two halves of the same process.',
-        'It\'s small now. Just a Spark. But as you learn and grow, so will it. Every concept you master, every puzzle you solve — your Construct absorbs that understanding.',
-      ],
-      nextNodeId: 'intro_guidance',
-    },
-    {
-      id: 'what_to_do',
-      speaker: 'Professor Node',
-      text: [
-        'The best question anyone can ask!',
-        'You explore. You solve puzzles. You discover how this world works.',
-        'But we don\'t start with theory. We start with your FEET.',
-      ],
-      nextNodeId: 'intro_guidance',
-    },
-    {
-      id: 'intro_guidance',
-      speaker: 'Professor Node',
-      text: [
-        'See those glowing tiles to the northwest? And those floating consoles to the northeast?',
-        'The Rune Keeper guards the Path of Sequences. The Console Keeper maintains the Flow Consoles.',
-        'They\'re waiting for you.',
-      ],
+      text: 'Glowing tiles to the northwest, floating consoles to the northeast. Either way works. Try whichever calls to you — the going matters more than the order.',
       nextNodeId: 'intro_end',
     },
     {
       id: 'intro_end',
       speaker: 'Professor Node',
-      text: [
-        'Don\'t overthink it. Just go, try, and pay attention. Your instincts are better than you think.',
-        'And keep an eye on your little friend. Constructs have a way of showing you things you might miss.',
-      ],
+      text: "And keep an eye on your little friend. Constructs notice what we miss. Off you go.",
       actions: [{ type: 'set_flag', value: 'professor_node_intro_done' }],
     },
   ],
 };
 
+// Post-puzzle (fires after BOTH P0_1 and P0_2 are complete, before the
+// Sentinel). This absorbs the lore that used to live in the intro — now
+// the player has done the walking, so "the space between thought and
+// understanding" lands as observation rather than preamble.
 export const professorNodePostPuzzle: DialogueTree = {
   startNodeId: 'post_1',
   nodes: [
-    // Scene 0-7 from the script
     {
       id: 'post_1',
       speaker: 'Professor Node',
-      text: 'Both shards. The sequence and the mapping. You\'ve learned the two atoms of logic.',
+      text: "Both shards. The sequence and the mapping. You've learned the two atoms of logic.",
       nextNodeId: 'post_2',
     },
     {
       id: 'post_2',
       speaker: 'Professor Node',
       text: [
-        'A sequence followed. A pattern matched. Simple concepts — but together they power everything.',
-        'Every program ever written is built from those two ideas, combined in endless ways.',
+        'A sequence followed. A pattern matched. Simple ideas — but every program ever written is built from those two, recombined.',
+        "This Chamber is what scholars call the space between thought and understanding. You felt the thought. Now you can stand inside the understanding.",
       ],
       nextNodeId: 'post_3',
     },
@@ -132,8 +79,8 @@ export const professorNodePostPuzzle: DialogueTree = {
       id: 'post_3',
       speaker: 'Professor Node',
       text: [
-        'Beyond this chamber is the Sentinel — an ancient guardian. Not unfriendly. Just thorough.',
-        'Trust what you\'ve already learned and you\'ll be fine. Your Construct will be with you.',
+        "Bit has changed — look. It is no longer just a spark. Every concept you master, your Construct absorbs. You and it were always two halves of the same process.",
+        "Beyond this chamber is the Sentinel. Not unfriendly. Just thorough. Trust what you already know.",
       ],
     },
   ],

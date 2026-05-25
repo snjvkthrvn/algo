@@ -1,11 +1,26 @@
 /**
- * Twin Rivers NPC dialogue — implementing the FEEL IT → NAME IT pedagogical arc.
+ * Twin Rivers NPC dialogue — restored to honor the FEEL_IT → NAME_IT contract.
  *
- * Pre-puzzle: Focuses on physical descriptions/mechanics without algorithm names.
- * Post-puzzle: Names the algorithm (Two Pointers, Sliding Window) and explains the computer science concepts behind them.
+ * Pre-puzzle (FEEL_IT): describes the river world and the GOAL, never the
+ *   technique. No "two pointers", no "sliding window", no "complement".
+ * Post-puzzle (NAME_IT): the keeper hands the city name + complexity in
+ *   their own voice — each shaped by their relationship to the river.
+ *
+ * Voices:
+ *   Mirror Walker  — contemplative, sees doubles and symmetries everywhere
+ *   Bridge Keeper  — pragmatic, focused on what the load can bear
+ *   Window Fisher  — patient, philosophical, talks to herself
+ *   Current Rider  — bold, river-as-instructor, comfortable with risk
+ *   River Guide    — wry, has seen this all before, conserves words
+ *
+ * The "Maybe later" decline option that lived here previously is removed
+ * (Esc closes the dialogue if the player wants to walk away — a polite
+ * NPC saying "okay" and standing in the same spot was not real agency).
  */
 
 import type { DialogueTree } from '../types';
+
+// ─── Mirror Walker ────────────────────────────────────────────────────────────
 
 export const mirrorWalkerDialogue: DialogueTree = {
   startNodeId: 'start',
@@ -13,40 +28,34 @@ export const mirrorWalkerDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'Mirror Walker',
-      text: 'Greetings. The river banks are long and winding. I need to scan these two opposite shores to see where their path elevations align.',
+      text: 'These shores are twinned, did you notice? Look across. Every cove on the left has a sibling on the right.',
       nextNodeId: 'explain',
     },
     {
       id: 'explain',
       speaker: 'Mirror Walker',
-      text: 'Instead of starting from the beginning and scanning the whole map twice, I stand at the left shore and my reflection stands at the far right. We both walk inward toward the middle, checking elements together.',
+      text: 'I am looking for the spot where their heights match. The river drew this map a long time ago, and somewhere across, a left elevation and a right elevation agree. I have walked one bank, then the other. It takes all day and I lose my place.',
       nextNodeId: 'choice',
     },
     {
       id: 'choice',
       speaker: 'Mirror Walker',
-      text: 'Would you like to try walking from both banks inward?',
+      text: 'Would you walk the shore with me?',
       choices: [
-        { text: 'Let us start walking.', nextNodeId: 'start_puzzle' },
-        { text: 'Why walk inward?', nextNodeId: 'learn_more' },
-        { text: 'Maybe later.', nextNodeId: 'decline' },
+        { text: 'Let us walk together.', nextNodeId: 'start_puzzle' },
+        { text: 'Why would the two banks know each other?', nextNodeId: 'learn_more' },
       ],
     },
     {
       id: 'learn_more',
       speaker: 'Mirror Walker',
-      text: 'By starting at opposite ends and moving inward based on comparison, we can scan sorted data in a single pass. It is much faster than checking every combination!',
+      text: 'Because the river made both. What carved one carved the other. So the answer is somewhere in the relationship between them — not on either side alone. I think you have to look at both at once to see it.',
       nextNodeId: 'choice',
-    },
-    {
-      id: 'decline',
-      speaker: 'Mirror Walker',
-      text: 'Fair enough. I will keep scanning the banks.',
     },
     {
       id: 'start_puzzle',
       speaker: 'Mirror Walker',
-      text: 'Let us step onto the bank and mirror our movements.',
+      text: 'Step onto the bank. Watch the far shore as you walk. The river will show us the meeting.',
       actions: [{ type: 'start_puzzle', value: 'tr_1' }],
     },
   ],
@@ -58,22 +67,24 @@ export const mirrorWalkerPostDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'Mirror Walker',
-      text: 'Incredible! We met exactly where the elevations matched.',
+      text: 'There. The shores met. They knew each other the whole time. We just had to learn to read them.',
       nextNodeId: 'name_it',
     },
     {
       id: 'name_it',
       speaker: 'Mirror Walker',
-      text: 'This technique of using two pointers moving toward each other is called Two Pointers. It is highly efficient for searching sorted arrays.',
+      text: 'A pilgrim from the city told me they have a phrase for what we just did. "Two pointers." Two fingers on a map, walking toward each other, talking as they meet. The river already does this. The pilgrim was excited to find it. I was not.',
       nextNodeId: 'explain_more',
     },
     {
       id: 'explain_more',
       speaker: 'Mirror Walker',
-      text: 'Instead of an O(N²) nested loop search, Two Pointers allows us to find pairs or scan sequences in O(N) linear time. A powerful optimization for many structures!',
+      text: 'Pilgrim said the trick saves you from walking the map twice. "Linear" she called it — one pass, both eyes open. I would call it learning to see what was always there. The result is the same.',
     },
   ],
 };
+
+// ─── Bridge Keeper ────────────────────────────────────────────────────────────
 
 export const bridgeKeeperDialogue: DialogueTree = {
   startNodeId: 'start',
@@ -81,40 +92,34 @@ export const bridgeKeeperDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'Bridge Keeper',
-      text: 'The bridge is down. To rebuild it, we must match segment blocks from the left bank and right bank that add up exactly to our bridge span target.',
+      text: 'The bridge is down. I have a pile of stone segments on the left, another on the right, and a span to fill. The span has a fixed length.',
       nextNodeId: 'explain',
     },
     {
       id: 'explain',
       speaker: 'Bridge Keeper',
-      text: 'We place pointers on the smallest segment (left) and the largest segment (right). If their sum is too small, we move the left pointer to a larger block. If it is too large, we move the right pointer to a smaller block.',
+      text: 'A segment from each side, joined end-to-end, must add up exactly. Too short, the gap stays. Too long, the bridge buckles. I tried every pile-versus-pile combination yesterday and the sun set before I finished.',
       nextNodeId: 'choice',
     },
     {
       id: 'choice',
       speaker: 'Bridge Keeper',
-      text: 'Would you like to try matching the segments to rebuild the bridge?',
+      text: 'Will you help me reach the span?',
       choices: [
         { text: 'Let us build it.', nextNodeId: 'start_puzzle' },
-        { text: 'How do we adjust pointers?', nextNodeId: 'learn_more' },
-        { text: 'Not right now.', nextNodeId: 'decline' },
+        { text: 'Why was every-versus-every so slow?', nextNodeId: 'learn_more' },
       ],
     },
     {
       id: 'learn_more',
       speaker: 'Bridge Keeper',
-      text: 'Since the blocks are sorted by size, summing the extremes tells us which way to move. If sum < target, increment left. If sum > target, decrement right. We never test useless pairings!',
+      text: 'Because each pile has dozens of segments, and I would lift one, walk it across, try every other one, walk it back. The grouping itself was the slowness. I have a feeling there is a better dance — start with the smallest and the largest, and adjust from there. Less lifting, more thinking.',
       nextNodeId: 'choice',
-    },
-    {
-      id: 'decline',
-      speaker: 'Bridge Keeper',
-      text: 'Okay. The river remains uncrossed.',
     },
     {
       id: 'start_puzzle',
       speaker: 'Bridge Keeper',
-      text: 'Excellent. Let us align the segments on the bridge grounds.',
+      text: 'To the spans, then. Mind the wet planks.',
       actions: [{ type: 'start_puzzle', value: 'tr_2' }],
     },
   ],
@@ -126,22 +131,24 @@ export const bridgeKeeperPostDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'Bridge Keeper',
-      text: 'Fantastic! The segments match perfectly and the bridge is restored.',
+      text: 'Span filled. The bridge will hold. Try the lift. Solid.',
       nextNodeId: 'name_it',
     },
     {
       id: 'name_it',
       speaker: 'Bridge Keeper',
-      text: 'This is the pointer convergence pattern of Two Pointers. It solves the pair matching problem in sorted arrays without extra memory.',
+      text: 'The pilgrims call this the same thing as the Mirror Walker — "two pointers" — but the city teachers say there are two flavors. Hers is "meet in the middle." Mine is "match the sum." Same hands, different question. They both lean on the piles being sorted before you start.',
       nextNodeId: 'explain_more',
     },
     {
       id: 'explain_more',
       speaker: 'Bridge Keeper',
-      text: 'It operates in O(N) time complexity by leveraging the sorted order of the segments to prune the search space. A beautiful application of sorted logic!',
+      text: 'The lesson, I think, is this: when the piles are already in order, the order does the work for you. Each move you make tells you which way to go next. No wasted lifting. The river taught the city this trick. The city forgot, then re-learned it, and now they teach apprentices.',
     },
   ],
 };
+
+// ─── Window Fisher ────────────────────────────────────────────────────────────
 
 export const windowFisherDialogue: DialogueTree = {
   startNodeId: 'start',
@@ -149,40 +156,34 @@ export const windowFisherDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'Window Fisher',
-      text: 'Look at all these schools of fish passing by. I want to catch the highest concentration of fish, but my net has a fixed width of exactly K slots.',
+      text: 'My net is a fixed size. Always K slots across, no more, no less. The river decides where the fish are. I decide where to stand.',
       nextNodeId: 'explain',
     },
     {
       id: 'explain',
       speaker: 'Window Fisher',
-      text: 'Instead of pulling the net out and counting all over again for every spot, I can slide the net down one slot. I just subtract the fish that left behind and add the new fish that entered the net.',
+      text: 'I want to stand in the spot where the most fish are passing through my net at one moment. The river is long. Counting from scratch every time I shift my feet is exhausting. By dusk I have only checked half the river.',
       nextNodeId: 'choice',
     },
     {
       id: 'choice',
       speaker: 'Window Fisher',
-      text: 'Would you like to try sliding the net to catch the most fish?',
+      text: 'Will you try a few casts with me?',
       choices: [
-        { text: 'Let us cast the net.', nextNodeId: 'start_puzzle' },
-        { text: 'Why slide the net?', nextNodeId: 'learn_more' },
-        { text: 'Maybe later.', nextNodeId: 'decline' },
+        { text: 'Lower the net.', nextNodeId: 'start_puzzle' },
+        { text: 'Why is counting from scratch so slow?', nextNodeId: 'learn_more' },
       ],
     },
     {
       id: 'learn_more',
       speaker: 'Window Fisher',
-      text: 'By sliding the net, we reuse the sum of the middle slots. We only need to adjust the boundaries: subtract the exiting item from the left, and add the entering item to the right. It is extremely fast!',
+      text: 'Because most of the fish do not leave when I shift my feet. The middle of the net stays. Only the edges change. I have a feeling I should be paying attention to what enters and what leaves, not what stays. That would save a lot of counting.',
       nextNodeId: 'choice',
-    },
-    {
-      id: 'decline',
-      speaker: 'Window Fisher',
-      text: 'Understandable. The fish swim on.',
     },
     {
       id: 'start_puzzle',
       speaker: 'Window Fisher',
-      text: 'Splendid! Let us go to the docks and set the window.',
+      text: 'Down to the dock. The river does the rest.',
       actions: [{ type: 'start_puzzle', value: 'tr_3' }],
     },
   ],
@@ -194,22 +195,24 @@ export const windowFisherPostDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'Window Fisher',
-      text: 'Incredible catch! We maximized the haul easily.',
+      text: 'Look at that haul. Did not have to count once after the first cast. The river practically counted for us.',
       nextNodeId: 'name_it',
     },
     {
       id: 'name_it',
       speaker: 'Window Fisher',
-      text: 'This is called the Fixed Sliding Window pattern. We maintain a contiguous subarray of size K and slide it across the main array.',
+      text: 'The pilgrims have a phrase for this — "fixed sliding window." Because the net is a window, and you slide it. They love their plain names. The trick is what I felt: do not recount the middle, only adjust the edges.',
       nextNodeId: 'explain_more',
     },
     {
       id: 'explain_more',
       speaker: 'Window Fisher',
-      text: 'It avoids recalculating the sub-elements, transforming an O(N * K) brute-force recalculation into a simple O(N) linear time operation. Highly optimal for stream processing!',
+      text: 'They say without this trick the work is K times longer, because you would count every slot every time you stand somewhere new. With it, it stays "linear" — one pass down the river, however wide the net is. I think the river was trying to teach me this for years and I was too busy counting.',
     },
   ],
 };
+
+// ─── Current Rider ────────────────────────────────────────────────────────────
 
 export const currentRiderDialogue: DialogueTree = {
   startNodeId: 'start',
@@ -217,40 +220,34 @@ export const currentRiderDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'Current Rider',
-      text: 'The river currents are wild. I need to capture a segment of the current where the sum of forces is within my limits, but I want to make the net as wide as possible.',
+      text: 'Currents are not gentle today. I want to ride the LONGEST stretch I can without the force overwhelming my raft. Limit is up to me — past it, the raft comes apart.',
       nextNodeId: 'explain',
     },
     {
       id: 'explain',
       speaker: 'Current Rider',
-      text: 'I expand my net to the right to catch more currents. If the force gets too high, I shrink the net from the left until the force is safe again. The net size grows and shrinks dynamically.',
+      text: 'Unlike the Fisher, my window is not fixed. I let it grow when the river is calm, shrink it when the force gets near my limit. The trick is doing that without losing the rhythm.',
       nextNodeId: 'choice',
     },
     {
       id: 'choice',
       speaker: 'Current Rider',
-      text: 'Would you like to try riding these variable currents?',
+      text: 'Want to ride alongside?',
       choices: [
-        { text: 'Let us ride.', nextNodeId: 'start_puzzle' },
-        { text: 'How does it resize?', nextNodeId: 'learn_more' },
-        { text: 'No, thank you.', nextNodeId: 'decline' },
+        { text: 'I will take a raft.', nextNodeId: 'start_puzzle' },
+        { text: 'Grow when calm, shrink when rough — that is the whole strategy?', nextNodeId: 'learn_more' },
       ],
     },
     {
       id: 'learn_more',
       speaker: 'Current Rider',
-      text: 'We expand the right pointer to ingest new elements. If the total violates our constraint, we increment the left pointer to shrink the window, updating the running sum until the constraint is met again.',
+      text: 'It is the only strategy that works. The river does not stop for you to plan. You feel the force build, you bring the front of the raft in. You feel it drop, you let the back of the raft drag farther. The window breathes with the river. That is the whole secret.',
       nextNodeId: 'choice',
-    },
-    {
-      id: 'decline',
-      speaker: 'Current Rider',
-      text: 'Stay on the dry shore then. The currents wait for no one.',
     },
     {
       id: 'start_puzzle',
       speaker: 'Current Rider',
-      text: 'Perfect! Step onto the rider platforms and adjust the net.',
+      text: 'Onto the rider platforms. The currents wait for no one — but if you read them, they cooperate.',
       actions: [{ type: 'start_puzzle', value: 'tr_4' }],
     },
   ],
@@ -262,22 +259,26 @@ export const currentRiderPostDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'Current Rider',
-      text: 'Splendid! We navigated the currents and maximized our coverage.',
+      text: 'You rode the longest stretch I have ever seen anyone ride. The river respected you. That does not happen often.',
       nextNodeId: 'name_it',
     },
     {
       id: 'name_it',
       speaker: 'Current Rider',
-      text: 'This is the Variable Sliding Window pattern. The window boundaries adjust independently based on state conditions.',
+      text: 'The Fisher and I share a name with the pilgrims — "sliding window" — but her flavor is "fixed" and mine is "variable." Both feet of the window walk forward, but each foot chooses its own moment. That choice is the difference.',
       nextNodeId: 'explain_more',
     },
     {
       id: 'explain_more',
       speaker: 'Current Rider',
-      text: 'It resolves optimal subarray questions under constraint rules in O(N) time complexity, since both left and right pointers only move forward across the array once.',
+      text: 'The pilgrims say it stays "linear" because each foot only walks forward once across the whole river, and they walk together. The forward-only rule is what keeps it fast. The river already knew. The pilgrims just wrote it down.',
     },
   ],
 };
+
+// ─── River Guide ──────────────────────────────────────────────────────────────
+// Voice: wry, has seen this all before, conserves words. The guide knows the
+// keepers and gently routes the player toward them without lecturing.
 
 export const riverGuideIntroDialogue: DialogueTree = {
   startNodeId: 'start',
@@ -285,13 +286,13 @@ export const riverGuideIntroDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'River Guide',
-      text: 'Welcome to Twin Rivers. Here, logic flows like water. The paths branch, but the underlying patterns are connected.',
+      text: 'Twin Rivers. Two banks, one current, four keepers. They will each ask you for help. The river teaches whoever helps.',
       nextNodeId: 'hint',
     },
     {
       id: 'hint',
       speaker: 'River Guide',
-      text: 'Look closely at the shores and platforms. If you feel stuck, try talking to the Mirror Walker near the entrance bank. They will show you how to walk two paths at once.',
+      text: 'Start with the Mirror Walker by the entrance bank. She is the patient one. The others come naturally after.',
     },
   ],
 };
@@ -302,13 +303,13 @@ export const riverGuideMidDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'River Guide',
-      text: 'You are making good progress. The bridge is halfway up, and the fish are sliding into the docks.',
+      text: 'You are about halfway through what the river has to teach.',
       nextNodeId: 'hint',
     },
     {
       id: 'hint',
       speaker: 'River Guide',
-      text: 'If you want to cross to the highlands, you must first challenge the Mirror Serpent at the far east. Make sure you understand how both pointers and sliding windows control sizes!',
+      text: 'The Mirror Serpent waits at the eastern shore. It is older than the keepers. It will ask you to use everything they showed you, at once, while it watches.',
     },
   ],
 };
@@ -319,7 +320,7 @@ export const riverGuideCompleteDialogue: DialogueTree = {
     {
       id: 'start',
       speaker: 'River Guide',
-      text: 'You have mastered the flow of Twin Rivers! The Mirror Serpent has been overcome, and the gate to the Hash Highlands is open.',
+      text: 'The Serpent is quiet. The gate to the highlands is open. Good. The river will remember you.',
     },
   ],
 };
