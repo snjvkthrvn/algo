@@ -1,15 +1,35 @@
 /**
  * NPC - Behavior states, dialogue trigger, procedural appearance.
+ *
+ * Animation layers (each independent, each cleanable):
+ *   idleBobTween     y-axis hop (existing)
+ *   idleBreathTween  subtle scale breath on top of the bob (Phase 2)
+ *   speakingTween    glow + scale pulse while this NPC is the active
+ *                    DialogueSystem speaker (Phase 2)
+ *
+ * All tweens are tracked so destroy()/reset() can stop them cleanly. New
+ * tweens added here must be either pushed into the activeTweens list or
+ * stored as a single named field that's stopped in destroy().
  */
 
 import Phaser from 'phaser';
 import { COLORS, FONTS } from '../config/constants';
 import { PROLOGUE_REWORK_KEYS, PROLOGUE_SHEET_KEYS, VISUAL_REVAMP_KEYS } from '../config/assets';
+import { eventBus, GameEvents } from '../core/EventBus';
 import type { NPCConfig } from '../data/types';
 
 export type { NPCConfig };
 
+/**
+ * Display scale per sprite key. Without an entry here a sprite NPC falls
+ * back to ~0.08 (sized for the prologue-sheet imagegen art), which is far
+ * too small for the new 192x192 art-direction keepers — leaving them as
+ * a default would invert the visual hierarchy (farmers larger than the
+ * cosmic Rune Keeper). Each new keeper that gets art must register here.
+ */
 const STATIC_NPC_SCALES: Record<string, number> = {
+  // Prologue cast — kept at 0.22 so the prologue ensemble reads as one
+  // visually-cohesive group.
   [PROLOGUE_REWORK_KEYS.PROFESSOR_NODE]: 0.22,
   [PROLOGUE_REWORK_KEYS.RUNE_KEEPER]: 0.22,
   [PROLOGUE_REWORK_KEYS.CONSOLE_KEEPER]: 0.22,
@@ -17,7 +37,29 @@ const STATIC_NPC_SCALES: Record<string, number> = {
   [VISUAL_REVAMP_KEYS.PROFESSOR_NODE]: 0.22,
   [VISUAL_REVAMP_KEYS.RUNE_KEEPER]: 0.22,
   [VISUAL_REVAMP_KEYS.CONSOLE_KEEPER]: 0.22,
+  [VISUAL_REVAMP_KEYS.WATCHER]: 0.22,
+  [VISUAL_REVAMP_KEYS.VILLAGE_ELDER]: 0.95,
   [VISUAL_REVAMP_KEYS.GLITCH]: 0.22,
+
+  // Array Plains keepers (192x192 downscaled art) — 0.95 lands their head
+  // around 180px tall, matching the prologue cast's apparent height when
+  // the camera is at the standard overworld zoom.
+  [VISUAL_REVAMP_KEYS.SORTING_FARMER]: 0.95,
+  [VISUAL_REVAMP_KEYS.BASKET_KEEPER]: 0.95,
+  [VISUAL_REVAMP_KEYS.CROP_SORTER]: 0.95,
+  [VISUAL_REVAMP_KEYS.TILE_WORKER]: 0.95,
+
+  // Twin Rivers keepers (256x256 placeholders today, real art via
+  // codex exec in Phase 5) — 0.78 lands them at roughly the same screen
+  // height as the Array Plains cast.
+  [VISUAL_REVAMP_KEYS.MIRROR_WALKER]: 0.78,
+  [VISUAL_REVAMP_KEYS.BRIDGE_KEEPER]: 0.78,
+  [VISUAL_REVAMP_KEYS.WINDOW_FISHER]: 0.78,
+  [VISUAL_REVAMP_KEYS.CURRENT_RIDER]: 0.78,
+
+  // Hash Highlands keeper (256x256 draft) — same target screen size as
+  // Twin Rivers; revisit once HH gets art.
+  [VISUAL_REVAMP_KEYS.HASH_KEEPER]: 0.78,
 };
 
 export class NPC {
@@ -28,6 +70,19 @@ export class NPC {
   private glowGraphics: Phaser.GameObjects.Graphics;
   private isHighlighted: boolean = false;
   private nameTag: Phaser.GameObjects.Text;
+
+  /** Active per-NPC tweens — stopped on destroy / reset to prevent leaks. */
+  private activeTweens: Phaser.Tweens.Tween[] = [];
+  /** True while DialogueSystem reports this NPC's id is the active speaker. */
+  private isSpeaking = false;
+  /** Bound listener — must be removed in destroy() or the eventBus leaks refs. */
+  private readonly onDialogueStart = (data: unknown): void => {
+    const { npcId } = data as { npcId?: string };
+    if (npcId && npcId === this.config.id) this.setSpeaking(true);
+  };
+  private readonly onDialogueEnd = (): void => {
+    if (this.isSpeaking) this.setSpeaking(false);
+  };
 
   constructor(scene: Phaser.Scene, config: NPCConfig) {
     this.scene = scene;
@@ -62,15 +117,75 @@ export class NPC {
     this.body.setSize(28, 32);
     this.body.setImmovable(true);
 
-    // Idle bob animation
-    scene.tweens.add({
+    // Idle bob — gentle vertical hop. Slight per-NPC offset so a crowd of
+    // NPCs doesn't bob in lockstep (the choreography looks robotic).
+    const bobOffset = Math.random() * 600;
+    this.activeTweens.push(scene.tweens.add({
       targets: this.sprite,
       y: y - 2,
       duration: 2000,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
-    });
+      delay: bobOffset,
+    }));
+
+    // Idle breath — subtle scale tween layered on top of the bob so NPCs
+    // feel alive even when motionless. The breath rate is slower than the
+    // bob so the two combine asymmetrically (no obvious rhythm) — this is
+    // the cheapest possible "this character is breathing" effect.
+    const baseScale = this.sprite.scaleX || 1;
+    this.activeTweens.push(scene.tweens.add({
+      targets: this.sprite,
+      scaleX: baseScale * 1.015,
+      scaleY: baseScale * 1.015,
+      duration: 2800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+      delay: bobOffset + 350,
+    }));
+
+    // Subscribe to dialogue lifecycle so this NPC can pulse when speaking.
+    eventBus.on(GameEvents.DIALOGUE_START, this.onDialogueStart, this);
+    eventBus.on(GameEvents.DIALOGUE_END, this.onDialogueEnd, this);
+  }
+
+  /**
+   * Pulse the glow and gently emphasize the sprite while this NPC is the
+   * active DialogueSystem speaker. The effect is intentionally restrained —
+   * the player's focus should be on the dialogue text, not the NPC body
+   * doing a jig. The glow is the primary cue; scale is a supporting note.
+   */
+  setSpeaking(active: boolean): void {
+    if (this.isSpeaking === active) return;
+    this.isSpeaking = active;
+
+    if (active) {
+      this.glowGraphics.setAlpha(1);
+      this.activeTweens.push(this.scene.tweens.add({
+        targets: this.glowGraphics,
+        alpha: { from: 0.55, to: 1 },
+        duration: 750,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      }));
+    } else {
+      // Stop the speaking-pulse tween (last one added; safe to filter on
+      // target). The glow drops back to whatever the highlight state asks.
+      const remaining: Phaser.Tweens.Tween[] = [];
+      for (const t of this.activeTweens) {
+        const targets = (t as unknown as { targets?: unknown[] }).targets ?? [];
+        if (targets[0] === this.glowGraphics) {
+          t.stop();
+        } else {
+          remaining.push(t);
+        }
+      }
+      this.activeTweens = remaining;
+      this.glowGraphics.setAlpha(this.isHighlighted ? 1 : 0);
+    }
   }
 
   private getNPCColor(): number {
@@ -191,6 +306,10 @@ export class NPC {
   }
 
   destroy(): void {
+    eventBus.off(GameEvents.DIALOGUE_START, this.onDialogueStart, this);
+    eventBus.off(GameEvents.DIALOGUE_END, this.onDialogueEnd, this);
+    for (const t of this.activeTweens) t.stop();
+    this.activeTweens.length = 0;
     this.sprite.destroy();
     this.glowGraphics.destroy();
     this.nameTag.destroy();
@@ -204,5 +323,6 @@ export class NPC {
     this.glowGraphics.setPosition(x, y).setAlpha(0).setVisible(true);
     this.nameTag.setText(config.name).setPosition(x, y - 46).setVisible(false);
     this.isHighlighted = false;
+    this.isSpeaking = false;
   }
 }

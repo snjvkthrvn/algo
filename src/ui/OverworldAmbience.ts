@@ -100,6 +100,35 @@ export class OverworldAmbience {
         },
       }));
     }
+
+    // Mandala pulse — three nested cyan rings in the center of the screen
+    // that breathe slowly out of sync. Reads as "the chamber itself has a
+    // heartbeat" without taking attention from the playable surface.
+    const cx = width / 2;
+    const cy = height / 2;
+    const ringDefs: Array<{ radius: number; alpha: number; delay: number }> = [
+      { radius: 48, alpha: 0.12, delay: 0 },
+      { radius: 80, alpha: 0.08, delay: 1100 },
+      { radius: 124, alpha: 0.05, delay: 2400 },
+    ];
+    for (const def of ringDefs) {
+      const ring = this.scene.add.circle(cx, cy, def.radius, 0x22d3ee, def.alpha)
+        .setDepth(DEPTH_LOW)
+        .setScrollFactor(0)
+        .setStrokeStyle(1, 0x67e8f9, def.alpha * 1.5);
+      ring.setFillStyle(); // outline only — fill would dim the foreground
+      this.children.push(ring);
+      this.tweens.push(this.scene.tweens.add({
+        targets: ring,
+        scale: { from: 1, to: 1.08 },
+        alpha: { from: def.alpha * 1.5, to: def.alpha * 0.5 },
+        duration: 5400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: def.delay,
+      }));
+    }
   }
 
   private buildFarmland(opts: OverworldAmbienceOptions): void {
@@ -169,6 +198,34 @@ export class OverworldAmbience {
         ease: 'Sine.easeInOut',
       }));
     }
+
+    // Wheat sway — a row of thin vertical stalks along the bottom screen
+    // edge that rotate gently in a not-quite-uniform breeze. Each stalk
+    // has its own phase + amplitude so the row reads as wind, not metronome.
+    // Pinned to screen-space (setScrollFactor 0) so the breeze stays visible
+    // even when the camera moves to follow the player.
+    const stalkCount = Math.floor(40 * intensity);
+    const stalkBaseY = height - 8;
+    for (let i = 0; i < stalkCount; i++) {
+      const stalkColor = 0xb8d96b;
+      const stalkX = (width / stalkCount) * i + Math.random() * (width / stalkCount);
+      const stalkHeight = 10 + Math.random() * 6;
+      const stalk = this.scene.add.rectangle(
+        stalkX, stalkBaseY, 1.5, stalkHeight, stalkColor, 0.7,
+      ).setDepth(DEPTH_LOW + 2).setScrollFactor(0);
+      // Pivot at the base so the rotation reads as sway, not tumble.
+      stalk.setOrigin(0.5, 1);
+      this.children.push(stalk);
+      this.tweens.push(this.scene.tweens.add({
+        targets: stalk,
+        angle: { from: -6, to: 6 },
+        duration: 1600 + Math.random() * 800,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: Math.random() * 1200,
+      }));
+    }
   }
 
   private buildRiver(opts: OverworldAmbienceOptions): void {
@@ -222,6 +279,40 @@ export class OverworldAmbience {
         repeat: -1,
         ease: 'Linear',
         onRepeat: () => leaf.setPosition(-10, yMin + Math.random() * (yMax - yMin)),
+      }));
+    }
+
+    // Water shimmer — short horizontal light bands that fade in then drift
+    // sideways and fade out. Cheap "sun glints on the surface" effect.
+    // Multiple bands fire on staggered timers so the river always has a
+    // few catching the light at any moment.
+    const shimmerCount = Math.floor(8 * intensity);
+    for (let i = 0; i < shimmerCount; i++) {
+      const startY = yMin + Math.random() * (yMax - yMin);
+      const startX = Math.random() * width;
+      const band = this.scene.add.rectangle(
+        startX, startY,
+        18 + Math.random() * 14, 1,
+        0xeaf6ff, 0,
+      ).setDepth(DEPTH_LOW + 2).setScrollFactor(0);
+      this.children.push(band);
+      // Each band cycles: fade in, drift sideways, fade out, jump to a new
+      // random position, repeat. Yoyo gives the fade-in/out for free; the
+      // x tween provides the drift; onRepeat re-randomizes position so the
+      // pattern never settles into a visible cycle.
+      this.tweens.push(this.scene.tweens.add({
+        targets: band,
+        alpha: { from: 0, to: 0.55 },
+        x: '+=28',
+        duration: 1500 + Math.random() * 1200,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: Math.random() * 3500,
+        onRepeat: () => band.setPosition(
+          Math.random() * width,
+          yMin + Math.random() * (yMax - yMin),
+        ),
       }));
     }
   }

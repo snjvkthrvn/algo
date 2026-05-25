@@ -18,6 +18,16 @@ import { a11yManager } from '../../core/A11yManager';
 import type { ConceptBridgeData } from '../../data/types';
 import { PARCHMENT_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
 import { RegionBackdrop, type RegionBackdropId, type RegionBackdropOptions } from '../../ui/RegionBackdrop';
+import { GLITCH_FAILURE_TAUNTS } from '../../data/dialogue/glitch_dialogue';
+
+/**
+ * Module-scope so it survives scene.restart() — Phaser destroys the Scene
+ * instance on restart, so any state we want to carry into the rebuilt
+ * scene has to live above the instance. Cleared once the rebuilt scene
+ * picks it up. The audit flagged that "the world goes silent on failure"
+ * was a real problem; this is the smallest possible "world reacts" hook.
+ */
+let pendingFailureTaunt: string | null = null;
 
 export abstract class BasePuzzleScene extends Phaser.Scene {
   // UI Elements
@@ -77,6 +87,11 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     audioManager.setScene(this);
     this.createPuzzleUI();
     this.setupKeyboardShortcuts();
+
+    // Float a queued Glitch failure taunt above the puzzle frame, after
+    // the fade-in clears (~300ms) so the text reads on a settled scene
+    // instead of mid-fade. No-op when no taunt is queued.
+    this.time.delayedCall(380, () => this.maybeShowFailureTaunt());
   }
 
   preload(): void {
@@ -548,11 +563,80 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected restartPuzzle(): void {
     this.attempts++;
+    // Glitch heckles on restart — gated on (a) the player having met Glitch
+    // (post P0_1, otherwise the taunt has no source) and (b) a randomness
+    // factor so taunts feel like reactions, not a nag. The taunt is queued
+    // to the next scene because this scene is about to be destroyed by
+    // scene.restart() — see pendingFailureTaunt at the top of the file.
+    if (this.shouldQueueFailureTaunt()) {
+      pendingFailureTaunt = GLITCH_FAILURE_TAUNTS[
+        Math.floor(Math.random() * GLITCH_FAILURE_TAUNTS.length)
+      ];
+    }
     this.scene.restart({
       returnScene: this.returnScene,
       previousAttempts: this.attempts,
       previousHintsUsed: this.hintsUsed,
     });
+  }
+
+  /**
+   * True ~55% of the time once the player has met Glitch. The randomness
+   * is the difference between "Glitch is heckling" (interesting) and
+   * "Glitch heckles every restart" (annoying). 55% lands around "more
+   * often than not" without becoming predictable.
+   */
+  private shouldQueueFailureTaunt(): boolean {
+    if (!gameState.isPuzzleCompleted('p0_1')) return false;
+    return Math.random() < 0.55;
+  }
+
+  /**
+   * Pick up a queued Glitch failure taunt from the previous scene instance
+   * and float it briefly at the top of the puzzle screen. Should be called
+   * from create() after the puzzle UI is mounted (subclasses opt in by
+   * calling this — keeping it explicit means a puzzle that doesn't want
+   * the heckle, e.g. a tutorial round, can skip it).
+   */
+  protected maybeShowFailureTaunt(): void {
+    if (!pendingFailureTaunt) return;
+    const text = pendingFailureTaunt;
+    pendingFailureTaunt = null;
+
+    const { width } = this.cameras.main;
+    const taunt = this.add.text(width / 2, 60, `Glitch: "${text}"`, {
+      fontSize: '11px',
+      fontFamily: FONTS.RETRO,
+      color: '#ff9494',
+      stroke: '#000000',
+      strokeThickness: 3,
+      align: 'center',
+      wordWrap: { width: width - 80 },
+    }).setOrigin(0.5).setDepth(9999).setScrollFactor(0).setAlpha(0);
+
+    // Slide-down fade-in, hold for ~1.6s, slide-up fade-out + destroy.
+    this.tweens.add({
+      targets: taunt,
+      alpha: { from: 0, to: 1 },
+      y: 74,
+      duration: 320,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        this.time.delayedCall(1600, () => {
+          this.tweens.add({
+            targets: taunt,
+            alpha: 0,
+            y: 60,
+            duration: 360,
+            ease: 'Sine.easeIn',
+            onComplete: () => taunt.destroy(),
+          });
+        });
+      },
+    });
+
+    // Pipe through the a11y layer so screen-reader users hear the reaction.
+    a11yManager.announce(`Glitch says: ${text}`, false);
   }
 
   protected onCorrectAnswer(explanation?: string): void {
