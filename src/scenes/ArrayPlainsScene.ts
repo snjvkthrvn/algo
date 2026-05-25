@@ -57,7 +57,7 @@ export class ArrayPlainsScene extends BaseOverworldScene {
   private shufflerGate: InteractableObject | null = null;
   private markerObjects: InteractableObject[] = [];
   private puzzleObjects: InteractableObject[] = [];
-  private onDialogueAction!: (...args: any[]) => void;
+  private onDialogueAction!: (...args: unknown[]) => void;
 
   // Overworld sequence puzzle
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];

@@ -57,7 +57,7 @@ export class TwinRiversScene extends BaseOverworldScene {
   private nextGateway: InteractableObject | null = null;
   private guide: InteractableObject | null = null;
   private puzzleObjects: InteractableObject[] = [];
-  private onDialogueAction!: (...args: any[]) => void;
+  private onDialogueAction!: (...args: unknown[]) => void;
   private closeBetaGateModal: (() => void) | null = null;
   private twinRiversClosureStarted = false;
   private twinRiversClosureInProgress = false;

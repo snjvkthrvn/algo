@@ -56,7 +56,9 @@ export class DialogueSystem {
   }
 
   startDialogue(tree: DialogueTree, npcId: string, onEnd?: () => void): void {
-    console.log(`[DialogueSystem] Starting: ${npcId} (node: ${tree.startNodeId})`);
+    if (import.meta.env.DEV) {
+      console.log(`[DialogueSystem] Starting: ${npcId} (node: ${tree.startNodeId})`);
+    }
     // Replacing in-flight dialogue runs the previous onEnd so interaction/movement
     // hooks stay paired; starting fresh without this left stale onEnd/null trees.
     if (this.isActive) {

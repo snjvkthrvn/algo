@@ -1,0 +1,39 @@
+# Default: treat all text files as text and normalize line endings to LF on
+# checkin. This ends the "LF will be replaced by CRLF" autocrlf warnings and
+# makes diffs deterministic across Windows/macOS/Linux contributors.
+* text=auto eol=lf
+
+# Binary assets — never touch line endings, never try to merge.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.gif  binary
+*.ico  binary
+*.svg  text
+
+# Audio
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.m4a binary
+
+# Fonts
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+
+# Common project text files (explicit so they always render with LF
+# regardless of autocrlf settings on contributor machines).
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.html      text eol=lf
+*.css       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+*.gitignore text eol=lf

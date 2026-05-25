@@ -787,14 +787,18 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   private beginStoryBeat(name: string = 'unknown'): void {
-    console.log(`[PrologueScene] Beginning story beat: ${name}`);
+    if (import.meta.env.DEV) {
+      console.log(`[PrologueScene] Beginning story beat: ${name}`);
+    }
     this.storyBeatActive = true;
     this.player.freeze();
     this.interactionSystem?.update(false);
   }
 
   private endStoryBeat(name: string = 'unknown'): void {
-    console.log(`[PrologueScene] Ending story beat: ${name}`);
+    if (import.meta.env.DEV) {
+      console.log(`[PrologueScene] Ending story beat: ${name}`);
+    }
     this.storyBeatActive = false;
     this.player.unfreeze();
     this.handlePendingPrologueBeat();
