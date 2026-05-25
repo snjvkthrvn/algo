@@ -50,6 +50,7 @@ import {
 } from '../../data/puzzles/twinRiversPuzzleLogic';
 import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
 import { PuzzlePhase } from '../../data/types';
+import { playBossPhaseTransition } from '../../ui/BossPhaseTransition';
 
 const BLUE_BANK = 0x5ab7d4;
 const ORANGE_BANK = 0xf97316;
@@ -1885,7 +1886,15 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.actionLocked = true;
     audioManager.playCorrectTone();
     JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2 + 64);
-    this.time.delayedCall(800, () => this.startTwoSumPhase());
+    // Phase transition — the Serpent shifts from reversal to pair-finding.
+    // Teal accent foreshadows the converging-pointers UI from the Bridge.
+    playBossPhaseTransition(this, {
+      phaseNumber: 'II',
+      phaseName: 'PAIR THE SHORES',
+      patternHint: 'Two stones, one target weight. Walk inward.',
+      accentColor: 0x22d3ee,
+      onComplete: () => this.startTwoSumPhase(),
+    });
   }
 
   // ---- Two-sum phase logic ----
@@ -1943,9 +1952,17 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.row.pulseTile(this.twoSumLeft, COLORS.SUCCESS);
     this.row.pulseTile(this.twoSumRight, COLORS.SUCCESS);
     JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2 + 64);
-    this.time.delayedCall(900, () => {
-      this.actionLocked = false;
-      this.startFixedWindowPhase();
+    // Final phase shift — the sliding-window mechanic. Pale-gold accent
+    // matches the "sun on water" shimmer used in the Window Fisher puzzle.
+    playBossPhaseTransition(this, {
+      phaseNumber: 'III',
+      phaseName: 'RIDE THE CURRENT',
+      patternHint: 'Slide the window. Heaviest catch wins.',
+      accentColor: 0xeaf6ff,
+      onComplete: () => {
+        this.actionLocked = false;
+        this.startFixedWindowPhase();
+      },
     });
   }
 

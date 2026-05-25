@@ -27,6 +27,7 @@ import {
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
 import { buildShufflerPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
+import { playBossPhaseTransition } from '../../ui/BossPhaseTransition';
 
 type ShufflerPhase = 'bubble' | 'hash' | 'pair' | 'won';
 
@@ -243,7 +244,15 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.chaosCountdownText = null;
     audioManager.playCorrectTone();
     JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2);
-    this.time.delayedCall(900, () => this.startHashPhase());
+    // Phase transition banner — the Shuffler is shifting from sort to map.
+    // Gold accent matches the hashing palette and foreshadows the bucket UI.
+    playBossPhaseTransition(this, {
+      phaseNumber: 'II',
+      phaseName: 'HASH STORM',
+      patternHint: 'Crops fall fast. The bucket is the answer.',
+      accentColor: 0xfbbf24,
+      onComplete: () => this.startHashPhase(),
+    });
   }
 
   // -------- Phase 2: Hash Storm --------
@@ -344,7 +353,15 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.hashTimer = null;
     audioManager.playCorrectTone();
     JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2);
-    this.time.delayedCall(700, () => this.startPairPhase());
+    // Final phase shift — pair lockdown uses complement lookup (two-sum).
+    // Cyan accent signals "memory-of-what-you-saw" tools the player used in AP_4.
+    playBossPhaseTransition(this, {
+      phaseNumber: 'III',
+      phaseName: 'PAIR LOCKDOWN',
+      patternHint: 'Find the two tiles that complete the target weight.',
+      accentColor: 0x06b6d4,
+      onComplete: () => this.startPairPhase(),
+    });
   }
 
   // -------- Phase 3: Pair Lockdown --------
