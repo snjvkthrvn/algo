@@ -162,7 +162,7 @@ export class BootScene extends Phaser.Scene {
     this.add.text(width / 2, height - 40, 'A world of algorithms awaits', {
       fontSize: '10px',
       fontFamily: FONTS.RETRO,
-      color: '#346856',
+      color: '#88c070',
     }).setOrigin(0.5);
 
     // CRT power-on — two black bars slide apart from center

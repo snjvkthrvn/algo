@@ -67,17 +67,10 @@ Puzzle scenes extend `BasePuzzleScene` (`src/scenes/puzzles/BasePuzzleScene.ts`)
 
 ### Visual design rules
 
-Game Boy 4-color palette with pixel-art rendering (all assets loaded with `pixelArt: true`, `antialias: false`, `roundPixels: true`):
+Pixel-art rendering — assets load with `pixelArt: true`, `antialias: false`, `roundPixels: true`. The game is **full-color pixel art** (Stardew Valley / Hollow Knight register): region backdrops, characters, and props use a full, art-directed palette chosen per region. There is **no fixed or limited palette** — and no Game Boy / 4-color constraint.
 
-| Token | Hex | Role |
-|---|---|---|
-| `COLORS.TEXT_DARK` / `COLORS.ERROR` | `#081820` | Primary text, darkest |
-| `COLORS.WARNING` | `#346856` | Medium dark |
-| `COLORS.SUCCESS` / `COLORS.TEXT_MUTED` | `#88c070` | Accent, success |
-| `COLORS.TEXT_LIGHT` / `COLORS.FRAME_BG` | `#e0f8d0` | Panel fill, lightest |
-| `COLORS.CYAN_GLOW` | `#06b6d4` | Interactive state only |
+The `COLORS` constants in `src/config/constants.ts` are **UI theme tokens** for interface chrome (panels, text, HUD) — use them for UI instead of hardcoding hex. They scope to the UI only; they do not constrain region or character art.
 
-- Cyan (`CYAN_GLOW`) is reserved for interactive highlights — don't use it for decorative fills.
 - All UI panel chrome goes through `drawPanel()` (`src/ui/panel.ts`) so borders stay 1-pixel sharp.
 - Positions must snap to 8-pixel grid for crisp rendering.
 

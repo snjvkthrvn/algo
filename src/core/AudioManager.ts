@@ -170,6 +170,18 @@ class AudioManagerClass {
     this.playTone(880, 50, 'square');
   }
 
+  /**
+   * Soft two-note ascend played when a dialogue tree opens. Distinct from
+   * the menu click tone (square wave 880Hz) so the player's ear can tell
+   * "started talking" apart from "selected an option". A sine + triangle
+   * pair lands in the warm middle range; cheap enough to fire on every
+   * NPC interaction without becoming fatiguing.
+   */
+  playDialogueOpenTone(): void {
+    this.playTone(392, 70, 'sine');     // G4
+    setTimeout(() => this.playTone(523, 90, 'triangle'), 50); // C5
+  }
+
   applyVolumeSettings(): void {
     if (!this.currentMusic) return;
     const { musicVolume } = gameState.getSettings();

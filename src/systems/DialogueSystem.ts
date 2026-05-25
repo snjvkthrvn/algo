@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import { DialogueBox } from '../ui/DialogueBox';
 import { eventBus, GameEvents } from '../core/EventBus';
 import { gameState } from '../core/GameStateManager';
+import { audioManager } from '../core/AudioManager';
 import type { DialogueTree, DialogueNode, DialogueAction, DialogueChoice } from '../data/types';
 
 export class DialogueSystem {
@@ -66,6 +67,11 @@ export class DialogueSystem {
     this.onDialogueEnd = onEnd || null;
     this.isActive = true;
     this.activationTime = this.scene.time.now;
+
+    // Soft audio cue — distinct from the menu click. "Field notes" (signs/notices)
+    // also pass through startDialogue, so this gives every NPC interaction the
+    // same gentle confirmation that the player is now in conversation mode.
+    audioManager.playDialogueOpenTone();
 
     eventBus.emit(GameEvents.DIALOGUE_START, { treeId: tree.startNodeId, npcId });
     this.showNode(tree.startNodeId);

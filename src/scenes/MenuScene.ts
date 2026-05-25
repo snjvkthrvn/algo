@@ -199,7 +199,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(width / 2, height - 56, 'A world of algorithms awaits', {
       fontSize: '12px',
       fontFamily: FONTS.RETRO,
-      color: '#7a7aaa',
+      color: '#88c070',
     }).setOrigin(0.5);
 
     if (recoveryNotice) {
