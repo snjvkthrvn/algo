@@ -64,6 +64,39 @@ export const VISUAL_REVAMP_KEYS = {
   PROP_ARRAY_MARKER: 'visual-revamp-prop-array-marker',
   PROP_WATER_BUOY: 'visual-revamp-prop-water-buoy',
   PROP_CORE_TERMINAL: 'visual-revamp-prop-core-terminal',
+  // Region environmental props (Phase 7 — generated via art_sources/generate_props.py).
+  // Single-frame static props use scene.add.image; sprite-sheet props use
+  // scene.add.sprite + scene.anims.create with the frame counts noted in
+  // REGION_PROP_SPRITE_ASSETS below.
+  PROP_RUNE_CRYSTAL: 'visual-revamp-prop-rune-crystal',          // 4-frame pulse
+  PROP_FLOATING_ORB: 'visual-revamp-prop-floating-orb',
+  PROP_RUNE_TOTEM: 'visual-revamp-prop-rune-totem',
+  PROP_ENERGY_BEAM: 'visual-revamp-prop-energy-beam',
+  PROP_CHICKEN: 'visual-revamp-prop-chicken',                    // 4-frame pecking
+  PROP_SCARECROW: 'visual-revamp-prop-scarecrow',
+  PROP_HAY_BALE: 'visual-revamp-prop-hay-bale',
+  PROP_WATERING_CAN: 'visual-revamp-prop-watering-can',
+  PROP_SMALL_BOAT: 'visual-revamp-prop-small-boat',
+  PROP_LANTERN_POST: 'visual-revamp-prop-lantern-post',          // 3-frame flicker
+  PROP_LILY_PAD_CLUSTER: 'visual-revamp-prop-lily-pad-cluster',
+  PROP_DRAGONFLY: 'visual-revamp-prop-dragonfly',                // 2-frame wings
+  // Speaker portraits (Phase 11) — 64x64 head-and-shoulders crops generated
+  // by art_sources/generate_portraits.py from the existing character sprites.
+  // DialogueBox.show() swaps PORTRAIT_FRAME texture based on speaker name.
+  PORTRAIT_PROFESSOR_NODE:  'visual-revamp-portrait-professor-node',
+  PORTRAIT_RUNE_KEEPER:     'visual-revamp-portrait-rune-keeper',
+  PORTRAIT_CONSOLE_KEEPER:  'visual-revamp-portrait-console-keeper',
+  PORTRAIT_WATCHER:         'visual-revamp-portrait-watcher',
+  PORTRAIT_GLITCH:          'visual-revamp-portrait-glitch',
+  PORTRAIT_SORTING_FARMER:  'visual-revamp-portrait-sorting-farmer',
+  PORTRAIT_BASKET_KEEPER:   'visual-revamp-portrait-basket-keeper',
+  PORTRAIT_CROP_SORTER:     'visual-revamp-portrait-crop-sorter',
+  PORTRAIT_TILE_WORKER:     'visual-revamp-portrait-tile-worker',
+  PORTRAIT_VILLAGE_ELDER:   'visual-revamp-portrait-village-elder',
+  PORTRAIT_MIRROR_WALKER:   'visual-revamp-portrait-mirror-walker',
+  PORTRAIT_BRIDGE_KEEPER:   'visual-revamp-portrait-bridge-keeper',
+  PORTRAIT_WINDOW_FISHER:   'visual-revamp-portrait-window-fisher',
+  PORTRAIT_CURRENT_RIDER:   'visual-revamp-portrait-current-rider',
   PUZZLE_FRAME: 'visual-revamp-puzzle-frame',
   PUZZLE_RUNE_MEMORY_BG: 'visual-revamp-puzzle-rune-memory-bg',
   PUZZLE_FLOW_CONSOLES_BG: 'visual-revamp-puzzle-flow-consoles-bg',
@@ -157,6 +190,33 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PROP_ARRAY_MARKER, path: `${VISUAL_REVAMP_BASE}/objects/props/array_marker.png` },
   { key: VISUAL_REVAMP_KEYS.PROP_WATER_BUOY, path: `${VISUAL_REVAMP_BASE}/objects/props/water_buoy.png` },
   { key: VISUAL_REVAMP_KEYS.PROP_CORE_TERMINAL, path: `${VISUAL_REVAMP_BASE}/objects/props/core_terminal.png` },
+  // Static region props (Phase 7) — sprite-sheet props live in
+  // REGION_PROP_SPRITE_ASSETS below (they need frameWidth/frameHeight).
+  { key: VISUAL_REVAMP_KEYS.PROP_FLOATING_ORB, path: `${VISUAL_REVAMP_BASE}/props/prologue/floating_orb.png` },
+  { key: VISUAL_REVAMP_KEYS.PROP_RUNE_TOTEM, path: `${VISUAL_REVAMP_BASE}/props/prologue/rune_totem.png` },
+  { key: VISUAL_REVAMP_KEYS.PROP_ENERGY_BEAM, path: `${VISUAL_REVAMP_BASE}/props/prologue/energy_beam.png` },
+  { key: VISUAL_REVAMP_KEYS.PROP_SCARECROW, path: `${VISUAL_REVAMP_BASE}/props/array_plains/scarecrow.png` },
+  { key: VISUAL_REVAMP_KEYS.PROP_HAY_BALE, path: `${VISUAL_REVAMP_BASE}/props/array_plains/hay_bale.png` },
+  { key: VISUAL_REVAMP_KEYS.PROP_WATERING_CAN, path: `${VISUAL_REVAMP_BASE}/props/array_plains/watering_can.png` },
+  { key: VISUAL_REVAMP_KEYS.PROP_SMALL_BOAT, path: `${VISUAL_REVAMP_BASE}/props/twin_rivers/small_boat.png` },
+  { key: VISUAL_REVAMP_KEYS.PROP_LILY_PAD_CLUSTER, path: `${VISUAL_REVAMP_BASE}/props/twin_rivers/lily_pad_cluster.png` },
+  // Speaker portraits (Phase 11) — 64x64 each, loaded by BootScene as
+  // part of VISUAL_REVAMP_IMAGE_ASSETS so DialogueBox can swap textures
+  // synchronously. Total weight: ~40 KB across all 14 portraits.
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_PROFESSOR_NODE,  path: `${VISUAL_REVAMP_BASE}/portraits/professor_node.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_RUNE_KEEPER,     path: `${VISUAL_REVAMP_BASE}/portraits/rune_keeper.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_CONSOLE_KEEPER,  path: `${VISUAL_REVAMP_BASE}/portraits/console_keeper.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_WATCHER,         path: `${VISUAL_REVAMP_BASE}/portraits/watcher.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_GLITCH,          path: `${VISUAL_REVAMP_BASE}/portraits/glitch.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_SORTING_FARMER,  path: `${VISUAL_REVAMP_BASE}/portraits/sorting_farmer.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_BASKET_KEEPER,   path: `${VISUAL_REVAMP_BASE}/portraits/basket_keeper.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_CROP_SORTER,     path: `${VISUAL_REVAMP_BASE}/portraits/crop_sorter.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_TILE_WORKER,     path: `${VISUAL_REVAMP_BASE}/portraits/tile_worker.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_VILLAGE_ELDER,   path: `${VISUAL_REVAMP_BASE}/portraits/village_elder.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_MIRROR_WALKER,   path: `${VISUAL_REVAMP_BASE}/portraits/mirror_walker.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_BRIDGE_KEEPER,   path: `${VISUAL_REVAMP_BASE}/portraits/bridge_keeper.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_WINDOW_FISHER,   path: `${VISUAL_REVAMP_BASE}/portraits/window_fisher.png` },
+  { key: VISUAL_REVAMP_KEYS.PORTRAIT_CURRENT_RIDER,   path: `${VISUAL_REVAMP_BASE}/portraits/current_rider.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FRAME, path: `${VISUAL_REVAMP_BASE}/ui/puzzle_encounter_frame_v2.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/rune_memory_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/flow_consoles_backdrop_v2.png` },
@@ -327,6 +387,19 @@ export const PROLOGUE_SHEET_SPRITE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_SHEET_KEYS.GLITCH_ATTACK, path: `${SHEET_BASE}/characters/glitch_attack_v1.png`, frameWidth: 256, frameHeight: 256 },
 ];
 
+/**
+ * Animated region props (Phase 7). Each entry's frameWidth × frame count
+ * must match the on-disk PNG width — codex's generate_props.py validates
+ * this on output, so any mismatch here is a registration typo rather than
+ * an art problem.
+ */
+export const REGION_PROP_SPRITE_ASSETS: AssetEntry[] = [
+  { key: VISUAL_REVAMP_KEYS.PROP_RUNE_CRYSTAL, path: `${VISUAL_REVAMP_BASE}/props/prologue/rune_crystal.png`, frameWidth: 48, frameHeight: 48 },
+  { key: VISUAL_REVAMP_KEYS.PROP_CHICKEN, path: `${VISUAL_REVAMP_BASE}/props/array_plains/chicken.png`, frameWidth: 32, frameHeight: 32 },
+  { key: VISUAL_REVAMP_KEYS.PROP_LANTERN_POST, path: `${VISUAL_REVAMP_BASE}/props/twin_rivers/lantern_post.png`, frameWidth: 24, frameHeight: 64 },
+  { key: VISUAL_REVAMP_KEYS.PROP_DRAGONFLY, path: `${VISUAL_REVAMP_BASE}/props/twin_rivers/dragonfly.png`, frameWidth: 24, frameHeight: 16 },
+];
+
 const LEGACY_PROLOGUE_TILESET_ASSET: AssetEntry = {
   key: 'prologue-tileset',
   path: `${BASE}/tileset/sheet.png`,
@@ -345,6 +418,7 @@ export const SPRITE_ASSETS: AssetEntry[] = [
   { key: 'prologue-p01-tiles', path: `${BASE}/p01-tiles/sheet.png`, frameWidth: 704, frameHeight: 512 },
   { key: 'prologue-atmosphere', path: `${BASE}/atmosphere/sheet.png`, frameWidth: 313, frameHeight: 384 },
   ...PROLOGUE_SHEET_SPRITE_ASSETS,
+  ...REGION_PROP_SPRITE_ASSETS,
 ];
 
 export const BOOT_SPRITE_ASSETS: AssetEntry[] = [];
@@ -423,6 +497,10 @@ const PROLOGUE_SCENE_VISUAL_KEYS = new Set<string>([
   VISUAL_REVAMP_KEYS.PORTAL_FIELD,
   VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
   VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_OPEN,
+  // Phase 7 cosmic props
+  VISUAL_REVAMP_KEYS.PROP_FLOATING_ORB,
+  VISUAL_REVAMP_KEYS.PROP_RUNE_TOTEM,
+  VISUAL_REVAMP_KEYS.PROP_ENERGY_BEAM,
 ]);
 
 export const PROLOGUE_SCENE_IMAGE_ASSETS: AssetEntry[] = [
@@ -449,6 +527,10 @@ const ARRAY_PLAINS_SCENE_VISUAL_KEYS = new Set<string>([
   VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
   VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_OPEN,
   VISUAL_REVAMP_KEYS.PROP_ARRAY_MARKER,
+  // Phase 7 farmland props
+  VISUAL_REVAMP_KEYS.PROP_SCARECROW,
+  VISUAL_REVAMP_KEYS.PROP_HAY_BALE,
+  VISUAL_REVAMP_KEYS.PROP_WATERING_CAN,
 ]);
 
 export const ARRAY_PLAINS_SCENE_IMAGE_ASSETS: AssetEntry[] = [

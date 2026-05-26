@@ -34,6 +34,7 @@ import { setupUICamera } from '../utils/uiCamera';
 import { ObjectPool } from '../utils/ObjectPool';
 import { openPauseOverlay } from './titleNavigation';
 import { BaseOverworldScene } from './BaseOverworldScene';
+import { placeRegionProps } from '../ui/RegionProps';
 import {
   sortingFarmerDialogue,
   sortingFarmerPostDialogue,
@@ -107,6 +108,11 @@ export class ArrayPlainsScene extends BaseOverworldScene {
     // the static pixel-art tilemap. Scroll factor 0 so the ambience sits in
     // screen space; the player never out-runs the atmosphere.
     new OverworldAmbience(this, 'farmland', { intensity: 0.85 });
+    // Static + animated farm props (Phase 10): pecking chickens, scarecrow,
+    // hay bale + cat, watering can. World-space — they sit at fixed
+    // positions and parallax with the player like any other entity.
+    // Depth 1-3 keeps them below the player (depth ~4) for correct silhouette.
+    placeRegionProps(this, 'array_plains');
 
     this.player = new Player(this, px, py, {
       canMoveTo: (point) => this.isPlayerStepWalkable(point),

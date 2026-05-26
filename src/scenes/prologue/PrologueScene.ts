@@ -63,6 +63,7 @@ import { openPauseOverlay } from '../titleNavigation';
 import { ObjectPool } from '../../utils/ObjectPool';
 import type { NPCConfig } from '../../entities/NPC';
 import { a11yManager } from '../../core/A11yManager';
+import { placeRegionProps } from '../../ui/RegionProps';
 
 export class PrologueScene extends Phaser.Scene {
   private player!: Player;
@@ -415,6 +416,12 @@ export class PrologueScene extends Phaser.Scene {
 
     const routeRenderer = new PrologueRouteRenderer(this);
     this.routeHandle = routeRenderer.buildAll(PROLOGUE_ROUTE_LANDMARKS);
+
+    // World-space cosmic props (Phase 10): rune totems flanking the hub,
+    // pulsing rune crystals at the branch shrines, floating orbs that
+    // drift slowly, vertical energy beams flanking the boss gate. Brings
+    // the chamber from "empty dark mandala" to "an inhabited cosmic site".
+    placeRegionProps(this, 'prologue');
   }
 
   private isPlayerStepWalkable(point: { x: number; y: number }): boolean {

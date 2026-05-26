@@ -34,6 +34,7 @@ import { openPauseOverlay } from './titleNavigation';
 import { ObjectPool } from '../utils/ObjectPool';
 import { drawPanel } from '../ui/panel';
 import { BaseOverworldScene } from './BaseOverworldScene';
+import { placeRegionProps } from '../ui/RegionProps';
 import {
   mirrorWalkerDialogue,
   mirrorWalkerPostDialogue,
@@ -113,6 +114,10 @@ export class TwinRiversScene extends BaseOverworldScene {
       yMin: this.cameras.main.height * 0.35,
       yMax: this.cameras.main.height - 30,
     });
+    // World-space river props (Phase 10): drifting boat, lily pads, lantern
+    // posts with flickering flame, two dragonflies hovering at varied heights.
+    // Brings the river from "pretty static image" to "living waterway".
+    placeRegionProps(this, 'twin_rivers');
 
     this.player = new Player(this, px, py, {
       canMoveTo: (point) => this.isPlayerStepWalkable(point),

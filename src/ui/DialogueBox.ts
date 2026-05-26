@@ -7,9 +7,39 @@
 
 import Phaser from 'phaser';
 import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
+import { VISUAL_REVAMP_KEYS } from '../config/assets';
 import { gameState } from '../core/GameStateManager';
 import { drawPanel, PANEL_PALETTE } from './panel';
 import { a11yManager } from '../core/A11yManager';
+
+/**
+ * Map speaker names (as written in dialogue trees) to the portrait asset key.
+ * Speaker names are exact-match — the lookup is fast and the table is the
+ * one place to maintain the mapping. Unknown speakers (Narrator, Bit,
+ * System, field-note labels like "Index 0", etc.) fall through to no
+ * portrait and the panel collapses the portrait region.
+ */
+const SPEAKER_PORTRAITS: Record<string, string> = {
+  // Prologue cast
+  'Professor Node':   VISUAL_REVAMP_KEYS.PORTRAIT_PROFESSOR_NODE,
+  'Rune Keeper':      VISUAL_REVAMP_KEYS.PORTRAIT_RUNE_KEEPER,
+  'Console Keeper':   VISUAL_REVAMP_KEYS.PORTRAIT_CONSOLE_KEEPER,
+  'Watcher':          VISUAL_REVAMP_KEYS.PORTRAIT_WATCHER,
+  'Glitch':           VISUAL_REVAMP_KEYS.PORTRAIT_GLITCH,
+  // Array Plains keepers
+  'Sorting Farmer':   VISUAL_REVAMP_KEYS.PORTRAIT_SORTING_FARMER,
+  'Basket Keeper':    VISUAL_REVAMP_KEYS.PORTRAIT_BASKET_KEEPER,
+  'Crop Sorter':      VISUAL_REVAMP_KEYS.PORTRAIT_CROP_SORTER,
+  'Tile Worker':      VISUAL_REVAMP_KEYS.PORTRAIT_TILE_WORKER,
+  'Village Elder':    VISUAL_REVAMP_KEYS.PORTRAIT_VILLAGE_ELDER,
+  // Twin Rivers keepers
+  'Mirror Walker':    VISUAL_REVAMP_KEYS.PORTRAIT_MIRROR_WALKER,
+  'Bridge Keeper':    VISUAL_REVAMP_KEYS.PORTRAIT_BRIDGE_KEEPER,
+  'Window Fisher':    VISUAL_REVAMP_KEYS.PORTRAIT_WINDOW_FISHER,
+  'Current Rider':    VISUAL_REVAMP_KEYS.PORTRAIT_CURRENT_RIDER,
+};
+
+const lookupPortrait = (speaker: string): string | null => SPEAKER_PORTRAITS[speaker] ?? null;
 
 export class DialogueBox {
   private scene: Phaser.Scene;
@@ -70,17 +100,25 @@ export class DialogueBox {
     );
     this.container.add(this.background);
 
+    // Portrait — defaults to legacy generic frame so unknown speakers still
+    // get something; show() swaps the texture per-speaker via SPEAKER_PORTRAITS.
+    // displaySize 96x96 lifts the portrait from a thumbnail to a real character
+    // presence, addressing the audit's "no portrait recognition" finding.
     this.portraitFrame = scene.add
       .image(portraitX, portraitY, 'prologue-ui-portrait_active')
       .setOrigin(0.5)
-      .setDisplaySize(80, 80);
+      .setDisplaySize(96, 96);
     this.container.add(this.portraitFrame);
 
-    // Speaker label: smaller and muted-green so the eye reads "who" before "what" without competing weight.
+    // Speaker label — bumped from 14px to 18px and given a small bg accent
+    // so the player's eye finds "who's talking" at a glance. The audit
+    // flagged the old 14px green-on-panel as easy to miss.
     this.speakerText = scene.add.text(textX, speakerY, '', {
-      fontSize: '14px',
+      fontSize: '18px',
       fontFamily: FONTS.RETRO,
       color: COLOR_HEX.CYAN_GLOW,
+      stroke: '#0a0a1a',
+      strokeThickness: 3,
     });
     this.container.add(this.speakerText);
 
@@ -117,6 +155,21 @@ export class DialogueBox {
     this.typewriterTimer = null;
     this.container.setVisible(true);
     this.speakerText.setText(speaker);
+
+    // Swap portrait texture per speaker. Falls back to the generic legacy
+    // frame for unknown speakers (Narrator, Bit, field notes, etc.). The
+    // texture-exists guard prevents a noisy 404 if a portrait isn't loaded
+    // yet (e.g. during test boot when only a subset of assets are present).
+    const portraitKey = lookupPortrait(speaker);
+    if (portraitKey && this.scene.textures.exists(portraitKey)) {
+      this.portraitFrame.setTexture(portraitKey);
+      this.portraitFrame.setVisible(true);
+    } else {
+      // Unknown speaker — hide the portrait slot rather than show a wrong
+      // face. The text-only dialogue still works cleanly.
+      this.portraitFrame.setVisible(false);
+    }
+
     this.fullText = text;
     this.currentCharIndex = 0;
     this.contentText.setText('');
