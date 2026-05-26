@@ -382,11 +382,19 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       color: theme.id === 'chamber' ? COLOR_HEX.CYAN_GLOW : COLOR_HEX.WARNING,
     }).setOrigin(0, 0).setAlpha(0);
 
-    const idLabel = this.add.text(titlePanelX + titlePanelW - 20, 60, this.puzzleId.toUpperCase(), {
-      fontSize: '8px',
-      fontFamily: FONTS.RETRO,
-      color: theme.id === 'chamber' ? COLOR_HEX.TEXT_MUTED : COLOR_HEX.WARNING,
-    }).setOrigin(1, 0).setAlpha(0);
+    // Engineering ID (e.g. "AP_1", "TR_3") — useful for QA / dev navigation
+    // but breaks the fiction for players. Gate behind import.meta.env.DEV so
+    // it stays visible in dev builds and disappears from production.
+    const idLabel = this.add.text(
+      titlePanelX + titlePanelW - 20,
+      60,
+      import.meta.env.DEV ? this.puzzleId.toUpperCase() : '',
+      {
+        fontSize: '8px',
+        fontFamily: FONTS.RETRO,
+        color: theme.id === 'chamber' ? COLOR_HEX.TEXT_MUTED : COLOR_HEX.WARNING,
+      },
+    ).setOrigin(1, 0).setAlpha(0);
 
     this.uiContainer.add([titlePanel, moduleLabel, idLabel, this.titleText, this.instructionText]);
 

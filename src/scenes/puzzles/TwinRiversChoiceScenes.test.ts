@@ -9,7 +9,11 @@ describe('Mirror Walk controls', () => {
   it('requires explicit swap, left advance, and right retreat actions', () => {
     const source = readFileSync(scenePath, 'utf8');
 
-    expect(source).toContain('[SPACE] swap  -  [D] move L  -  [J] move R');
+    // Keybinding label rewritten to clarify that D and J each control one of
+    // two pointers (left-hand-on-D / right-hand-on-J), not "D goes left".
+    // The arrow-key aliases are also called out in the label now.
+    expect(source).toContain('[D] / [→] L pointer');
+    expect(source).toContain('[J] / [←] R pointer');
     expect(source).toContain('private swappedThisPair = false;');
     expect(source).toContain('private leftAdvancedThisPair = false;');
     expect(source).toContain('private rightRetreatedThisPair = false;');

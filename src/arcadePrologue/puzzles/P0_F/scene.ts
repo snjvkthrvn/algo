@@ -38,6 +38,7 @@ import { comboMilestone } from '../../game/milestone';
 import { SCENE_KEYS } from '../../../config/constants';
 import { buildSentinelPreview } from '../../../data/puzzles/puzzlePreviewLogic';
 import { PuzzlePreviewSidePanel } from '../../../ui/PuzzlePreviewSidePanel';
+import { playBossEntryBanner } from '../../../ui/BossEntryBanner';
 
 const LITANY_TIMER_MS = 80000;
 const LITANY_TIME_BONUS = 1200;
@@ -100,6 +101,24 @@ export class TheLitanyScene extends Phaser.Scene {
     this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -8 });
     this.preview.setTitle('SENTINEL PREVIEW');
     this.preview.show();
+
+    // Boss entry banner — the audit flagged that bosses re-use puzzle chrome
+    // and don't feel like capstones. The Sentinel gets a cyan accent because
+    // it's the cosmic-prologue capstone (mystic register, matches the
+    // chamber's cyan glow). Banner fires immediately on create — the boss
+    // mechanic is still mounting underneath, but the visual overlay sells
+    // the "this is the boss" moment.
+    playBossEntryBanner(this, {
+      bossName: 'The Litany',
+      regionTag: 'Prologue finale',
+      thesis: 'Sequence and selection. Both rules at once.',
+      accentColor: 0x22d3ee,
+      onComplete: () => {
+        // The Sentinel mechanic was already mounted under the banner — no
+        // additional start step required. This callback is a hook for
+        // future boss-only "begin combat" beats.
+      },
+    });
 
     this.unbindInput = bindLitanyInput(this, {
       onReplay: () => {},

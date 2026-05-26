@@ -33,10 +33,13 @@ export function buildPrologueHud(scene: Phaser.Scene): PrologueHud {
   const panelBg = scene.add.graphics().setDepth(100);
   paintPanel(panelBg, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
 
+  // Diegetic name — was "Puzzle P0-1" (engineering ID leaking to the player).
+  // The puzzle's in-world name is the Path of Sequences; using that here keeps
+  // the player inside the fiction rather than the codebase.
   scene.add
-    .text(PANEL_X + PANEL_W / 2, PANEL_Y + 22, 'Puzzle P0-1', {
+    .text(PANEL_X + PANEL_W / 2, PANEL_Y + 22, 'The Path of Sequences', {
       fontFamily: (TYPE.eyebrow as { fontFamily: string }).fontFamily,
-      fontSize: s(13) + 'px',
+      fontSize: s(11) + 'px',
       fontStyle: 'bold',
       color: '#e6ecff',
       letterSpacing: s(2),

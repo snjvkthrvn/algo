@@ -28,6 +28,7 @@ import {
 import { buildShufflerPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 import { playBossPhaseTransition } from '../../ui/BossPhaseTransition';
+import { playBossEntryBanner } from '../../ui/BossEntryBanner';
 
 type ShufflerPhase = 'bubble' | 'hash' | 'pair' | 'won';
 
@@ -105,11 +106,29 @@ export class Boss_Shuffler extends BasePuzzleScene {
   protected getConceptName(): string {
     return 'Array Plains Mastery';
   }
+  // Override title-bar module label so the boss reads as a boss for the
+  // entire encounter (not just during the 2.6s entry banner). Pairs with
+  // BossEntryBanner for full coverage of the "this is the boss" cue.
+  protected getModuleLabel(): string {
+    return 'BOSS  •  FARMSTEAD';
+  }
 
   create(): void {
     super.create();
     new PuzzleAmbience(this, 'farmland', { intensity: 1.1 });
     const { width, height } = this.cameras.main;
+
+    // Boss entry banner — gold accent matches the farmland-harvest palette
+    // and the chaos-storm theme. Banner overlays on top of the mounting
+    // boss mechanic for ~2.6s, then onComplete fires (no-op — boss is
+    // already running underneath).
+    playBossEntryBanner(this, {
+      bossName: 'The Shuffler',
+      regionTag: 'Array Plains finale',
+      thesis: 'Three storms — sort, hash, pair. Outlast the chaos.',
+      accentColor: 0xfbbf24,
+      onComplete: () => {},
+    });
 
     this.banner = this.add.text(width / 2, 156, '', {
       fontSize: '17px',
@@ -135,6 +154,12 @@ export class Boss_Shuffler extends BasePuzzleScene {
       color: '#fbbf24',
       stroke: '#081820',
       strokeThickness: 2,
+      // Word-wrap so phase-1 instructions don't get clipped by the
+      // Shuffler-Preview side panel on the right. The 14-px retro font is
+      // wide enough that "press 1-4 to swap a tile with its right neighbour"
+      // overran the right edge previously.
+      wordWrap: { width: width - 360, useAdvancedWrap: true },
+      align: 'center',
     }).setOrigin(0.5).setDepth(20);
 
     this.add.text(width / 2, height - 76, this.controlsHelp(), {
@@ -170,7 +195,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.nextChaosIn = 6;
     this.banner.setText('PHASE I  -  BUBBLE STORM');
     this.statusText.setText('Sort the row before the Shuffler scrambles it.');
-    this.detailText.setText('press 1-4 to swap a tile with its right neighbor');
+    this.detailText.setText('press 1-4 to swap with the right neighbour');
     this.cycleRow(this.bubbleValues);
     this.startChaosTimer();
     this.refreshPreview();

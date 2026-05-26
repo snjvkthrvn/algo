@@ -51,6 +51,7 @@ import {
 import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
 import { PuzzlePhase } from '../../data/types';
 import { playBossPhaseTransition } from '../../ui/BossPhaseTransition';
+import { playBossEntryBanner } from '../../ui/BossEntryBanner';
 
 const BLUE_BANK = 0x5ab7d4;
 const ORANGE_BANK = 0xf97316;
@@ -133,11 +134,20 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       padding: { x: 12, y: 8 },
     }).setOrigin(0.5).setDepth(20);
 
-    this.add.text(width / 2, height - 92, '[SPACE] swap  -  [D] move L  -  [J] move R', {
-      fontSize: '10px',
-      fontFamily: FONTS.RETRO,
-      color: '#88c070',
-    }).setOrigin(0.5).setDepth(20);
+    // Keybinding label rewritten — old "[D] move L  -  [J] move R" sounded
+    // like "D goes left" when really D and J each control one of two
+    // independent pointers (left-hand finger on D for the L-pointer,
+    // right-hand finger on J for the R-pointer). Now the label says that.
+    // Arrow keys are also wired below as aliases and called out so players
+    // who reach for them know they work.
+    this.add.text(width / 2, height - 92,
+      '[SPACE] swap   •   [D] / [→] L pointer   •   [J] / [←] R pointer',
+      {
+        fontSize: '10px',
+        fontFamily: FONTS.RETRO,
+        color: '#88c070',
+      },
+    ).setOrigin(0.5).setDepth(20);
 
     this.input.keyboard?.on('keydown-SPACE', this.onSwap);
     this.input.keyboard?.on('keydown-ENTER', this.onSwap);
@@ -1664,11 +1674,28 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
   protected getConceptName(): string {
     return 'Two-Pointer Mastery';
   }
+  // Pairs with the entry banner to maintain "this is the boss" for the
+  // whole encounter, not just the 2.6s reveal.
+  protected getModuleLabel(): string {
+    return 'BOSS  •  RIVERSIDE';
+  }
 
   create(): void {
     super.create();
     new PuzzleAmbience(this, 'river', { intensity: 1.1 });
     const { width, height } = this.cameras.main;
+
+    // Boss entry banner — teal accent matches the river/water palette and
+    // the Mirror Walker's mirrored-shore visual register. Fires immediately;
+    // the Serpent's 3-phase mechanic (reverse → twoSum → fixedWindow) mounts
+    // underneath and is ready by the time the banner clears.
+    playBossEntryBanner(this, {
+      bossName: 'Mirror Serpent',
+      regionTag: 'Twin Rivers finale',
+      thesis: 'The river bends three ways. Read it all at once.',
+      accentColor: 0x22d3ee,
+      onComplete: () => {},
+    });
 
     this.serpentBanner = this.add.text(width / 2, 158, '', {
       fontSize: '18px',
