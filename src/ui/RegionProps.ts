@@ -190,6 +190,9 @@ export function placeRegionProps(scene: Phaser.Scene, regionId: RegionId): void 
 
     if (p.anim) {
       // Register the anim once per scene if not already present, then play it.
+      // Local-typed `spriteWithAnims` keeps the narrowed Sprite type in scope
+      // for the .anims.play() call; the union sprite variable above can't
+      // statically prove which branch ran by the time we'd call .anims on it.
       if (!scene.anims.exists(p.anim.key)) {
         scene.anims.create({
           key: p.anim.key,
@@ -201,8 +204,9 @@ export function placeRegionProps(scene: Phaser.Scene, regionId: RegionId): void 
           repeat: -1,
         });
       }
-      sprite = scene.add.sprite(p.x, p.y, p.key);
-      if (!reduceMotion) sprite.anims.play(p.anim.key);
+      const spriteWithAnims = scene.add.sprite(p.x, p.y, p.key);
+      if (!reduceMotion) spriteWithAnims.anims.play(p.anim.key);
+      sprite = spriteWithAnims;
     } else {
       sprite = scene.add.image(p.x, p.y, p.key);
     }

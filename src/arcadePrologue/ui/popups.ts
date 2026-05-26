@@ -25,11 +25,13 @@ export function scorePopup(
   const rise = options.rise ?? 30;
   const duration = options.duration ?? 780;
 
+  // Phase 14 — score-popup font unified with the rest of the prologue
+  // chrome (Press Start 2P). Was system-ui 700 weight, which read as
+  // out-of-register sans against the surrounding pixel art.
   const t = scene.add
     .text(worldX, worldY, text, {
-      fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
-      fontSize: `${Math.round(s(size))}px`,
-      fontStyle: '700',
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: `${Math.round(s(size * 0.7))}px`,
       color,
     })
     .setOrigin(0.5)

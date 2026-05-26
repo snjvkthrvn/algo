@@ -117,7 +117,7 @@ export class PuzzlePreviewSidePanel {
     this.stateBody = scene.add
       .text(x + padX, y + 60, '', {
         fontSize: '11px',
-        fontFamily: FONTS.MONO,
+        fontFamily: FONTS.RETRO,
         color: bodyColor,
         wordWrap: { width: panelWidth - padX * 2 },
         lineSpacing: 6,
@@ -145,7 +145,7 @@ export class PuzzlePreviewSidePanel {
     this.nextBody = scene.add
       .text(x + padX, y + panelHeight / 2 + 44, '', {
         fontSize: '11px',
-        fontFamily: FONTS.MONO,
+        fontFamily: FONTS.RETRO,
         color: bodyColor,
         wordWrap: { width: panelWidth - padX * 2 },
         lineSpacing: 6,

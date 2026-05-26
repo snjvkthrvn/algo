@@ -32,11 +32,15 @@ export function createIntro(scene: Phaser.Scene): Intro {
         .setDepth(31)
         .setAlpha(0);
 
+      // Phase 14 — was system-ui sans-serif 600 weight, which clashed
+      // visually with the rest of the game's pixel-retro identity. Press
+      // Start 2P (FONTS.RETRO) is heavy enough at 32px to feel like a
+      // title and keeps the cosmic-pixel register consistent across the
+      // whole prologue chamber.
       const titleText = scene.add
         .text(STAGE.width / 2, STAGE.height / 2 - s(6), title, {
-          fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
-          fontSize: px(46),
-          fontStyle: '600',
+          fontFamily: '"Press Start 2P", monospace',
+          fontSize: px(32),
           color: COLORS.text.primary,
         })
         .setOrigin(0.5)

@@ -82,8 +82,14 @@ export function playBossEntryBanner(
     .setAlpha(reduceMotion ? 0 : 1)
     .setScrollFactor(0);
 
-  const bg = scene.add.graphics();
-  drawPanel(scene, cardX, 0, cardW, cardH, {
+  // drawPanel creates and returns its own Graphics; the previous code
+  // tried to pass in a pre-created Graphics via a `graphics` option that
+  // doesn't exist on PanelOptions — so it was being silently ignored
+  // and the pre-created object stayed empty (the panel rendered fine
+  // because drawPanel made its own; this just leaked one Graphics per
+  // banner call). Use the drawPanel return value.
+  const bg = drawPanel(scene, cardX, 0, cardW, cardH, {
+    depth: 9990,
     accent,
     accentSide: 'top',
     fill: COLORS.OVERLAY_BG,
@@ -92,7 +98,6 @@ export function playBossEntryBanner(
     alpha: 0.96,
     shadow: true,
     shadowAlpha: 0.5,
-    graphics: bg,
   });
   container.add(bg);
 

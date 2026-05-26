@@ -70,8 +70,11 @@ export function playBossPhaseTransition(
 
   const container = scene.add.container(0, cardYStart).setDepth(9990).setAlpha(reduceMotion ? 0 : 1);
 
-  const bg = scene.add.graphics();
-  drawPanel(scene, cardX, 0, cardW, cardH, {
+  // drawPanel creates + returns its own Graphics — the previous code
+  // tried to pass `graphics: bg` as a non-existent option and leaked
+  // a Graphics per call. Use the returned graphic directly.
+  const bg = drawPanel(scene, cardX, 0, cardW, cardH, {
+    depth: 9990,
     accent,
     accentSide: 'top',
     fill: COLORS.OVERLAY_BG,
@@ -80,7 +83,6 @@ export function playBossPhaseTransition(
     alpha: 0.95,
     shadow: true,
     shadowAlpha: 0.4,
-    graphics: bg,
   });
   container.add(bg);
 
