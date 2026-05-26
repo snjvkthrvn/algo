@@ -13,7 +13,7 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../../config/assets';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { RiverRow } from '../../ui/RiverRow';
@@ -1678,6 +1678,19 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
   // whole encounter, not just the 2.6s reveal.
   protected getModuleLabel(): string {
     return 'BOSS  •  RIVERSIDE';
+  }
+
+  // Preload the coiled-serpent figure (Phase 16). BasePuzzleScene only
+  // loads the puzzle backdrop + chamber frame; without this override the
+  // figure renders as a missing-texture and the audit's "make the serpent
+  // visible" fix silently fails.
+  preload(): void {
+    super.preload();
+    const key = VISUAL_REVAMP_KEYS.BOSS_MIRROR_SERPENT_FIGURE;
+    const path = getImageAssetPath(key);
+    if (path && !this.textures.exists(key)) {
+      this.load.image(key, path);
+    }
   }
 
   create(): void {

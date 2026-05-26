@@ -91,7 +91,14 @@ export class LessonCard {
     // Scene-level dim overlay at a depth strictly below the card container.
     // Putting the dim INSIDE the container made some platforms render the
     // rectangle's alpha on top of the card body's text — keep it separate.
-    this.dim = scene.add.rectangle(0, 0, sw, sh, 0x000000, 0.55)
+    //
+    // Audit fix (Phase 18): dim alpha reduced from 0.55 to 0.30 so the
+    // round-intro card doesn't entirely black out the play area behind it.
+    // Players can now see what they're about to interact with (puzzle
+    // tiles, pointers, etc.) while still reading the intro card clearly.
+    // The card body has its own dark stroke + shadow so it stays legible
+    // against the partially-visible scene underneath.
+    this.dim = scene.add.rectangle(0, 0, sw, sh, 0x000000, 0.30)
       .setOrigin(0, 0)
       .setDepth(8999)
       .setInteractive();

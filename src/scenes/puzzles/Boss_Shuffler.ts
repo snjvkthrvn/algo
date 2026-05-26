@@ -13,7 +13,7 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../../config/assets';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { RiverRow } from '../../ui/RiverRow';
@@ -96,6 +96,20 @@ export class Boss_Shuffler extends BasePuzzleScene {
 
   protected getPuzzleBackdropKey(): string | null {
     return VISUAL_REVAMP_KEYS.PUZZLE_SHUFFLER_DOMAIN_BG;
+  }
+
+  // Preload the visible boss figure (Phase 16) — BasePuzzleScene only
+  // loads the puzzle backdrop + chamber frame, not arbitrary asset keys
+  // used in create(). Without this override the figure renders as a
+  // missing-texture and the audit's "visible serpent/shuffler" fix
+  // silently fails.
+  preload(): void {
+    super.preload();
+    const key = VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE;
+    const path = getImageAssetPath(key);
+    if (path && !this.textures.exists(key)) {
+      this.load.image(key, path);
+    }
   }
   protected getPuzzleFrameFillAlpha(): number {
     return 0.03;
