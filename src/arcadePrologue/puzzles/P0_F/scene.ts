@@ -98,7 +98,12 @@ export class TheLitanyScene extends Phaser.Scene {
       eyebrow: 'PROLOGUE FINALE  \u00b7  CONVERGENCE',
       footerHint: 'Click a fork as the pulse arrives   \u00b7   [M] reduce motion',
     });
-    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -8 });
+    // Cyan accent — Sentinel sits in the cosmic register; this matches the
+    // chamber's mandala glow and the entry banner.
+    this.preview = new PuzzlePreviewSidePanel(this, {
+      side: 'right', yOffset: -8,
+      accentColor: 0x22d3ee, accentColorHex: '#22d3ee',
+    });
     this.preview.setTitle('SENTINEL PREVIEW');
     this.preview.show();
 

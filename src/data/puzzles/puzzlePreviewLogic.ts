@@ -439,12 +439,36 @@ export interface SentinelPreviewInput {
   readonly choices: ReadonlyArray<string>;
 }
 
+/**
+ * Translate Sentinel altar coordinate strings (like "-1,0") into the
+ * human-readable position labels the player sees on the hex board.
+ * Cardinal positions sit at the four compass points; diagonal positions
+ * fall back to the coord notation only if the layout adds new altars
+ * the table doesn't cover yet.
+ */
+const SENTINEL_ALTAR_LABELS: Record<string, string> = {
+  '-1,0': 'left altar',
+  '1,0':  'right altar',
+  '0,-1': 'upper altar',
+  '0,1':  'lower altar',
+};
+const labelAltar = (coord: string): string =>
+  SENTINEL_ALTAR_LABELS[coord] ?? coord;
+
 export function buildSentinelPreview(input: SentinelPreviewInput): PuzzlePreviewModel {
+  // Phase 15 — softened the preview's voice from engineering trace
+  // (`altars = -1,0 -> 1,0`) to plain English (`left altar then right
+  // altar`). The Sentinel scene's poetic register (Sequence and selection
+  // compose…) was clashing with code-style coords on the same screen —
+  // the audit flagged this as "mystic vs technical copy clash".
+  const altarPhrase = input.altars.length === 0
+    ? 'none yet'
+    : input.altars.map(labelAltar).join(' then ');
   const state = [
-    `phase = ${input.phase}`,
-    'rule  = visit altars in order',
-    `altars = ${input.altars.join(' -> ') || 'none'}`,
-    `fork  = ${input.currentFork ?? 'none'}`,
+    `flow:    ${input.phase}`,
+    `route:   visit altars in order`,
+    `target:  ${altarPhrase}`,
+    `fork:    ${input.currentFork ? labelAltar(input.currentFork) : 'none open'}`,
   ];
   if (input.currentFork && input.choices.length > 0) {
     return {

@@ -1697,6 +1697,33 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       onComplete: () => {},
     });
 
+    // Visible boss figure (Phase 16) — coiled serpent body looms above the
+    // play area. The 3-segment S-curve mirrors the boss's own 3-phase
+    // structure (reverse → twoSum → fixedWindow). Slow vertical hover +
+    // very-slow horizontal drift simulates the serpent breathing.
+    const serpentFigure = this.add.image(width / 2, 110, VISUAL_REVAMP_KEYS.BOSS_MIRROR_SERPENT_FIGURE)
+      .setOrigin(0.5, 0.5)
+      .setScale(0.55)
+      .setAlpha(0.82)
+      .setDepth(4)
+      .setScrollFactor(0);
+    this.tweens.add({
+      targets: serpentFigure,
+      y: 104,
+      duration: 2200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    this.tweens.add({
+      targets: serpentFigure,
+      x: width / 2 + 14,
+      duration: 5400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
     this.serpentBanner = this.add.text(width / 2, 158, '', {
       fontSize: '18px',
       fontFamily: FONTS.RETRO,
@@ -1730,7 +1757,12 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       align: 'center',
     }).setOrigin(0.5).setDepth(20);
 
-    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -8 });
+    // Teal accent — Mirror Serpent matches the water/river palette and the
+    // boss figure's coiled-teal silhouette behind the play area.
+    this.preview = new PuzzlePreviewSidePanel(this, {
+      side: 'right', yOffset: -8,
+      accentColor: 0x22d3ee, accentColorHex: '#22d3ee',
+    });
     this.preview.setTitle('SERPENT PREVIEW');
     this.preview.show();
 

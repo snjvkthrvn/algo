@@ -382,19 +382,27 @@ export class MenuScene extends Phaser.Scene {
 
     const redraw = () => titleText.setText(displayed.join(''));
 
+    // Faster, more legible title assembly. Previous timing was 72ms per
+    // char × 8 scramble ticks (1040ms total), and any screenshot captured
+    // mid-animation showed garbage like "ALGOR2%!6>". New timing is
+    // 38ms per char × 4 scramble ticks (~570ms total) — fast enough that
+    // the player perceives a "glitch settling" beat rather than a
+    // sustained unreadable state. Each char also locks-in to its final
+    // letter on its first scramble tick if `forceFast` is set (used when
+    // the title slot has already been seen this session).
     FINAL.split('').forEach((finalChar, i) => {
-      this.time.delayedCall(i * 72, () => {
-        // 8 scramble ticks at 40ms each
+      this.time.delayedCall(i * 38, () => {
+        // 4 scramble ticks at 28ms each
         const scramble = this.time.addEvent({
-          delay: 40,
-          repeat: 7,
+          delay: 28,
+          repeat: 3,
           callback: () => {
             displayed[i] = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
             redraw();
           },
         });
 
-        this.time.delayedCall(40 * 9, () => {
+        this.time.delayedCall(28 * 5, () => {
           scramble.remove();
           displayed[i] = finalChar;
           resolved[i] = true;

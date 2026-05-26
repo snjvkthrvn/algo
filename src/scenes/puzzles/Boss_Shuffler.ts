@@ -130,6 +130,26 @@ export class Boss_Shuffler extends BasePuzzleScene {
       onComplete: () => {},
     });
 
+    // Visible boss figure (Phase 16) — the cloaked Shuffler looms above
+    // the play area, juggling crops. Slow hover tween gives an
+    // unsettled "watching" presence. Scroll factor 0 so it stays
+    // anchored to the camera. Low alpha keeps it from competing with
+    // the puzzle UI but still announces "the boss is here".
+    const shufflerFigure = this.add.image(width / 2, 130, VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE)
+      .setOrigin(0.5, 0.5)
+      .setScale(0.6)
+      .setAlpha(0.78)
+      .setDepth(4)
+      .setScrollFactor(0);
+    this.tweens.add({
+      targets: shufflerFigure,
+      y: 124,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
     this.banner = this.add.text(width / 2, 156, '', {
       fontSize: '17px',
       fontFamily: FONTS.RETRO,
@@ -169,7 +189,12 @@ export class Boss_Shuffler extends BasePuzzleScene {
       align: 'center',
     }).setOrigin(0.5).setDepth(20);
 
-    this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -8 });
+    // Gold/chaos accent — matches the Shuffler's harvest-storm palette and
+    // the Phase II Hash Storm banner.
+    this.preview = new PuzzlePreviewSidePanel(this, {
+      side: 'right', yOffset: -8,
+      accentColor: 0xfbbf24, accentColorHex: '#fbbf24',
+    });
     this.preview.setTitle('SHUFFLER PREVIEW');
     this.preview.show();
 

@@ -32,6 +32,16 @@ export interface PuzzlePreviewSidePanelOptions {
   yOffset?: number;
   /** Depth for the panel chrome. Body elements render at depth + 1. */
   depth?: number;
+  /**
+   * Accent colour for the title strip, divider, and label-text. Phase 17 —
+   * gives each boss its own preview-panel signature instead of all three
+   * looking like the same green terminal window. Pick something that
+   * pairs with the boss's other accents (Sentinel cyan, Shuffler gold,
+   * Mirror Serpent teal). Defaults to COLORS.CYAN_GLOW.
+   */
+  accentColor?: number;
+  /** Hex string version of accentColor for text fill. */
+  accentColorHex?: string;
 }
 
 export class PuzzlePreviewSidePanel {
@@ -55,6 +65,11 @@ export class PuzzlePreviewSidePanel {
     const depth = options.depth ?? 1990;
     const side = options.side ?? 'right';
     const yOffset = options.yOffset ?? 0;
+    // Phase 17 — per-boss accent for the preview panel. Defaults to cyan
+    // so existing tutorial puzzles render identically; boss scenes pass
+    // their own colour so each capstone has its own signature.
+    const accentColor = options.accentColor ?? COLORS.CYAN_GLOW;
+    const accentHex = options.accentColorHex ?? '#06b6d4';
 
     // Snap to 8-pixel grid; sit just inside the puzzle frame's 40px padding.
     const x = side === 'right'
@@ -62,7 +77,8 @@ export class PuzzlePreviewSidePanel {
       : 56;
     const y = Math.round((cameraHeight - panelHeight) / 2 + yOffset);
 
-    // Frame chrome — dark fill on the void-black background, GB-green accent
+    // Frame chrome — dark fill on the void-black background, accent
+    // strip on top in the boss's signature colour.
     this.chrome = drawPanel(scene, x, y, panelWidth, panelHeight, {
       depth,
       scrollFactor: 0,
@@ -71,11 +87,11 @@ export class PuzzlePreviewSidePanel {
       inner: COLORS.SUCCESS,
       alpha: 0.94,
       shadow: true,
-      accent: COLORS.CYAN_GLOW,
+      accent: accentColor,
     });
 
     const padX = 18;
-    const labelColor = '#06b6d4'; // CYAN_GLOW — reserved for interactive/preview state
+    const labelColor = accentHex;
     const bodyColor = COLOR_HEX.TEXT_LIGHT;
 
     this.titleText = scene.add

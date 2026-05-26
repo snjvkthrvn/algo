@@ -185,7 +185,12 @@ export const FONTS = {
  * Deadzone sized to ~1-1.5 tiles so small movements don't shake camera.
  */
 export const CAMERA_TUNING = {
-  ZOOM: 2,
+  // Bumped from 2.0 to 2.5 (Phase 13) after the brutal audit flagged the
+  // player sprite as too small in overworld shots — old zoom read the
+  // protagonist as ~16px tall in a 1280×800 frame. 2.5 = 25% bigger in
+  // screen space; trade-off is 27% less visible world per camera, which
+  // is fine for narrative overworlds with NPCs every 200-400 world-px.
+  ZOOM: 2.5,
   FOLLOW_LERP: 0.18,
   DEADZONE_WIDTH: 80,
   DEADZONE_HEIGHT: 48,

@@ -97,6 +97,11 @@ export const VISUAL_REVAMP_KEYS = {
   PORTRAIT_BRIDGE_KEEPER:   'visual-revamp-portrait-bridge-keeper',
   PORTRAIT_WINDOW_FISHER:   'visual-revamp-portrait-window-fisher',
   PORTRAIT_CURRENT_RIDER:   'visual-revamp-portrait-current-rider',
+  // Visible boss silhouettes (Phase 16) — the audit flagged that bosses
+  // had no actual boss figure on screen. Placed behind the play area as
+  // a watching presence; doesn't block input.
+  BOSS_SHUFFLER_FIGURE:     'visual-revamp-boss-shuffler-figure',
+  BOSS_MIRROR_SERPENT_FIGURE: 'visual-revamp-boss-mirror-serpent-figure',
   PUZZLE_FRAME: 'visual-revamp-puzzle-frame',
   PUZZLE_RUNE_MEMORY_BG: 'visual-revamp-puzzle-rune-memory-bg',
   PUZZLE_FLOW_CONSOLES_BG: 'visual-revamp-puzzle-flow-consoles-bg',
@@ -217,6 +222,9 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PORTRAIT_BRIDGE_KEEPER,   path: `${VISUAL_REVAMP_BASE}/portraits/bridge_keeper.png` },
   { key: VISUAL_REVAMP_KEYS.PORTRAIT_WINDOW_FISHER,   path: `${VISUAL_REVAMP_BASE}/portraits/window_fisher.png` },
   { key: VISUAL_REVAMP_KEYS.PORTRAIT_CURRENT_RIDER,   path: `${VISUAL_REVAMP_BASE}/portraits/current_rider.png` },
+  // Phase 16 — visible boss silhouettes (procedural PIL, ~2 KB each).
+  { key: VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE,       path: `${VISUAL_REVAMP_BASE}/bosses/shuffler.png` },
+  { key: VISUAL_REVAMP_KEYS.BOSS_MIRROR_SERPENT_FIGURE, path: `${VISUAL_REVAMP_BASE}/bosses/mirror_serpent.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FRAME, path: `${VISUAL_REVAMP_BASE}/ui/puzzle_encounter_frame_v2.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/rune_memory_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/flow_consoles_backdrop_v2.png` },
