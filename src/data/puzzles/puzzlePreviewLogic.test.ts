@@ -133,7 +133,9 @@ describe('puzzle preview logic', () => {
       choices: ['1,0', '0,1'],
     });
 
-    expect(preview.state).toContain('phase = flowing');
+    // Phase 15 softened the preview voice from `phase = flowing` to the
+    // plain-English `flow:    flowing` register.
+    expect(preview.state.join('\n')).toMatch(/flow:\s+flowing/);
     expect(preview.next).toContain('Pick 1,0 or 0,1');
   });
 });

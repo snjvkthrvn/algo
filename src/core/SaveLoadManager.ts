@@ -4,7 +4,7 @@
 
 import { gameState } from './GameStateManager';
 import { eventBus, GameEvents } from './EventBus';
-import type { GameSettings, GameState, PuzzleResult } from '../data/types';
+import type { GameSettings, GameState, MasteryState, PuzzleResult } from '../data/types';
 import { BitStage, BitMood } from '../data/types';
 
 const SAVE_KEY = 'algorithmia_save_v2';
@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.7,
   sfxVolume: 0.8,
   textSpeed: 45,
+  reduceMotion: false,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -166,6 +167,10 @@ class SaveLoadManagerClass {
       this.isStringRecord(state.npcStates) &&
       this.isBooleanRecord(state.flags) &&
       this.isSettings(state.settings) &&
+      isRecord(state.mastery) &&
+      isFiniteNumber(state.mastery.currentZeroHintStreak) &&
+      isFiniteNumber(state.mastery.bestZeroHintStreak) &&
+      isFiniteNumber(state.mastery.perfectSolves) &&
       state.saveVersion === CURRENT_VERSION &&
       isFiniteNumber(state.playTime)
     );
@@ -234,6 +239,7 @@ class SaveLoadManagerClass {
     state.flags = this.toBooleanRecord(state.flags);
     state.npcStates = this.toStringRecord(state.npcStates);
     state.settings = this.toSettings(state.settings);
+    state.mastery = this.toMastery(state.mastery);
     state.playTime = isFiniteNumber(state.playTime) ? state.playTime : 0;
     state.saveVersion = CURRENT_VERSION;
 
@@ -328,6 +334,18 @@ class SaveLoadManagerClass {
       musicVolume: isFiniteNumber(value.musicVolume) ? value.musicVolume : DEFAULT_SETTINGS.musicVolume,
       sfxVolume: isFiniteNumber(value.sfxVolume) ? value.sfxVolume : DEFAULT_SETTINGS.sfxVolume,
       textSpeed: isFiniteNumber(value.textSpeed) ? value.textSpeed : DEFAULT_SETTINGS.textSpeed,
+      reduceMotion: typeof value.reduceMotion === 'boolean' ? value.reduceMotion : DEFAULT_SETTINGS.reduceMotion,
+    };
+  }
+
+  /** Backfill the cross-puzzle mastery tracker so pre-mastery (v1) saves load
+   *  cleanly instead of leaving `mastery` undefined (a latent crash). */
+  private toMastery(value: unknown): MasteryState {
+    const v = isRecord(value) ? value : {};
+    return {
+      currentZeroHintStreak: isFiniteNumber(v.currentZeroHintStreak) ? v.currentZeroHintStreak : 0,
+      bestZeroHintStreak: isFiniteNumber(v.bestZeroHintStreak) ? v.bestZeroHintStreak : 0,
+      perfectSolves: isFiniteNumber(v.perfectSolves) ? v.perfectSolves : 0,
     };
   }
 

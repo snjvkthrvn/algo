@@ -144,7 +144,8 @@ describe('BaseOverworldScene', () => {
       scene = buildInstance();
       startDialogue = vi.fn();
       isDialogueActive = vi.fn().mockReturnValue(false);
-      scene.dialogueSystem = { isDialogueActive, startDialogue };
+      // vi.fn()'s return type is `unknown`; the field wants `(): boolean`.
+      scene.dialogueSystem = { isDialogueActive, startDialogue } as ProbedScene['dialogueSystem'];
     });
 
     it('builds a single-node dialogue tree and routes it through DialogueSystem', () => {

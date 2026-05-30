@@ -202,7 +202,8 @@ describe('GameStateManager', () => {
         codexEntries: ['sequential_processing'],
         npcStates: { rune_keeper: 'post_puzzle' },
         flags: { boss_gate_open: true },
-        settings: { musicVolume: 0.5, sfxVolume: 0.6, textSpeed: 50 },
+        settings: { musicVolume: 0.5, sfxVolume: 0.6, textSpeed: 50, reduceMotion: false },
+        mastery: { currentZeroHintStreak: 0, bestZeroHintStreak: 0, perfectSolves: 0 },
         saveVersion: 1,
         playTime: 12000,
       };
