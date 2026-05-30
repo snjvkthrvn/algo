@@ -87,6 +87,8 @@ export class BruteForceActor {
   private stopped = false;
   private animating = false;
   private timer: Phaser.Time.TimerEvent | null = null;
+  private speech: Phaser.GameObjects.Text | null = null;
+  private speechTimer: Phaser.Time.TimerEvent | null = null;
 
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
   private readonly headingText: Phaser.GameObjects.Text;
@@ -367,6 +369,42 @@ export class BruteForceActor {
     this.subtitleText.setText('(...you did it differently)');
   }
 
+  /**
+   * Glitch speaks. Shows a short, transient speech line above the row so the
+   * rival heckles and reacts *in character* during play — turning Glitch from
+   * a silent move-counter into a present antagonist. Authentic lines come from
+   * glitch_dialogue. Non-blocking; auto-fades after `holdMs`.
+   */
+  say(text: string, holdMs = 2800): void {
+    const x = this.headingText.x;
+    const y = this.headingText.y - 14;
+    if (!this.speech) {
+      this.speech = this.scene.add.text(x, y, '', {
+        fontSize: '9px',
+        fontFamily: '"IBM Plex Mono", monospace',
+        color: '#ffd9c2',
+        backgroundColor: '#2a1208',
+        padding: { x: 7, y: 5 },
+        stroke: '#0a0502',
+        strokeThickness: 1,
+        align: 'center',
+        wordWrap: { width: 320, useAdvancedWrap: true },
+      }).setOrigin(0.5, 1).setDepth(55);
+      this.objects.push(this.speech);
+    }
+    this.speech.setText(text).setPosition(x, y).setAlpha(0).setVisible(true);
+    this.scene.tweens.add({ targets: this.speech, alpha: 1, y: y - 6, duration: 180, ease: 'Back.easeOut' });
+    this.speechTimer?.remove();
+    this.speechTimer = this.scene.time.delayedCall(holdMs, () => {
+      if (this.speech?.active) {
+        this.scene.tweens.add({
+          targets: this.speech, alpha: 0, duration: 260,
+          onComplete: () => this.speech?.setVisible(false),
+        });
+      }
+    });
+  }
+
   getMoves(): number {
     return this.moves;
   }
@@ -393,6 +431,8 @@ export class BruteForceActor {
     this.stopped = true;
     this.timer?.remove();
     this.timer = null;
+    this.speechTimer?.remove();
+    this.speechTimer = null;
     for (const obj of this.objects) {
       if (obj.active) obj.destroy();
     }

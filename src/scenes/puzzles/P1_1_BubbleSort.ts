@@ -23,6 +23,22 @@ import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
 import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../../config/assets';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
+import { GLITCH_FAILURE_TAUNTS, GLITCH_EXIT_LINES } from '../../data/dialogue/glitch_dialogue';
+
+/** AP-1 in-play Glitch heckles — condensed from glitch_dialogue's voice, kept
+ *  FEEL_IT-safe (brute-force bragging, never the technique). Glitch is the
+ *  comic brute-force foil; giving the rival a live voice during the sort is
+ *  what turns the puzzle into a lore-driven mini-game. */
+const GLITCH_AP1_TAUNTS = [
+  "Swapping neighbors? That's your big plan?",
+  "I could swap furrows all day. Faster than you, even.",
+  "I just grab rows till it looks right. Way more natural.",
+  "You're not even rushing. There's a TRICK, isn't there?",
+];
+
+function pickLine(lines: ReadonlyArray<string>): string {
+  return lines[Math.floor(Math.random() * lines.length)];
+}
 import { BitHint } from '../../entities/BitHint';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
 import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
@@ -376,6 +392,12 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       subtitle: `${round.label}  ·  sort ${round.values.length} furrows ascending`,
       accent: idx === BUBBLE_SORT_ROUNDS.length - 1 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
     });
+
+    // Glitch heckles as play begins — the rival is only present in FEEL_IT
+    // (round 1), which is exactly where the brute-force contrast lands.
+    if (this.bruteForce) {
+      this.time.delayedCall(650, () => this.bruteForce?.say(GLITCH_AP1_TAUNTS[0], 3000));
+    }
 
     this.isResolving = false;
   }
@@ -746,6 +768,11 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       this.currentSweepLine = 1;
       this.updatePseudocode(false);
       this.bitHint?.showCold();
+      // Glitch heckles a wasted look — but only ~half the time, so it reads
+      // as a reactive rival, not a nag.
+      if (this.bruteForce && Math.random() < 0.5) {
+        this.bruteForce.say(pickLine(GLITCH_FAILURE_TAUNTS), 2600);
+      }
       this.tweens.add({
         targets: [leftTile.container, rightTile.container],
         scale: 0.94, duration: 110, yoyo: true, ease: 'Quad.easeOut',
@@ -785,6 +812,12 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
 
     JuiceSystem.correctBurst(this, midX, tileY);
     this.bitHint?.showWarm();
+
+    // The second clean swap earns a Glitch brag — he's "doing the same thing,
+    // faster" (he isn't), which sells the brute-force-vs-intuition contrast.
+    if (this.bruteForce && this.currentSwaps === 2) {
+      this.bruteForce.say(GLITCH_AP1_TAUNTS[1], 2800);
+    }
 
     this.time.delayedCall(260, () => {
       this.actionLocked = false;
@@ -865,6 +898,13 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   private completeRound(): void {
     this.isResolving = true;
     audioManager.playCorrectTone();
+
+    // You out-sorted the chaos: Glitch freezes and saves face with a deflecting
+    // exit line. Only on the FEEL_IT round, where the rival is actually present.
+    if (this.bruteForce && this.isFeelItRound()) {
+      this.bruteForce.freeze();
+      this.bruteForce.say(pickLine(GLITCH_EXIT_LINES), 3200);
+    }
 
     // Lock-in cascade — every tile turns "locked" + sprout blooms left→right.
     this.tiles.forEach((tile, i) => {
