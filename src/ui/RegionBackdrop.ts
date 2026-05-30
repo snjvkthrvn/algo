@@ -21,9 +21,12 @@
 
 import Phaser from 'phaser';
 
+// Depth ladder for the additive particle/atmospheric overlays. The painted
+// region backdrop (rendered by BasePuzzleScene) sits at depth -29; these
+// constants leave room above it for layered motion (sky-level → scenery-level
+// → haze/particle-level) without conflicting with puzzle UI at depth >= 0.
 const DEPTH_SKY = -28;
 const DEPTH_SCENERY = -22;
-const DEPTH_NEAR = -16;
 const DEPTH_HAZE = -10;
 
 export type RegionBackdropId = 'prologue' | 'array-plains' | 'twin-rivers';
@@ -79,17 +82,11 @@ export class RegionBackdrop {
   private buildPrologue(intensity: number): void {
     const { width, height } = this.scene.cameras.main;
 
-    // Base nebula gradient — three radial passes painted via graphics.
-    const sky = this.scene.add.graphics().setDepth(DEPTH_SKY).setScrollFactor(0);
-    sky.fillStyle(0x06061a, 1);
-    sky.fillRect(0, 0, width, height);
-    sky.fillStyle(0x2a1a5a, 0.40);
-    sky.fillEllipse(width * 0.30, height * 0.20, width * 0.70, height * 0.50);
-    sky.fillStyle(0x3a1a6a, 0.55);
-    sky.fillEllipse(width * 0.80, height * 0.80, width * 0.60, height * 0.60);
-    sky.fillStyle(0x0d0a2a, 0.40);
-    sky.fillRect(0, height * 0.60, width, height * 0.40);
-    this.children.push(sky);
+    // Round-3 art-pass strip-down: the painted `prologue_chamber.png` texture
+    // (loaded by BasePuzzleScene at depth -29) now owns the nebula surface.
+    // The earlier opaque `fillRect(0,0,width,height)` here completely covered
+    // that painted backdrop — keep only the additive overlays now: faint hex
+    // grid + drifting stars + floor glow + Watcher prism + scanlines.
 
     // Hex grid — diagonal subtle lattice.
     const grid = this.scene.add.graphics().setDepth(DEPTH_SKY + 1).setScrollFactor(0).setAlpha(0.08);
@@ -183,163 +180,15 @@ export class RegionBackdrop {
   private buildArrayPlains(intensity: number): void {
     const { width, height } = this.scene.cameras.main;
 
-    // Sky gradient — sky / horizon / wheat / grass via four stacked rectangles.
-    const sky = this.scene.add.graphics().setDepth(DEPTH_SKY).setScrollFactor(0);
-    sky.fillGradientStyle(0x7fb8e0, 0x7fb8e0, 0xa0d8f0, 0xa0d8f0, 1);
-    sky.fillRect(0, 0, width, height * 0.40);
-    sky.fillGradientStyle(0xa0d8f0, 0xa0d8f0, 0xf5e0a4, 0xf5e0a4, 1);
-    sky.fillRect(0, height * 0.40, width, height * 0.30);
-    sky.fillGradientStyle(0xf5e0a4, 0xf5e0a4, 0x5b9a3c, 0x5b9a3c, 1);
-    sky.fillRect(0, height * 0.70, width, height * 0.08);
-    sky.fillStyle(0x2a5a1c, 1);
-    sky.fillRect(0, height * 0.78, width, height * 0.22);
-    this.children.push(sky);
+    // Round-3 art-pass strip-down: the static `array_plains_grounded_v1.png`
+    // texture (loaded by BasePuzzleScene at depth -29) now owns ALL scenery —
+    // sky, sun, hills, clouds, windmill, barn, fence, wheat. This pass keeps
+    // only the ambient motion overlay: drifting wheat-dust motes + a soft
+    // sun-ray shimmer. See .tmp/audit_round3_phase2_visual.txt for the
+    // before-state — Gemini scored procedural shots 1/5 ("MS Paint farm").
 
-    // Sun — bright disc top-right.
-    const sun = this.scene.add.graphics().setDepth(DEPTH_SKY + 1).setScrollFactor(0);
-    sun.fillStyle(0xfbbf24, 0.4);
-    sun.fillCircle(width * 0.72, height * 0.18, 90);
-    sun.fillStyle(0xfff5c2, 1);
-    sun.fillCircle(width * 0.72, height * 0.18, 36);
-    sun.fillStyle(0xfbbf24, 0.7);
-    sun.fillCircle(width * 0.72, height * 0.18, 28);
-    this.children.push(sun);
-
-    // Distant hills.
-    const hills = this.scene.add.graphics().setDepth(DEPTH_SCENERY).setScrollFactor(0);
-    hills.fillStyle(0x2a5a1c, 0.55);
-    hills.fillEllipse(width * 0.15, height * 0.62, 220, 90);
-    hills.fillEllipse(width * 0.35, height * 0.62, 180, 70);
-    hills.fillEllipse(width * 0.55, height * 0.62, 260, 100);
-    hills.fillEllipse(width * 0.85, height * 0.62, 200, 80);
-    this.children.push(hills);
-
-    // Pixel clouds — small rectangles.
-    const clouds: { x: number; y: number; w: number }[] = [
-      { x: 80, y: 70, w: 140 },
-      { x: 360, y: 50, w: 180 },
-      { x: 700, y: 90, w: 120 },
-      { x: 980, y: 60, w: 160 },
-    ];
-    for (const c of clouds) {
-      const cloud = this.scene.add.graphics().setDepth(DEPTH_SCENERY + 1).setScrollFactor(0);
-      cloud.fillStyle(0xf4f6fa, 1);
-      cloud.fillRect(c.x, c.y, c.w, 22);
-      cloud.fillRect(c.x + 12, c.y - 8, c.w - 24, 14);
-      cloud.fillRect(c.x + 30, c.y - 14, c.w - 60, 10);
-      this.children.push(cloud);
-      // Drift slowly.
-      this.tweens.push(this.scene.tweens.add({
-        targets: cloud,
-        x: '+=80',
-        duration: 18000 + Math.random() * 8000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      }));
-    }
-
-    // Windmill (left side) — rotating blades.
-    const mx = width * 0.13;
-    const my = height * 0.50;
-    const tower = this.scene.add.graphics().setDepth(DEPTH_SCENERY + 2).setScrollFactor(0);
-    tower.fillStyle(0xa06e3c, 1);
-    tower.fillRect(mx - 11, my, 22, 110);
-    tower.lineStyle(2, 0x3a1c0a, 1);
-    tower.strokeRect(mx - 11, my, 22, 110);
-    tower.fillStyle(0xa03830, 1);
-    tower.fillTriangle(mx - 18, my, mx + 18, my, mx, my - 24);
-    tower.lineStyle(2, 0x3a1c0a, 1);
-    tower.strokeTriangle(mx - 18, my, mx + 18, my, mx, my - 24);
-    this.children.push(tower);
-    const blades = this.scene.add.container(mx, my - 8).setDepth(DEPTH_SCENERY + 3).setScrollFactor(0);
-    const bladeGfx = this.scene.add.graphics();
-    bladeGfx.fillStyle(0xf0e4c2, 1);
-    bladeGfx.lineStyle(2, 0x3a1c0a, 1);
-    bladeGfx.fillRect(-3, -32, 6, 64);
-    bladeGfx.strokeRect(-3, -32, 6, 64);
-    bladeGfx.fillRect(-32, -3, 64, 6);
-    bladeGfx.strokeRect(-32, -3, 64, 6);
-    bladeGfx.fillStyle(0x3a1c0a, 1);
-    bladeGfx.fillCircle(0, 0, 4);
-    blades.add(bladeGfx);
-    this.children.push(blades);
-    this.tweens.push(this.scene.tweens.add({
-      targets: blades,
-      angle: 360,
-      duration: 8000,
-      repeat: -1,
-      ease: 'Linear',
-    }));
-
-    // Barn (right side).
-    const bx = width * 0.84;
-    const by = height * 0.48;
-    const barn = this.scene.add.graphics().setDepth(DEPTH_SCENERY + 2).setScrollFactor(0);
-    barn.fillStyle(0xa03830, 1);
-    barn.fillRect(bx - 90, by + 30, 180, 110);
-    barn.lineStyle(3, 0x3a1c0a, 1);
-    barn.strokeRect(bx - 90, by + 30, 180, 110);
-    barn.fillStyle(0x6a4220, 1);
-    barn.fillTriangle(bx - 98, by + 30, bx + 98, by + 30, bx, by + 2);
-    barn.lineStyle(3, 0x3a1c0a, 1);
-    barn.strokeTriangle(bx - 98, by + 30, bx + 98, by + 30, bx, by + 2);
-    // Siding lines.
-    barn.lineStyle(2, 0x6a1c14, 0.55);
-    for (const yOff of [50, 70, 90, 110]) {
-      barn.beginPath();
-      barn.moveTo(bx - 86, by + yOff);
-      barn.lineTo(bx + 86, by + yOff);
-      barn.strokePath();
-    }
-    // Doors.
-    barn.fillStyle(0x3a1c0a, 1);
-    barn.fillRect(bx - 20, by + 70, 40, 70);
-    barn.lineStyle(1, 0x6a1c14, 1);
-    barn.beginPath();
-    barn.moveTo(bx, by + 70);
-    barn.lineTo(bx, by + 140);
-    barn.strokePath();
-    this.children.push(barn);
-
-    // Fence — across the wheat field top edge.
-    const fy = height * 0.74;
-    const fence = this.scene.add.graphics().setDepth(DEPTH_NEAR).setScrollFactor(0);
-    fence.fillStyle(0x3a1c0a, 1);
-    fence.fillRect(0, fy + 2, width, 2);
-    fence.fillRect(0, fy + 9, width, 2);
-    fence.fillStyle(0x6a4220, 1);
-    for (let x = 12; x < width; x += 50) {
-      fence.fillRect(x, fy - 2, 4, 16);
-    }
-    this.children.push(fence);
-
-    // Wheat field — swaying strokes along the bottom.
-    const wheatY = height * 0.82;
-    const wheatCount = Math.floor(80 * intensity);
-    for (let i = 0; i < wheatCount; i++) {
-      const x = (i * 17) % width;
-      const stalkH = 22 + ((i * 7) % 18);
-      const stalk = this.scene.add.container(x, wheatY).setDepth(DEPTH_NEAR + 1).setScrollFactor(0);
-      const stalkGfx = this.scene.add.graphics();
-      stalkGfx.fillStyle(0xa06e1a, 1);
-      stalkGfx.fillRect(-1, -stalkH * 0.7, 2, stalkH * 0.7);
-      stalkGfx.fillStyle(0xe8b94a, 1);
-      stalkGfx.fillRect(-2, -stalkH, 4, stalkH * 0.4);
-      stalk.add(stalkGfx);
-      this.children.push(stalk);
-      this.tweens.push(this.scene.tweens.add({
-        targets: stalk,
-        angle: { from: -3, to: 3 },
-        duration: 2200 + (i % 6) * 200,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        delay: (i % 6) * 180,
-      }));
-    }
-
-    // Drifting dust motes.
+    // Drifting dust motes — keep them in the upper-middle band so they read
+    // as airborne wheat dust drifting past the static backdrop.
     const motes = Math.floor(28 * intensity);
     for (let i = 0; i < motes; i++) {
       const mote = this.scene.add.rectangle(
@@ -365,7 +214,8 @@ export class RegionBackdrop {
       }));
     }
 
-    // Sun-ray shimmer sweep.
+    // Sun-ray shimmer sweep — a faint diagonal warm wash that drifts across,
+    // implying late-afternoon sun across the farmland.
     const shimmer = this.scene.add.rectangle(0, 0, width, height * 0.35, 0xfff5c2, 0.10)
       .setOrigin(0, 0)
       .setDepth(DEPTH_HAZE + 1)
@@ -391,80 +241,19 @@ export class RegionBackdrop {
   private buildTwinRivers(mode: 'dual' | 'converged', intensity: number): void {
     const { width, height } = this.scene.cameras.main;
 
-    // Sky.
-    const sky = this.scene.add.graphics().setDepth(DEPTH_SKY).setScrollFactor(0);
-    sky.fillGradientStyle(0xc8e8f8, 0xc8e8f8, 0xf6dca0, 0xf6dca0, 1);
-    sky.fillRect(0, 0, width, height * 0.60);
-    sky.fillGradientStyle(0xf6dca0, 0xf6dca0, 0xf0c7a0, 0xf0c7a0, 1);
-    sky.fillRect(0, height * 0.60, width, height * 0.10);
-    this.children.push(sky);
+    // Round-3 art-pass strip-down: the static `twin_rivers_grounded_v1.png`
+    // texture (loaded by BasePuzzleScene at depth -29) now owns ALL scenery —
+    // sky, banks, river bodies, willow, palm, bridge. This pass keeps only
+    // the ambient motion overlay: drifting leaves down the river-band and
+    // (in dual mode) a faint center-seam mist that pulses. See
+    // .tmp/audit_round3_phase2_visual.txt for the before-state — Gemini
+    // scored procedural shots 1/5 ("literal solid blocks of color").
 
-    // Banks (top strip).
-    const bankTop = height * 0.25;
-    const bankBottom = height * 0.34;
-    const banks = this.scene.add.graphics().setDepth(DEPTH_SCENERY).setScrollFactor(0);
-    if (mode === 'dual') {
-      banks.fillStyle(0x5a8a6c, 1);
-      banks.fillRect(0, bankTop, width / 2, bankBottom - bankTop);
-      banks.fillStyle(0x3a6c4e, 1);
-      banks.fillRect(0, bankBottom - 8, width / 2, 8);
-      banks.fillStyle(0xa06832, 1);
-      banks.fillRect(width / 2, bankTop, width / 2, bankBottom - bankTop);
-      banks.fillStyle(0x6a4220, 1);
-      banks.fillRect(width / 2, bankBottom - 8, width / 2, 8);
-    } else {
-      banks.fillStyle(0x5a8a6c, 1);
-      banks.fillRect(0, bankTop, width, bankBottom - bankTop);
-      banks.fillStyle(0x3a6c4e, 1);
-      banks.fillRect(0, bankBottom - 8, width, 8);
-    }
-    this.children.push(banks);
-
-    // Rivers — animated horizontal stripes via tile sprites would be ideal,
-    // but we use a Graphics + tween of a tiled rectangle pattern via timer.
-    const riverTop = bankBottom;
+    // Approximate where the painted river-band sits in the texture so the
+    // ambient leaves drift over water, not sky. The static backdrops are
+    // composed so the rivers occupy roughly y=[34%, height-60].
+    const riverTop = height * 0.34;
     const riverBottom = height - 60;
-    if (mode === 'dual') {
-      this.paintRiver(0, riverTop, width / 2, riverBottom - riverTop, 0x3a78a8, 0x2a5680, /*reverse*/ false, intensity);
-      this.paintRiver(width / 2, riverTop, width / 2, riverBottom - riverTop, 0xd97a3a, 0xa04818, /*reverse*/ true, intensity);
-      // Bridge.
-      const bridge = this.scene.add.graphics().setDepth(DEPTH_SCENERY + 2).setScrollFactor(0);
-      bridge.fillStyle(0x5a3a1a, 1);
-      bridge.fillRect(width / 2 - 6, bankTop - 4, 12, riverBottom - bankTop + 8);
-      bridge.fillStyle(0xa06a3c, 1);
-      bridge.fillRect(width / 2 - 4, bankTop - 2, 8, riverBottom - bankTop + 4);
-      this.children.push(bridge);
-    } else {
-      this.paintRiver(0, riverTop, width, riverBottom - riverTop, 0x3a78a8, 0x2a5680, /*reverse*/ false, intensity);
-    }
-
-    // Willow (left).
-    const willow = this.scene.add.graphics().setDepth(DEPTH_SCENERY + 1).setScrollFactor(0);
-    willow.fillStyle(0x3a2410, 1);
-    willow.fillRect(width * 0.09, height * 0.20, 6, 60);
-    willow.fillStyle(0x4a8a3a, 1);
-    willow.fillRect(width * 0.07, height * 0.14, 36, 36);
-    willow.fillStyle(0x5b9f50, 1);
-    willow.fillRect(width * 0.075, height * 0.10, 32, 28);
-    willow.fillStyle(0x6cb060, 1);
-    willow.fillRect(width * 0.085, height * 0.075, 22, 20);
-    this.children.push(willow);
-
-    // Palm (right).
-    const palm = this.scene.add.graphics().setDepth(DEPTH_SCENERY + 1).setScrollFactor(0);
-    palm.fillStyle(0x6a3818, 1);
-    palm.fillRect(width * 0.90, height * 0.18, 6, 70);
-    palm.fillStyle(0x3c8038, 1);
-    palm.fillRect(width * 0.86, height * 0.13, 14, 8);
-    palm.fillRect(width * 0.91, height * 0.13, 14, 8);
-    palm.fillRect(width * 0.88, height * 0.10, 16, 8);
-    palm.fillStyle(0x4a9a3a, 1);
-    palm.fillRect(width * 0.87, height * 0.14, 12, 6);
-    palm.fillRect(width * 0.92, height * 0.14, 12, 6);
-    palm.fillStyle(0x3a2010, 1);
-    palm.fillCircle(width * 0.905, height * 0.17, 2);
-    palm.fillCircle(width * 0.920, height * 0.17, 2);
-    this.children.push(palm);
 
     // Drifting leaves on the rivers — left to right and right to left.
     const leafCount = Math.floor(6 * intensity);
@@ -492,7 +281,8 @@ export class RegionBackdrop {
       }));
     }
 
-    // Mist along center seam (dual only).
+    // Mist along center seam (dual only) — reads as the contact line between
+    // the two rivers' opposed currents.
     if (mode === 'dual') {
       const mist = this.scene.add.rectangle(
         width / 2, (riverTop + riverBottom) / 2,
@@ -506,48 +296,6 @@ export class RegionBackdrop {
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
-      }));
-    }
-  }
-
-  private paintRiver(
-    x: number, y: number, w: number, h: number,
-    fillTop: number, fillBottom: number,
-    reverse: boolean, intensity: number,
-  ): void {
-    // Base water gradient.
-    const base = this.scene.add.graphics().setDepth(DEPTH_SCENERY + 1).setScrollFactor(0);
-    base.fillGradientStyle(fillTop, fillTop, fillBottom, fillBottom, 1);
-    base.fillRect(x, y, w, h);
-    this.children.push(base);
-
-    // Animated foam stripes — short rectangles that drift across.
-    const stripeCount = Math.floor(28 * intensity);
-    for (let i = 0; i < stripeCount; i++) {
-      const sy = y + 10 + Math.random() * (h - 20);
-      const sw = 12 + Math.random() * 28;
-      const stripe = this.scene.add.rectangle(
-        reverse ? x + w + sw : x - sw,
-        sy, sw, 1.5,
-        0xffffff,
-        0.18 + Math.random() * 0.18,
-      ).setDepth(DEPTH_SCENERY + 2).setScrollFactor(0);
-      this.children.push(stripe);
-      const dur = 6500 + Math.random() * 3500;
-      this.tweens.push(this.scene.tweens.add({
-        targets: stripe,
-        x: reverse ? x - sw : x + w + sw,
-        duration: dur,
-        repeat: -1,
-        delay: Math.random() * dur,
-        ease: 'Linear',
-        onRepeat: () => {
-          stripe.setPosition(
-            reverse ? x + w + sw : x - sw,
-            y + 10 + Math.random() * (h - 20),
-          );
-          stripe.setAlpha(0.18 + Math.random() * 0.18);
-        },
       }));
     }
   }

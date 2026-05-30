@@ -27,7 +27,7 @@
 
 import Phaser from 'phaser';
 
-export type ComplexityMeterVariant = 'parchment' | 'cosmic';
+export type ComplexityMeterVariant = 'parchment' | 'cosmic' | 'riverside';
 
 export interface ComplexityMeterOptions {
   readonly x: number;
@@ -57,6 +57,17 @@ const COLORS_COSMIC = {
   inkDim: 0xa7b8d9,
   algo: 0x86efac,     // mint
   brute: 0xfda4af,    // rose
+  gold: 0xf5b820,
+};
+// Round-4: riverside palette — stone-and-water tones from twin_rivers
+// backdrop. brute = current's red-bridge wood tone, algo = clean river-cyan.
+const COLORS_RIVERSIDE = {
+  bg: 0xd6e1e8,
+  bgAlt: 0xa3b4c0,
+  ink: 0x132028,
+  inkDim: 0x355168,
+  algo: 0x22d3ee,    // river cyan
+  brute: 0x8c5a2e,   // weathered bridge wood
   gold: 0xf5b820,
 };
 
@@ -143,7 +154,11 @@ export class ComplexityMeter {
   // ──────────────────────────────────────────────────────────────────
 
   private palette() {
-    return this.variant === 'cosmic' ? COLORS_COSMIC : COLORS_PARCH;
+    return this.variant === 'cosmic'
+      ? COLORS_COSMIC
+      : this.variant === 'riverside'
+        ? COLORS_RIVERSIDE
+        : COLORS_PARCH;
   }
 
   private build(): void {
@@ -166,9 +181,9 @@ export class ComplexityMeter {
     this.container.add(this.bar);
 
     // Brute and algo labels on opposite ends.
-    const cssInk = this.variant === 'cosmic' ? '#e0f8d0' : '#1a1208';
-    const cssBrute = this.variant === 'cosmic' ? '#fda4af' : '#a03830';
-    const cssAlgo = this.variant === 'cosmic' ? '#86efac' : '#3c8038';
+    const cssInk = this.variant === 'cosmic' ? '#e0f8d0' : this.variant === 'riverside' ? '#132028' : '#1a1208';
+    const cssBrute = this.variant === 'cosmic' ? '#fda4af' : this.variant === 'riverside' ? '#8c5a2e' : '#a03830';
+    const cssAlgo = this.variant === 'cosmic' ? '#86efac' : this.variant === 'riverside' ? '#22d3ee' : '#3c8038';
     const cssGold = '#f5b820';
 
     this.bruteText = this.scene.add.text(-w / 2 + 10, -h / 2 + 6, '', {

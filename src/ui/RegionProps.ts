@@ -186,6 +186,19 @@ export function placeRegionProps(scene: Phaser.Scene, regionId: RegionId): void 
   })();
 
   for (const p of placements) {
+    // Defensive guard: if the texture isn't loaded, skip this placement
+    // rather than letting Phaser substitute the 1×1 `__MISSING` marker.
+    // Without this, generateFrameNumbers returns [] for animated props,
+    // `anims.create` builds a zero-frame animation, and the first
+    // `anims.play` call crashes reading `frames[0].duration`. The legit
+    // fix is to wire the prop into the region's preload list (see
+    // *_PROP_SPRITE_ASSETS in src/config/assets.ts); this guard makes
+    // the failure mode visible instead of fatal.
+    if (!scene.textures.exists(p.key)) {
+      console.warn(`[RegionProps] Texture not loaded for region "${regionId}": ${p.key}`);
+      continue;
+    }
+
     let sprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
 
     if (p.anim) {
@@ -194,19 +207,33 @@ export function placeRegionProps(scene: Phaser.Scene, regionId: RegionId): void 
       // for the .anims.play() call; the union sprite variable above can't
       // statically prove which branch ran by the time we'd call .anims on it.
       if (!scene.anims.exists(p.anim.key)) {
-        scene.anims.create({
-          key: p.anim.key,
-          frames: scene.anims.generateFrameNumbers(p.key, {
-            start: 0,
-            end: p.anim.frameCount - 1,
-          }),
-          frameRate: p.anim.frameRate,
-          repeat: -1,
+        const frames = scene.anims.generateFrameNumbers(p.key, {
+          start: 0,
+          end: p.anim.frameCount - 1,
         });
+        // If frame generation came back empty, the texture isn't really a
+        // sheet (registered as a plain image, or load failed mid-flight).
+        // Bail before creating a zero-frame animation that would crash on
+        // .play() with `Cannot read properties of undefined (reading 'duration')`.
+        if (frames.length === 0) {
+          console.warn(`[RegionProps] No frames generated for ${p.key} — registered as image instead of spritesheet?`);
+          sprite = scene.add.image(p.x, p.y, p.key);
+        } else {
+          scene.anims.create({
+            key: p.anim.key,
+            frames,
+            frameRate: p.anim.frameRate,
+            repeat: -1,
+          });
+          const spriteWithAnims = scene.add.sprite(p.x, p.y, p.key);
+          if (!reduceMotion) spriteWithAnims.anims.play(p.anim.key);
+          sprite = spriteWithAnims;
+        }
+      } else {
+        const spriteWithAnims = scene.add.sprite(p.x, p.y, p.key);
+        if (!reduceMotion) spriteWithAnims.anims.play(p.anim.key);
+        sprite = spriteWithAnims;
       }
-      const spriteWithAnims = scene.add.sprite(p.x, p.y, p.key);
-      if (!reduceMotion) spriteWithAnims.anims.play(p.anim.key);
-      sprite = spriteWithAnims;
     } else {
       sprite = scene.add.image(p.x, p.y, p.key);
     }

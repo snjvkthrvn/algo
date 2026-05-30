@@ -18,7 +18,7 @@
 import Phaser from 'phaser';
 import { drawPanel } from './panel';
 
-export type GlitchCornerVariant = 'cosmic' | 'parchment';
+export type GlitchCornerVariant = 'cosmic' | 'parchment' | 'riverside';
 
 export interface GlitchCornerOptions {
   readonly x: number;
@@ -36,6 +36,12 @@ export interface GlitchCornerOptions {
 const PURPLE = 0xa78bfa;
 const BARN_RED = 0xa03830;
 const PARCH = 0xf0e4c2;
+// Round-4 art-pass: riverside palette pulled from twin_rivers_grounded_v1.png
+// (cool stone-grey + cyan accents) so the Glitch corner reads as a stone
+// notice-board in the river setting rather than a tan farm parchment.
+const RIVER_STONE = 0xd6e1e8;
+const RIVER_CYAN = 0x22d3ee;
+const RIVER_DEEP_INK = 0x132028;
 
 export class GlitchCorner {
   readonly container: Phaser.GameObjects.Container;
@@ -47,11 +53,15 @@ export class GlitchCorner {
     this.container = scene.add.container(opts.x, opts.y).setDepth(opts.depth ?? 50);
 
     const isCosmic = opts.variant === 'cosmic';
-    const headingColor = isCosmic ? '#a78bfa' : '#a03830';
-    const bodyColor = isCosmic ? '#a7b8d9' : '#1a1208';
-    const fill = isCosmic ? 0x1a0a2a : PARCH;
-    const fillAlpha = isCosmic ? 0.45 : 0.92;
-    const stroke = isCosmic ? PURPLE : BARN_RED;
+    const isRiverside = opts.variant === 'riverside';
+    const headingColor = isCosmic ? '#a78bfa' : isRiverside ? '#22d3ee' : '#a03830';
+    const bodyColor = isCosmic ? '#a7b8d9' : isRiverside ? '#132028' : '#1a1208';
+    const fill = isCosmic ? 0x1a0a2a : isRiverside ? RIVER_STONE : PARCH;
+    const fillAlpha = isCosmic ? 0.45 : isRiverside ? 0.90 : 0.92;
+    const stroke = isCosmic ? PURPLE : isRiverside ? RIVER_CYAN : BARN_RED;
+    // Reference RIVER_DEEP_INK so the constant export stays linked even though
+    // current variants don't pick it directly (reserved for future depth-band).
+    void RIVER_DEEP_INK;
 
     // Backing panel: dashed border drawn manually with a graphics object.
     const panel = scene.add.graphics();

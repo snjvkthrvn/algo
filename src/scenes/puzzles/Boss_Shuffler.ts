@@ -174,13 +174,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
       strokeThickness: 2,
     }).setOrigin(0.5).setDepth(21);
 
-    this.statusText = this.add.text(width / 2, 196, '', {
-      fontSize: '11px',
-      fontFamily: FONTS.MONO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
-      padding: { x: 10, y: 6 },
-    }).setOrigin(0.5).setDepth(20);
+    this.statusText = this.createStatusReadout(width / 2, 196, { fontSize: 11 });
 
     this.detailText = this.add.text(width / 2, 232, '', {
       fontSize: '14px',

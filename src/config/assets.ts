@@ -100,9 +100,33 @@ export const VISUAL_REVAMP_KEYS = {
   // Visible boss silhouettes (Phase 16) — the audit flagged that bosses
   // had no actual boss figure on screen. Placed behind the play area as
   // a watching presence; doesn't block input.
+  BOSS_SENTINEL_FIGURE:     'visual-revamp-boss-sentinel-figure',
   BOSS_SHUFFLER_FIGURE:     'visual-revamp-boss-shuffler-figure',
   BOSS_MIRROR_SERPENT_FIGURE: 'visual-revamp-boss-mirror-serpent-figure',
+  // Round 4 art-pass — pixel-art puzzle props for Array Plains. Replace flat
+  // `add.rectangle` programmer-art with hand-pixeled wood/iron/crop sprites
+  // so the puzzle pieces visibly belong inside the painted region backdrop.
+  // See .tmp/audit_in_context_fit.txt for the round-4 audit that found these.
+  AP_WOODEN_CRATE: 'visual-revamp-ap-wooden-crate',
+  AP_CORRUPTED_CRATE: 'visual-revamp-ap-corrupted-crate',
+  AP_GRAIN_BUCKET: 'visual-revamp-ap-grain-bucket',
+  AP_CROP_WHEAT: 'visual-revamp-ap-crop-wheat',
+  AP_CROP_BEAN: 'visual-revamp-ap-crop-bean',
+  // Round 4b art-pass — pixel-art puzzle props for Twin Rivers.
+  // river_marker = glowing rune-stone for the player's position on stepping
+  // stones / bridge crossings. dock_node = wood-ringed stone disc with a
+  // carved cyan rune, replacing the prior glowing-cyan-square dock nodes
+  // that Gemini's in-context audit flagged as "sci-fi screens in a fantasy
+  // river setting."
+  TR_RIVER_MARKER: 'visual-revamp-tr-river-marker',
+  TR_DOCK_NODE: 'visual-revamp-tr-dock-node',
   PUZZLE_FRAME: 'visual-revamp-puzzle-frame',
+  // Diegetic lesson-card backgrounds (9-slice). Round-7 de-modal: the lesson
+  // intro card was a flat light rounded-rect ("beige web modal"); these are
+  // region-themed in-world props — a wooden barn sign (Array Plains) and a
+  // carved river-stone tablet (Twin Rivers) — rendered via Phaser NineSlice.
+  LESSON_CARD_AP: 'visual-revamp-lesson-card-ap',
+  LESSON_CARD_TR: 'visual-revamp-lesson-card-tr',
   PUZZLE_RUNE_MEMORY_BG: 'visual-revamp-puzzle-rune-memory-bg',
   PUZZLE_FLOW_CONSOLES_BG: 'visual-revamp-puzzle-flow-consoles-bg',
   PUZZLE_LITANY_TRIAL_BG: 'visual-revamp-puzzle-litany-trial-bg',
@@ -223,9 +247,24 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PORTRAIT_WINDOW_FISHER,   path: `${VISUAL_REVAMP_BASE}/portraits/window_fisher.png` },
   { key: VISUAL_REVAMP_KEYS.PORTRAIT_CURRENT_RIDER,   path: `${VISUAL_REVAMP_BASE}/portraits/current_rider.png` },
   // Phase 16 — visible boss silhouettes (procedural PIL, ~2 KB each).
+  // Round 3 art-pass adds the Sentinel (Prologue boss) — codex+imagegen
+  // produced a "Fractured Sentinel" matching the cosmic-cyan register
+  // (cracked stone body, glowing crack seams, body fragmenting at base).
+  { key: VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE,       path: `${VISUAL_REVAMP_BASE}/bosses/sentinel.png` },
   { key: VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE,       path: `${VISUAL_REVAMP_BASE}/bosses/shuffler.png` },
   { key: VISUAL_REVAMP_KEYS.BOSS_MIRROR_SERPENT_FIGURE, path: `${VISUAL_REVAMP_BASE}/bosses/mirror_serpent.png` },
+  // Round 4 art-pass — pixel-art Array Plains puzzle props (codex+imagegen).
+  { key: VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE,    path: `${VISUAL_REVAMP_BASE}/props/array_plains/wooden_crate.png` },
+  { key: VISUAL_REVAMP_KEYS.AP_CORRUPTED_CRATE, path: `${VISUAL_REVAMP_BASE}/props/array_plains/corrupted_crate.png` },
+  { key: VISUAL_REVAMP_KEYS.AP_GRAIN_BUCKET,    path: `${VISUAL_REVAMP_BASE}/props/array_plains/grain_bucket.png` },
+  { key: VISUAL_REVAMP_KEYS.AP_CROP_WHEAT,      path: `${VISUAL_REVAMP_BASE}/props/array_plains/crop_wheat.png` },
+  { key: VISUAL_REVAMP_KEYS.AP_CROP_BEAN,       path: `${VISUAL_REVAMP_BASE}/props/array_plains/crop_bean.png` },
+  // Round 4b art-pass — pixel-art Twin Rivers props.
+  { key: VISUAL_REVAMP_KEYS.TR_RIVER_MARKER, path: `${VISUAL_REVAMP_BASE}/props/twin_rivers/river_marker.png` },
+  { key: VISUAL_REVAMP_KEYS.TR_DOCK_NODE,    path: `${VISUAL_REVAMP_BASE}/props/twin_rivers/dock_node.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FRAME, path: `${VISUAL_REVAMP_BASE}/ui/puzzle_encounter_frame_v2.png` },
+  { key: VISUAL_REVAMP_KEYS.LESSON_CARD_AP, path: `${VISUAL_REVAMP_BASE}/ui/lesson_card_ap_wood_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.LESSON_CARD_TR, path: `${VISUAL_REVAMP_BASE}/ui/lesson_card_tr_stone_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/rune_memory_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/flow_consoles_backdrop_v2.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/litany_trial_backdrop_v1.png` },
@@ -269,6 +308,8 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PUZZLE_CORE_GRAND_ARCHIVE_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/core_grand_archive_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_CORE_HALL_OF_PATTERNS_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/core_hall_of_patterns_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_CORE_PROTOCOL_OMEGA_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/core_protocol_omega_backdrop_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.AP_CROP_WHEAT, path: `${VISUAL_REVAMP_BASE}/props/array_plains/crop_wheat.png` },
+  { key: VISUAL_REVAMP_KEYS.AP_CROP_BEAN, path: `${VISUAL_REVAMP_BASE}/props/array_plains/crop_bean.png` },
 ];
 
 /**
@@ -400,6 +441,16 @@ export const PROLOGUE_SHEET_SPRITE_ASSETS: AssetEntry[] = [
  * must match the on-disk PNG width — codex's generate_props.py validates
  * this on output, so any mismatch here is a registration typo rather than
  * an art problem.
+ *
+ * Loading note: these sheets are NOT loaded by BootScene. Each region
+ * scene preloads its own subset via the `PROLOGUE_PROP_SPRITE_ASSETS` /
+ * `ARRAY_PLAINS_PROP_SPRITE_ASSETS` / `TWIN_RIVERS_PROP_SPRITE_ASSETS`
+ * exports below, matching the lazy-per-scene asset pattern used for
+ * other region art. Adding a prop here without wiring it into the
+ * region's preload list causes `placeRegionProps` to spawn the
+ * `__MISSING` magenta marker, and the resulting empty animation
+ * crashes with `Cannot read properties of undefined (reading 'duration')`
+ * the first time `anims.play()` runs.
  */
 export const REGION_PROP_SPRITE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PROP_RUNE_CRYSTAL, path: `${VISUAL_REVAMP_BASE}/props/prologue/rune_crystal.png`, frameWidth: 48, frameHeight: 48 },
@@ -407,6 +458,25 @@ export const REGION_PROP_SPRITE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PROP_LANTERN_POST, path: `${VISUAL_REVAMP_BASE}/props/twin_rivers/lantern_post.png`, frameWidth: 24, frameHeight: 64 },
   { key: VISUAL_REVAMP_KEYS.PROP_DRAGONFLY, path: `${VISUAL_REVAMP_BASE}/props/twin_rivers/dragonfly.png`, frameWidth: 24, frameHeight: 16 },
 ];
+
+/** Per-region animated-prop preload bundles. Keep in sync with PLACEMENTS in src/ui/RegionProps.ts. */
+const PROLOGUE_PROP_SPRITE_KEYS = new Set<string>([
+  VISUAL_REVAMP_KEYS.PROP_RUNE_CRYSTAL,
+]);
+const ARRAY_PLAINS_PROP_SPRITE_KEYS = new Set<string>([
+  VISUAL_REVAMP_KEYS.PROP_CHICKEN,
+]);
+const TWIN_RIVERS_PROP_SPRITE_KEYS = new Set<string>([
+  VISUAL_REVAMP_KEYS.PROP_LANTERN_POST,
+  VISUAL_REVAMP_KEYS.PROP_DRAGONFLY,
+]);
+
+export const PROLOGUE_PROP_SPRITE_ASSETS: AssetEntry[] =
+  REGION_PROP_SPRITE_ASSETS.filter((asset) => PROLOGUE_PROP_SPRITE_KEYS.has(asset.key));
+export const ARRAY_PLAINS_PROP_SPRITE_ASSETS: AssetEntry[] =
+  REGION_PROP_SPRITE_ASSETS.filter((asset) => ARRAY_PLAINS_PROP_SPRITE_KEYS.has(asset.key));
+export const TWIN_RIVERS_PROP_SPRITE_ASSETS: AssetEntry[] =
+  REGION_PROP_SPRITE_ASSETS.filter((asset) => TWIN_RIVERS_PROP_SPRITE_KEYS.has(asset.key));
 
 const LEGACY_PROLOGUE_TILESET_ASSET: AssetEntry = {
   key: 'prologue-tileset',
@@ -437,9 +507,11 @@ const PROLOGUE_SCENE_SPRITE_KEYS = new Set<string>([
   PROLOGUE_SHEET_KEYS.COMPANIONS,
 ]);
 
-export const PROLOGUE_SCENE_SPRITE_ASSETS: AssetEntry[] = PROLOGUE_SHEET_SPRITE_ASSETS.filter((asset) =>
-  PROLOGUE_SCENE_SPRITE_KEYS.has(asset.key),
-);
+export const PROLOGUE_SCENE_SPRITE_ASSETS: AssetEntry[] = [
+  ...PROLOGUE_SHEET_SPRITE_ASSETS.filter((asset) => PROLOGUE_SCENE_SPRITE_KEYS.has(asset.key)),
+  // Region prop sprite-sheets needed by placeRegionProps('prologue').
+  ...PROLOGUE_PROP_SPRITE_ASSETS,
+];
 
 export const OVERWORLD_PLAYER_SPRITE_ASSETS: AssetEntry[] = PROLOGUE_SHEET_SPRITE_ASSETS.filter(
   (asset) => asset.key === PROLOGUE_SHEET_KEYS.PLAYER,

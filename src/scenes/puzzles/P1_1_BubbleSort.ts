@@ -20,11 +20,10 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../../config/assets';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { BitHint } from '../../entities/BitHint';
-import { drawPanel } from '../../ui/panel';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
 import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
 import { showRoundBanner } from '../../ui/RoundBanner';
@@ -124,6 +123,24 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     this.puzzleDescription = 'Swap neighbour furrows until the row stands shortest to tallest.';
   }
 
+  preload(): void {
+    super.preload();
+    // Round-4 art-pass: preload wooden + corrupted crate sprites so the tile
+    // backgrounds can swap from flat Graphics rectangles to hand-pixeled
+    // crates. Same per-scene opt-in pattern as P1_3 / P1_2 (BasePuzzleScene
+    // doesn't preload puzzle-specific sprites by default).
+    const propKeys = [
+      VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE,
+      VISUAL_REVAMP_KEYS.AP_CORRUPTED_CRATE,
+    ];
+    for (const key of propKeys) {
+      const path = getImageAssetPath(key);
+      if (path && !this.textures.exists(key)) {
+        this.load.image(key, path);
+      }
+    }
+  }
+
   create(): void {
     // FEEL_IT first-principles guard: strip the mechanic prescription out of
     // the title-bar subtitle when round 0 is FEEL_IT. The player is meant to
@@ -212,17 +229,20 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   }
 
   private buildTopStrip(width: number): void {
-    // Single dark strip across the top with badge + swap counter.
-    drawPanel(this, width / 2 - 280, 158, 560, 30, {
-      depth: 16, fill: 0x081820, frame: COLORS.CYAN_GLOW, inner: 0x346856, alpha: 0.92,
-    });
-    this.statusStrip = this.add.text(width / 2, 173, '', {
+    // Round-5 chrome unification — the prior cyan-bordered dark navy ROUND
+    // pill was the loudest "kid put things together" tell on this scene: it
+    // sat between the title banner and the play area, drawing its own frame
+    // and competing with both. We now skip the panel chrome entirely and
+    // float the round/swaps text as a single line beneath the title — same
+    // info, one fewer focal point.
+    const theme = this.getPuzzleTheme();
+    this.statusStrip = this.add.text(width / 2, 152, '', {
       fontSize: '11px',
       fontFamily: FONTS.RETRO,
-      color: '#e0f8d0',
-      stroke: '#06b6d4',
-      strokeThickness: 1,
-    }).setOrigin(0.5).setDepth(20);
+      color: theme.titleColor,
+      stroke: theme.titleStroke,
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(20).setAlpha(0.92);
   }
 
   private buildPseudocodePanel(width: number): void {
@@ -478,7 +498,19 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
 
     const container = this.add.container(x, y).setDepth(30);
 
+    // Round-4 art-pass: pixel-art wooden crate sprite as the tile base
+    // (replaces the flat brown Graphics rectangle that read as programmer
+    // art over the painted farm backdrop). The soil Graphics below stays
+    // for the per-state focus/lock frame highlights — but its body fill is
+    // now alpha 0 so the crate's wood grain shows through.
+    const crateKey = VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE;
+    const crate = this.textures.exists(crateKey)
+      ? this.add.image(0, 0, crateKey).setDisplaySize(TILE_W, TILE_H)
+      : null;
+
     // Soil body — drawn dynamically so we can repaint on highlight states.
+    // When the crate image is present, paintSoil skips the body fill and
+    // only draws the per-state frame + focus accents.
     const soil = this.add.graphics();
     this.paintSoil(soil, 'idle');
 
@@ -558,7 +590,12 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     hit.on('pointerover', () => this.tweens.add({ targets: container, scale: 1.03, duration: 90 }));
     hit.on('pointerout', () => this.tweens.add({ targets: container, scale: 1, duration: 90 }));
 
-    container.add([soil, sprout, label, key, caret, hit]);
+    // Round-4: crate image (when loaded) sits BENEATH the soil graphics so the
+    // per-state highlights (focus/lock frames + sun-ray triangles) draw on top.
+    const children: Phaser.GameObjects.GameObject[] = [];
+    if (crate) children.push(crate);
+    children.push(soil, sprout, label, key, caret, hit);
+    container.add(children);
     return { value, container, soil, label, sprout, caret, shadow, hit };
   }
 
@@ -567,33 +604,43 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     const w = TILE_W;
     const h = TILE_H;
 
-    // Soil gradient (top darker, bottom lighter — like turned earth).
-    const dark = state === 'locked' ? 0x4a3a1c : state === 'focus' ? 0x6e4524 : 0x4f3320;
-    const light = state === 'locked' ? 0x8c6a3a : state === 'focus' ? 0xa67442 : 0x7a4f30;
-    g.fillStyle(dark, 1);
-    g.fillRect(-w / 2, -h / 2, w, h);
-    g.fillStyle(light, 1);
-    g.fillRect(-w / 2, -h / 2 + 4, w, h / 2 - 2);
-
-    // Furrow grain lines
-    g.lineStyle(1, 0x2b1a0c, 0.55);
-    for (let i = 1; i < 4; i++) {
-      const ly = -h / 2 + (h / 4) * i;
-      g.beginPath();
-      g.moveTo(-w / 2 + 4, ly);
-      g.lineTo(w / 2 - 4, ly);
-      g.strokePath();
+    // Round-4 art-pass: the wooden crate sprite is now the tile body. The soil
+    // body fills here would cover the pixel-art wood grain, so we skip the
+    // body/grain fills entirely and use the soil graphics ONLY for the per-
+    // state frame highlight + focus sun-ray accents (which sit on top of the
+    // crate). Falls back to the fill path only when the texture isn't loaded.
+    const hasCrate = this.textures.exists(VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE);
+    if (!hasCrate) {
+      // Legacy fallback: paint the brown soil body the old way.
+      const dark = state === 'locked' ? 0x4a3a1c : state === 'focus' ? 0x6e4524 : 0x4f3320;
+      const light = state === 'locked' ? 0x8c6a3a : state === 'focus' ? 0xa67442 : 0x7a4f30;
+      g.fillStyle(dark, 1);
+      g.fillRect(-w / 2, -h / 2, w, h);
+      g.fillStyle(light, 1);
+      g.fillRect(-w / 2, -h / 2 + 4, w, h / 2 - 2);
+      g.lineStyle(1, 0x2b1a0c, 0.55);
+      for (let i = 1; i < 4; i++) {
+        const ly = -h / 2 + (h / 4) * i;
+        g.beginPath();
+        g.moveTo(-w / 2 + 4, ly);
+        g.lineTo(w / 2 - 4, ly);
+        g.strokePath();
+      }
     }
 
-    // Frame
+    // Frame (always drawn on top — works for both crate-image and fallback).
     if (state === 'focus') {
       g.lineStyle(3, COLORS.CYAN_GLOW, 0.95);
     } else if (state === 'locked') {
       g.lineStyle(3, COLORS.SUCCESS, 1);
-    } else {
+    } else if (!hasCrate) {
+      // With the crate sprite, "idle" needs no outer frame — the crate's
+      // own pixel outline does that work. Skip to avoid double-bordering.
       g.lineStyle(2, 0x1f120a, 0.9);
     }
-    g.strokeRect(-w / 2, -h / 2, w, h);
+    if (state !== 'idle' || !hasCrate) {
+      g.strokeRect(-w / 2, -h / 2, w, h);
+    }
 
     // Focus sun-ray rim (small triangles above the tile when in focus pair).
     if (state === 'focus') {

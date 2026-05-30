@@ -18,6 +18,12 @@ interface RegionImageAsset {
   path: string;
 }
 
+/** Sprite-sheet descriptor (image asset + frame dimensions). */
+interface RegionSpriteSheetAsset extends RegionImageAsset {
+  frameWidth?: number;
+  frameHeight?: number;
+}
+
 /**
  * Shared base for the post-Prologue overworld regions — Array Plains and Twin
  * Rivers. Those two scenes were ~80% identical; this class owns the surface
@@ -43,6 +49,17 @@ export abstract class BaseOverworldScene extends Phaser.Scene {
   /** Region-specific image assets to preload — supplied by each subclass. */
   protected abstract getRegionImageAssets(): ReadonlyArray<RegionImageAsset>;
 
+  /**
+   * Region-specific sprite-sheet assets to preload (e.g. animated environmental
+   * props consumed by `placeRegionProps`). Default empty — opt-in per subclass.
+   * Returning entries here registers them as spritesheets in the texture cache,
+   * which `scene.add.sprite` + `anims.generateFrameNumbers` both require to
+   * resolve real frames instead of the 1×1 `__MISSING` placeholder.
+   */
+  protected getRegionSpriteSheetAssets(): ReadonlyArray<RegionSpriteSheetAsset> {
+    return [];
+  }
+
   /** Apply a spawn override passed in by a portal transition. */
   init(data: { spawnX?: number; spawnY?: number }): void {
     if (data.spawnX !== undefined && data.spawnY !== undefined) {
@@ -61,6 +78,13 @@ export abstract class BaseOverworldScene extends Phaser.Scene {
     }
     for (const asset of this.getRegionImageAssets()) {
       if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
+    }
+    for (const asset of this.getRegionSpriteSheetAssets()) {
+      if (this.textures.exists(asset.key)) continue;
+      this.load.spritesheet(asset.key, asset.path, {
+        frameWidth: asset.frameWidth ?? 32,
+        frameHeight: asset.frameHeight ?? 32,
+      });
     }
   }
 

@@ -142,16 +142,17 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
   // ──────────────────────────────────────────────────────────────────
 
   private buildRoundBadge(width: number): void {
-    drawPanel(this, width / 2 - 160, 158, 320, 28, {
-      depth: 18, fill: 0x081820, frame: COLORS.CYAN_GLOW, alpha: 0.92,
-    });
-    this.roundBadge = this.add.text(width / 2, 172, '', {
-      fontSize: '12px',
+    // Round-5 chrome simplification: dropped the cyan-bordered dark-navy
+    // panel chrome — it competed with the title banner above and the play
+    // surface below. Round/index info now floats as themed text.
+    const theme = this.getPuzzleTheme();
+    this.roundBadge = this.add.text(width / 2, 152, '', {
+      fontSize: '11px',
       fontFamily: FONTS.RETRO,
-      color: '#e0f8d0',
-      stroke: '#06b6d4',
-      strokeThickness: 1,
-    }).setOrigin(0.5).setDepth(20);
+      color: theme.titleColor,
+      stroke: theme.titleStroke,
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(20).setAlpha(0.92);
   }
 
   private buildRequestPanel(width: number): void {

@@ -39,8 +39,15 @@ export const COLORS = {
   warn: 0xf87171,
 } as const;
 
-const FAMILY_DISPLAY = '"Cinzel", Georgia, "Times New Roman", serif';
-const FAMILY_BODY = '"Manrope", "Segoe UI", system-ui, sans-serif';
+// Round-3 art-pass: unified on Press Start 2P. The prior Cinzel/Manrope pair
+// (serif display + sans body) read as web typography on the pixel-art surface
+// — boss intro "The Litany" rendered as a Times-style serif, "SCORE 0" got
+// an ambiguous serif zero. Both families now resolve to the same retro pixel
+// font as the rest of the game's UI chrome (see FONTS.RETRO in
+// src/config/constants.ts). Sub-tokens still vary by size + letterSpacing
+// for hierarchy.
+const FAMILY_DISPLAY = '"Press Start 2P", monospace';
+const FAMILY_BODY = '"Press Start 2P", monospace';
 
 export const TYPE = {
   display: {

@@ -155,13 +155,8 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
     this.hideHashTooltip();
     const labels = ['key % 4 = 0', 'key % 4 = 1', 'key % 4 = 2', 'key % 4 = 3'];
     const { x, y } = bucket;
-    this.hashTooltip = this.add.text(x, y + 28, labels[index], {
-      fontSize: '8px',
-      fontFamily: FONTS.RETRO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
-      padding: { x: 4, y: 2 },
-    }).setOrigin(0.5);
+    this.hashTooltip = this.createStatusReadout(x, y + 28, { fontSize: 8, font: FONTS.RETRO });
+    this.hashTooltip.setText(labels[index]);
   }
 
   private hideHashTooltip(): void {
@@ -290,13 +285,7 @@ export abstract class ScriptedChoiceScene<T extends ScriptedChoiceRound> extends
   private createChoiceUi(): void {
     const { width, height } = this.cameras.main;
 
-    this.roundText = this.add.text(width / 2, 156, '', {
-      fontSize: '12px',
-      fontFamily: FONTS.RETRO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
-      padding: { x: 14, y: 8 },
-    }).setOrigin(0.5);
+    this.roundText = this.createStatusReadout(width / 2, 156, { font: FONTS.RETRO });
 
     this.promptText = this.add.text(width / 2, 206, '', {
       fontSize: '13px',

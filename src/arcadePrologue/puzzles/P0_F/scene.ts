@@ -39,6 +39,7 @@ import { SCENE_KEYS } from '../../../config/constants';
 import { buildSentinelPreview } from '../../../data/puzzles/puzzlePreviewLogic';
 import { PuzzlePreviewSidePanel } from '../../../ui/PuzzlePreviewSidePanel';
 import { playBossEntryBanner } from '../../../ui/BossEntryBanner';
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../../../config/assets';
 
 const LITANY_TIMER_MS = 80000;
 const LITANY_TIME_BONUS = 1200;
@@ -124,6 +125,59 @@ export class TheLitanyScene extends Phaser.Scene {
         // future boss-only "begin combat" beats.
       },
     });
+
+    // Visible Sentinel figure (Round 3 art-pass — the prior audit found the
+    // Prologue boss was the only one without a hero figure on screen). The
+    // Fractured Sentinel hovers at the top, slightly off-center, with a
+    // gentle bob to suggest it's watching the player's choices. Cyan accent
+    // ties it to the chamber's mandala glow. Lower alpha + low depth keep
+    // it from competing with the hex-grid play surface.
+    const sentinelFigureKey = VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE;
+    if (this.textures.exists(sentinelFigureKey)) {
+      const sentinelFigure = this.add
+        .image(this.cameras.main.width / 2, s(110), sentinelFigureKey)
+        .setOrigin(0.5, 0.5)
+        .setScale(0.8)
+        .setAlpha(0.78)
+        .setDepth(4)
+        .setScrollFactor(0);
+      this.tweens.add({
+        targets: sentinelFigure,
+        y: s(104),
+        duration: 1800,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    } else {
+      // Defensive: attempt a late-load if the boot preload missed it (e.g.
+      // dev hot-reload). Silently no-op on failure — the rest of the boss
+      // mechanic is independent of the figure being visible.
+      const path = getImageAssetPath(sentinelFigureKey);
+      if (path) {
+        this.load.image(sentinelFigureKey, path);
+        this.load.once('complete', () => {
+          if (this.textures.exists(sentinelFigureKey)) {
+            const sentinelFigure = this.add
+              .image(this.cameras.main.width / 2, s(110), sentinelFigureKey)
+              .setOrigin(0.5, 0.5)
+              .setScale(0.8)
+              .setAlpha(0.78)
+              .setDepth(4)
+              .setScrollFactor(0);
+            this.tweens.add({
+              targets: sentinelFigure,
+              y: s(104),
+              duration: 1800,
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.easeInOut',
+            });
+          }
+        });
+        this.load.start();
+      }
+    }
 
     this.unbindInput = bindLitanyInput(this, {
       onReplay: () => {},

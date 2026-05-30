@@ -18,8 +18,85 @@
  */
 
 import Phaser from 'phaser';
+import { VISUAL_REVAMP_KEYS } from '../config/assets';
 
-export type LessonCardVariant = 'parchment' | 'cosmic';
+export type LessonCardVariant = 'parchment' | 'cosmic' | 'riverside';
+
+/**
+ * Round-7 art-pass: the light parchment/riverside cards read as a second,
+ * competing UI language stacked on the dark navy/cyan puzzle chrome — the
+ * "kid put it together" tell. Each region now renders its lesson card as a
+ * DIEGETIC in-world prop instead of a flat panel:
+ *   parchment → a weathered WOODEN BARN SIGN   (Array Plains)
+ *   riverside → a carved RIVER-STONE TABLET    (Twin Rivers)
+ * Both are 512x320 pixel-art textures with a uniform 48px frame, drawn as a
+ * Phaser 9-slice so they scale to any card height with crisp corner hardware.
+ * 'cosmic' (Prologue) stays procedural — its dark center already coheres with
+ * the cosmic chrome and Gemini never flagged it.
+ */
+const FRAME_INSET = 48;
+const VARIANT_FRAME: Record<LessonCardVariant, string | null> = {
+  parchment: VISUAL_REVAMP_KEYS.LESSON_CARD_AP,
+  riverside: VISUAL_REVAMP_KEYS.LESSON_CARD_TR,
+  cosmic: null,
+};
+
+/**
+ * Manual 9-slice from nine plain Images. Phaser's built-in NineSlice GameObject
+ * is WebGL-only (there is no NineSliceCanvasRenderer), so it renders nothing
+ * under the Canvas2D renderer — which is what the Playwright harness forces and
+ * what some browsers fall back to. Plain Images have a Canvas renderer, so this
+ * draws identically everywhere while keeping the corner hardware undistorted:
+ * only the edges (1 axis) and the center (both axes) stretch.
+ *
+ * Returns the nine Images positioned around the container origin (0,0) so the
+ * caller can add them to the card container and track them for cleanup.
+ */
+function buildNineSlice(
+  scene: Phaser.Scene,
+  key: string,
+  w: number,
+  h: number,
+  inset: number,
+): Phaser.GameObjects.Image[] {
+  const tex = scene.textures.get(key);
+  const src = tex.getSourceImage() as { width: number; height: number };
+  const texW = src.width;
+  const texH = src.height;
+  if (!tex.has('ns_tl')) {
+    const tcw = texW - 2 * inset;
+    const tch = texH - 2 * inset;
+    tex.add('ns_tl', 0, 0, 0, inset, inset);
+    tex.add('ns_tm', 0, inset, 0, tcw, inset);
+    tex.add('ns_tr', 0, texW - inset, 0, inset, inset);
+    tex.add('ns_ml', 0, 0, inset, inset, tch);
+    tex.add('ns_mm', 0, inset, inset, tcw, tch);
+    tex.add('ns_mr', 0, texW - inset, inset, inset, tch);
+    tex.add('ns_bl', 0, 0, texH - inset, inset, inset);
+    tex.add('ns_bm', 0, inset, texH - inset, tcw, inset);
+    tex.add('ns_br', 0, texW - inset, texH - inset, inset, inset);
+  }
+  const L = inset;
+  const cw = w - 2 * L;
+  const ch = h - 2 * L;
+  const x0 = -w / 2;
+  const y0 = -h / 2;
+  const xr = w / 2 - L;
+  const yb = h / 2 - L;
+  const mk = (frame: string, x: number, y: number, dw: number, dh: number) =>
+    scene.add.image(x, y, key, frame).setOrigin(0, 0).setDisplaySize(dw, dh);
+  return [
+    mk('ns_tl', x0, y0, L, L),
+    mk('ns_tm', x0 + L, y0, cw, L),
+    mk('ns_tr', xr, y0, L, L),
+    mk('ns_ml', x0, y0 + L, L, ch),
+    mk('ns_mm', x0 + L, y0 + L, cw, ch),
+    mk('ns_mr', xr, y0 + L, L, ch),
+    mk('ns_bl', x0, yb, L, L),
+    mk('ns_bm', x0 + L, yb, cw, L),
+    mk('ns_br', xr, yb, L, L),
+  ];
+}
 
 export interface LessonCardData {
   readonly title: string;
@@ -57,6 +134,22 @@ const COLORS_COSMIC = {
   rule: 0x22d3ee,
   gold: 0xf5b820,
 };
+// Round-4 art-pass: 'riverside' variant for Twin Rivers puzzles. The prior
+// 'parchment' tan+crimson card felt like 4 different design languages on
+// screen when overlaid on the painted river backdrop (cool blue water +
+// stone-grey banks). The palette here is anchored on stone + flowing-cyan
+// pulled from twin_rivers_grounded_v1.png — reads as "weathered river-stone
+// notice board" rather than rustic-farm parchment.
+const COLORS_RIVERSIDE = {
+  bg: 0xd6e1e8,
+  bgAlt: 0xa3b4c0,
+  ink: 0x132028,
+  inkDim: 0x355168,
+  accent: 0x22d3ee,
+  accentAlt: 0x355168,
+  rule: 0x5a8eb0,
+  gold: 0xf5b820,
+};
 
 export class LessonCard {
   private readonly scene: Phaser.Scene;
@@ -74,11 +167,45 @@ export class LessonCard {
     this.scene = scene;
     this.onDismiss = opts.onDismiss;
     const variant = opts.variant ?? 'parchment';
-    const palette = variant === 'cosmic' ? COLORS_COSMIC : COLORS_PARCH;
-    const cssAccent = variant === 'cosmic' ? '#a78bfa' : '#a03830';
-    const cssInk = variant === 'cosmic' ? '#e0f8d0' : '#1a1208';
-    const cssDim = variant === 'cosmic' ? '#a7b8d9' : '#4a3818';
+    const palette =
+      variant === 'cosmic'    ? COLORS_COSMIC :
+      variant === 'riverside' ? COLORS_RIVERSIDE :
+      COLORS_PARCH;
+
+    // Resolve the diegetic frame texture. Fall back to the procedural card if a
+    // scene didn't preload it (or for cosmic, which has no frame texture).
+    const frameKey = VARIANT_FRAME[variant];
+    const textured = frameKey != null && scene.textures.exists(frameKey);
+    // The river-stone tablet face is dark slate, so its text must be light —
+    // but only when the texture is actually present. If we fell back to the
+    // light procedural riverside card, text stays dark.
+    const riversideDark = variant === 'riverside' && textured;
+
+    const cssAccent =
+      variant === 'cosmic'    ? '#a78bfa' :
+      riversideDark           ? '#5fe8ff' :
+      variant === 'riverside' ? '#22d3ee' :
+      '#a03830';
+    const cssInk =
+      variant === 'cosmic'    ? '#e0f8d0' :
+      riversideDark           ? '#eaf6fb' :
+      variant === 'riverside' ? '#132028' :
+      '#1a1208';
+    const cssDim =
+      variant === 'cosmic'    ? '#a7b8d9' :
+      riversideDark           ? '#9fc4d4' :
+      variant === 'riverside' ? '#355168' :
+      '#4a3818';
     const cssGold = '#f5b820';
+
+    // Overlay tones (divider rule + comparison pill) read on the card face. On
+    // the dark stone tablet they flip to light-on-dark; otherwise they track
+    // the palette (light parchment / cosmic).
+    const dividerColor = riversideDark ? 0x4f8398 : palette.rule;
+    const dividerAlpha = riversideDark ? 0.95 : 0.85;
+    const pillFill = riversideDark ? 0x10303d : palette.bgAlt;
+    const pillStroke = riversideDark ? 0x22d3ee : palette.accent;
+    const pillTextCss = riversideDark ? '#cff6ff' : cssGold;
 
     const { width: sw, height: sh } = scene.cameras.main;
     const w = opts.width ?? Math.min(sw - 200, 560);
@@ -106,29 +233,50 @@ export class LessonCard {
 
     this.container = scene.add.container(sw / 2, sh / 2).setDepth(9000);
 
-    // Card body — drop shadow + frame.
+    // Card body. Round-7 art-pass: when a diegetic frame texture is available,
+    // render the card as a 9-sliced in-world prop (wood barn sign / stone
+    // tablet). Otherwise fall back to the procedural carved-panel (cosmic, or
+    // any scene that didn't preload the texture).
+    // A drop shadow is shared by both paths — it lifts the prop off the
+    // partially-visible backdrop so the card never looks pasted flat.
+    // Round-8: a SINGLE hard-edged, square, tight offset shadow (no rounded
+    // corners, no multi-step alpha) — a stepped/translucent shadow read as a
+    // soft CSS gradient under the crisp pixel art.
     const shadow = scene.add.graphics();
-    shadow.fillStyle(0x000000, 0.42);
-    shadow.fillRoundedRect(-w / 2 + 6, -h / 2 + 6, w, h, 6);
+    shadow.fillStyle(0x05070a, 0.42);
+    shadow.fillRect(-w / 2 + 5, -h / 2 + 6, w, h);
     this.container.add(shadow);
     this.objects.push(shadow);
 
-    const card = scene.add.graphics();
-    // Phaser's fillGradientStyle only takes effect on triangles — applied to
-    // fillRoundedRect it collapses to an averaged solid colour that washed out
-    // the card body in earlier passes. Use a solid bright fill, then draw a
-    // narrow darker strip along the bottom edge so the panel still reads as
-    // dimensional rather than flat.
-    card.fillStyle(palette.bg, 1);
-    card.fillRoundedRect(-w / 2, -h / 2, w, h, 6);
-    card.fillStyle(palette.bgAlt, 1);
-    card.fillRect(-w / 2 + 6, h / 2 - 12, w - 12, 6);
-    card.lineStyle(3, palette.ink, 1);
-    card.strokeRoundedRect(-w / 2, -h / 2, w, h, 6);
-    card.lineStyle(1, palette.gold, 0.65);
-    card.strokeRoundedRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 4);
-    this.container.add(card);
-    this.objects.push(card);
+    if (textured) {
+      // Manual 9-slice (Canvas2D-safe) keeps the corner hardware (iron brackets
+      // / crystal chips) crisp at any card height; edges + flat center stretch.
+      const frameImgs = buildNineSlice(scene, frameKey as string, w, h, FRAME_INSET);
+      this.container.add(frameImgs);
+      this.objects.push(...frameImgs);
+    } else {
+      const card = scene.add.graphics();
+      // Phaser's fillGradientStyle only takes effect on triangles — applied to
+      // fillRoundedRect it collapses to an averaged solid colour that washed out
+      // the card body in earlier passes. Use a solid bright fill, then draw a
+      // narrow darker strip along the bottom edge so the panel still reads as
+      // dimensional rather than flat.
+      card.fillStyle(palette.bg, 1);
+      card.fillRoundedRect(-w / 2, -h / 2, w, h, 2);
+      // Bottom shade strip — dimensional base.
+      card.fillStyle(palette.bgAlt, 1);
+      card.fillRect(-w / 2 + 5, h / 2 - 12, w - 10, 6);
+      // Top catch-light — 2px embossed highlight = carved pixel-art, not a flat
+      // panel. White-at-low-alpha works across all three palettes.
+      card.fillStyle(0xffffff, 0.22);
+      card.fillRect(-w / 2 + 5, -h / 2 + 4, w - 10, 2);
+      card.lineStyle(3, palette.ink, 1);
+      card.strokeRoundedRect(-w / 2, -h / 2, w, h, 2);
+      card.lineStyle(1, palette.gold, 0.65);
+      card.strokeRoundedRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 1);
+      this.container.add(card);
+      this.objects.push(card);
+    }
 
     // Top accent strip — sub-title eyebrow.
     if (data.subtitle) {
@@ -154,7 +302,7 @@ export class LessonCard {
     // Divider.
     const dividerY = titleY + 30;
     const divider = scene.add.graphics();
-    divider.lineStyle(1, palette.rule, 0.85);
+    divider.lineStyle(1, dividerColor, dividerAlpha);
     divider.beginPath();
     divider.moveTo(-w / 2 + 20, dividerY);
     divider.lineTo(w / 2 - 20, dividerY);
@@ -187,14 +335,14 @@ export class LessonCard {
       const pillW = w - 40;
       const pillH = 28;
       const pill = scene.add.graphics();
-      pill.fillStyle(palette.bgAlt, 1);
-      pill.fillRoundedRect(-pillW / 2, cursorY, pillW, pillH, 4);
-      pill.lineStyle(1, palette.accent, 0.85);
-      pill.strokeRoundedRect(-pillW / 2, cursorY, pillW, pillH, 4);
+      pill.fillStyle(pillFill, 1);
+      pill.fillRoundedRect(-pillW / 2, cursorY, pillW, pillH, 2);
+      pill.lineStyle(1, pillStroke, 0.85);
+      pill.strokeRoundedRect(-pillW / 2, cursorY, pillW, pillH, 2);
       const cmp = scene.add.text(0, cursorY + pillH / 2, data.comparison, {
         fontSize: '11px',
         fontFamily: '"Press Start 2P", monospace',
-        color: cssGold,
+        color: pillTextCss,
       }).setOrigin(0.5, 0.5);
       this.container.add([pill, cmp]);
       this.objects.push(pill, cmp);

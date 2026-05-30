@@ -224,7 +224,14 @@ describe('visual revamp asset manifest', () => {
   });
 
   it('registers the full-region visual asset set', () => {
-    expect(VISUAL_REVAMP_IMAGE_ASSETS).toHaveLength(Object.keys(VISUAL_REVAMP_KEYS).length);
+    // VISUAL_REVAMP_KEYS is partitioned across two registries: most are
+    // single-image assets (VISUAL_REVAMP_IMAGE_ASSETS), and a small set of
+    // animated region props live in SPRITE_ASSETS via REGION_PROP_SPRITE_ASSETS.
+    // Together they must cover every key exactly once.
+    const imageKeys = new Set(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => asset.key));
+    const spriteKeys = new Set(SPRITE_ASSETS.map((asset) => asset.key));
+    const visualKeys = new Set(Object.values(VISUAL_REVAMP_KEYS));
+    expect(imageKeys.size + [...spriteKeys].filter((k) => visualKeys.has(k as never)).length).toBe(visualKeys.size);
 
     for (const asset of VISUAL_REVAMP_IMAGE_ASSETS) {
       expect(asset.path).toMatch(/^assets\/visual_revamp\//);
@@ -233,7 +240,12 @@ describe('visual revamp asset manifest', () => {
   });
 
   it('includes visual revamp images in the global preload list', () => {
-    const loadedKeys = new Set(IMAGE_ASSETS.map((asset) => asset.key));
+    // Visual-revamp keys are loaded as either images or spritesheets — both
+    // count as "preloaded somewhere", so we union the two registries.
+    const loadedKeys = new Set([
+      ...IMAGE_ASSETS.map((asset) => asset.key),
+      ...SPRITE_ASSETS.map((asset) => asset.key),
+    ]);
 
     for (const key of Object.values(VISUAL_REVAMP_KEYS)) {
       expect(loadedKeys.has(key), key).toBe(true);

@@ -18,10 +18,9 @@
 import Phaser from 'phaser';
 import { BasePuzzleScene } from './BasePuzzleScene';
 import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../../config/assets';
 import { audioManager } from '../../core/AudioManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
-import { drawPanel } from '../../ui/panel';
 import { BitHint } from '../../entities/BitHint';
 import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
 import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
@@ -43,8 +42,10 @@ import { PuzzlePhase } from '../../data/types';
 
 /** Bucket fill colours used for chip backgrounds — one per crop family. */
 const CROP_PALETTE: Record<string, { fill: number; stroke: number; glyph: string }> = {
-  WHEAT: { fill: 0xfde68a, stroke: 0xb45309, glyph: 'W' },
-  BEAN:  { fill: 0x86efac, stroke: 0x166534, glyph: 'B' },
+  // Round-4: WHEAT + BEAN palettes shifted from pastel-pill toward warm wood
+  // tones so they fit the painted farm backdrop instead of reading as web UI.
+  WHEAT: { fill: 0xe8b94a, stroke: 0x8b6914, glyph: 'W' },
+  BEAN:  { fill: 0x6cb060, stroke: 0x1a3a08, glyph: 'B' },
   CORN:  { fill: 0xfacc15, stroke: 0x854d0e, glyph: 'C' },
   RICE:  { fill: 0xfafafa, stroke: 0x71717a, glyph: 'R' },
   OAT:   { fill: 0xfcd34d, stroke: 0x92400e, glyph: 'O' },
@@ -66,7 +67,11 @@ interface Bucket {
   index: number;
   container: Phaser.GameObjects.Container;
   rim: Phaser.GameObjects.Rectangle;
-  body: Phaser.GameObjects.Rectangle;
+  // Round-4 art-pass: `body` is now usually a pixel-art Image (the wooden
+  // grain bucket sprite). Type widened to keep the Rectangle fallback path
+  // valid when the texture key isn't loaded (extremely defensive — happens
+  // only if BootScene preload is skipped, e.g. in a unit-test scene).
+  body: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
   label: Phaser.GameObjects.Text;
   countLabel: Phaser.GameObjects.Text;
   collidedLabel: Phaser.GameObjects.Text;
@@ -120,6 +125,26 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     this.puzzleId = 'ap_3';
     this.puzzleName = 'Organize the Harvest';
     this.puzzleDescription = 'Hash each crop with its key % bucketCount. Route before it lands.';
+  }
+
+  preload(): void {
+    super.preload();
+    // Round-4 art-pass: explicitly preload the AP puzzle-prop sprites used by
+    // this scene. BasePuzzleScene.preload only loads the backdrop + frame —
+    // it doesn't know about puzzle-specific sprites, so without this opt-in
+    // the `add.image(KEY)` calls below fall back to the rectangle path and
+    // the painted pixel-art never reaches the texture cache.
+    const propKeys = [
+      VISUAL_REVAMP_KEYS.AP_GRAIN_BUCKET,
+      VISUAL_REVAMP_KEYS.AP_CROP_WHEAT,
+      VISUAL_REVAMP_KEYS.AP_CROP_BEAN,
+    ];
+    for (const key of propKeys) {
+      const path = getImageAssetPath(key);
+      if (path && !this.textures.exists(key)) {
+        this.load.image(key, path);
+      }
+    }
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -189,16 +214,19 @@ export class P1_3_HashHopper extends BasePuzzleScene {
   // ──────────────────────────────────────────────────────────────────
 
   private buildRoundBadge(width: number): void {
-    drawPanel(this, width / 2 - 180, 158, 360, 28, {
-      depth: 18, fill: 0x081820, frame: COLORS.CYAN_GLOW, alpha: 0.92,
-    });
-    this.roundBadge = this.add.text(width / 2, 172, '', {
-      fontSize: '12px',
+    // Round-5: dropped the cyan-bordered dark-navy panel. The painted farm
+    // backdrop + translucent title banner now own the top portion of the
+    // screen — adding a separate chrome panel here re-introduced the
+    // "kid put things together" feel. Round/bucket info now floats as a
+    // single line of text under the title, themed per region.
+    const theme = this.getPuzzleTheme();
+    this.roundBadge = this.add.text(width / 2, 152, '', {
+      fontSize: '11px',
       fontFamily: FONTS.RETRO,
-      color: '#e0f8d0',
-      stroke: '#06b6d4',
-      strokeThickness: 1,
-    }).setOrigin(0.5).setDepth(20);
+      color: theme.titleColor,
+      stroke: theme.titleStroke,
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(20).setAlpha(0.92);
   }
 
   private buildFormulaPill(width: number): void {
@@ -366,10 +394,20 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     const h = 108;
     const container = this.add.container(x, y).setDepth(15);
 
+    // Round-4 art-pass: replaced the flat 0x88c070 green HTML-div rectangle
+    // with a hand-pixeled wooden grain bucket sprite (96x100 native) — the
+    // round-4 in-context fit audit flagged this exact element ("look exactly
+    // like raw HTML/CSS divs"). Native sprite is scaled with NN to whatever
+    // `w x h` the caller asks for so existing collision math stays valid.
     const shadow = this.add.rectangle(3, 6, w, h, 0x000000, 0.35);
-    const body = this.add.rectangle(0, 0, w, h, 0x88c070, 0.86)
-      .setStrokeStyle(2, 0x081820, 1)
-      .setInteractive({ useHandCursor: true });
+    const bodyKey = VISUAL_REVAMP_KEYS.AP_GRAIN_BUCKET;
+    const body = (this.textures.exists(bodyKey)
+      ? this.add.image(0, 0, bodyKey).setDisplaySize(w, h) as Phaser.GameObjects.GameObject
+      : this.add.rectangle(0, 0, w, h, 0x88c070, 0.86).setStrokeStyle(2, 0x081820, 1) as Phaser.GameObjects.GameObject
+    ) as Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
+    body.setInteractive({ useHandCursor: true });
+    // Keep a slim brass-looking rim above the bucket so the round/phase
+    // accent color (set elsewhere) still has a clean visual perch.
     const rim = this.add.rectangle(0, -h / 2, w + 6, 8, 0x346856, 1)
       .setOrigin(0.5, 0.5);
 
@@ -377,17 +415,23 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     const labelText = this.isFeelItRound()
       ? `BUCKET ${index}`
       : `BUCKET ${index}\n(key % ${this.buckets.length || index + 1} = ${index})`;
+    // Round-4: text colour changed dark-navy → wheat-cream + black stroke so
+    // it stays readable on the new wooden bucket sprite (dark wood interior).
     const label = this.add.text(0, -h / 2 + 22, labelText, {
       fontSize: '10px',
       fontFamily: FONTS.RETRO,
-      color: '#081820',
+      color: '#f0e4c2',
+      stroke: '#1a0e04',
+      strokeThickness: 2,
       align: 'center',
     }).setOrigin(0.5);
 
     const countLabel = this.add.text(0, h / 2 - 26, 'count 0', {
       fontSize: '10px',
       fontFamily: FONTS.MONO,
-      color: '#081820',
+      color: '#f0e4c2',
+      stroke: '#1a0e04',
+      strokeThickness: 2,
     }).setOrigin(0.5);
 
     const collidedLabel = this.add.text(0, h / 2 - 14, '', {
@@ -455,26 +499,37 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     // Soft glow halo behind the pouch.
     const halo = this.add.circle(0, 0, 32, palette.fill, 0.25);
 
-    // The pouch — a wide rounded chip drawn from Graphics so it can hold
-    // a crop glyph + stripe count without looking like a button.
+    // The pouch — a wide chip drawn from Graphics. Round-4 narrowed the corner
+    // radius (10→3) and shrank the alpha so it reads as a hand-pixel plaque
+    // backdrop, not a web-UI pill. The audit explicitly called out the prior
+    // smooth pastel pills as the worst in-context misfit on this scene.
     const pouch = this.add.graphics();
-    pouch.fillStyle(palette.fill, 1);
-    pouch.fillRoundedRect(-CROP_W / 2, -CROP_H / 2, CROP_W, CROP_H, 10);
+    pouch.fillStyle(palette.fill, 0.92);
+    pouch.fillRoundedRect(-CROP_W / 2, -CROP_H / 2, CROP_W, CROP_H, 3);
     pouch.lineStyle(2, palette.stroke, 1);
-    pouch.strokeRoundedRect(-CROP_W / 2, -CROP_H / 2, CROP_W, CROP_H, 10);
+    pouch.strokeRoundedRect(-CROP_W / 2, -CROP_H / 2, CROP_W, CROP_H, 3);
     // Pouch drawstring (small notch at top centre).
     pouch.fillStyle(palette.stroke, 1);
-    pouch.fillRoundedRect(-6, -CROP_H / 2 - 4, 12, 5, 2);
-    // Glyph badge: dark circle with a single letter — fast visual ID.
-    pouch.fillStyle(palette.stroke, 1);
-    pouch.fillCircle(-CROP_W / 2 + 14, 0, 9);
+    pouch.fillRect(-6, -CROP_H / 2 - 3, 12, 4);
 
     const bgChip = this.add.rectangle(0, 0, CROP_W + 8, CROP_H + 8, 0xffffff, 0)
       .setInteractive({ useHandCursor: true, draggable: true });
 
-    const glyph = this.add.text(-CROP_W / 2 + 14, 0, palette.glyph, {
-      fontSize: '11px', fontFamily: FONTS.RETRO, color: '#fffbe0',
-    }).setOrigin(0.5);
+    // Round-4 art-pass: prefer a pixel-art crop icon (wheat sheaf / bean pod)
+    // over the prior letter-in-a-circle glyph. The icon reads faster and ties
+    // the puzzle pieces to the painted farm backdrop. Falls back to the text
+    // glyph when no sprite is registered for the crop type yet.
+    const cropSpriteMap: Record<string, string | undefined> = {
+      WHEAT: VISUAL_REVAMP_KEYS.AP_CROP_WHEAT,
+      BEAN:  VISUAL_REVAMP_KEYS.AP_CROP_BEAN,
+    };
+    const cropSpriteKey = cropSpriteMap[crop.crop];
+    const glyph: Phaser.GameObjects.Image | Phaser.GameObjects.Text =
+      cropSpriteKey && this.textures.exists(cropSpriteKey)
+        ? this.add.image(-CROP_W / 2 + 14, 0, cropSpriteKey).setDisplaySize(24, 24)
+        : this.add.text(-CROP_W / 2 + 14, 0, palette.glyph, {
+            fontSize: '11px', fontFamily: FONTS.RETRO, color: '#fffbe0',
+          }).setOrigin(0.5);
 
     const label = this.add.text(8, -8, crop.crop, {
       fontSize: '11px',
@@ -641,7 +696,15 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       if (labelBefore >= 2) {
         bucket.hadCollision = true;
         bucket.collidedLabel.setText('COLLISION');
-        bucket.body.setStrokeStyle(3, COLORS.GOLD_ACCENT, 1);
+        // Round-4: the body is now an Image (pixel-art bucket sprite) for
+        // most code paths — setStrokeStyle only exists on Rectangle. Use
+        // tint as the collision accent instead; falls back to setStrokeStyle
+        // only when the Rectangle fallback path was taken.
+        if (bucket.body instanceof Phaser.GameObjects.Image) {
+          bucket.body.setTint(COLORS.GOLD_ACCENT);
+        } else {
+          bucket.body.setStrokeStyle(3, COLORS.GOLD_ACCENT, 1);
+        }
       }
       this.routedCount++;
       this.bitHint?.showWarm();

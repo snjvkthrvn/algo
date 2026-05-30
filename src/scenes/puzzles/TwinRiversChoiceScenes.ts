@@ -126,13 +126,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     // GlitchCorner removed — replaced by phase-gated BruteForceActor in
     // mountFeelItPanels (degenerate-row mode: heading + ticking counter).
 
-    this.statusText = this.add.text(width / 2, 174, '', {
-      fontSize: '12px',
-      fontFamily: FONTS.MONO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
-      padding: { x: 12, y: 8 },
-    }).setOrigin(0.5).setDepth(20);
+    this.statusText = this.createStatusReadout(width / 2, 174);
 
     // Keybinding label rewritten — old "[D] move L  -  [J] move R" sounded
     // like "D goes left" when really D and J each control one of two
@@ -175,7 +169,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = MIRROR_WALK_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'parchment');
+    if (lesson) await showLessonCard(this, lesson, 'riverside');
     this.startRound(index);
   }
 
@@ -257,7 +251,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       new GlitchCorner(this, {
         x: 152, y: height - 92,
         width: 240, height: 74,
-        variant: 'parchment',
+        variant: 'riverside',
         heading: 'Nearby · Glitch (in the river)',
         body: '"The water tastes like ink!"',
         depth: 40,
@@ -656,13 +650,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     // all moved into mountUseItPanels — the round-1 FEEL_IT mount has only
     // the brute-force counter, no algorithm-named chrome.
 
-    this.statusText = this.add.text(width / 2, 174, '', {
-      fontSize: '12px',
-      fontFamily: FONTS.MONO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
-      padding: { x: 12, y: 8 },
-    }).setOrigin(0.5).setDepth(20);
+    this.statusText = this.createStatusReadout(width / 2, 174);
 
     this.sumText = this.add.text(width / 2, 218, '', {
       fontSize: '18px',
@@ -729,7 +717,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
       new GlitchCorner(this, {
         x: 152, y: height - 92,
         width: 240, height: 74,
-        variant: 'parchment',
+        variant: 'riverside',
         heading: "Glitch's Approach",
         body: 'check every pair: n(n−1)/2 · the walk: ≤ n steps.',
         depth: 40,
@@ -763,7 +751,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
         bruteCost: pairCount(POINTER_BRIDGE_ROUNDS[this.roundIndex].values.length),
         algoLabel: 'walk steps',
         algoCost: 0,
-        variant: 'parchment',
+        variant: 'riverside',
         depth: 40,
       });
     }
@@ -772,7 +760,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = POINTER_BRIDGE_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'parchment');
+    if (lesson) await showLessonCard(this, lesson, 'riverside');
     this.startRound(index);
   }
 
@@ -1034,7 +1022,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
       new GlitchCorner(this, {
         x: 152, y: height - 92,
         width: 240, height: 74,
-        variant: 'parchment',
+        variant: 'riverside',
         heading: 'Glitch Re-Adds Each Window',
         body: 'recount every step: O(n·k). Slide: O(n).',
         depth: 40,
@@ -1069,7 +1057,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
         bruteCost: bruteWindowCost(r0.values.length, r0.windowSize),
         algoLabel: 'your slides',
         algoCost: 0,
-        variant: 'parchment',
+        variant: 'riverside',
         depth: 40,
       });
     }
@@ -1091,13 +1079,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     // all moved into mountUseItPanels — FEEL_IT round 1 carries only the
     // BruteForceActor counter, no algorithm-named chrome.
 
-    this.statusText = this.add.text(width / 2, 174, '', {
-      fontSize: '12px',
-      fontFamily: FONTS.MONO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
-      padding: { x: 12, y: 8 },
-    }).setOrigin(0.5).setDepth(20);
+    this.statusText = this.createStatusReadout(width / 2, 174);
 
     this.sumText = this.add.text(width / 2, 218, '', {
       fontSize: '16px',
@@ -1135,7 +1117,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = FIXED_WINDOW_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'parchment');
+    if (lesson) await showLessonCard(this, lesson, 'riverside');
     this.startRound(index);
   }
 
@@ -1374,7 +1356,7 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
       new GlitchCorner(this, {
         x: 152, y: height - 92,
         width: 240, height: 74,
-        variant: 'parchment',
+        variant: 'riverside',
         heading: 'Glitch Rechecks Every Substring',
         body: 'all substrings: O(n²). Two pointers: O(n).',
         depth: 40,
@@ -1415,13 +1397,7 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     // GlitchCorner, AlgorithmTrace, PuzzlePreviewSidePanel all moved into
     // mountUseItPanels — FEEL_IT round 1 carries only the brute-force counter.
 
-    this.statusText = this.add.text(width / 2, 174, '', {
-      fontSize: '12px',
-      fontFamily: FONTS.MONO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
-      padding: { x: 12, y: 8 },
-    }).setOrigin(0.5).setDepth(20);
+    this.statusText = this.createStatusReadout(width / 2, 174);
 
     this.metricsText = this.add.text(width / 2, 218, '', {
       fontSize: '16px',
@@ -1464,7 +1440,7 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = CURRENT_RIDER_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'parchment');
+    if (lesson) await showLessonCard(this, lesson, 'riverside');
     this.startRound(index);
   }
 
@@ -1747,13 +1723,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       strokeThickness: 2,
     }).setOrigin(0.5).setDepth(21);
 
-    this.statusText = this.add.text(width / 2, 196, '', {
-      fontSize: '11px',
-      fontFamily: FONTS.MONO,
-      color: '#081820',
-      backgroundColor: '#e0f8d0',
-      padding: { x: 10, y: 6 },
-    }).setOrigin(0.5).setDepth(20);
+    this.statusText = this.createStatusReadout(width / 2, 196, { fontSize: 11 });
 
     this.detailText = this.add.text(width / 2, 232, '', {
       fontSize: '14px',

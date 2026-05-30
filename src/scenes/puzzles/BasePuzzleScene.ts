@@ -99,6 +99,10 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       this.getPuzzleBackdropKey(),
       VISUAL_REVAMP_KEYS.PUZZLE_FRAME,
       PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME,
+      // Diegetic lesson-card backgrounds (NineSlice). Loaded for every puzzle
+      // so showLessonCard() can render the region-themed in-world card.
+      VISUAL_REVAMP_KEYS.LESSON_CARD_AP,
+      VISUAL_REVAMP_KEYS.LESSON_CARD_TR,
     ].filter((key): key is string => Boolean(key));
 
     for (const key of imageKeys) {
@@ -112,31 +116,43 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0, 0).setDepth(-30);
 
-    // If a region backdrop is active, it owns the entire surface — skip the
-    // static texture entirely so the painted scene reads cleanly.
-    if (!this.getRegionBackdrop()) {
-      const backdropKey = this.getPuzzleBackdropKey();
-      const resolvedBackdropKey = backdropKey && this.textures.exists(backdropKey)
-        ? backdropKey
-        : PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME;
-      const hasBackdrop = this.textures.exists(resolvedBackdropKey);
+    // Round-3 art-pass fix: ALWAYS render the static pixel-art backdrop as the
+    // base layer. The earlier "static OR procedural (XOR)" toggle forced a
+    // choice between the painted region texture (great) and the procedural
+    // graphics (greybox cartoon). The clean answer is additive: paint the
+    // real backdrop, then overlay particles for life. See the round-3 audit
+    // (.tmp/audit_round3_phase2_visual.txt) for screenshots showing the
+    // before-state — "MS Paint" / "literal solid blocks of color" / score 1.
+    const backdropKey = this.getPuzzleBackdropKey();
+    const resolvedBackdropKey = backdropKey && this.textures.exists(backdropKey)
+      ? backdropKey
+      : PROLOGUE_REWORK_KEYS.PUZZLE_CHAMBER_FRAME;
+    const hasBackdrop = this.textures.exists(resolvedBackdropKey);
 
-      if (hasBackdrop) {
-        this.add
-          .image(width / 2, height / 2, resolvedBackdropKey)
-          .setDisplaySize(width, height)
-          .setDepth(-29);
-      } else {
-        this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1)
-          .setOrigin(0, 0)
-          .setDepth(-28);
-      }
+    if (hasBackdrop) {
+      this.add
+        .image(width / 2, height / 2, resolvedBackdropKey)
+        .setDisplaySize(width, height)
+        .setDepth(-29);
+    } else {
+      this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1)
+        .setOrigin(0, 0)
+        .setDepth(-28);
     }
+
+    // Round-6 atmospheric treatment — push the painted backdrop BACK so the
+    // central playfield becomes the focal layer. Without this the bright,
+    // busy region art competes with the gameplay tiles/cards and the screen
+    // reads as "backdrop + foreground stickers." See applyBackdropTreatment.
+    this.applyBackdropTreatment(width, height);
 
     this.uiContainer = this.add.container(0, 0);
 
-    // Region-themed procedural backdrop (replaces the static image when a
-    // puzzle opts in via getRegionBackdrop()).
+    // Region-themed procedural backdrop — now strictly an additive PARTICLE
+    // overlay (motes, shimmer, river caustics) sitting ON TOP of the static
+    // backdrop. The build* functions in RegionBackdrop were stripped to
+    // motion-only as part of this same round-3 fix; they no longer paint
+    // sky/sun/hills/windmill/barn/wheat (those come from the static texture).
     const region = this.getRegionBackdrop();
     if (region) {
       new RegionBackdrop(this, region.id, region.options);
@@ -150,19 +166,93 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.createPuzzleControlsStrip(width, height);
   }
 
+  /**
+   * Atmospheric backdrop treatment (Round-6). The painted region backdrops
+   * render at full brightness/detail, so foreground gameplay sat on them like
+   * stickers. Two cheap layers fix the depth read:
+   *   1. A flat, region-tinted darken over the whole backdrop — pushes it back
+   *      a uniform notch (warm-dark for the farm, cool-dark for the river,
+   *      cosmic for the void).
+   *   2. A shared radial vignette (transparent centre → dark edges) that funnels
+   *      the eye to the central playfield and softly frames the scene.
+   * Both are theme-driven; later regions set the alphas to 0 (no-op) since they
+   * don't paint a region backdrop. The darken sits just above the backdrop
+   * image (-27); the vignette sits above the particle haze (-7) so even the
+   * drifting motes/leaves dim toward the corners for one cohesive image.
+   */
+  protected applyBackdropTreatment(width: number, height: number): void {
+    const theme = this.getPuzzleTheme();
+
+    if (theme.backdropDarkenAlpha > 0) {
+      this.add
+        .rectangle(0, 0, width, height, theme.backdropDarken, theme.backdropDarkenAlpha)
+        .setOrigin(0, 0)
+        .setDepth(-27)
+        .setScrollFactor(0);
+    }
+
+    if (theme.backdropVignetteAlpha > 0) {
+      const key = this.ensureVignetteTexture(width, height);
+      if (key) {
+        this.add
+          .image(width / 2, height / 2, key)
+          .setDisplaySize(width, height)
+          .setDepth(-7)
+          .setAlpha(theme.backdropVignetteAlpha)
+          .setScrollFactor(0);
+      }
+    }
+  }
+
+  /**
+   * Lazily build a soft radial-gradient vignette texture (transparent centre,
+   * dark edges) once and reuse it across scenes/restarts. Canvas-2D radial
+   * gradients give a far smoother falloff than stacking Graphics rings, and the
+   * single shared neutral-dark texture is tinted per-region by the flat darken
+   * layer rather than by re-baking the texture. Returns null if the renderer
+   * refuses the canvas texture (defensive — never observed in practice).
+   */
+  private ensureVignetteTexture(width: number, height: number): string | null {
+    const key = 'puzzle-vignette';
+    if (this.textures.exists(key)) return key;
+
+    const canvasTex = this.textures.createCanvas(key, width, height);
+    if (!canvasTex) return null;
+
+    const ctx = canvasTex.getContext();
+    const cx = width / 2;
+    const cy = height / 2;
+    const inner = Math.min(width, height) * 0.30;
+    const outer = Math.hypot(width, height) * 0.55;
+    const grad = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
+    grad.addColorStop(0, 'rgba(6,8,16,0)');
+    grad.addColorStop(0.62, 'rgba(6,8,16,0.22)');
+    grad.addColorStop(1, 'rgba(5,7,14,0.60)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+    canvasTex.refresh();
+
+    return key;
+  }
+
   /** Bottom bar — matches overworld legend; M mute is registered on the CRT overlay scene. */
   protected createPuzzleControlsStrip(width: number, height: number): void {
+    // Round-5 chrome unification — keyboard-hint strip palette now comes
+    // from the active theme. Lets the AP strip read as a carved wooden
+    // beam and the TR strip read as a river-stone slab, instead of every
+    // region sharing the same cyan-and-gold tech bar.
+    const theme = this.getPuzzleTheme();
     const stripW = Math.min(width - 96, 760);
     const stripH = 32;
     drawPanel(this, width / 2 - stripW / 2, height - stripH - 8, stripW, stripH, {
       depth: 4999,
-      fill: COLORS.ERROR,
-      frame: COLORS.FRAME_BORDER_LIGHT,
-      inner: COLORS.SUCCESS,
+      fill: theme.hudHintStripFill,
+      frame: theme.hudHintStripFrame,
+      inner: theme.hudHintStripInner,
       alpha: 0.78,
       shadow: true,
       shadowAlpha: 0.22,
-      accent: COLORS.CYAN_GLOW,
+      accent: theme.hudHintStripAccent,
       accentSide: 'top',
     });
 
@@ -184,7 +274,17 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_FRAME;
+    // Region-aware default: when a puzzle has opted into a region backdrop
+    // (via getRegionBackdrop()), use that region's painted texture as the
+    // static base layer. Subclasses can still override to pick a different
+    // texture (e.g., a puzzle-specific painted backdrop).
+    const region = this.getRegionBackdrop();
+    switch (region?.id) {
+      case 'prologue':     return VISUAL_REVAMP_KEYS.PROLOGUE_BG;
+      case 'array-plains': return VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG;
+      case 'twin-rivers':  return VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG;
+      default:             return VISUAL_REVAMP_KEYS.PUZZLE_FRAME;
+    }
   }
 
   /**
@@ -230,6 +330,39 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   /** Override to use a different chrome palette (e.g., the prologue chamber). */
   protected getPuzzleTheme(): PuzzleTheme {
     return PARCHMENT_PUZZLE_THEME;
+  }
+
+  /**
+   * Themed in-world status readout (Round-6.5 de-sticker).
+   *
+   * The per-region status / round lines were `add.text` with a flat bright
+   * mint `backgroundColor: '#e0f8d0'` and an empty-string start. A Phaser Text
+   * paints its `backgroundColor` padding box even with no glyphs, so before the
+   * first `refresh*()` they rendered as a naked pale square floating over the
+   * painted backdrop ("looks like a kid just put things together"). Even once
+   * populated, the bright mint chip clashed with the dark vignetted scenes.
+   *
+   * This builds the readout as backgroundless light text with a dark outline
+   * instead: legible over any backdrop, consistent with the floating subtitle /
+   * keybind texts, and — crucially — invisible when empty, because a stroke
+   * paints nothing without glyphs. One idiom, every region, so it flows.
+   */
+  protected createStatusReadout(
+    x: number,
+    y: number,
+    opts: { fontSize?: number; font?: string } = {},
+  ): Phaser.GameObjects.Text {
+    return this.add
+      .text(x, y, '', {
+        fontSize: `${opts.fontSize ?? 12}px`,
+        fontFamily: opts.font ?? FONTS.MONO,
+        color: '#eaf6f2',
+        stroke: '#06141c',
+        strokeThickness: 3,
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setDepth(20);
   }
 
   protected createPuzzleFrame(width: number, height: number): void {
@@ -371,7 +504,9 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       alpha: theme.titlePanelAlpha,
       shadow: true,
       shadowAlpha: 0.24,
-      accent: COLORS.CYAN_GLOW,
+      // Round-5: was always COLORS.CYAN_GLOW — now theme-aware so the title
+      // banner's top edge matches the active region's accent colour.
+      accent: theme.titlePanelAccent,
       accentSide: 'top',
     });
     titlePanel.setAlpha(0);
@@ -440,15 +575,19 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   protected createControlButtons(width: number): void {
+    // Round-5 chrome unification — exit + hint buttons now use the active
+    // theme's HUD colours instead of always-cyan-gold. AP gets brass+barn-red,
+    // TR gets cyan+weathered-wood, Prologue gets purple+navy.
+    const theme = this.getPuzzleTheme();
     this.exitButton = createRetroButton(
-      this, width - 88, 60, 'EXIT', COLORS.ERROR, () => this.exitPuzzle(), 112
+      this, width - 88, 60, 'EXIT', theme.hudExitButton, () => this.exitPuzzle(), 112
     );
     // Hint cost surfaced in the button text — the audit flagged that
     // "hoarding hints vs burning hints" was an opaque choice. Including
     // "-1★" in the label makes the trade-off legible at the moment of
     // decision, not retroactive at the star-rating screen.
     this.hintButton = createRetroButton(
-      this, 96, 60, `HINT -1★ (${this.maxHints - this.hintsUsed})`, COLORS.GOLD_ACCENT, () => this.showHint(), 152
+      this, 96, 60, `HINT -1★ (${this.maxHints - this.hintsUsed})`, theme.hudHintButton, () => this.showHint(), 152
     );
 
     this.exitButton.setScale(0);
@@ -472,6 +611,11 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   }
 
   protected addStatusIndicator(width: number, _height: number): void {
+    // Round-5 chrome unification — READY badge palette now comes from the
+    // active theme. The prior hardcoded cyan-bordered glow looked like
+    // sci-fi UI welded onto every region. With theme-aware colours, AP gets
+    // a wooden plaque, TR gets a stone tablet, Prologue keeps cosmic cyan.
+    const theme = this.getPuzzleTheme();
     const padding = 40;
     const panelW = 160;
     const panelH = 30;
@@ -482,14 +626,14 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     const panel = drawPanel(this, panelX, panelY, panelW, panelH, {
       depth: 0,
-      fill: COLORS.ERROR,
-      frame: COLORS.FRAME_BORDER_LIGHT,
-      inner: COLORS.WARNING,
+      fill: theme.hudStatusFill,
+      frame: theme.hudStatusFrame,
+      inner: theme.hudStatusInner,
       alpha: 0.84,
       shadow: true,
       shadowAlpha: 0.18,
     });
-    const dot = this.add.circle(dotX, dotY, 4, COLORS.SUCCESS);
+    const dot = this.add.circle(dotX, dotY, 4, theme.hudStatusDot);
     const label = this.add.text(dotX + 12, dotY, this.getReadyLabel(), {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,

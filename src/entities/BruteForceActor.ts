@@ -157,9 +157,24 @@ export class BruteForceActor {
     const rowWidth = n * this.tileW + (n - 1) * this.tileGap;
     const startX = centerX - rowWidth / 2 + this.tileW / 2;
 
+    // Round-4 art-pass: if the AP_CORRUPTED_CRATE sprite is loaded (the
+    // Glitch-infected variant of the wooden crate — same silhouette, cracked
+    // + red-stained), draw it beneath the Graphics body so Glitch's row reads
+    // as "wooden crates corrupted by the antagonist" instead of "flat red
+    // rectangles." Falls back to the original Graphics-only path when the
+    // texture isn't loaded (older scenes that didn't preload the sprite).
+    // Importing the asset key lazily via dynamic require keeps this entity
+    // file decoupled from the asset-config import graph.
+    const corruptedKey = 'visual-revamp-ap-corrupted-crate';
+    const hasCrate = this.scene.textures.exists(corruptedKey);
+
     for (let i = 0; i < n; i++) {
       const x = startX + i * (this.tileW + this.tileGap);
       const container = this.scene.add.container(x, centerY).setDepth(depth);
+
+      const crate = hasCrate
+        ? this.scene.add.image(0, 0, corruptedKey).setDisplaySize(this.tileW, this.tileH)
+        : null;
 
       const body = this.scene.add.graphics();
       this.paintBody(body, false);
@@ -172,7 +187,10 @@ export class BruteForceActor {
         strokeThickness: 2,
       }).setOrigin(0.5);
 
-      container.add([body, label]);
+      const children: Phaser.GameObjects.GameObject[] = [];
+      if (crate) children.push(crate);
+      children.push(body, label);
+      container.add(children);
       this.objects.push(container);
 
       this.tiles.push({ container, body, label, value: this.values[i], homeX: x });
@@ -183,12 +201,24 @@ export class BruteForceActor {
     g.clear();
     const w = this.tileW;
     const h = this.tileH;
-    g.fillStyle(highlighted ? GLITCH_HIGHLIGHT : GLITCH_DEEP, 1);
-    g.fillRect(-w / 2, -h / 2, w, h);
-    g.fillStyle(GLITCH_RED, 0.55);
-    g.fillRect(-w / 2, -h / 2, w, 4);
-    g.lineStyle(2, GLITCH_RED, highlighted ? 1 : 0.85);
-    g.strokeRect(-w / 2, -h / 2, w, h);
+    // Round-4: when the corrupted-crate sprite is the underlying tile body,
+    // skip the opaque fills (they'd cover the pixel art) and use this Graphics
+    // layer only for the highlight outline. Fall back to the full Glitch-red
+    // fill path when the sprite isn't loaded.
+    const hasCrate = this.scene.textures.exists('visual-revamp-ap-corrupted-crate');
+    if (!hasCrate) {
+      g.fillStyle(highlighted ? GLITCH_HIGHLIGHT : GLITCH_DEEP, 1);
+      g.fillRect(-w / 2, -h / 2, w, h);
+      g.fillStyle(GLITCH_RED, 0.55);
+      g.fillRect(-w / 2, -h / 2, w, 4);
+    }
+    // Highlight outline — always drawn (works on both crate and fallback).
+    // Skip on idle when we have a crate (the corrupted crate's own pixel
+    // outline reads cleanly; adding a 2px red stroke would double-frame it).
+    if (highlighted || !hasCrate) {
+      g.lineStyle(2, GLITCH_RED, highlighted ? 1 : 0.85);
+      g.strokeRect(-w / 2, -h / 2, w, h);
+    }
   }
 
   private startTicking(): void {

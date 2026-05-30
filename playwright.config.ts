@@ -8,6 +8,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3000',
     viewport: { width: 1280, height: 720 },
+    // 2x DPR makes screenshots 2560x1440 — sharper pixels for art-pass audits
+    // without scaling the game itself (Phaser still renders at native 640x360).
+    deviceScaleFactor: 2,
     screenshot: 'on',
     launchOptions: {
       args: ['--disable-webgl'],
