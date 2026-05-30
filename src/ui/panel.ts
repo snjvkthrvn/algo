@@ -51,19 +51,47 @@ export function drawPanel(
   const ih = Math.round(h);
 
   const g = scene.add.graphics();
+
+  // Hard, two-step offset drop shadow — pixel-art depth (a single soft-alpha
+  // rect read as a CSS shadow). Lifts the plate off busy backdrops.
   if (options.shadow) {
-    g.fillStyle(options.shadowColor ?? COLORS.PURE_BLACK, options.shadowAlpha ?? 0.34);
+    const sc = options.shadowColor ?? COLORS.PURE_BLACK;
+    const sa = options.shadowAlpha ?? 0.34;
+    g.fillStyle(sc, sa * 0.5);
+    g.fillRect(ix + shadowOffset + 3, iy + shadowOffset + 3, iw, ih);
+    g.fillStyle(sc, sa);
     g.fillRect(ix + shadowOffset, iy + shadowOffset, iw, ih);
   }
 
+  // Body fill.
   g.fillStyle(fill, alpha);
   g.fillRect(ix, iy, iw, ih);
-  g.lineStyle(2, frame, alpha);
-  g.strokeRect(ix, iy, iw, ih);
+
+  // Frame border drawn as four fillRects (not strokeRect) so every edge lands
+  // on exact pixels — strokeRect straddles the path and softens pixel-art UI.
+  g.fillStyle(frame, alpha);
+  g.fillRect(ix, iy, iw, 2);
+  g.fillRect(ix, iy + ih - 2, iw, 2);
+  g.fillRect(ix, iy, 2, ih);
+  g.fillRect(ix + iw - 2, iy, 2, ih);
+
+  // Inner bevel: 1px highlight on the top/left lip, 1px shade on bottom/right.
+  // Reads as an embossed, crafted plate rather than a flat panel — and it's
+  // fill-agnostic, so it works over every region's tint.
+  g.fillStyle(0xffffff, 0.14 * alpha);
+  g.fillRect(ix + 2, iy + 2, iw - 4, 1);
+  g.fillRect(ix + 2, iy + 2, 1, ih - 4);
+  g.fillStyle(0x000000, 0.2 * alpha);
+  g.fillRect(ix + 2, iy + ih - 3, iw - 4, 1);
+  g.fillRect(ix + iw - 3, iy + 2, 1, ih - 4);
 
   if (options.inner !== undefined) {
-    g.lineStyle(1, options.inner, alpha);
-    g.strokeRect(ix + 4, iy + 4, iw - 8, ih - 8);
+    // Subtle inset rule line (4 fillRect sides for crisp pixels).
+    g.fillStyle(options.inner, 0.55 * alpha);
+    g.fillRect(ix + 5, iy + 5, iw - 10, 1);
+    g.fillRect(ix + 5, iy + ih - 6, iw - 10, 1);
+    g.fillRect(ix + 5, iy + 5, 1, ih - 10);
+    g.fillRect(ix + iw - 6, iy + 5, 1, ih - 10);
   }
 
   if (options.accent !== undefined) {
