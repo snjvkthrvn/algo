@@ -655,7 +655,7 @@ export class ArrayPlainsScene extends BaseOverworldScene {
       initialState: progressionSystem.isTwinRiversGatewayOpen() ? 'unlocked' : 'locked',
       onInteract: () => {
         if (progressionSystem.isTwinRiversGatewayOpen()) {
-          TransitionManager.swirl(this, SCENE_KEYS.TWIN_RIVERS, { spawnX: 192, spawnY: 448 });
+          TransitionManager.swirl(this, SCENE_KEYS.TWIN_RIVERS, { spawnX: 160, spawnY: 624 });
           return;
         }
 

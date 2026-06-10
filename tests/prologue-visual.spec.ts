@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Prologue region visual audit.
  *
- * Captures screenshots of every key visual state in the prologue — overworld,
- * puzzles, dialogue — so regressions are visible at a glance.
+ * Captures screenshots of every key visual state in the prologue â€” overworld,
+ * puzzles, dialogue â€” so regressions are visible at a glance.
  *
  * Run with:  npx playwright test
  * View HTML report after:  npx playwright show-report
@@ -10,14 +10,14 @@
  * Screenshots land in tests/screenshots/.
  * First run creates them; subsequent runs let you diff manually.
  *
- * ── Timing note ──────────────────────────────────────────────────────────────
+ * â”€â”€ Timing note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  * In headless Chromium, requestAnimationFrame is throttled to ~1 fps for
  * background tabs.  Phaser's delayedCall timers fire at correct wall-clock time
  * (they use performance.now internally), but the canvas only repaints on the
- * next RAF tick — up to 1000 ms late.  All waitForTimeout values below account
- * for this with a ~1.8× multiplier on top of the nominal game-time duration.
+ * next RAF tick â€” up to 1000 ms late.  All waitForTimeout values below account
+ * for this with a ~1.8Ã— multiplier on top of the nominal game-time duration.
  *
- * ── Scene-transition strategy ────────────────────────────────────────────────
+ * â”€â”€ Scene-transition strategy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  * Prologue tests navigate via keyboard (Enter on NEW GAME).  That goes through
  * TransitionManager.swirl(), which calls scene.scene.start() from *within* the
  * running MenuScene.  Phaser's ScenePlugin queues the stop-then-start pair
@@ -34,7 +34,7 @@ import { mkdir } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type PhaserGame = {
   scene: {
@@ -56,7 +56,7 @@ type GameWindow = Window & {
   };
 };
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'screenshots');
 const runtimeErrorsByPage = new WeakMap<Page, string[]>();
@@ -113,7 +113,7 @@ async function prepareP01Round(page: Page, roundIndex: number) {
 }
 
 /**
- * Advance the post-solve NAME_IT beat (FEEL→NAME, docs/VISION.md §3): the
+ * Advance the post-solve NAME_IT beat (FEELâ†’NAME, docs/VISION.md Â§3): the
  * keeper speaks 1-2 DialogueBox lines, the codex whisper settles, and the
  * scene fades back to the overworld on its own. Space both completes the
  * typewriter and advances lines, so a short press loop covers all states.
@@ -194,7 +194,7 @@ async function clickMenuItem(page: Page, label: string) {
 /**
  * Navigate to the PrologueScene the same way the player does: Enter on NEW GAME.
  *
- * This goes through MenuScene → TransitionManager.swirl() → scene.scene.start(),
+ * This goes through MenuScene â†’ TransitionManager.swirl() â†’ scene.scene.start(),
  * which properly stops the menu before the prologue renders.  Returns once the
  * prologue fade-in overlay has cleared and the first game frame is stable.
  */
@@ -223,7 +223,7 @@ async function goToPrologue(page: Page) {
   await page.waitForTimeout(1_000);
   await clickMenuItem(page, 'CONTINUE');
   await waitForScene(page, 'PrologueScene', 10_000);
-  // PrologueScene fade-in runs for 800 ms game-time; swirl + RAF throttle ~1.8×.
+  // PrologueScene fade-in runs for 800 ms game-time; swirl + RAF throttle ~1.8Ã—.
   await page.waitForTimeout(1_800);
 }
 
@@ -414,9 +414,9 @@ async function snap(page: Page, filename: string) {
   await canvas.screenshot({ path: join(SHOTS_DIR, filename) });
 }
 
-// ─── Tests ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-test.describe('Prologue region – visual audit', () => {
+test.describe('Prologue region â€“ visual audit', () => {
   test.beforeAll(async () => {
     await mkdir(SHOTS_DIR, { recursive: true });
   });
@@ -436,7 +436,7 @@ test.describe('Prologue region – visual audit', () => {
 
     await page.goto('/');
     await waitForScene(page, 'MenuScene');
-    // Wait for the menu fade-in tween to complete (500 ms game-time ≈ 900 ms real).
+    // Wait for the menu fade-in tween to complete (500 ms game-time â‰ˆ 900 ms real).
     await page.waitForTimeout(1_000);
   });
 
@@ -444,9 +444,9 @@ test.describe('Prologue region – visual audit', () => {
     expect(runtimeErrorsByPage.get(page) ?? []).toEqual([]);
   });
 
-  // ── Menu ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('01 – menu screen', async ({ page }) => {
+  test('01 â€“ menu screen', async ({ page }) => {
     await snap(page, '01-menu.png');
   });
 
@@ -479,18 +479,18 @@ test.describe('Prologue region – visual audit', () => {
     expect(result.menuItems).not.toContain('RESUME');
   });
 
-  // ── Prologue overworld ────────────────────────────────────────────────────
+  // â”€â”€ Prologue overworld â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('02 – prologue overworld – region card visible', async ({ page }) => {
+  test('02 â€“ prologue overworld â€“ region card visible', async ({ page }) => {
     await goToPrologue(page);
     // After goToPrologue the fade-in is done and the region card is in its
-    // 2500 ms hold phase.  Snap immediately — the card is fully opaque.
+    // 2500 ms hold phase.  Snap immediately â€” the card is fully opaque.
     await snap(page, '02-prologue-region-card.png');
   });
 
-  test('03 – prologue overworld – settled atmosphere', async ({ page }) => {
+  test('03 â€“ prologue overworld â€“ settled atmosphere', async ({ page }) => {
     await goToPrologue(page);
-    // HUD card total: 500 ms + 2500 ms + 500 ms = 3500 ms game-time ≈ 6300 ms real.
+    // HUD card total: 500 ms + 2500 ms + 500 ms = 3500 ms game-time â‰ˆ 6300 ms real.
     // goToPrologue already consumed ~1800 ms real (post-scene-active wait).
     // Wait another 5000 ms to clear the remaining ~4500 ms real of card animation.
     await page.waitForTimeout(5_000);
@@ -527,46 +527,46 @@ test.describe('Prologue region – visual audit', () => {
     });
   });
 
-  // ── Puzzle P0-1: Follow the Path ──────────────────────────────────────────
+  // â”€â”€ Puzzle P0-1: Follow the Path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('04 – P0-1 Follow the Path – initial tile layout', async ({ page }) => {
+  test('04 â€“ P0-1 Follow the Path â€“ initial tile layout', async ({ page }) => {
     await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
     // Tiles are drawn in create(); 500 ms real is enough for the fade-in to clear.
     await page.waitForTimeout(500);
     await snap(page, '04-p0-1-layout.png');
   });
 
-  test('05 – P0-1 Follow the Path – tile glowing mid-sequence', async ({ page }) => {
+  test('05 â€“ P0-1 Follow the Path â€“ tile glowing mid-sequence', async ({ page }) => {
     await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
     // waitForScene resolves ~2600 ms after create() (RAF throttle), so by the time
     // waitForTimeout starts the game is already at ~2600 ms.  Adding 2500 ms real time
-    // puts us at game-time ~5100 ms — inside tile-2's glow window (4600–5600 ms).
+    // puts us at game-time ~5100 ms â€” inside tile-2's glow window (4600â€“5600 ms).
     await page.waitForTimeout(2_500);
     await snap(page, '05-p0-1-glow.png');
   });
 
-  test('06 – P0-1 Follow the Path – player turn', async ({ page }) => {
+  test('06 â€“ P0-1 Follow the Path â€“ player turn', async ({ page }) => {
     await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
-    // "Your turn!" fires at game-time 6200 ms (800 intro + 1200 round delay + 3×1300 ms
+    // "Your turn!" fires at game-time 6200 ms (800 intro + 1200 round delay + 3Ã—1300 ms
     // pattern + 300 ms buffer).  waitForScene resolves ~2600 ms after create() due to RAF
-    // throttle, so the message window in real-time is roughly waitForScene + 3600–5600 ms.
-    // 4500 ms lands in the middle; accounting for ~1× RAF render lag it hits the painted
-    // frame where the floating text is clearly visible (alpha ≈ 0.7).
+    // throttle, so the message window in real-time is roughly waitForScene + 3600â€“5600 ms.
+    // 4500 ms lands in the middle; accounting for ~1Ã— RAF render lag it hits the painted
+    // frame where the floating text is clearly visible (alpha â‰ˆ 0.7).
     await page.waitForTimeout(4_500);
     await snap(page, '06-p0-1-player-turn.png');
   });
 
-  // ── Puzzle P0-2: Flow Consoles ────────────────────────────────────────────
+  // â”€â”€ Puzzle P0-2: Flow Consoles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('07 – P0-2 Flow Consoles – initial layout', async ({ page }) => {
+  test('07 â€“ P0-2 Flow Consoles â€“ initial layout', async ({ page }) => {
     await jumpToScene(page, 'P0_2_FlowConsoles', { returnScene: 'PrologueScene' });
     await page.waitForTimeout(500);
     await snap(page, '07-p0-2-layout.png');
   });
 
-  // ── Array Plains ───────────────────────────────────────────────────────────
+  // â”€â”€ Array Plains â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('08 – Array Plains – Continue from save', async ({ page }) => {
+  test('08 â€“ Array Plains â€“ Continue from save', async ({ page }) => {
     await goToArrayPlainsViaContinue(page);
     await snap(page, '08-array-plains-continue.png');
 
@@ -711,7 +711,7 @@ test.describe('Prologue region – visual audit', () => {
       'ArrowRight',
     ]);
 
-    // FEEL→NAME: the Rune Keeper names the pattern in-scene, then the
+    // FEELâ†’NAME: the Rune Keeper names the pattern in-scene, then the
     // puzzle returns straight to the Prologue. No bridge scene.
     await page.waitForTimeout(2_600);
     await snap(page, '10-p0-1-complete.png');
@@ -752,7 +752,7 @@ test.describe('Prologue region – visual audit', () => {
       }
     });
 
-    // FEEL→NAME: Console Keeper naming beat, then straight back.
+    // FEELâ†’NAME: Console Keeper naming beat, then straight back.
     await page.waitForTimeout(2_600);
     await snap(page, '11-p0-2-complete.png');
     await advanceNameItBeat(page);
@@ -808,8 +808,8 @@ test.describe('Prologue region – visual audit', () => {
     await page.waitForTimeout(1_000);
     await completePuzzleViaInjection(page, 'Boss_Sentinel');
 
-    // Bosses have no naming beat — the completion fades straight back to
-    // the overworld (FEEL→NAME flow, docs/VISION.md §3).
+    // Bosses have no naming beat â€” the completion fades straight back to
+    // the overworld (FEELâ†’NAME flow, docs/VISION.md Â§3).
     await waitForScene(page, 'PrologueScene', 15_000);
     await page.waitForTimeout(2_000);
     await snap(page, '12-gateway-unlocked.png');
@@ -862,7 +862,7 @@ test.describe('Prologue region – visual audit', () => {
     await page.keyboard.press('Space');
     await page.waitForTimeout(400);
 
-    // Walk to the prologue gateway arch on the living map's west edge —
+    // Walk to the prologue gateway arch on the living map's west edge â€”
     // within the interaction prompt radius (~40px) of the portal at x=88.
     await setScenePlayerPosition(page, 'ArrayPlainsScene', 126, 664);
     await page.waitForTimeout(250);
@@ -983,7 +983,7 @@ test.describe('Prologue region – visual audit', () => {
   test('22 - Twin Rivers - Continue from save', async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: 192, y: 384, region: 'twin_rivers' },
+        player: { x: 160, y: 624, region: 'twin_rivers' },
         companion: { stage: 'frame', mood: 'neutral' },
         rival: { encountered: true, encounterStage: 2 },
         shardsCollected: [],
@@ -1046,7 +1046,7 @@ test.describe('Prologue region – visual audit', () => {
   test('27a - Twin Rivers - Hash Highlands gateway stays locked until Mirror Serpent', async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem('algorithmia_save_v2', JSON.stringify({
-        player: { x: 1696, y: 384, region: 'twin_rivers' },
+        player: { x: 1700, y: 520, region: 'twin_rivers' },
         companion: { stage: 'branch', mood: 'neutral' },
         rival: { encountered: true, encounterStage: 3 },
         shardsCollected: ['array_plains_logic_shard'],
@@ -1102,7 +1102,7 @@ test.describe('Prologue region – visual audit', () => {
   test('27b - Twin Rivers - post-Mirror-Serpent closure beat', async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem('algorithmia_save_v2', JSON.stringify({
-        player: { x: 1696, y: 384, region: 'twin_rivers' },
+        player: { x: 1700, y: 520, region: 'twin_rivers' },
         companion: { stage: 'branch', mood: 'neutral' },
         rival: { encountered: true, encounterStage: 3 },
         shardsCollected: ['array_plains_logic_shard', 'twin_rivers_logic_shard'],
@@ -1194,7 +1194,7 @@ test.describe('Prologue region – visual audit', () => {
   test('27c - Twin Rivers - closure pan locks player movement', async ({ page }) => {
     await page.evaluate(() => {
       localStorage.setItem('algorithmia_save_v2', JSON.stringify({
-        player: { x: 1504, y: 384, region: 'twin_rivers' },
+        player: { x: 1700, y: 520, region: 'twin_rivers' },
         companion: { stage: 'branch', mood: 'neutral' },
         rival: { encountered: true, encounterStage: 3 },
         shardsCollected: ['array_plains_logic_shard', 'twin_rivers_logic_shard'],

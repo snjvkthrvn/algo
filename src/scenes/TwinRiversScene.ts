@@ -8,10 +8,11 @@ import { TransitionManager } from '../core/TransitionManager';
 import { BitCompanion } from '../entities/BitCompanion';
 import { GlitchRival } from '../entities/GlitchRival';
 import { InteractableObject } from '../entities/InteractableObject';
+import { NPC } from '../entities/NPC';
 import { Player } from '../entities/Player';
 import {
   TWIN_RIVERS_CONFIG,
-  TWIN_RIVERS_ROUTE_RECTS,
+  TWIN_RIVERS_STONES_RECT,
   TWIN_RIVERS_WORLD_HEIGHT,
   TWIN_RIVERS_WORLD_WIDTH,
   isPointOnTwinRiversRoute,
@@ -22,13 +23,10 @@ import { DialogueSystem } from '../systems/DialogueSystem';
 import { OverworldAmbience } from '../ui/OverworldAmbience';
 import { HUDManager } from '../systems/HUDManager';
 import { JuiceSystem } from '../systems/JuiceSystem';
-import { InteractionSystem } from '../systems/InteractionSystem';
-import {
-  ROUTE_SURFACE_STYLES,
-  renderRouteStopPads,
-  renderRouteSurfaces,
-} from '../systems/RouteSurfaceRenderer';
-import type { DialogueTree } from '../data/types';
+import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
+import { NPCBehaviorSystem } from '../systems/NPCBehaviorSystem';
+import { a11yManager } from '../core/A11yManager';
+import { NPCType, type DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
 import { openPauseOverlay } from './titleNavigation';
 import { ObjectPool } from '../utils/ObjectPool';
@@ -56,12 +54,20 @@ import {
 export class TwinRiversScene extends BaseOverworldScene {
   private returnGateway: InteractableObject | null = null;
   private nextGateway: InteractableObject | null = null;
-  private guide: InteractableObject | null = null;
   private puzzleObjects: InteractableObject[] = [];
   private onDialogueAction!: (...args: unknown[]) => void;
   private closeBetaGateModal: (() => void) | null = null;
   private twinRiversClosureStarted = false;
   private twinRiversClosureInProgress = false;
+
+  /** Living-world cast (docs/VISION.md §2): keepers wander their posts. */
+  private npcBehavior: NPCBehaviorSystem | null = null;
+  private livingNPCs: NPC[] = [];
+  /** NPC id → puzzle id, for dialogue routing on interact. */
+  private npcPuzzleMap: Record<string, string> = {};
+  /** True once two-pointer mastery opened the stepping stones (flag-backed). */
+  private stonesUnlocked = false;
+  private stonesGate: InteractableObject | null = null;
 
   // Overworld sequence puzzle
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];
@@ -137,6 +143,8 @@ export class TwinRiversScene extends BaseOverworldScene {
 
     this.interactionSystem = new InteractionSystem(this, this.player);
     this.dialogueSystem = new DialogueSystem(this);
+    this.npcBehavior = new NPCBehaviorSystem();
+    this.stonesUnlocked = gameState.getFlag('tr_stones_unlocked');
 
     this.onDialogueAction = ((...args: unknown[]) => {
       const data = args[0] as { type: string; value: string };
@@ -158,6 +166,8 @@ export class TwinRiversScene extends BaseOverworldScene {
     eventBus.on('dialogue:action', this.onDialogueAction, this);
 
     this.createInteractables();
+    this.createSteppingStones();
+    this.createCoveSecret();
     this.createSequencePuzzle();
     this.interactionSystem.onInteract((entry) => this.handleInteract(entry));
 
@@ -175,8 +185,10 @@ export class TwinRiversScene extends BaseOverworldScene {
   }
 
   private createSequencePuzzle(): void {
-    const startX = 1100;
-    const startY = 480;
+    // Pointer stones sit on the central band between the rivers, on the
+    // way from the gateway to the bridge.
+    const startX = 600;
+    const startY = 648;
     const spacing = 64;
 
     for (let i = 0; i < 4; i++) {
@@ -214,6 +226,7 @@ export class TwinRiversScene extends BaseOverworldScene {
     this.bit.update(pos.x, pos.y, delta);
     const canInteract = !inputBlocked && this.time.now >= this.interactionEnabledTime;
     this.interactionSystem.update(canInteract);
+    this.npcBehavior?.update(time);
     if (pos.x !== this.lastPlayerX || pos.y !== this.lastPlayerY) {
       gameState.setPlayerPosition(pos.x, pos.y);
       this.lastPlayerX = pos.x;
@@ -416,41 +429,9 @@ export class TwinRiversScene extends BaseOverworldScene {
   }
 
   private renderRoute(): void {
-    const style = ROUTE_SURFACE_STYLES.river;
-    renderRouteSurfaces(this, TWIN_RIVERS_ROUTE_RECTS, style, VISUAL_REVAMP_KEYS.ROUTE_MATERIALS);
-    renderRouteStopPads(this, this.getRouteStopPads(), style);
-
-    const route = this.add.graphics().setDepth(1.3);
-    for (const rect of TWIN_RIVERS_ROUTE_RECTS) {
-      route.lineStyle(2, 0x9be8ff, 0.055);
-      route.beginPath();
-      route.moveTo(rect.x + 14, rect.y + rect.height / 2);
-      route.lineTo(rect.x + rect.width - 14, rect.y + rect.height / 2);
-      route.strokePath();
-    }
-
+    // The living map (twin_rivers_living_v1.png) bakes the paths, bridge,
+    // and docks into the art — route rects are collision data only.
     this.createWaterFlow();
-  }
-
-  private getRouteStopPads(): Array<{ x: number; y: number; radius?: number }> {
-    return [
-      ...TWIN_RIVERS_CONFIG.exitPoints.map((exit) => ({
-        x: exit.position.x,
-        y: exit.position.y,
-        radius: 58,
-      })),
-      ...TWIN_RIVERS_CONFIG.npcs.map((npc) => ({
-        x: npc.position.x,
-        y: npc.position.y,
-        radius: 46,
-      })),
-      ...TWIN_RIVERS_CONFIG.puzzles.map((puzzle) => ({
-        x: puzzle.position.x,
-        y: puzzle.position.y,
-        radius: puzzle.id === 'boss_mirror_serpent' ? 58 : 44,
-      })),
-      { x: 1196, y: 480, radius: 54 },
-    ];
   }
 
   private createInteractables(): void {
@@ -468,7 +449,7 @@ export class TwinRiversScene extends BaseOverworldScene {
       imageOriginY: 0.86,
       initialState: 'unlocked',
       onInteract: () => {
-        TransitionManager.swirl(this, SCENE_KEYS.ARRAY_PLAINS, { spawnX: 1712, spawnY: 416 });
+        TransitionManager.swirl(this, SCENE_KEYS.ARRAY_PLAINS, { spawnX: 1664, spawnY: 664 });
       },
     });
     this.interactionSystem.addObject(this.returnGateway);
@@ -494,34 +475,61 @@ export class TwinRiversScene extends BaseOverworldScene {
     });
     this.interactionSystem.addObject(this.nextGateway);
 
-    this.guide = this.interactablePool.acquire({
+    // River Guide — a living mentor pacing the central band between the
+    // rivers. Their dialogue tree advances with the player's progress.
+    const guide = new NPC(this, {
       id: 'river_guide',
-      type: 'sign',
-      x: TWIN_RIVERS_CONFIG.npcs[0].position.x,
-      y: TWIN_RIVERS_CONFIG.npcs[0].position.y,
-      prompt: '[SPACE] Speak with River Guide',
-      locked: false,
-      spriteImageKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
-      imageScale: 0.14,
-      imageOriginY: 0.86,
-      onInteract: () => {
-        const riverIds = ['tr_1', 'tr_2', 'tr_3', 'tr_4'] as const;
-        const done = riverIds.filter((id) => gameState.isPuzzleCompleted(id)).length;
-        let tree = riverGuideIntroDialogue;
-        if (done >= 4) {
-          tree = riverGuideCompleteDialogue;
-        } else if (done >= 2) {
-          tree = riverGuideMidDialogue;
-        }
-        this.player.setInteracting(true);
-        this.dialogueSystem.startDialogue(tree, 'river_guide', () => {
-          this.player.setInteracting(false);
-        });
+      name: 'River Guide',
+      type: NPCType.MENTOR,
+      spriteKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
+      spriteScale: 0.34,
+      defaultPosition: {
+        x: TWIN_RIVERS_CONFIG.npcs[0].position.x,
+        y: TWIN_RIVERS_CONFIG.npcs[0].position.y,
+      },
+      dialogue: riverGuideIntroDialogue,
+      movement: {
+        kind: 'wander',
+        leashRadius: 72,
+        pauseMsRange: [2600, 5200],
+        canWalk: (point) => isPointOnTwinRiversRoute(point, 4),
       },
     });
-    this.interactionSystem.addObject(this.guide);
+    this.livingNPCs.push(guide);
+    this.npcBehavior?.registerNPC(guide);
+    this.interactionSystem.addNPC(guide);
 
     this.createPuzzleObjects();
+  }
+
+  /** Route NPC interactions: keepers open their trial dialogue, the guide
+   *  speaks by progress; objects keep the base behaviour. */
+  protected override handleInteract(entry: InteractableEntry): void {
+    if (entry.type !== 'npc') {
+      super.handleInteract(entry);
+      return;
+    }
+    if (!this.canOpenOverlay()) return;
+
+    const npc = entry.target as NPC;
+    let tree: DialogueTree | null = null;
+
+    if (npc.config.id === 'river_guide') {
+      const riverIds = ['tr_1', 'tr_2', 'tr_3', 'tr_4'] as const;
+      const done = riverIds.filter((id) => gameState.isPuzzleCompleted(id)).length;
+      tree = riverGuideIntroDialogue;
+      if (done >= 4) tree = riverGuideCompleteDialogue;
+      else if (done >= 2) tree = riverGuideMidDialogue;
+    } else {
+      const puzzleId = this.npcPuzzleMap[npc.config.id];
+      tree = puzzleId ? this.getDialogueTreeForPuzzle(puzzleId) : npc.config.dialogue;
+    }
+
+    if (!tree || tree.nodes.length === 0) return;
+    this.player.setInteracting(true);
+    this.dialogueSystem.startDialogue(tree, npc.config.id, () => {
+      this.player.setInteracting(false);
+    });
   }
 
   private createPuzzleObjects(): void {
@@ -571,57 +579,172 @@ export class TwinRiversScene extends BaseOverworldScene {
       const completed = gameState.isPuzzleCompleted(puzzle.id);
       const isBoss = puzzle.id === 'boss_mirror_serpent';
 
-      const object = this.interactablePool.acquire({
+      if (isBoss) {
+        const object = this.interactablePool.acquire({
+          id: puzzle.id,
+          type: 'portal',
+          x: puzzle.position.x,
+          y: puzzle.position.y,
+          prompt: completed ? '[SPACE] Replay' : meta.prompt,
+          locked: false,
+          imageByState: { unlocked: VISUAL_REVAMP_KEYS.PORTAL_WATER },
+          imageScale: 0.24,
+          imageOriginY: 0.84,
+          initialState: 'unlocked',
+          onInteract: () => this.startPuzzle(meta.scene),
+        });
+        this.puzzleObjects.push(object);
+        this.interactionSystem.addObject(object);
+        continue;
+      }
+
+      // The keeper IS the trial here: a living NPC at their landmark
+      // (court, bridge landing, dock, rapids), wandering on a short leash.
+      // Floating title plaques are retired — the NPC name tag on approach
+      // and the landmark architecture do the wayfinding.
+      const npc = new NPC(this, {
         id: puzzle.id,
-        type: isBoss ? 'portal' : 'sign',
-        x: puzzle.position.x,
-        y: puzzle.position.y,
-        prompt: isBoss ? (completed ? '[SPACE] Replay' : meta.prompt) : meta.prompt,
-        locked: false,
-        spriteImageKey: isBoss ? undefined : meta.spriteKey,
-        imageByState: isBoss ? { unlocked: VISUAL_REVAMP_KEYS.PORTAL_WATER } : undefined,
-        imageScale: isBoss ? 0.24 : 0.14,
-        imageOriginY: isBoss ? 0.84 : 0.86,
-        initialState: 'unlocked',
-        onInteract: () => {
-          if (isBoss) {
-            this.startPuzzle(meta.scene);
-          } else {
-            const tree = this.getDialogueTreeForPuzzle(puzzle.id);
-            if (tree) {
-              this.player.setInteracting(true);
-              this.dialogueSystem.startDialogue(tree, puzzle.id, () => {
-                this.player.setInteracting(false);
-              });
-            }
-          }
+        name: meta.name ?? meta.title,
+        type: NPCType.VILLAGER,
+        spriteKey: meta.spriteKey ?? VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
+        spriteScale: 0.34,
+        defaultPosition: { x: puzzle.position.x, y: puzzle.position.y },
+        dialogue: this.getDialogueTreeForPuzzle(puzzle.id) ?? { startNodeId: '', nodes: [] },
+        movement: {
+          kind: 'wander',
+          leashRadius: 52,
+          canWalk: (point) => isPointOnTwinRiversRoute(point, 4),
         },
       });
-      this.puzzleObjects.push(object);
-      this.interactionSystem.addObject(object);
-
-      const label = this.add.text(puzzle.position.x, puzzle.position.y - 52, meta.title, {
-        fontSize: '10px',
-        fontFamily: FONTS.RETRO,
-        color: completed ? '#e0f8d0' : '#081820',
-        backgroundColor: completed ? '#28698a' : '#e0f8d0',
-        padding: { x: 5, y: 4 },
-      }).setOrigin(0.5).setDepth(5);
-      this.labelObjects.push(label);
+      this.npcPuzzleMap[puzzle.id] = puzzle.id;
+      this.livingNPCs.push(npc);
+      this.npcBehavior?.registerNPC(npc);
+      this.interactionSystem.addNPC(npc);
     }
+  }
+
+  /**
+   * The stepping stones to the stone-circle island — Twin Rivers' mastery
+   * gate (docs/VISION.md §2). Two-pointer mastery (TR-1) teaches your feet
+   * to walk both ends; the stones answer by surfacing in pairs.
+   */
+  private createSteppingStones(): void {
+    if (this.stonesUnlocked) return;
+
+    const sx = TWIN_RIVERS_STONES_RECT.x + 18;
+    const sy = TWIN_RIVERS_STONES_RECT.y + TWIN_RIVERS_STONES_RECT.height / 2;
+
+    this.stonesGate = this.interactablePool.acquire({
+      id: 'tr_stepping_stones',
+      type: 'gate',
+      x: sx,
+      y: sy,
+      prompt: gameState.isPuzzleCompleted('tr_1') ? '[SPACE] Cross the stones' : '[SPACE] Study the stones',
+      locked: true,
+      onInteract: () => this.onStonesInteract(),
+    });
+    this.puzzleObjects.push(this.stonesGate);
+    this.interactionSystem.addObject(this.stonesGate);
+  }
+
+  private onStonesInteract(): void {
+    if (this.stonesUnlocked) return;
+
+    if (!gameState.isPuzzleCompleted('tr_1')) {
+      this.showFieldNote('Bit', [
+        'Sunken stones, half-drowned. They surface and sink in PAIRS — one near, one far.',
+        'Bit watches them rise and fall, then looks at your feet.',
+      ]);
+      return;
+    }
+
+    // The unlock beat: stones surface from both ends toward the middle —
+    // the two-pointer walk, performed by the river itself.
+    this.player.setInteracting(true);
+    const rect = TWIN_RIVERS_STONES_RECT;
+    const stoneCount = 6;
+    const stones: Phaser.GameObjects.Ellipse[] = [];
+    for (let i = 0; i < stoneCount; i++) {
+      const t = i / (stoneCount - 1);
+      const stone = this.add
+        .ellipse(rect.x + 12 + t * (rect.width - 24), rect.y + rect.height / 2, 26, 16, 0x8fa3ad)
+        .setStrokeStyle(2, 0x3d5159)
+        .setDepth(2)
+        .setAlpha(0)
+        .setScale(0.4);
+      stones.push(stone);
+    }
+    // Surface order: outside-in pairs (0,5), (1,4), (2,3).
+    const order = [0, stoneCount - 1, 1, stoneCount - 2, 2, stoneCount - 3];
+    order.forEach((stoneIndex, step) => {
+      this.tweens.add({
+        targets: stones[stoneIndex],
+        alpha: 1,
+        scale: 1,
+        duration: 360,
+        delay: 300 * Math.floor(step / 2) + (step % 2) * 90,
+        ease: 'Back.easeOut',
+        onStart: () => audioManager.playTone(420 + step * 40, 80, 'sine'),
+      });
+    });
+
+    this.time.delayedCall(300 * 3 + 700, () => {
+      this.stonesUnlocked = true;
+      gameState.setFlag('tr_stones_unlocked', true);
+      audioManager.playCorrectTone();
+      JuiceSystem.correctBurst(this, rect.x + rect.width / 2, rect.y + rect.height / 2);
+      a11yManager.announce('The stepping stones have surfaced. The island is reachable.', true);
+      this.showFieldNote('Bit', 'Both ends, walking toward the middle. The river understood you.');
+      if (this.stonesGate) {
+        this.interactionSystem.removeObject(this.stonesGate);
+        this.puzzleObjects = this.puzzleObjects.filter((o) => o !== this.stonesGate);
+        this.interactablePool.release(this.stonesGate);
+        this.stonesGate = null;
+      }
+      this.player.setInteracting(false);
+    });
+  }
+
+  /** The fisher's cove behind the reeds — the south loop's hidden reward. */
+  private createCoveSecret(): void {
+    const hut = this.interactablePool.acquire({
+      id: 'tr_fisher_cove',
+      type: 'sign',
+      x: 1460, y: 1030,
+      prompt: '[SPACE] Peek into the hut',
+      locked: false,
+      onInteract: () => {
+        if (!gameState.getFlag('tr_cove_found')) {
+          gameState.setFlag('tr_cove_found', true);
+          JuiceSystem.correctBurst(this, 1460, 1030);
+          audioManager.playCorrectTone();
+          this.showFieldNote('Fisher\'s Hut', [
+            'Behind the reeds: a hut nobody mentions, beside a pond that glows faintly.',
+            'Inside, a net hangs with exactly one knot repaired. A note: "THE RIVER ONLY LOOKS LIKE TWO. WALK BOTH AND SEE."',
+            'Bit dims its light, as if to listen to the water.',
+          ]);
+          return;
+        }
+        this.showFieldNote('Fisher\'s Hut', 'The pond glows. The reeds keep your secret.');
+      },
+    });
+    this.puzzleObjects.push(hut);
+    this.interactionSystem.addObject(hut);
   }
 
   private createWaterFlow(): void {
     if (this.prefersReducedMotion()) return;
 
-    for (const y of [300, 468]) {
+    // Flow streaks ride the two rivers of the living map: the upper river
+    // band (~y 330) and the lower river band (~y 960).
+    for (const y of [330, 960]) {
       for (let i = 0; i < 8; i++) {
-        const stream = this.add.rectangle(420 + i * 160, y + Phaser.Math.Between(-8, 8), 88, 3, COLORS.CYAN_GLOW, 0.28)
+        const stream = this.add.rectangle(280 + i * 180, y + Phaser.Math.Between(-14, 14), 88, 3, COLORS.CYAN_GLOW, 0.22)
           .setDepth(2);
         this.tweens.add({
           targets: stream,
           x: stream.x + 132,
-          alpha: 0.08,
+          alpha: 0.06,
           duration: Phaser.Math.Between(1300, 2100),
           repeat: -1,
           yoyo: true,
@@ -642,14 +765,23 @@ export class TwinRiversScene extends BaseOverworldScene {
   }
 
   private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
-    return isTwinRiversStepWalkable(point, this.getCollisionBlockers(), 0);
+    if (isTwinRiversStepWalkable(point, this.getCollisionBlockers(), 0)) return true;
+    // The stepping stones join the walkable world once two-pointer mastery
+    // surfaced them (docs/VISION.md §2 — algorithms unlock traversal).
+    if (this.stonesUnlocked) {
+      const s = TWIN_RIVERS_STONES_RECT;
+      return (
+        point.x >= s.x && point.x <= s.x + s.width &&
+        point.y >= s.y && point.y <= s.y + s.height
+      );
+    }
+    return false;
   }
 
   private getCollisionBlockers(): TwinRiversCollisionBlocker[] {
     const blockers: TwinRiversCollisionBlocker[] = [];
     if (this.returnGateway) blockers.push(this.returnGateway.getPosition());
     if (this.nextGateway) blockers.push(this.nextGateway.getPosition());
-    if (this.guide) blockers.push(this.guide.getPosition());
     for (const object of this.puzzleObjects) blockers.push(object.getPosition());
     return blockers;
   }
@@ -865,11 +997,16 @@ export class TwinRiversScene extends BaseOverworldScene {
     this.hud?.destroy();
     if (this.returnGateway) { this.interactablePool.release(this.returnGateway); this.returnGateway = null; }
     if (this.nextGateway) { this.interactablePool.release(this.nextGateway); this.nextGateway = null; }
-    if (this.guide) { this.interactablePool.release(this.guide); this.guide = null; }
+    this.stonesGate = null; // released with puzzleObjects below
     for (const object of this.puzzleObjects) this.interactablePool.release(object);
     this.puzzleObjects = [];
     for (const label of this.labelObjects) label.destroy();
     this.labelObjects = [];
+    for (const npc of this.livingNPCs) npc.destroy();
+    this.livingNPCs = [];
+    this.npcPuzzleMap = {};
+    this.npcBehavior?.destroy();
+    this.npcBehavior = null;
     this.bit?.destroy();
     this.player?.destroy();
   }

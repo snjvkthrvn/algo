@@ -134,41 +134,41 @@ const PLACEMENTS: Record<RegionId, PropPlacement[]> = {
     { key: VISUAL_REVAMP_KEYS.PROP_WATERING_CAN, x: 322, y: 1052, depth: 2 },
   ],
 
-  // ── TWIN RIVERS — water + bridges, world 1920×720 ───────────────────
-  // Drifting boat + dragonflies + lily pads + lantern make the river
-  // feel like it's actually flowing instead of being a static texture.
+  // ── TWIN RIVERS — living river valley map, world 1920×1440 ───────────
+  // Ambient life across both rivers: a boat off the dock village, lily
+  // pads in the still water, lanterns at the bridge landings, dragonflies.
   twin_rivers: [
-    // Small boat bobbing on the river
+    // Small boat bobbing on the lower river beside the docks.
     {
       key: VISUAL_REVAMP_KEYS.PROP_SMALL_BOAT,
-      x: 640, y: 470, depth: 2,
+      x: 1180, y: 1000, depth: 2,
       drift: { amplitude: 18, duration: 4200 },
       hover: { amplitude: 3, duration: 1600 },
     },
-    // Lily pad clusters in still water
-    { key: VISUAL_REVAMP_KEYS.PROP_LILY_PAD_CLUSTER, x: 980, y: 500, depth: 1 },
-    { key: VISUAL_REVAMP_KEYS.PROP_LILY_PAD_CLUSTER, x: 1340, y: 460, depth: 1 },
-    // Lantern post at each end of the bridge
+    // Lily pad clusters: upper lake + lower river's quiet east end.
+    { key: VISUAL_REVAMP_KEYS.PROP_LILY_PAD_CLUSTER, x: 520, y: 420, depth: 1 },
+    { key: VISUAL_REVAMP_KEYS.PROP_LILY_PAD_CLUSTER, x: 1290, y: 880, depth: 1 },
+    // Lantern posts at the bridge's central landing, flanking the walk.
     {
       key: VISUAL_REVAMP_KEYS.PROP_LANTERN_POST,
-      x: 760, y: 340, depth: 3,
+      x: 880, y: 600, depth: 3,
       anim: { key: 'prop-lantern-flicker', frameCount: 6, frameRate: 7 },
     },
     {
       key: VISUAL_REVAMP_KEYS.PROP_LANTERN_POST,
-      x: 1180, y: 340, depth: 3,
+      x: 1032, y: 600, depth: 3,
       anim: { key: 'prop-lantern-flicker', frameCount: 6, frameRate: 7 },
     },
-    // Dragonflies hovering over the water at varied heights
+    // Dragonflies hovering over each river.
     {
       key: VISUAL_REVAMP_KEYS.PROP_DRAGONFLY,
-      x: 880, y: 420, depth: 5,
+      x: 700, y: 380, depth: 5,
       anim: { key: 'prop-dragonfly-wings', frameCount: 6, frameRate: 16 },
       hover: { amplitude: 6, duration: 800 },
     },
     {
       key: VISUAL_REVAMP_KEYS.PROP_DRAGONFLY,
-      x: 1480, y: 380, depth: 5,
+      x: 1400, y: 930, depth: 5,
       anim: { key: 'prop-dragonfly-wings', frameCount: 6, frameRate: 16 },
       hover: { amplitude: 8, duration: 950 },
       flipX: true,
