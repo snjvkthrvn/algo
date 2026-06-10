@@ -339,13 +339,16 @@ export class NPC {
 
     if (time < this.nextStepAt) return;
 
+    // Plain-math helpers instead of Phaser.Math/Utils: value-importing
+    // Phaser would drag the real engine into Node unit tests (it reads
+    // `window` at import time). Type-only Phaser usage stays elided.
     const STEP = 32;
-    const directions = Phaser.Utils.Array.Shuffle([
+    const directions = [
       { dx: STEP, dy: 0 },
       { dx: -STEP, dy: 0 },
       { dx: 0, dy: STEP },
       { dx: 0, dy: -STEP },
-    ]);
+    ].sort(() => Math.random() - 0.5);
 
     const fromX = this.sprite.x;
     const fromY = this.sprite.y;
@@ -353,8 +356,7 @@ export class NPC {
     for (const dir of directions) {
       const candidate = { x: fromX + dir.dx, y: fromY + dir.dy };
       const leashOk =
-        Phaser.Math.Distance.Between(this.homeX, this.homeY, candidate.x, candidate.y) <=
-        movement.leashRadius;
+        Math.hypot(candidate.x - this.homeX, candidate.y - this.homeY) <= movement.leashRadius;
       if (leashOk && movement.canWalk?.(candidate) !== false) {
         target = candidate;
         break;
@@ -375,8 +377,8 @@ export class NPC {
       onUpdate: (tween) => {
         const t = tween.getValue() ?? 0;
         const hop = reduceMotion ? 0 : Math.sin(t * Math.PI) * 4;
-        const x = Phaser.Math.Linear(fromX, target.x, t);
-        const y = Phaser.Math.Linear(fromY, target.y, t) - hop;
+        const x = fromX + (target.x - fromX) * t;
+        const y = fromY + (target.y - fromY) * t - hop;
         this.sprite.setPosition(x, y);
         this.glowGraphics.setPosition(x, y + hop);
         this.nameTag.setPosition(x, y + hop - 46);
