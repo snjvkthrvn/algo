@@ -10,6 +10,7 @@
 import { gameState } from '../core/GameStateManager';
 import { eventBus, GameEvents } from '../core/EventBus';
 import { BitStage } from '../data/types';
+import { CONCEPT_BRIDGE_DATA } from '../data/dialogue/concept_bridge_content';
 
 interface RegionChainEntry {
   /** Stable id for the boss-gate flag, e.g. 'mirror_serpent_gate_open'. */
@@ -104,11 +105,14 @@ class ProgressionSystemClass {
   private onPuzzleComplete(puzzleId: string): void {
     gameState.setFlag(`puzzle_${puzzleId}_complete`, true);
 
-    // Script Scene 0-4 / 0-6: Codex entries unlock immediately after each
-    // prologue puzzle. The Sentinel boss does not award a codex entry — its
-    // payoff is the shard + Bit evolution handled in checkGates().
-    if (puzzleId === 'p0_1') gameState.unlockCodexEntry('sequential_processing');
-    if (puzzleId === 'p0_2') gameState.unlockCodexEntry('key_value_mapping');
+    // FEEL→NAME (docs/VISION.md §3): the Codex updates silently at solve
+    // time. This used to happen inside ConceptBridgeScene; with the lecture
+    // screen cut from the flow, the unlock lives here so every puzzle's
+    // entry lands the moment it is earned.
+    const bridgeContent = CONCEPT_BRIDGE_DATA[puzzleId];
+    if (bridgeContent) {
+      gameState.unlockCodexEntry(bridgeContent.sections.codexEntryId);
+    }
 
     // The overworld scene plays this beat after puzzle/bridge transitions.
     if (

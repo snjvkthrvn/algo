@@ -15,7 +15,8 @@ import { gameState } from '../../core/GameStateManager';
 import { TransitionManager } from '../../core/TransitionManager';
 import { JuiceSystem } from '../../systems/JuiceSystem';
 import { a11yManager } from '../../core/A11yManager';
-import type { ConceptBridgeData } from '../../data/types';
+import { playNameItBeat, showCodexWhisper } from '../../ui/NameItBeat';
+import { getNameItBeat } from '../../data/dialogue/name_it_beats';
 import { PARCHMENT_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
 import { RegionBackdrop, type RegionBackdropId, type RegionBackdropOptions } from '../../ui/RegionBackdrop';
 import { GLITCH_FAILURE_TAUNTS } from '../../data/dialogue/glitch_dialogue';
@@ -733,9 +734,6 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
   protected abstract displayHint(hintNumber: number): void;
   protected abstract getConceptName(): string;
-  protected shouldSkipConceptBridge(): boolean {
-    return false;
-  }
 
   protected requestExitPuzzle(): void {
     const now = this.time.now;
@@ -1022,44 +1020,40 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       this.showStreakIndicator(newStreak);
     }
 
-    if (this.shouldSkipConceptBridge()) {
-      const { width: bw, height: bh } = this.cameras.main;
-      const exitFade = this.add.rectangle(0, 0, bw, bh, 0x000000, 0).setOrigin(0).setDepth(10000);
+    // FEEL→NAME (docs/VISION.md §3): the keeper names what the player just
+    // did in one or two lines, the Codex updates silently, and we return to
+    // the overworld. The mechanical victory above is the loud part of this
+    // moment; no lecture screen follows it. Scenes that already played
+    // their in-puzzle NAME_IT beat (the script hinge between FEEL_IT and
+    // USE_IT rounds) only get the quiet codex receipt here.
+    const beat = getNameItBeat(this.puzzleId);
+    const holdMs = alreadyCompleted ? 800 : 1600;
+
+    const fadeToOverworld = (): void => {
+      const exitFade = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0).setDepth(10000);
       this.tweens.add({
         targets: exitFade,
         alpha: 1,
         duration: 500,
-        delay: 1800,
         onComplete: () => {
           exitFade.destroy();
           this.scene.start(this.returnScene);
         },
       });
+    };
+
+    if (alreadyCompleted) {
+      // Replays skip the naming beat — the player has already heard it.
+      this.time.delayedCall(holdMs + 200, fadeToOverworld);
       return;
     }
 
-    // Transition to ConceptBridge after a brief hold
-    const fadeOverlay = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0).setDepth(10000);
-
-    this.tweens.add({
-      targets: fadeOverlay,
-      alpha: 1,
-      duration: 500,
-      delay: alreadyCompleted ? 800 : 1600,
-      onComplete: () => {
-        fadeOverlay.destroy();
-        const bridgeData: ConceptBridgeData = {
-          puzzleName: this.puzzleName,
-          puzzleId: this.puzzleId,
-          concept: this.getConceptName(),
-          returnScene: this.returnScene,
-          attempts: this.attempts,
-          timeSpent: timeSpent,
-          hintsUsed: this.hintsUsed,
-          stars: stars,
-        };
-        this.scene.start(SCENE_KEYS.CONCEPT_BRIDGE, bridgeData);
-      },
+    this.time.delayedCall(holdMs, () => {
+      if (beat && !this.hasNamedConcept) {
+        void playNameItBeat(this, beat).then(fadeToOverworld);
+      } else {
+        void showCodexWhisper(this, beat?.conceptName ?? this.getConceptName()).then(fadeToOverworld);
+      }
     });
   }
 
@@ -1120,13 +1114,22 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     });
   }
 
+  /** True once the in-puzzle NAME_IT beat has played — the post-solve flow
+   *  then skips re-naming the concept and shows only the codex receipt. */
+  protected hasNamedConcept = false;
+
   /**
-   * STUB — original showNameItBeat implementation was lost during a session
-   * revert (git checkout discarded uncommitted FEEL→NAME→USE pedagogical
-   * work). Re-implement or restore from compiled dist before shipping.
+   * The script's NAME_IT hinge: fired by round-based scenes right after the
+   * FEEL_IT round, where the keeper names the pattern the player just felt.
+   * Rendered through the shared DialogueBox language (no lecture chrome).
    */
-  protected async showNameItBeat(_beat: unknown): Promise<void> {
-    return Promise.resolve();
+  protected async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
+    this.hasNamedConcept = true;
+    await playNameItBeat(
+      this,
+      { speaker: beat.speaker, lines: [beat.line], conceptName: this.getConceptName() },
+      { codexWhisper: false },
+    );
   }
 
 }

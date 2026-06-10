@@ -116,9 +116,6 @@ export class Boss_Shuffler extends BasePuzzleScene {
   protected getPuzzleFrameFillAlpha(): number {
     return 0.03;
   }
-  protected shouldSkipConceptBridge(): boolean {
-    return true;
-  }
   protected getConceptName(): string {
     return 'Array Plains Mastery';
   }

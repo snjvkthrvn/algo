@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { SCENE_KEYS } from '../../config/constants';
 import { gameState } from '../../core/GameStateManager';
-import type { ConceptBridgeData } from '../../data/types';
+import { playNameItBeat } from '../../ui/NameItBeat';
+import { getNameItBeat } from '../../data/dialogue/name_it_beats';
 
 export const PROLOGUE_RUN_UI_KEY = 'ProloguePuzzleRunUI';
 export const PROLOGUE_GAME_OVER_KEY = 'ProloguePuzzleGameOver';
@@ -41,26 +42,31 @@ export function completeAlgorithmiaPuzzle(scene: Phaser.Scene, options: Completi
   }
 
   const { width, height } = scene.cameras.main;
-  const fadeOverlay = scene.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0).setDepth(10000);
+  const holdMs = options.delayMs ?? (alreadyCompleted ? 800 : 1400);
 
-  scene.tweens.add({
-    targets: fadeOverlay,
-    alpha: 1,
-    duration: 500,
-    delay: options.delayMs ?? (alreadyCompleted ? 800 : 1400),
-    onComplete: () => {
-      fadeOverlay.destroy();
-      const bridgeData: ConceptBridgeData = {
-        puzzleName: options.puzzleName,
-        puzzleId: options.puzzleId,
-        concept: options.concept,
-        returnScene: options.returnScene,
-        attempts: 0,
-        timeSpent,
-        hintsUsed: 0,
-        stars,
-      };
-      scene.scene.start(SCENE_KEYS.CONCEPT_BRIDGE, bridgeData);
-    },
+  // FEEL→NAME (docs/VISION.md §3): keeper names the concept in-scene, the
+  // Codex updates silently via ProgressionSystem, and we return straight to
+  // the overworld — no lecture screen.
+  const fadeToReturnScene = (): void => {
+    const fadeOverlay = scene.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0).setDepth(10000);
+    scene.tweens.add({
+      targets: fadeOverlay,
+      alpha: 1,
+      duration: 500,
+      onComplete: () => {
+        fadeOverlay.destroy();
+        scene.scene.start(options.returnScene);
+      },
+    });
+  };
+
+  const beat = getNameItBeat(options.puzzleId);
+  if (!beat || alreadyCompleted) {
+    scene.time.delayedCall(holdMs + 200, fadeToReturnScene);
+    return;
+  }
+
+  scene.time.delayedCall(holdMs, () => {
+    void playNameItBeat(scene, beat).then(fadeToReturnScene);
   });
 }

@@ -8,8 +8,9 @@ import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
 import { CODEX_ENTRIES } from '../data/codex/entries';
-import type { CodexSection } from '../data/types';
+import type { CodexEntry, CodexSection } from '../data/types';
 import { drawPanel } from '../ui/panel';
+import { CONCEPT_BRIDGE_DATA } from '../data/dialogue/concept_bridge_content';
 
 const CODEX_PALETTE = {
   ink: '#1a1208',
@@ -290,7 +291,135 @@ export class CodexScene extends Phaser.Scene {
     for (const section of entry.sections) {
       y = this.renderCodexSection(section, y, contentWidth);
     }
+    y = this.renderDeepLayer(entry, y, contentWidth);
     this.updateContentScrollBounds(y);
+  }
+
+  /**
+   * The optional deep layer (docs/VISION.md §4): pattern reveal, pseudocode
+   * in three flavors, and real-world deployments, sourced from the old
+   * ConceptBridge content. This is where the CS student goes by choice —
+   * the playable game itself never shows code.
+   */
+  private renderDeepLayer(entry: CodexEntry, startY: number, maxWidth: number): number {
+    const bridge = CONCEPT_BRIDGE_DATA[entry.unlockedBy];
+    if (!bridge) return startY;
+
+    const wrapWidth = maxWidth - 40;
+    let y = startY + 8;
+
+    const divider = this.add.rectangle(10, y, wrapWidth, 2, CODEX_PALETTE.frame, 0.35).setOrigin(0, 0.5);
+    this.contentContainer.add(divider);
+    y += 20;
+
+    const header = this.add.text(10, y, '◆ DEEPER — FOR THE CURIOUS', {
+      fontSize: '11px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.goldCss,
+    });
+    this.contentContainer.add(header);
+    y += 22;
+
+    const note = this.add.text(10, y, 'Optional reading. The pattern you felt, written the way engineers write it.', {
+      fontSize: '9px', fontFamily: FONTS.MONO, color: CODEX_PALETTE.inkMuted,
+      wordWrap: { width: wrapWidth },
+    });
+    this.contentContainer.add(note);
+    y += note.height + 18;
+
+    // Pattern reveal — name, complexity, analogues.
+    const prTitle = this.add.text(10, y, bridge.sections.patternReveal.title, {
+      fontSize: '11px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.greenCss,
+      wordWrap: { width: wrapWidth, useAdvancedWrap: true },
+    });
+    this.contentContainer.add(prTitle);
+    y += prTitle.height + 12;
+    for (const line of bridge.sections.patternReveal.explanation) {
+      const text = this.add.text(10, y, line, {
+        fontSize: '11px', fontFamily: FONTS.MONO, color: CODEX_PALETTE.ink,
+        wordWrap: { width: wrapWidth }, lineSpacing: 3,
+      });
+      this.contentContainer.add(text);
+      y += text.height + 8;
+    }
+    y += 14;
+
+    // Pseudocode with language tabs. The plate is sized to the tallest
+    // variant so switching tabs never reflows the sections below it.
+    const variants: Array<{ label: string; code: string }> = [
+      { label: 'PSEUDO', code: bridge.sections.pseudocode.code },
+      { label: 'PYTHON', code: bridge.sections.pseudocode.python },
+      { label: 'JS', code: bridge.sections.pseudocode.js },
+    ];
+
+    const tabTexts: Phaser.GameObjects.Text[] = [];
+    let tabX = 10;
+    const tabY = y;
+    const codeText = this.add.text(22, 0, '', {
+      fontSize: '10px', fontFamily: FONTS.MONO, color: '#e6e6f0',
+      lineSpacing: 4,
+    });
+
+    let maxCodeHeight = 0;
+    for (const variant of variants) {
+      codeText.setText(variant.code);
+      maxCodeHeight = Math.max(maxCodeHeight, codeText.height);
+    }
+
+    const selectTab = (index: number): void => {
+      codeText.setText(variants[index].code);
+      tabTexts.forEach((tab, i) => {
+        tab.setColor(i === index ? CODEX_PALETTE.goldCss : CODEX_PALETTE.inkMuted);
+      });
+    };
+
+    variants.forEach((variant, i) => {
+      const tab = this.add.text(tabX, tabY, `[ ${variant.label} ]`, {
+        fontSize: '10px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.inkMuted,
+      }).setInteractive({ useHandCursor: true });
+      tab.on('pointerdown', () => {
+        audioManager.playTone?.(660, 60, 'square');
+        selectTab(i);
+      });
+      this.contentContainer.add(tab);
+      tabTexts.push(tab);
+      tabX += tab.width + 16;
+    });
+    y += 26;
+
+    const plate = this.add.rectangle(10, y, wrapWidth, maxCodeHeight + 24, 0x241c30, 0.95).setOrigin(0, 0);
+    plate.setStrokeStyle(2, CODEX_PALETTE.frame, 0.8);
+    this.contentContainer.add(plate);
+    codeText.setPosition(22, y + 12);
+    this.contentContainer.add(codeText);
+    selectTab(0);
+    y += maxCodeHeight + 24 + 10;
+
+    const codeCaption = this.add.text(10, y, bridge.sections.pseudocode.explanation, {
+      fontSize: '10px', fontFamily: FONTS.MONO, color: CODEX_PALETTE.inkMuted,
+      wordWrap: { width: wrapWidth }, lineSpacing: 3,
+    });
+    this.contentContainer.add(codeCaption);
+    y += codeCaption.height + 18;
+
+    // Where it ships.
+    const rwTitle = this.add.text(10, y, 'WHERE IT SHIPS', {
+      fontSize: '11px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.orangeCss,
+    });
+    this.contentContainer.add(rwTitle);
+    y += 22;
+    for (const line of bridge.sections.realWorld) {
+      const bullet = this.add.text(10, y, '▸', {
+        fontSize: '10px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.orangeCss,
+      });
+      const text = this.add.text(26, y, line, {
+        fontSize: '10px', fontFamily: FONTS.MONO, color: CODEX_PALETTE.ink,
+        wordWrap: { width: wrapWidth - 16 }, lineSpacing: 3,
+      });
+      this.contentContainer.add([bullet, text]);
+      y += text.height + 8;
+    }
+    y += 16;
+
+    return y;
   }
 
   private renderCodexSection(section: CodexSection, startY: number, maxWidth: number): number {
