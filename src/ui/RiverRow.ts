@@ -176,6 +176,27 @@ export class RiverRow {
     return this.options.tileSize;
   }
 
+  /** Number of tiles in the row. */
+  get tileCount(): number {
+    return this.tiles.length;
+  }
+
+  /** Row baseline y (the tiles' centre line). */
+  get baselineY(): number {
+    return this.options.y;
+  }
+
+  /**
+   * Programmatic tile press — same path as a pointer tap on the tile.
+   * Used by the RowWalker embodiment layer (docs/VISION.md §2): the tile
+   * the player's body stands at is the tile their act presses.
+   */
+  press(index: number): void {
+    if (!this.tiles[index] || !this.options.onTilePress) return;
+    this.emitTilePressPulse(index);
+    this.options.onTilePress(index);
+  }
+
   /** Animate a swap of two indices. Returns when the tween completes. */
   animateSwap(i: number, j: number, durationMs = 280): Promise<void> {
     if (i === j) return Promise.resolve();
