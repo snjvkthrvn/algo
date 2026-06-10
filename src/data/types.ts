@@ -294,6 +294,24 @@ export interface NPCConfig {
   dialogue: DialogueTree;
   postPuzzleDialogue?: DialogueTree;
   questRelated?: boolean;
+  /** Optional living-world movement (docs/VISION.md §2). Absent = stationary. */
+  movement?: NPCMovementConfig;
+}
+
+/**
+ * Pokemon-style ambient NPC movement: short hops between nearby tiles with
+ * idle pauses. `canWalk` is the region's walkability check so NPCs never
+ * leave the routes; movement always pauses while the NPC is speaking or the
+ * player is close enough to interact.
+ */
+export interface NPCMovementConfig {
+  kind: 'wander';
+  /** Max distance (px) from the spawn point the NPC may drift. */
+  leashRadius: number;
+  /** [min, max] idle time between steps, ms. Default [1800, 4200]. */
+  pauseMsRange?: [number, number];
+  /** Region walkability test for a candidate point. */
+  canWalk?: (point: Position) => boolean;
 }
 
 export interface DialogueTree {

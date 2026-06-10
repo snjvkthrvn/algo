@@ -343,7 +343,7 @@ export class PrologueScene extends Phaser.Scene {
 
     // Update systems
     this.interactionSystem.update(!inputBlocked);
-    this.npcBehavior.update();
+    this.npcBehavior.update(time);
 
     // Update starfield
     this.updateStarfield();

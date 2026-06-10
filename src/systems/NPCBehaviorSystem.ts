@@ -29,8 +29,11 @@ export class NPCBehaviorSystem {
     return npc.config.dialogue;
   }
 
-  update(): void {
-    // Future: NPC movement patterns, patrol routes, etc.
+  /** Drive ambient wander for every registered NPC (docs/VISION.md §2). */
+  update(time: number): void {
+    for (const npc of this.npcs.values()) {
+      npc.update(time);
+    }
   }
 
   destroy(): void {

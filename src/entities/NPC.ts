@@ -76,6 +76,16 @@ export class NPC {
   private activeTweens: Phaser.Tweens.Tween[] = [];
   /** True while DialogueSystem reports this NPC's id is the active speaker. */
   private isSpeaking = false;
+
+  // ── Living-world wander state (docs/VISION.md §2) ──
+  /** Spawn anchor — the leash is measured from here, not the current tile. */
+  private homeX = 0;
+  private homeY = 0;
+  /** Earliest time (scene clock) the next wander step may begin. */
+  private nextStepAt = 0;
+  /** True while a step tween is in flight. */
+  private isStepping = false;
+  private stepTween: Phaser.Tweens.Tween | null = null;
   /** Bound listener — must be removed in destroy() or the eventBus leaks refs. */
   private readonly onDialogueStart = (data: unknown): void => {
     const { npcId } = data as { npcId?: string };
@@ -122,19 +132,30 @@ export class NPC {
     // at construction time; toggling mid-session won't retroactively start
     // bobbing previously-quiet NPCs (next region transition picks up the
     // new value when scenes rebuild).
+    this.homeX = x;
+    this.homeY = y;
+    this.nextStepAt = Number.MAX_SAFE_INTEGER;
+    if (config.movement) {
+      // First step lands 0.5-3s after spawn so a crowd doesn't move in sync.
+      this.nextStepAt = 500 + Math.random() * 2500;
+    }
+
     if (!gameState.getSettings().reduceMotion) {
-      // Idle bob — gentle vertical hop. Slight per-NPC offset so a crowd of
-      // NPCs doesn't bob in lockstep (the choreography looks robotic).
+      // Idle bob — gentle vertical hop. Skipped for wandering NPCs: their
+      // step tween owns the y axis (the hop arc), and two tweens fighting
+      // over y makes the sprite shiver. Wanderers breathe; sitters bob.
       const bobOffset = Math.random() * 600;
-      this.activeTweens.push(scene.tweens.add({
-        targets: this.sprite,
-        y: y - 2,
-        duration: 2000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        delay: bobOffset,
-      }));
+      if (!config.movement) {
+        this.activeTweens.push(scene.tweens.add({
+          targets: this.sprite,
+          y: y - 2,
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+          delay: bobOffset,
+        }));
+      }
 
       // Idle breath — subtle scale tween layered on top of the bob so NPCs
       // feel alive even when motionless. The breath rate is slower than the
@@ -300,6 +321,77 @@ export class NPC {
   }
 
   /**
+   * Living-world tick (docs/VISION.md §2): Pokemon-style ambient wandering.
+   * One 32px hop in a cardinal direction, then a pause. Movement yields to
+   * conversation — a speaking or player-adjacent NPC stands still, and the
+   * leash keeps every wanderer near their post so quest geography stays
+   * readable.
+   */
+  update(time: number): void {
+    const movement = this.config.movement;
+    if (!movement || this.isStepping) return;
+
+    if (this.isSpeaking || this.isHighlighted) {
+      // Don't step the instant a conversation ends — it reads as fleeing.
+      this.nextStepAt = time + 900;
+      return;
+    }
+
+    if (time < this.nextStepAt) return;
+
+    const STEP = 32;
+    const directions = Phaser.Utils.Array.Shuffle([
+      { dx: STEP, dy: 0 },
+      { dx: -STEP, dy: 0 },
+      { dx: 0, dy: STEP },
+      { dx: 0, dy: -STEP },
+    ]);
+
+    const fromX = this.sprite.x;
+    const fromY = this.sprite.y;
+    let target: { x: number; y: number } | null = null;
+    for (const dir of directions) {
+      const candidate = { x: fromX + dir.dx, y: fromY + dir.dy };
+      const leashOk =
+        Phaser.Math.Distance.Between(this.homeX, this.homeY, candidate.x, candidate.y) <=
+        movement.leashRadius;
+      if (leashOk && movement.canWalk?.(candidate) !== false) {
+        target = candidate;
+        break;
+      }
+    }
+
+    const [pauseMin, pauseMax] = movement.pauseMsRange ?? [1800, 4200];
+    this.nextStepAt = time + pauseMin + Math.random() * (pauseMax - pauseMin);
+    if (!target) return;
+
+    this.isStepping = true;
+    const reduceMotion = gameState.getSettings().reduceMotion;
+    this.stepTween = this.scene.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 420,
+      ease: 'Sine.easeInOut',
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        const hop = reduceMotion ? 0 : Math.sin(t * Math.PI) * 4;
+        const x = Phaser.Math.Linear(fromX, target.x, t);
+        const y = Phaser.Math.Linear(fromY, target.y, t) - hop;
+        this.sprite.setPosition(x, y);
+        this.glowGraphics.setPosition(x, y + hop);
+        this.nameTag.setPosition(x, y + hop - 46);
+      },
+      onComplete: () => {
+        this.sprite.setPosition(target.x, target.y);
+        this.glowGraphics.setPosition(target.x, target.y);
+        this.nameTag.setPosition(target.x, target.y - 46);
+        this.isStepping = false;
+        this.stepTween = null;
+      },
+    });
+  }
+
+  /**
    * Y-offset from the NPC's origin where an interaction prompt should anchor.
    * Derived from the actual rendered sprite so prompt framing stays correct
    * whenever NPC art is rescaled or regenerated at a new size.
@@ -315,6 +407,8 @@ export class NPC {
   destroy(): void {
     eventBus.off(GameEvents.DIALOGUE_START, this.onDialogueStart, this);
     eventBus.off(GameEvents.DIALOGUE_END, this.onDialogueEnd, this);
+    this.stepTween?.stop();
+    this.stepTween = null;
     for (const t of this.activeTweens) t.stop();
     this.activeTweens.length = 0;
     this.sprite.destroy();
@@ -325,6 +419,12 @@ export class NPC {
   reset(config: NPCConfig): void {
     this.config = config;
     const { x, y } = config.defaultPosition;
+    this.stepTween?.stop();
+    this.stepTween = null;
+    this.isStepping = false;
+    this.homeX = x;
+    this.homeY = y;
+    this.nextStepAt = config.movement ? 500 + Math.random() * 2500 : Number.MAX_SAFE_INTEGER;
     this.sprite.setPosition(x, y);
     this.sprite.setActive(true).setVisible(true);
     this.glowGraphics.setPosition(x, y).setAlpha(0).setVisible(true);
