@@ -7,7 +7,6 @@
 import { COLORS, COLOR_HEX, FONTS, SCENE_KEYS } from '../../config/constants';
 import { getImageAssetPath, PROLOGUE_REWORK_KEYS, VISUAL_REVAMP_KEYS } from '../../config/assets';
 import { colorToHex } from '../../utils/colors';
-import { createRetroButton, updateButtonText, disableButton } from '../../ui/RetroButton';
 import { showStarRating } from '../../ui/StarRating';
 import { drawPanel } from '../../ui/panel';
 import { audioManager } from '../../core/AudioManager';
@@ -38,8 +37,6 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   protected puzzleFrame!: Phaser.GameObjects.Graphics;
   protected titleText!: Phaser.GameObjects.Text;
   protected instructionText!: Phaser.GameObjects.Text;
-  protected hintButton!: Phaser.GameObjects.Container;
-  protected exitButton!: Phaser.GameObjects.Container;
   protected starContainer!: Phaser.GameObjects.Container;
   protected puzzleCursor!: PuzzleCursor;
   private puzzleKinetics: PuzzleKinetics | null = null;
@@ -171,9 +168,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     this.createPuzzleFrame(width, height);
     this.createTitleArea(width);
-    this.createControlButtons(width);
     this.createStarRatingContainer(width);
-    this.addStatusIndicator(width, height);
     this.createPuzzleControlsStrip(width, height);
   }
 
@@ -246,16 +241,17 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     return key;
   }
 
-  /** Bottom bar — matches overworld legend; M mute is registered on the CRT overlay scene. */
+  /**
+   * Bottom keybind legend — diegetic-UI rule (docs/VISION.md §5 wound #3):
+   * a persistent footer bar reads as a website, so the legend now greets
+   * the player on entry and then leaves the screen. The keys keep working;
+   * the pause overlay remains the reference card.
+   */
   protected createPuzzleControlsStrip(width: number, height: number): void {
-    // Round-5 chrome unification — keyboard-hint strip palette now comes
-    // from the active theme. Lets the AP strip read as a carved wooden
-    // beam and the TR strip read as a river-stone slab, instead of every
-    // region sharing the same cyan-and-gold tech bar.
     const theme = this.getPuzzleTheme();
     const stripW = Math.min(width - 96, 760);
     const stripH = 32;
-    drawPanel(this, width / 2 - stripW / 2, height - stripH - 8, stripW, stripH, {
+    const panel = drawPanel(this, width / 2 - stripW / 2, height - stripH - 8, stripW, stripH, {
       depth: 4999,
       fill: theme.hudHintStripFill,
       frame: theme.hudHintStripFrame,
@@ -267,7 +263,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       accentSide: 'top',
     });
 
-    this.add
+    const legend = this.add
       .text(
         width / 2,
         height - 16,
@@ -282,6 +278,18 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       .setAlpha(0.9)
       .setDepth(5000)
       .setScrollFactor(0);
+
+    this.tweens.add({
+      targets: [panel, legend],
+      alpha: 0,
+      duration: 600,
+      delay: 7000,
+      ease: 'Sine.easeIn',
+      onComplete: () => {
+        panel.destroy();
+        legend.destroy();
+      },
+    });
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -564,6 +572,17 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       delay: 520,
       ease: 'Power2.easeOut',
     });
+
+    // Diegetic-UI rule (docs/VISION.md §5 wound #3): the banner introduces
+    // the trial, then leaves the stage to the room itself. Keeper dialogue
+    // and per-round lesson cards carry the objective from here.
+    this.tweens.add({
+      targets: [titlePanel, moduleLabel, idLabel, this.titleText, this.instructionText],
+      alpha: 0,
+      duration: 700,
+      delay: 8200,
+      ease: 'Sine.easeIn',
+    });
   }
 
   private glitchReveal(text: Phaser.GameObjects.Text, finalColor: string): void {
@@ -585,91 +604,11 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     });
   }
 
-  protected createControlButtons(width: number): void {
-    // Round-5 chrome unification — exit + hint buttons now use the active
-    // theme's HUD colours instead of always-cyan-gold. AP gets brass+barn-red,
-    // TR gets cyan+weathered-wood, Prologue gets purple+navy.
-    const theme = this.getPuzzleTheme();
-    this.exitButton = createRetroButton(
-      this, width - 88, 60, 'EXIT', theme.hudExitButton, () => this.exitPuzzle(), 112
-    );
-    // Hint cost surfaced in the button text — the audit flagged that
-    // "hoarding hints vs burning hints" was an opaque choice. Including
-    // "-1★" in the label makes the trade-off legible at the moment of
-    // decision, not retroactive at the star-rating screen.
-    this.hintButton = createRetroButton(
-      this, 96, 60, `HINT -1★ (${this.maxHints - this.hintsUsed})`, theme.hudHintButton, () => this.showHint(), 152
-    );
-
-    this.exitButton.setScale(0);
-    this.hintButton.setScale(0);
-    this.uiContainer.add([this.exitButton, this.hintButton]);
-    this.ignorePuzzleCursor(this.exitButton);
-    this.ignorePuzzleCursor(this.hintButton);
-
-    // Spring in from scale 0 with staggered delay.
-    this.tweens.add({ targets: this.exitButton, scale: 1, duration: 280, delay: 420, ease: 'Back.easeOut' });
-    this.tweens.add({ targets: this.hintButton, scale: 1, duration: 280, delay: 500, ease: 'Back.easeOut' });
-
-    // Exit button pulses as a persistent warning cue.
-    this.tweens.add({
-      targets: this.exitButton,
-      alpha: 0.6,
-      duration: 1000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-      delay: 900,
-    });
-  }
-
-  protected addStatusIndicator(width: number, _height: number): void {
-    // Round-5 chrome unification — READY badge palette now comes from the
-    // active theme. The prior hardcoded cyan-bordered glow looked like
-    // sci-fi UI welded onto every region. With theme-aware colours, AP gets
-    // a wooden plaque, TR gets a stone tablet, Prologue keeps cosmic cyan.
-    const theme = this.getPuzzleTheme();
-    const padding = 40;
-    const panelW = 160;
-    const panelH = 30;
-    const panelX = width - padding - panelW - 8;
-    const panelY = padding + 4;
-    const dotX = panelX + 18;
-    const dotY = panelY + panelH / 2;
-
-    const panel = drawPanel(this, panelX, panelY, panelW, panelH, {
-      depth: 0,
-      fill: theme.hudStatusFill,
-      frame: theme.hudStatusFrame,
-      inner: theme.hudStatusInner,
-      alpha: 0.84,
-      shadow: true,
-      shadowAlpha: 0.18,
-    });
-    const dot = this.add.circle(dotX, dotY, 4, theme.hudStatusDot);
-    const label = this.add.text(dotX + 12, dotY, this.getReadyLabel(), {
-      fontSize: '8px',
-      fontFamily: FONTS.RETRO,
-      color: COLOR_HEX.TEXT_LIGHT,
-    }).setOrigin(0, 0.5);
-
-    panel.setAlpha(0);
-    dot.setAlpha(0);
-    label.setAlpha(0);
-    this.uiContainer.add([panel, dot, label]);
-
-    this.tweens.add({ targets: [panel, dot, label], alpha: 1, duration: 300, delay: 600 });
-
-    // Pulsing dot signals the puzzle module is active.
-    this.tweens.add({
-      targets: dot,
-      alpha: 0.15,
-      duration: 700,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-      delay: 1000,
-    });
+  // HINT / EXIT screen buttons and the READY status chip are retired
+  // (docs/VISION.md §5 wound #3 — persistent software chrome over a
+  // painted room). H and ESC carry both actions; the entry legend and
+  // pause overlay teach them.
+  protected addStatusIndicator(_width: number, _height: number): void {
   }
 
   protected createStarRatingContainer(width: number): void {
@@ -702,15 +641,6 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.puzzleKinetics?.pulseAt(x, y, kind);
   }
 
-  private ignorePuzzleCursor(object: Phaser.GameObjects.GameObject): void {
-    const target = object as Phaser.GameObjects.GameObject & {
-      getData?: (key: string) => unknown;
-      setData?: (key: string, value: unknown) => Phaser.GameObjects.GameObject;
-    };
-    target.setData?.('puzzleCursorIgnore', true);
-    (target.getData?.('background') as Phaser.GameObjects.GameObject | undefined)?.setData('puzzleCursorIgnore', true);
-  }
-
   protected showHint(): void {
     if (this.hintsUsed >= this.maxHints) {
       this.showMessage('No hints remaining!', COLORS.WARNING);
@@ -718,11 +648,12 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     }
 
     this.hintsUsed++;
-    updateButtonText(this.hintButton, `HINT -1★ (${this.maxHints - this.hintsUsed})`);
-
-    if (this.hintsUsed >= this.maxHints) {
-      disableButton(this.hintButton);
-    }
+    // The hint cost surfaces as a transient receipt instead of a button
+    // label — the trade-off stays legible at the moment of decision.
+    this.showMessage(
+      `Hint used (-1★) · ${this.maxHints - this.hintsUsed} remaining`,
+      COLORS.GOLD_ACCENT,
+    );
 
     // Using a hint breaks the zero-hint mastery streak. Mirror that the
     // restartPuzzle() path also resets — both signal "the player needed

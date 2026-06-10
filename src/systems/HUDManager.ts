@@ -172,7 +172,12 @@ export class HUDManager {
 
   /**
    * Set a one-line (or wrapped) player-facing objective. Pass '' to hide.
-   * Uses muted palette — reserved cyan stays for interactive highlights only.
+   *
+   * Diegetic-UI rule (docs/VISION.md §5 wound #3): the objective is a
+   * transient quest whisper, not a persistent status bar. It surfaces when
+   * the objective CHANGES, holds long enough to read, then fades. The
+   * change-detection cache already guarded re-sets, so scenes that call
+   * this every frame get the transient behaviour for free.
    */
   setObjectiveHint(text: string): void {
     if (!this.objectiveHintText?.active) return;
@@ -182,6 +187,15 @@ export class HUDManager {
     this.scene.tweens.killTweensOf(this.objectiveHintText);
     this.objectiveHintText.setText(trimmed);
     this.objectiveHintText.setAlpha(trimmed ? 0.9 : 0);
+    if (trimmed) {
+      this.scene.tweens.add({
+        targets: this.objectiveHintText,
+        alpha: 0,
+        duration: 700,
+        delay: 6500,
+        ease: 'Sine.easeIn',
+      });
+    }
     // Screen-reader users navigate by the objective hint between dialogues —
     // without an announce here the whole player-direction flow goes silent.
     if (trimmed) a11yManager.announce(trimmed, false);
@@ -202,6 +216,17 @@ export class HUDManager {
       }
     ).setOrigin(0.5, 1).setAlpha(0.86);
     this.container.add(this.controlsStripText);
+
+    // Diegetic-UI rule (docs/VISION.md §5 wound #3): greet, then get out of
+    // the way. A persistent footer legend reads as a website; the pause
+    // overlay stays the keybind reference.
+    scene.tweens.add({
+      targets: this.controlsStripText,
+      alpha: 0,
+      duration: 600,
+      delay: 7000,
+      ease: 'Sine.easeIn',
+    });
   }
 
   private readonly handlePuzzleComplete = () => {
