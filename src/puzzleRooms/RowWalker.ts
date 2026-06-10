@@ -25,7 +25,6 @@ export interface RowWalkerOptions {
 
 export class RowWalker {
   readonly room: PuzzleRoom;
-  private scene: Phaser.Scene;
   private options: RowWalkerOptions;
   private row: RiverRow | null = null;
   private focusIndex = -1;
@@ -38,7 +37,6 @@ export class RowWalker {
   }
 
   constructor(scene: Phaser.Scene, options: RowWalkerOptions = {}) {
-    this.scene = scene;
     this.options = options;
     this.marker = scene.add.graphics().setDepth(18);
 
