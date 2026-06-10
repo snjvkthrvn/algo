@@ -38,7 +38,6 @@ import { BruteForceScanner } from '../../entities/BruteForceScanner';
 import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
 import { PuzzlePhase } from '../../data/types';
 import { PuzzleRoom } from '../../puzzleRooms/PuzzleRoom';
-import { getImageAssetPath } from '../../config/assets';
 
 interface Basket {
   index: number;
@@ -103,11 +102,8 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
 
   preload(): void {
     super.preload();
-    const keeperPath = getImageAssetPath(VISUAL_REVAMP_KEYS.BASKET_KEEPER);
-    if (keeperPath && !this.textures.exists(VISUAL_REVAMP_KEYS.BASKET_KEEPER)) {
-      this.load.image(VISUAL_REVAMP_KEYS.BASKET_KEEPER, keeperPath);
-    }
     PuzzleRoom.preload(this);
+    PuzzleRoom.preloadKeeper(this, VISUAL_REVAMP_KEYS.BASKET_KEEPER);
   }
 
   create(): void {
@@ -175,22 +171,7 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     });
 
     // The Basket Keeper watches from the aisle's west edge.
-    if (this.textures.exists(VISUAL_REVAMP_KEYS.BASKET_KEEPER)) {
-      const keeper = this.add
-        .image(width / 2 - 470, height / 2 + 130, VISUAL_REVAMP_KEYS.BASKET_KEEPER)
-        .setOrigin(0.5, 0.78)
-        .setScale(0.5)
-        .setDepth(29);
-      this.tweens.add({
-        targets: keeper,
-        scaleX: 0.5 * 1.012,
-        scaleY: 0.5 * 1.012,
-        duration: 2700,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
+    PuzzleRoom.placeKeeper(this, VISUAL_REVAMP_KEYS.BASKET_KEEPER, width / 2 - 470, height / 2 + 130);
   }
 
   update(time: number, delta: number): void {

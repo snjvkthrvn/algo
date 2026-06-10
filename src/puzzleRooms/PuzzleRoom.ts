@@ -15,7 +15,11 @@
  */
 
 import Phaser from 'phaser';
-import { OVERWORLD_PLAYER_SPRITE_ASSETS } from '../config/assets';
+import {
+  ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS,
+  OVERWORLD_PLAYER_SPRITE_ASSETS,
+  TWIN_RIVERS_CHARACTER_SPRITE_ASSETS,
+} from '../config/assets';
 import { Player } from '../entities/Player';
 
 export interface PuzzleRoomConfig {
@@ -54,6 +58,54 @@ export class PuzzleRoom {
         frameHeight: asset.frameHeight || 48,
       });
     }
+  }
+
+  /**
+   * Preload a region keeper for in-room presence. Keeper art ships as
+   * idle SPRITESHEETS (192x192 frames) — loading them as plain images
+   * would render the whole strip, so this resolves the sheet entry from
+   * the character manifests.
+   */
+  static preloadKeeper(scene: Phaser.Scene, key: string): void {
+    const entry = [
+      ...ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS,
+      ...TWIN_RIVERS_CHARACTER_SPRITE_ASSETS,
+    ].find((asset) => asset.key === key);
+    if (!entry || scene.textures.exists(entry.key)) return;
+    scene.load.spritesheet(entry.key, entry.path, {
+      frameWidth: entry.frameWidth ?? 192,
+      frameHeight: entry.frameHeight ?? 192,
+    });
+  }
+
+  /**
+   * Place a keeper at the room's edge, breathing — the keeper stays
+   * present in their own trial instead of vanishing into a text box.
+   * Returns null when the texture isn't available (e.g. minimal test boot).
+   */
+  static placeKeeper(
+    scene: Phaser.Scene,
+    key: string,
+    x: number,
+    y: number,
+    scale = 0.5,
+  ): Phaser.GameObjects.Sprite | null {
+    if (!scene.textures.exists(key)) return null;
+    const keeper = scene.add
+      .sprite(x, y, key, 0)
+      .setOrigin(0.5, 0.78)
+      .setScale(scale)
+      .setDepth(29);
+    scene.tweens.add({
+      targets: keeper,
+      scaleX: scale * 1.012,
+      scaleY: scale * 1.012,
+      duration: 2600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    return keeper;
   }
 
   constructor(scene: Phaser.Scene, config: PuzzleRoomConfig) {

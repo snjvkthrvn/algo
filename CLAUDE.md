@@ -76,6 +76,8 @@ The `COLORS` constants in `src/config/constants.ts` are **UI theme tokens** for 
 
 ### First three regions production bar
 
+**Read `docs/VISION.md` first — it is the binding north star for all regions-1-3 work and wins over anything below that conflicts with it.** In brief: living explorable overworlds + embodied puzzle rooms (the overworld `Player` walks inside puzzles via `src/puzzleRooms/PuzzleRoom.ts` / `RowWalker.ts`), radical FEEL→NAME (no mandatory ConceptBridge — `NameItBeat` + silent codex unlock; the Codex carries the optional deep layer), no code shown on screen during play, Stardew Valley as the sole visual anchor, serene wonder (no pressure timers outside bosses), and no persistent UI chrome (legends/banners/objectives fade after entry).
+
 The first three regions (Prologue, Array Plains, Twin Rivers) must play like top-down action-room encounters, not passive forms or quiz cards. Every puzzle needs keyboard, mouse, and gamepad play, smooth movement/selection, clear spatial rules, and immediate cause/effect animation from input to board state to feedback.
 
 - Use `VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG`, `PUZZLE_ARRAY_ACTION_ARENA_BG`, and `PUZZLE_TWIN_ACTION_ARENA_BG` for first-three puzzle rooms unless intentionally replacing them with better project-bound art.

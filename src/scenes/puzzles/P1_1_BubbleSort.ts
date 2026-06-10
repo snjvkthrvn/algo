@@ -146,7 +146,6 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     const propKeys = [
       VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE,
       VISUAL_REVAMP_KEYS.AP_CORRUPTED_CRATE,
-      VISUAL_REVAMP_KEYS.SORTING_FARMER,
     ];
     for (const key of propKeys) {
       const path = getImageAssetPath(key);
@@ -155,6 +154,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       }
     }
     PuzzleRoom.preload(this);
+    PuzzleRoom.preloadKeeper(this, VISUAL_REVAMP_KEYS.SORTING_FARMER);
   }
 
   create(): void {
@@ -227,24 +227,8 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     });
     this.gapMarker = this.add.graphics().setDepth(10);
 
-    // The Sorting Farmer watches from the lane's west edge — the keeper
-    // stays present in their own trial instead of vanishing into a text box.
-    if (this.textures.exists(VISUAL_REVAMP_KEYS.SORTING_FARMER)) {
-      const farmer = this.add
-        .image(64, this.rowY + TILE_H / 2 + 64, VISUAL_REVAMP_KEYS.SORTING_FARMER)
-        .setOrigin(0.5, 0.78)
-        .setScale(0.5)
-        .setDepth(29);
-      this.tweens.add({
-        targets: farmer,
-        scaleX: 0.5 * 1.012,
-        scaleY: 0.5 * 1.012,
-        duration: 2600,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
+    // The Sorting Farmer watches from the lane's west edge.
+    PuzzleRoom.placeKeeper(this, VISUAL_REVAMP_KEYS.SORTING_FARMER, 64, this.rowY + TILE_H / 2 + 64);
     void height;
   }
 

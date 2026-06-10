@@ -47,7 +47,6 @@ import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteFo
 import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
 import { PuzzlePhase } from '../../data/types';
 import { PuzzleRoom } from '../../puzzleRooms/PuzzleRoom';
-import { getImageAssetPath } from '../../config/assets';
 
 interface NumberTile {
   index: number;
@@ -121,11 +120,8 @@ export class P1_4_TwoSum extends BasePuzzleScene {
 
   preload(): void {
     super.preload();
-    const keeperPath = getImageAssetPath(VISUAL_REVAMP_KEYS.TILE_WORKER);
-    if (keeperPath && !this.textures.exists(VISUAL_REVAMP_KEYS.TILE_WORKER)) {
-      this.load.image(VISUAL_REVAMP_KEYS.TILE_WORKER, keeperPath);
-    }
     PuzzleRoom.preload(this);
+    PuzzleRoom.preloadKeeper(this, VISUAL_REVAMP_KEYS.TILE_WORKER);
   }
 
   create(): void {
@@ -193,22 +189,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     });
 
     // The Tile Worker watches from the field's west edge.
-    if (this.textures.exists(VISUAL_REVAMP_KEYS.TILE_WORKER)) {
-      const keeper = this.add
-        .image(width / 2 - 470, height / 2 + 140, VISUAL_REVAMP_KEYS.TILE_WORKER)
-        .setOrigin(0.5, 0.78)
-        .setScale(0.5)
-        .setDepth(29);
-      this.tweens.add({
-        targets: keeper,
-        scaleX: 0.5 * 1.012,
-        scaleY: 0.5 * 1.012,
-        duration: 2500,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
+    PuzzleRoom.placeKeeper(this, VISUAL_REVAMP_KEYS.TILE_WORKER, width / 2 - 470, height / 2 + 140);
   }
 
   update(time: number, delta: number): void {

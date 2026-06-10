@@ -145,7 +145,6 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       VISUAL_REVAMP_KEYS.AP_GRAIN_BUCKET,
       VISUAL_REVAMP_KEYS.AP_CROP_WHEAT,
       VISUAL_REVAMP_KEYS.AP_CROP_BEAN,
-      VISUAL_REVAMP_KEYS.CROP_SORTER,
     ];
     for (const key of propKeys) {
       const path = getImageAssetPath(key);
@@ -154,6 +153,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       }
     }
     PuzzleRoom.preload(this);
+    PuzzleRoom.preloadKeeper(this, VISUAL_REVAMP_KEYS.CROP_SORTER);
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -239,22 +239,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
     });
 
     // The Crop Sorter oversees the line from the west end.
-    if (this.textures.exists(VISUAL_REVAMP_KEYS.CROP_SORTER)) {
-      const keeper = this.add
-        .image(60, this.floorY + 40, VISUAL_REVAMP_KEYS.CROP_SORTER)
-        .setOrigin(0.5, 0.78)
-        .setScale(0.48)
-        .setDepth(29);
-      this.tweens.add({
-        targets: keeper,
-        scaleX: 0.48 * 1.012,
-        scaleY: 0.48 * 1.012,
-        duration: 2600,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
+    PuzzleRoom.placeKeeper(this, VISUAL_REVAMP_KEYS.CROP_SORTER, 60, this.floorY + 40, 0.48);
   }
 
   update(time: number, delta: number): void {
