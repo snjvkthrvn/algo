@@ -16,7 +16,8 @@ This document tracks the implementation of the recommended gameplay and mechanic
 - [x] **Overworld Puzzles**: Added an environmental sequence puzzle to the `ArrayPlainsScene` where the player must traverse tiles in the correct index order.
 
 ## Next Steps
-- All current gameplay & mechanics audit expansions are complete! Next steps could involve adding more regions, expanding the storyline, or creating new algorithmic mechanics (like graph traversals in a forest region).
+- All current gameplay & mechanics audit expansions are complete. Future first-three-region work must preserve the action-room puzzle bar: direct board controls, keyboard/mouse/gamepad parity, smooth object motion, imagegen-backed room art registered in `src/config/assets.ts`, and connected arena feedback through `PuzzleKinetics`/`emitPuzzleActionPulse`.
+- Do not regress Prologue, Array Plains, or Twin Rivers into static choice cards. Algorithm rules should be embodied as mechanics: swaps move objects, pointers walk, windows slide, hashes route to buckets, and failures visibly rebound or misroute.
 
 ---
 

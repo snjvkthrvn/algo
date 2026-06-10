@@ -44,6 +44,7 @@ import {
 import { buildTwoSumPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
+import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
 import { PuzzlePhase } from '../../data/types';
 
 interface NumberTile {
@@ -104,7 +105,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG;
+    return VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG;
   }
   protected getPuzzleFrameFillAlpha(): number {
     return 0;
@@ -220,6 +221,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       notDoneLabel: 'still flailing',
       doneLabel: 'gave up',
       verbLabel: 'pair checks',
+      banter: GLITCH_BANTER.ap_4,
       depth: 40,
     });
   }
@@ -327,7 +329,12 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       ? `${round.label}  ·  target ${round.target}  ·  ${round.values.length} runestones, ${round.seconds}s on the clock`
       : `${round.label}  ·  target ${round.target}  ·  pick one, find its complement`;
 
-    await showLessonCard(this, round.lesson, 'parchment');
+    await showLessonCard(this, round.lesson, 'parchment', {
+      dockPosition: 'top',
+      width: 760,
+      height: 168,
+      autoDismissMs: 5000,
+    });
 
     await showRoundBanner(this, {
       label: `ROUND ${idx + 1} / ${total}`,

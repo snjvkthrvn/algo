@@ -19,6 +19,7 @@ import {
   type Pulse,
 } from '../P0_2/visuals/pulse';
 import { deadEndShimmer } from '../P0_2/feedback';
+import { bindDirectionalChoiceInput } from '../P0_2/input';
 import { LITANY_ROUND, type LitanyRound } from './rounds';
 import { altarKeys, altarsSatisfied, missedAltarKeys } from './flow';
 import { LITANY_LABEL, type LitanyState } from './state';
@@ -79,6 +80,17 @@ export class TheLitanyScene extends Phaser.Scene {
     this.returnScene = resolveReturnScene(data);
   }
 
+  preload(): void {
+    const backdropPath = getImageAssetPath(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG);
+    if (backdropPath && !this.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)) {
+      this.load.image(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG, backdropPath);
+    }
+    const figurePath = getImageAssetPath(VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE);
+    if (figurePath && !this.textures.exists(VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE)) {
+      this.load.image(VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE, figurePath);
+    }
+  }
+
   create(): void {
     this.cameras.main.setBackgroundColor(COLORS.bg.deep);
     this.startedAt = Date.now();
@@ -97,7 +109,7 @@ export class TheLitanyScene extends Phaser.Scene {
     this.intro = createIntro(this);
     this.hud = buildHud(this, {
       eyebrow: 'PROLOGUE FINALE  \u00b7  CONVERGENCE',
-      footerHint: 'Click a fork as the pulse arrives   \u00b7   [M] reduce motion',
+      footerHint: 'Arrow / WASD toward a fork as the pulse arrives   \u00b7   [M] reduce motion',
     });
     // Cyan accent — Sentinel sits in the cosmic register; this matches the
     // chamber's mandala glow and the entry banner.
@@ -256,12 +268,14 @@ export class TheLitanyScene extends Phaser.Scene {
 
     return new Promise<string | null>((resolve) => {
       let resolved = false;
+      let unbindDirectional = (): void => {};
       const finish = (next: string | null): void => {
         if (resolved) return;
         resolved = true;
         handlers.forEach((handler, key) => {
           this.board?.glyphs.get(key)?.off('pointerdown', handler);
         });
+        unbindDirectional();
         clearHighlights(this, rings);
         timer.remove();
         this.currentFork = null;
@@ -271,6 +285,7 @@ export class TheLitanyScene extends Phaser.Scene {
       };
 
       const timer = this.time.delayedCall(DECISION_WINDOW_MS, () => finish(null));
+      unbindDirectional = bindDirectionalChoiceInput(this, this.board!, current, choices, finish);
 
       for (const key of choices) {
         const glyph = this.board?.glyphs.get(key);

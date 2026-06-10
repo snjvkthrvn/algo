@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GamepadActionBridge } from '../../../input/GamepadActionBridge';
 
 /**
  * Input plumbing: keyboard verbs + pointer pick/hover wiring.
@@ -45,6 +46,7 @@ export function bindInput(scene: Phaser.Scene, h: InputHandlers): () => void {
   keys.left.on('down', left);
   keys.d.on('down', right);
   keys.right.on('down', right);
+  const gamepad = new GamepadActionBridge(scene, { up, down, left, right });
 
   const onPointerDown = (p: Phaser.Input.Pointer): void => h.onPickWorld(p.worldX, p.worldY);
   const onPointerMove = (p: Phaser.Input.Pointer): void => h.onHoverWorld(p.worldX, p.worldY);
@@ -54,6 +56,7 @@ export function bindInput(scene: Phaser.Scene, h: InputHandlers): () => void {
   return (): void => {
     scene.input.off('pointerdown', onPointerDown);
     scene.input.off('pointermove', onPointerMove);
+    gamepad.destroy();
     Object.values(keys).forEach((k) => k.removeAllListeners());
   };
 }

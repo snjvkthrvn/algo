@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { P0_1_PUZZLE_KEYS, VISUAL_REVAMP_KEYS } from '../../../../config/assets';
 import { SCENE_KEYS } from '../../../../config/constants';
+import { PuzzleKinetics, type PuzzleActionKind } from '../../../../ui/PuzzleKinetics';
 import { COLORS, s, STAGE } from '../tokens';
 
 /**
@@ -14,17 +15,31 @@ export type Atmosphere = {
   setMood(mood: 'normal' | 'preview'): void;
 };
 
+type PulseScene = Phaser.Scene & {
+  emitPuzzleActionPulse?: (x: number, y: number, kind?: PuzzleActionKind) => void;
+};
+
 const STAR_KEY = 'p0_1_stars';
 const NEBULA_KEY = 'p0_1_nebula';
 const BACKDROP_BY_SCENE: Partial<Record<string, string>> = {
-  // P0-1 uses its own cosmic-void art; fall back to the generic rune-memory bg if not present
-  [SCENE_KEYS.PUZZLE_P0_1]: P0_1_PUZZLE_KEYS.COSMIC_VOID,
+  [SCENE_KEYS.PUZZLE_P0_1]: VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
   [SCENE_KEYS.PUZZLE_P0_2]: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG,
-  [SCENE_KEYS.BOSS_SENTINEL]: VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG,
+  [SCENE_KEYS.BOSS_SENTINEL]: VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
 };
 
 export function paintAtmosphere(scene: Phaser.Scene): Atmosphere {
   const hasArtBackdrop = paintBackdrop(scene);
+  const kinetics = new PuzzleKinetics(scene, {
+    themeId: 'prologue',
+    width: STAGE.width,
+    height: STAGE.height,
+  });
+  const pulseScene = scene as PulseScene;
+  pulseScene.emitPuzzleActionPulse = (x, y, kind = 'neutral') => kinetics.pulseAt(x, y, kind);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    delete pulseScene.emitPuzzleActionPulse;
+  });
+
   ensureStarTexture(scene);
   ensureNebulaTexture(scene);
 
@@ -58,18 +73,25 @@ export function paintAtmosphere(scene: Phaser.Scene): Atmosphere {
 }
 
 function paintBackdrop(scene: Phaser.Scene): boolean {
-  // For P0-1 fall back to the legacy key if the dedicated art hasn't been placed yet
+  // P0-1 uses the clean cosmic_void nebula so the legible diamond floor reads
+  // as a floating rune-grid in space (the dome art baked an oval floor that
+  // never aligned with the logical diamond lattice). Fall back to the action
+  // arena / rune-memory art if the void asset is missing.
+  const cosmicVoid =
+    scene.scene.key === SCENE_KEYS.PUZZLE_P0_1 ? P0_1_PUZZLE_KEYS.COSMIC_VOID : undefined;
   const primary = BACKDROP_BY_SCENE[scene.scene.key];
   const fallback =
     scene.scene.key === SCENE_KEYS.PUZZLE_P0_1
       ? VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG
       : undefined;
   const backdropKey =
-    primary && scene.textures.exists(primary)
-      ? primary
-      : fallback && scene.textures.exists(fallback)
-        ? fallback
-        : undefined;
+    cosmicVoid && scene.textures.exists(cosmicVoid)
+      ? cosmicVoid
+      : primary && scene.textures.exists(primary)
+        ? primary
+        : fallback && scene.textures.exists(fallback)
+          ? fallback
+          : undefined;
   if (backdropKey && scene.textures.exists(backdropKey)) {
     scene.add
       .image(STAGE.width / 2, STAGE.height / 2, backdropKey)

@@ -72,11 +72,23 @@ export class InteractableObject {
     const stateImageKey = this.getStateImageKey(config.initialState ?? (config.locked ? 'locked' : 'unlocked'));
     const imageKey = config.spriteImageKey ?? stateImageKey;
     if (imageKey) {
+      const originY = config.imageOriginY ?? (config.type === 'portal' || config.type === 'gate' ? 0.82 : 0.5);
+      const frameCount = this.getLoadedFrameCount(imageKey);
+      if (frameCount > 1) {
+        const sprite = this.scene.add
+          .sprite(config.x, config.y, imageKey, 0)
+          .setDepth(4)
+          .setScale(config.imageScale ?? 0.16)
+          .setOrigin(0.5, originY);
+        this.playIdleAnimation(sprite, imageKey, frameCount);
+        return sprite;
+      }
+
       const image = this.scene.add
         .image(config.x, config.y, imageKey)
         .setDepth(4)
         .setScale(config.imageScale ?? 0.16);
-      image.setOrigin?.(0.5, config.imageOriginY ?? (config.type === 'portal' || config.type === 'gate' ? 0.82 : 0.5));
+      image.setOrigin?.(0.5, originY);
       return image;
     }
 
@@ -219,6 +231,27 @@ export class InteractableObject {
   setImageTexture(textureKey: string): void {
     if (!('setTexture' in this.sprite)) return;
     (this.sprite as Phaser.GameObjects.Image).setTexture(textureKey);
+  }
+
+  private getLoadedFrameCount(textureKey: string): number {
+    if (!this.scene.textures?.get) return 0;
+    const texture = this.scene.textures.get(textureKey);
+    if (!texture || texture.key === '__MISSING') return 0;
+    return Math.max(0, texture.frameTotal - 1);
+  }
+
+  private playIdleAnimation(sprite: Phaser.GameObjects.Sprite, textureKey: string, frameCount: number): void {
+    if (this.prefersReducedMotion()) return;
+    const animKey = `${textureKey}-idle-loop`;
+    if (!this.scene.anims.exists(animKey)) {
+      this.scene.anims.create({
+        key: animKey,
+        frames: this.scene.anims.generateFrameNumbers(textureKey, { start: 0, end: frameCount - 1 }),
+        frameRate: 5,
+        repeat: -1,
+      });
+    }
+    sprite.anims.play(animKey);
   }
 
   private getStateImageKey(state: string): string | undefined {

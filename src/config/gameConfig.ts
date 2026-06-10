@@ -91,6 +91,10 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     createContainer: true,
   },
 
+  input: {
+    gamepad: true,
+  },
+
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

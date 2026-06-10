@@ -13,7 +13,7 @@ const GLITCH_COLORS = [0x6b21a8, 0x7c3aed, 0x4c1d95, 0x1e1b4b];
 export class GlitchRival {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
-  private glitchSprite: Phaser.GameObjects.Image;
+  private glitchSprite: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
   private glitchTimer: Phaser.Time.TimerEvent | null = null;
   private isActive: boolean = false;
 
@@ -22,9 +22,7 @@ export class GlitchRival {
     this.container = scene.add.container(-200, -200);
     this.container.setDepth(9).setAlpha(0).setVisible(false);
 
-    this.glitchSprite = scene.add
-      .image(0, 0, VISUAL_REVAMP_KEYS.GLITCH)
-      .setDisplaySize(48, 76);
+    this.glitchSprite = this.createGlitchSprite().setDisplaySize(48, 76);
     const aura = scene.add.ellipse(0, 8, 54, 82, 0x8b5cf6, 0.13);
 
     this.container.add([aura, this.glitchSprite]);
@@ -102,6 +100,28 @@ export class GlitchRival {
         }
       },
     });
+  }
+
+  private createGlitchSprite(): Phaser.GameObjects.Image | Phaser.GameObjects.Sprite {
+    const textureKey = VISUAL_REVAMP_KEYS.GLITCH;
+    const texture = this.scene.textures.get(textureKey);
+    const frameCount = texture && texture.key !== '__MISSING'
+      ? Math.max(0, texture.frameTotal - 1)
+      : 0;
+    if (frameCount <= 1) return this.scene.add.image(0, 0, textureKey);
+
+    const sprite = this.scene.add.sprite(0, 0, textureKey, 0);
+    const animKey = `${textureKey}-rival-idle`;
+    if (!this.scene.anims.exists(animKey)) {
+      this.scene.anims.create({
+        key: animKey,
+        frames: this.scene.anims.generateFrameNumbers(textureKey, { start: 0, end: frameCount - 1 }),
+        frameRate: 7,
+        repeat: -1,
+      });
+    }
+    sprite.anims.play(animKey);
+    return sprite;
   }
 
 }

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { OVERWORLD_PLAYER_SPRITE_ASSETS } from '../config/assets';
+import { OVERWORLD_PLAYER_SPRITE_ASSETS, OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS } from '../config/assets';
 import { CAMERA_TUNING, SCENE_KEYS } from '../config/constants';
 import { gameState } from '../core/GameStateManager';
 import { TransitionManager } from '../core/TransitionManager';
@@ -69,7 +69,7 @@ export abstract class BaseOverworldScene extends Phaser.Scene {
 
   /** Load the shared overworld player sheets plus this region's images. */
   preload(): void {
-    for (const asset of OVERWORLD_PLAYER_SPRITE_ASSETS) {
+    for (const asset of [...OVERWORLD_PLAYER_SPRITE_ASSETS, ...OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS]) {
       if (this.textures.exists(asset.key)) continue;
       this.load.spritesheet(asset.key, asset.path, {
         frameWidth: asset.frameWidth || 32,

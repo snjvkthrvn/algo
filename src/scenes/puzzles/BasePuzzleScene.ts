@@ -19,6 +19,8 @@ import type { ConceptBridgeData } from '../../data/types';
 import { PARCHMENT_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
 import { RegionBackdrop, type RegionBackdropId, type RegionBackdropOptions } from '../../ui/RegionBackdrop';
 import { GLITCH_FAILURE_TAUNTS } from '../../data/dialogue/glitch_dialogue';
+import { PuzzleCursor } from '../../ui/PuzzleCursor';
+import { PuzzleKinetics, type PuzzleActionKind } from '../../ui/PuzzleKinetics';
 
 /**
  * Module-scope so it survives scene.restart() — Phaser destroys the Scene
@@ -38,6 +40,8 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
   protected hintButton!: Phaser.GameObjects.Container;
   protected exitButton!: Phaser.GameObjects.Container;
   protected starContainer!: Phaser.GameObjects.Container;
+  protected puzzleCursor!: PuzzleCursor;
+  private puzzleKinetics: PuzzleKinetics | null = null;
 
   // Puzzle State
   protected puzzleId: string = '';
@@ -86,6 +90,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
 
     audioManager.setScene(this);
     this.createPuzzleUI();
+    this.puzzleCursor = new PuzzleCursor(this);
     this.setupKeyboardShortcuts();
 
     // Float a queued Glitch failure taunt above the puzzle frame, after
@@ -156,6 +161,11 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     const region = this.getRegionBackdrop();
     if (region) {
       new RegionBackdrop(this, region.id, region.options);
+      this.puzzleKinetics = new PuzzleKinetics(this, {
+        themeId: this.getPuzzleTheme().id,
+        width,
+        height,
+      });
     }
 
     this.createPuzzleFrame(width, height);
@@ -280,9 +290,9 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     // texture (e.g., a puzzle-specific painted backdrop).
     const region = this.getRegionBackdrop();
     switch (region?.id) {
-      case 'prologue':     return VISUAL_REVAMP_KEYS.PROLOGUE_BG;
-      case 'array-plains': return VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG;
-      case 'twin-rivers':  return VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG;
+      case 'prologue':     return VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG;
+      case 'array-plains': return VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG;
+      case 'twin-rivers':  return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_ACTION_ARENA_BG;
       default:             return VISUAL_REVAMP_KEYS.PUZZLE_FRAME;
     }
   }
@@ -593,6 +603,8 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.exitButton.setScale(0);
     this.hintButton.setScale(0);
     this.uiContainer.add([this.exitButton, this.hintButton]);
+    this.ignorePuzzleCursor(this.exitButton);
+    this.ignorePuzzleCursor(this.hintButton);
 
     // Spring in from scale 0 with staggered delay.
     this.tweens.add({ targets: this.exitButton, scale: 1, duration: 280, delay: 420, ease: 'Back.easeOut' });
@@ -677,6 +689,27 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     });
   }
 
+  protected setPuzzleCursorTargets(targets: readonly Phaser.GameObjects.GameObject[], preferredIndex = 0): void {
+    this.puzzleCursor?.setTargets(targets, preferredIndex);
+  }
+
+  protected clearPuzzleCursorTargets(): void {
+    this.puzzleCursor?.clearTargets();
+  }
+
+  emitPuzzleActionPulse(x: number, y: number, kind: PuzzleActionKind = 'neutral'): void {
+    this.puzzleKinetics?.pulseAt(x, y, kind);
+  }
+
+  private ignorePuzzleCursor(object: Phaser.GameObjects.GameObject): void {
+    const target = object as Phaser.GameObjects.GameObject & {
+      getData?: (key: string) => unknown;
+      setData?: (key: string, value: unknown) => Phaser.GameObjects.GameObject;
+    };
+    target.setData?.('puzzleCursorIgnore', true);
+    (target.getData?.('background') as Phaser.GameObjects.GameObject | undefined)?.setData('puzzleCursorIgnore', true);
+  }
+
   protected showHint(): void {
     if (this.hintsUsed >= this.maxHints) {
       this.showMessage('No hints remaining!', COLORS.WARNING);
@@ -694,6 +727,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     // restartPuzzle() path also resets — both signal "the player needed
     // help on this one", so neither counts as a clean solve.
     gameState.resetStreak();
+    this.emitPuzzleActionPulse(96, 60, 'hint');
     this.displayHint(this.hintsUsed);
   }
 
@@ -960,6 +994,7 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     this.showMessage('PUZZLE COMPLETE!', COLORS.SUCCESS);
     audioManager.playCorrectTone();
 
+    this.emitPuzzleActionPulse(width / 2, height / 2, 'complete');
     JuiceSystem.cameraShake(this, 80, 0.003);
     JuiceSystem.screenFlash(this, COLORS.SUCCESS, 0.10, 300);
     JuiceSystem.correctBurst(this, width / 2, height / 2);
@@ -1035,6 +1070,17 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
     const msgY = height / 2 - 20;
 
     a11yManager.announce(text, true);
+    this.emitPuzzleActionPulse(
+      width / 2,
+      msgY,
+      color === COLORS.WARNING
+        ? 'wrong'
+        : color === COLORS.GOLD_ACCENT
+          ? 'hint'
+          : color === COLORS.SUCCESS
+            ? 'correct'
+            : 'neutral',
+    );
 
     const msgContainer = this.add.container(width / 2, msgY).setDepth(1000).setAlpha(0);
 

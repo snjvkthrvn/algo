@@ -14,34 +14,64 @@ import type { DialogueTree } from '../types';
 
 // ─── Professor Node ────────────────────────────────────────────────────────────
 
-// Intro trimmed from the original 9-node branching tree to 4 short
-// auto-advancing lines. The previous version held the player still for
-// 60-90 seconds of cosmic exposition before they had moved an inch; the
-// "what's on your mind" choice branched into three paragraphs that
-// converged on the same guidance, so the choice was decoration rather
-// than agency. The cut lore ("space between thought and understanding",
-// "two halves of the same process", "every concept you master your
-// Construct absorbs") now lives in professorNodePostPuzzle where the
-// player has earned the meaning of those phrases.
+// Scene 0-2 from the script — the player's first real agency. Node greets
+// the freshly-woken player, then hands them a genuine choice of what to ask.
+// Each branch delivers DISTINCT lore (the world / the companion / the
+// purpose) before converging on the same gentle "go explore" guidance, so
+// the choice is real flavour, not decoration. Kept tight — one beat per
+// branch — so it never becomes the 60-90s exposition wall it once was.
+// The deeper payoff ("two halves of the same process") still lands later in
+// professorNodePostPuzzle, where the player has earned it.
 export const professorNodeDialogue: DialogueTree = {
   startNodeId: 'intro_1',
   nodes: [
     {
       id: 'intro_1',
       speaker: 'Professor Node',
-      text: 'There you are! I was starting to worry. And — a Construct already at your side. Good.',
+      text: 'There you are! I was starting to worry. And — a Construct already at your side, born alongside you. That means you two are linked.',
       nextNodeId: 'intro_2',
     },
     {
       id: 'intro_2',
       speaker: 'Professor Node',
-      text: "I'm Professor Node. This is the Chamber of Flow — every Path-walker's first morning. There's time to learn what that means. There isn't much time to stand still.",
-      nextNodeId: 'intro_3',
+      text: "I'm Professor Node. Welcome to the space between thought and understanding — the Chamber of Flow. What's on your mind?",
+      choices: [
+        { text: 'Where am I?', nextNodeId: 'ask_where' },
+        { text: "What's that little light?", nextNodeId: 'ask_bit' },
+        { text: 'What do I do here?', nextNodeId: 'ask_do' },
+      ],
     },
     {
-      id: 'intro_3',
+      id: 'ask_where',
       speaker: 'Professor Node',
-      text: 'Glowing tiles to the northwest, floating consoles to the northeast. Either way works. Try whichever calls to you — the going matters more than the order.',
+      text: [
+        'The Chamber of Flow — a starting area. The first page of a very long, very exciting book.',
+        'Beyond it: farmlands, rivers, mountains, forests — each one alive with puzzles and people. But first, let\'s make sure you can walk before we ask you to run.',
+      ],
+      nextNodeId: 'intro_guidance',
+    },
+    {
+      id: 'ask_bit',
+      speaker: 'Professor Node',
+      text: [
+        'A Construct — a living fragment of logic. It was born with you. Two halves of the same restoration.',
+        "It's just a Spark now. But every concept you master, every puzzle you solve, your Construct absorbs. Take good care of this one.",
+      ],
+      nextNodeId: 'intro_guidance',
+    },
+    {
+      id: 'ask_do',
+      speaker: 'Professor Node',
+      text: [
+        'The best question anyone can ask! You explore. You solve puzzles. You discover how this world works.',
+        "But we don't start with theory. We start with your feet. Walk, try things — the world will teach you.",
+      ],
+      nextNodeId: 'intro_guidance',
+    },
+    {
+      id: 'intro_guidance',
+      speaker: 'Professor Node',
+      text: 'See the glowing tiles to the northwest? The floating consoles to the northeast? The Rune Keeper and the Console Keeper are waiting. Either way works — try whichever calls to you.',
       nextNodeId: 'intro_end',
     },
     {
@@ -89,37 +119,37 @@ export const professorNodePostPuzzle: DialogueTree = {
 // ─── Rune Keeper ───────────────────────────────────────────────────────────────
 // Voice: ancient, poetic — "wind through crystal" — sparse, not chatty
 
-// Reframed for the Brute Force Wakeup opening. The Rune Keeper acknowledges
-// the cinematic damage and points the player at the literal repair task —
-// carrying the cold open's momentum into P0_1 without leaking the algorithm
-// name (that still lives in `runeKeeperPostPuzzle`).
+// Scene 0-4 from the script — serene, poetic. The runes teach ORDER simply
+// by glowing in sequence; the player walks what they showed. No algorithm
+// name leaks here (that lands in `runeKeeperPostPuzzle`). The companion line
+// sets up Bit's in-puzzle role as a sequence-tracer.
 export const runeKeeperDialogue: DialogueTree = {
   startNodeId: 'rk_intro_1',
   nodes: [
     {
       id: 'rk_intro_1',
       speaker: 'Rune Keeper',
-      text: 'You are awake. Good. Glitch was here — kicking through anything they could not solve.',
+      text: 'You are awake. Good. The runes remember — they remember the order of all things.',
       nextNodeId: 'rk_intro_2',
     },
     {
       id: 'rk_intro_2',
       speaker: 'Rune Keeper',
-      text: 'The runes remember the order of all things. But Glitch tried every wrong hop, and the chant fell apart.',
+      text: 'Watch them glow. First, then second, then third. The order is the meaning.',
       nextNodeId: 'rk_intro_3',
     },
     {
       id: 'rk_intro_3',
       speaker: 'Rune Keeper',
-      text: 'Watch the runes glow. Walk where they show you, in the order they showed you. Repair what brute force broke.',
+      text: 'Walk where they show you, in the order they showed you. One step at a time. That is how all journeys begin.',
       nextNodeId: 'rk_challenge',
     },
     {
       id: 'rk_challenge',
       speaker: 'Rune Keeper',
-      text: 'One step at a time. That is the secret Glitch never learned.',
+      text: 'Are you ready to walk the pattern?',
       choices: [
-        { text: 'Let me repair it.', nextNodeId: 'rk_start_puzzle' },
+        { text: "I'm ready.", nextNodeId: 'rk_start_puzzle' },
         { text: 'Tell me more.', nextNodeId: 'rk_explain' },
       ],
     },
@@ -128,7 +158,7 @@ export const runeKeeperDialogue: DialogueTree = {
       speaker: 'Rune Keeper',
       text: [
         'Four chants. Each longer than the last. Each tests whether you remember the order.',
-        'Your spark companion will move near the next glowing rune. Trust what it shows you.',
+        'Your spark companion will drift near the next glowing rune. Trust what it shows you.',
         'When you are ready.',
       ],
       nextNodeId: 'rk_challenge',

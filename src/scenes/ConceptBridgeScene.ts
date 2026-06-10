@@ -28,6 +28,15 @@ const FORGE_ROW_SPACING = 56;
 const FORGE_HIT_W = 520;
 const FORGE_HIT_H = 48;
 
+const BRIDGE_BG = 0x02070b;
+const BRIDGE_HEADER = 0x081820;
+const BRIDGE_PANEL = 0x061018;
+const BRIDGE_OPTION = 0x0a1822;
+const BRIDGE_LINE = 0x06b6d4;
+const BRIDGE_TEXT = '#eaf6f2';
+const BRIDGE_MUTED = '#b8d89f';
+const BRIDGE_DIM = '#9fc4d4';
+
 const PSEUDO_TAB_LABELS = ['Pseudo', 'Python', 'JS'] as const;
 
 export class ConceptBridgeScene extends Phaser.Scene {
@@ -67,28 +76,28 @@ export class ConceptBridgeScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     audioManager.setScene(this);
 
-    const fadeIn = this.add.rectangle(0, 0, width, height, COLORS.PURE_BLACK, 1).setOrigin(0).setDepth(10000);
+    const fadeIn = this.add.rectangle(0, 0, width, height, COLORS.PURE_BLACK, 0.32).setOrigin(0).setDepth(10000);
     if (this.prefersReducedMotion()) {
       fadeIn.destroy();
     } else {
-      this.tweens.add({ targets: fadeIn, alpha: 0, duration: 500, onComplete: () => fadeIn.destroy() });
+      this.tweens.add({ targets: fadeIn, alpha: 0, duration: 180, onComplete: () => fadeIn.destroy() });
     }
 
-    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0);
+    this.add.rectangle(0, 0, width, height, BRIDGE_BG, 1).setOrigin(0);
 
     if (!this.textures.exists('bg-dot')) {
       const g = this.make.graphics({ x: 0, y: 0 });
-      g.fillStyle(COLORS.WARNING, 1);
+      g.fillStyle(COLORS.WARNING, 0.42);
       g.fillRect(0, 0, 2, 2);
       g.generateTexture('bg-dot', 32, 32);
       g.destroy();
     }
-    this.add.tileSprite(0, 0, width, height, 'bg-dot').setOrigin(0);
+    this.add.tileSprite(0, 0, width, height, 'bg-dot').setOrigin(0).setAlpha(0.24);
 
     const headerBg = this.add.graphics();
-    headerBg.fillStyle(COLORS.ERROR, 0.98);
+    headerBg.fillStyle(BRIDGE_HEADER, 0.98);
     headerBg.fillRect(0, 0, width, HEADER_H);
-    headerBg.lineStyle(2, COLORS.CYAN_GLOW, 0.72);
+    headerBg.lineStyle(2, BRIDGE_LINE, 0.9);
     headerBg.beginPath();
     headerBg.moveTo(0, HEADER_H);
     headerBg.lineTo(width, HEADER_H);
@@ -97,7 +106,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.add.text(64, 18, 'CONCEPT BRIDGE', {
       fontSize: '18px',
       fontFamily: FONTS.RETRO,
-      color: COLOR_HEX.TEXT_LIGHT,
+      color: BRIDGE_TEXT,
       stroke: COLOR_HEX.TEXT_DARK,
       strokeThickness: 3,
     }).setOrigin(0, 0);
@@ -105,7 +114,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.add.text(66, 52, `${this.puzzleData.puzzleName} / ${this.puzzleData.concept}`, {
       fontSize: '10px',
       fontFamily: FONTS.RETRO,
-      color: COLOR_HEX.TEXT_MUTED,
+      color: BRIDGE_MUTED,
       wordWrap: { width: width - 420, useAdvancedWrap: true },
     }).setOrigin(0, 0);
 
@@ -118,20 +127,20 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.add.text(width - 64, 54, `TIME ${this.puzzleData.timeSpent}s  ATTEMPTS ${this.puzzleData.attempts}  HINTS ${this.puzzleData.hintsUsed}`, {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
-      color: COLOR_HEX.TEXT_MUTED,
+      color: BRIDGE_MUTED,
     }).setOrigin(1, 0);
 
     const panelW = width - PANEL_MARGIN * 2;
     const panelH = height - PANEL_Y - 48;
     drawPanel(this, PANEL_MARGIN, PANEL_Y, panelW, panelH, {
       depth: 0,
-      fill: COLORS.ERROR,
-      frame: COLORS.FRAME_BORDER_LIGHT,
+      fill: BRIDGE_PANEL,
+      frame: BRIDGE_LINE,
       inner: COLORS.SUCCESS,
       alpha: 0.96,
       shadow: true,
       shadowAlpha: 0.24,
-      accent: COLORS.CYAN_GLOW,
+      accent: BRIDGE_LINE,
       accentSide: 'top',
     });
 
@@ -212,7 +221,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
     const y = PANEL_Y + 26;
 
     const rail = this.add.graphics();
-    rail.lineStyle(1, COLORS.FRAME_BORDER_LIGHT, 0.62);
+    rail.lineStyle(1, BRIDGE_LINE, 0.58);
     rail.beginPath();
     rail.moveTo(startX, y);
     rail.lineTo(startX + railW, y);
@@ -226,7 +235,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
       const label = this.add.text(x, y + 12, labels[i], {
         fontSize: '7px',
         fontFamily: FONTS.RETRO,
-        color: i === 0 ? COLOR_HEX.CYAN_GLOW : COLOR_HEX.TEXT_MUTED,
+        color: i === 0 ? COLOR_HEX.CYAN_GLOW : BRIDGE_DIM,
       }).setOrigin(0.5, 0);
       this.dots.push(dot);
       this.navLabels.push(label);
@@ -273,7 +282,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
       dot.setFillStyle(i === index ? COLORS.CYAN_GLOW : i < index ? COLORS.SUCCESS : COLORS.NAV_DOT_INACTIVE);
     });
     this.navLabels.forEach((label, i) => {
-      label.setColor(i === index ? COLOR_HEX.CYAN_GLOW : i < index ? COLOR_HEX.TEXT_LIGHT : COLOR_HEX.TEXT_MUTED);
+      label.setColor(i === index ? COLOR_HEX.CYAN_GLOW : i < index ? BRIDGE_TEXT : BRIDGE_DIM);
     });
 
     const { width, height } = this.cameras.main;
@@ -312,7 +321,8 @@ export class ConceptBridgeScene extends Phaser.Scene {
 
   private renderStoryRecap(width: number, height: number): void {
     const title = this.add.text(width / 2, CONTENT_START_Y, 'Story Recap', {
-      fontSize: '16px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_MUTED,
+      fontSize: '16px', fontFamily: FONTS.RETRO, color: BRIDGE_TEXT,
+      stroke: COLOR_HEX.TEXT_DARK, strokeThickness: 3,
     }).setOrigin(0.5);
     this.sectionContainer.add(title);
 
@@ -320,7 +330,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
     let y = BODY_START_Y;
     for (const line of lines) {
       const text = this.add.text(width / 2, y, line, {
-        fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_LIGHT,
+        fontSize: '12px', fontFamily: FONTS.MONO, color: BRIDGE_TEXT,
         wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center', lineSpacing: 8,
       }).setOrigin(0.5, 0);
       this.sectionContainer.add(text);
@@ -335,13 +345,14 @@ export class ConceptBridgeScene extends Phaser.Scene {
 
     const titleText = this.add.text(width / 2, CONTENT_START_Y, title, {
       fontSize: '16px', fontFamily: FONTS.RETRO, color: COLOR_HEX.BRIDGE_PATTERN,
+      stroke: COLOR_HEX.TEXT_DARK, strokeThickness: 3,
     }).setOrigin(0.5);
     this.sectionContainer.add(titleText);
 
     let y = BODY_START_Y;
     for (const line of explanation) {
       const text = this.add.text(width / 2, y, line, {
-        fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_LIGHT,
+        fontSize: '12px', fontFamily: FONTS.MONO, color: BRIDGE_TEXT,
         wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center', lineSpacing: 8,
       }).setOrigin(0.5, 0);
       this.sectionContainer.add(text);
@@ -356,6 +367,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
 
     const title = this.add.text(width / 2, CONTENT_START_Y, 'Pseudocode', {
       fontSize: '16px', fontFamily: FONTS.RETRO, color: COLOR_HEX.ORANGE,
+      stroke: COLOR_HEX.TEXT_DARK, strokeThickness: 3,
     }).setOrigin(0.5);
     this.sectionContainer.add(title);
 
@@ -370,13 +382,13 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.sectionContainer.add(codeBg);
 
     const codeText = this.add.text(PANEL_MARGIN + 32, BODY_START_Y + 24, '', {
-      fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_LIGHT,
+      fontSize: '12px', fontFamily: FONTS.MONO, color: BRIDGE_TEXT,
       lineSpacing: 8,
     });
     this.sectionContainer.add(codeText);
 
     const expText = this.add.text(width / 2, 0, explanation, {
-      fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_MUTED,
+      fontSize: '12px', fontFamily: FONTS.MONO, color: BRIDGE_MUTED,
       wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center',
     }).setOrigin(0.5, 0);
     this.sectionContainer.add(expText);
@@ -421,9 +433,9 @@ export class ConceptBridgeScene extends Phaser.Scene {
       const codeBlockH = Math.max(124, codeText.height + 56);
 
       codeBg.clear();
-      codeBg.fillStyle(COLORS.ERROR, 0.94);
+      codeBg.fillStyle(BRIDGE_BG, 0.94);
       codeBg.fillRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH);
-      codeBg.lineStyle(1, COLORS.FRAME_BORDER_LIGHT, 1);
+      codeBg.lineStyle(1, BRIDGE_LINE, 0.92);
       codeBg.strokeRect(PANEL_MARGIN + 16, BODY_START_Y - 8, width - (PANEL_MARGIN + 16) * 2, codeBlockH);
 
       let tabX = PANEL_MARGIN + 32;
@@ -446,11 +458,12 @@ export class ConceptBridgeScene extends Phaser.Scene {
 
     const title = this.add.text(width / 2, CONTENT_START_Y, 'Mini-Forge Challenge', {
       fontSize: '16px', fontFamily: FONTS.RETRO, color: COLOR_HEX.GOLD,
+      stroke: COLOR_HEX.TEXT_DARK, strokeThickness: 3,
     }).setOrigin(0.5);
     this.sectionContainer.add(title);
 
     const qText = this.add.text(width / 2, BODY_START_Y, question, {
-      fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_LIGHT,
+      fontSize: '12px', fontFamily: FONTS.MONO, color: BRIDGE_TEXT,
       wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center',
     }).setOrigin(0.5, 0);
     this.sectionContainer.add(qText);
@@ -469,8 +482,8 @@ export class ConceptBridgeScene extends Phaser.Scene {
       const y = startY + i * FORGE_ROW_SPACING;
       const isSelected = this.miniForgeSelectedIndex === i;
       const isCorrect = i === correctIndex;
-      const bg = this.add.rectangle(width / 2, y, FORGE_HIT_W, FORGE_HIT_H, COLORS.ERROR, 0.88);
-      bg.setStrokeStyle(1, COLORS.FRAME_BORDER_LIGHT);
+      const bg = this.add.rectangle(width / 2, y, FORGE_HIT_W, FORGE_HIT_H, BRIDGE_OPTION, 0.92);
+      bg.setStrokeStyle(1, BRIDGE_LINE, 0.62);
 
       if (this.miniForgeAnswered && isCorrect) {
         bg.setFillStyle(COLORS.BRIDGE_PATTERN, 0.28);
@@ -483,20 +496,20 @@ export class ConceptBridgeScene extends Phaser.Scene {
       const optText = this.add.text(width / 2, y, `[${i + 1}]  ${option}`, {
         fontSize: '12px',
         fontFamily: FONTS.MONO,
-        color: this.miniForgeAnswered && isCorrect ? COLOR_HEX.TEXT_LIGHT : COLOR_HEX.TEXT_MUTED,
+        color: this.miniForgeAnswered && isCorrect ? BRIDGE_TEXT : BRIDGE_DIM,
       }).setOrigin(0.5);
 
       if (!this.miniForgeAnswered) {
         bg.setInteractive({ useHandCursor: true });
         bg.on('pointerover', () => {
           bg.setStrokeStyle(2, COLORS.SUCCESS);
-          optText.setColor(COLOR_HEX.TEXT_LIGHT);
+          optText.setColor(BRIDGE_TEXT);
         });
 
         bg.on('pointerout', () => {
           const stillSelected = this.miniForgeSelectedIndex === i;
-          bg.setStrokeStyle(stillSelected ? 2 : 1, stillSelected ? COLORS.BRIDGE_WRONG : COLORS.FRAME_BORDER_LIGHT);
-          optText.setColor(stillSelected ? COLOR_HEX.TEXT_LIGHT : COLOR_HEX.TEXT_MUTED);
+          bg.setStrokeStyle(stillSelected ? 2 : 1, stillSelected ? COLORS.BRIDGE_WRONG : BRIDGE_LINE);
+          optText.setColor(stillSelected ? BRIDGE_TEXT : BRIDGE_DIM);
         });
 
         bg.on('pointerdown', () => this.chooseMiniForgeOption(i));
@@ -517,12 +530,13 @@ export class ConceptBridgeScene extends Phaser.Scene {
 
   private renderRealWorld(width: number, height: number): void {
     const title = this.add.text(width / 2, CONTENT_START_Y, 'Real-World Usage', {
-      fontSize: '16px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_MUTED,
+      fontSize: '16px', fontFamily: FONTS.RETRO, color: BRIDGE_TEXT,
+      stroke: COLOR_HEX.TEXT_DARK, strokeThickness: 3,
     }).setOrigin(0.5);
     this.sectionContainer.add(title);
 
     const subtitle = this.add.text(width / 2, CONTENT_START_Y + 24, 'Where this pattern shows up in software you already use:', {
-      fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_MUTED,
+      fontSize: '12px', fontFamily: FONTS.MONO, color: BRIDGE_MUTED,
       wordWrap: { width: width - BODY_WRAP_INSET }, align: 'center',
     }).setOrigin(0.5, 0);
     this.sectionContainer.add(subtitle);
@@ -530,10 +544,10 @@ export class ConceptBridgeScene extends Phaser.Scene {
     let y = BODY_START_Y + 24;
     for (const line of this.content.sections.realWorld) {
       const bullet = this.add.text(PANEL_MARGIN + 48, y, '▸', {
-        fontSize: '12px', fontFamily: FONTS.RETRO, color: COLOR_HEX.WARNING,
+        fontSize: '12px', fontFamily: FONTS.RETRO, color: COLOR_HEX.CYAN_GLOW,
       });
       const text = this.add.text(PANEL_MARGIN + 72, y, line, {
-        fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_LIGHT,
+        fontSize: '12px', fontFamily: FONTS.MONO, color: BRIDGE_TEXT,
         wordWrap: { width: width - PANEL_MARGIN * 2 - 96 },
         lineSpacing: 8,
       });
@@ -614,7 +628,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
       `Hints: ${this.puzzleData.hintsUsed}`,
     ];
     const statsText = this.add.text(width / 2, titleY + 128, stats.join('   |   '), {
-      fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_MUTED,
+      fontSize: '12px', fontFamily: FONTS.MONO, color: BRIDGE_MUTED,
     }).setOrigin(0.5);
     if (reduced) {
       statsText.setAlpha(1);
@@ -625,7 +639,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.sectionContainer.add(statsText);
 
     const codexHint = this.add.text(width / 2, titleY + 168, 'Press [C] in the overworld to revisit your Codex anytime.', {
-      fontSize: '12px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_MUTED,
+      fontSize: '12px', fontFamily: FONTS.RETRO, color: BRIDGE_MUTED,
     }).setOrigin(0.5);
     if (reduced) {
       codexHint.setAlpha(0.85);
@@ -636,7 +650,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
     this.sectionContainer.add(codexHint);
 
     const cont = this.add.text(width / 2, height - 56, 'Press SPACE to continue', {
-      fontSize: '12px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_MUTED,
+      fontSize: '12px', fontFamily: FONTS.RETRO, color: BRIDGE_MUTED,
     }).setOrigin(0.5);
     if (reduced) {
       cont.setAlpha(0.85);
@@ -663,6 +677,10 @@ export class ConceptBridgeScene extends Phaser.Scene {
       fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.CYAN_GLOW,
     }).setOrigin(0.5);
 
+    const hintBg = this.add.rectangle(width / 2, height - 72, hint.width + 40, hint.height + 16, BRIDGE_PANEL, 0.84)
+      .setOrigin(0.5)
+      .setStrokeStyle(1, BRIDGE_LINE, 0.48);
+
     if (this.prefersReducedMotion()) {
       hint.setAlpha(0.85);
     } else {
@@ -676,7 +694,7 @@ export class ConceptBridgeScene extends Phaser.Scene {
       });
     }
 
-    this.sectionContainer.add(hint);
+    this.sectionContainer.add([hintBg, hint]);
   }
 
   private nextSection(): void {

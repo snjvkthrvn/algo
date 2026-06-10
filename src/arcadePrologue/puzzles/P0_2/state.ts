@@ -11,7 +11,7 @@ export type FlowState = 'idle' | 'preparing' | 'flowing' | 'cleared';
 export const FLOW_LABEL: Record<FlowState, string> = {
   idle: '',
   preparing: 'Ready \u2014 pulse incoming',
-  flowing: 'Click a fork to steer',
+  flowing: 'Steer the fork',
   cleared: 'Solved',
 };
 

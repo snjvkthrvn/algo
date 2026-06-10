@@ -37,8 +37,10 @@ import {
 } from '../../game/algorithmiaIntegration';
 import { scorePopup } from '../../ui/popups';
 import { hexColorToNumber, sparkle } from '../../ui/particles';
+import { BitCompanion } from '../../../ui/BitCompanion';
 import { comboMilestone } from '../../game/milestone';
 import {
+  getImageAssetPath,
   OVERWORLD_PLAYER_SPRITE_ASSETS,
   P0_1_PUZZLE_ASSETS,
   PROLOGUE_SHEET_KEYS,
@@ -53,6 +55,28 @@ const ROUND_TIMERS = [22000, 28000, 35000, 40000];
 const TIME_BONUS_MAX = [200, 240, 280, 320];
 const PERFECT_BONUS = [250, 280, 320, 360];
 
+/** Trace an isometric diamond path on a Graphics, centred at (cx, cy). */
+function diamondPath(g: Phaser.GameObjects.Graphics, cx: number, cy: number, k = 1): void {
+  const hw = (TILE_W / 2) * k;
+  const hh = (TILE_H / 2) * k;
+  g.beginPath();
+  g.moveTo(cx, cy - hh);
+  g.lineTo(cx + hw, cy);
+  g.lineTo(cx, cy + hh);
+  g.lineTo(cx - hw, cy);
+  g.closePath();
+}
+
+function strokeDiamond(g: Phaser.GameObjects.Graphics, cx: number, cy: number, k = 1): void {
+  diamondPath(g, cx, cy, k);
+  g.strokePath();
+}
+
+function fillDiamond(g: Phaser.GameObjects.Graphics, cx: number, cy: number, k = 1): void {
+  diamondPath(g, cx, cy, k);
+  g.fillPath();
+}
+
 export class FollowThePathScene extends Phaser.Scene {
   private hud!: PrologueHud;
   private dialogue!: DialogueBox;
@@ -62,6 +86,9 @@ export class FollowThePathScene extends Phaser.Scene {
   private playerSprite!: Phaser.GameObjects.Sprite;
   private playerGlow!: Phaser.GameObjects.Arc;
   private runeKeeper: Phaser.GameObjects.Image | null = null;
+  private bit!: BitCompanion;
+  private cursorG!: Phaser.GameObjects.Graphics;
+  private neighborG!: Phaser.GameObjects.Graphics;
 
   private state: PuzzleState = 'idle';
   private wave = 0;
@@ -103,6 +130,11 @@ export class FollowThePathScene extends Phaser.Scene {
         this.load.image(asset.key, asset.path);
       }
     }
+
+    const arenaPath = getImageAssetPath(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG);
+    if (arenaPath && !this.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)) {
+      this.load.image(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG, arenaPath);
+    }
   }
 
   create(): void {
@@ -128,6 +160,35 @@ export class FollowThePathScene extends Phaser.Scene {
     this.traceG = this.add.graphics().setDepth(30);
     this.spawnRuneKeeper();
     this.buildPlayerSprite();
+
+    // Bit joins the puzzle as a Spark — it traces the chant during preview
+    // and bounces beside the player on every correct step (Scene 0-4).
+    const start0 = PATH_ROUNDS[0]!.path[0]!;
+    const bitStart = cellWorldPos(start0.row, start0.col);
+    this.bit = new BitCompanion(this, {
+      stage: 'spark',
+      x: bitStart.x + 22,
+      y: bitStart.y - 26,
+      depth: 60,
+    });
+
+    // Legal-move hints (steady) + a pulsing cursor on the player's cell so the
+    // board is always readable during the player's turn.
+    this.neighborG = this.add.graphics().setDepth(24);
+    this.cursorG = this.add.graphics().setDepth(25);
+    this.cursorG.lineStyle(s(2.5), 0xffffff, 0.95);
+    strokeDiamond(this.cursorG, 0, 0, 0.9);
+    this.cursorG.setVisible(false);
+    this.tweens.add({
+      targets: this.cursorG,
+      alpha: { from: 0.95, to: 0.42 },
+      scaleX: { from: 1, to: 1.07 },
+      scaleY: { from: 1, to: 1.07 },
+      duration: 640,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     this.hud = buildPrologueHud(this);
     this.dialogue = createDialogueBox(this);
@@ -177,6 +238,9 @@ export class FollowThePathScene extends Phaser.Scene {
     this.setState('preview');
     await this.runPreview();
     this.positionPlayer(this.playerPos); // reset sprite to start after preview walk
+    // Bring Bit back beside the player for their turn.
+    const bitHome = cellWorldPos(this.playerPos.row, this.playerPos.col);
+    this.bit?.moveTo(bitHome.x + 22, bitHome.y - 26, 300);
     // Tiles are already dark — flashTileOn faded them individually
     this.setState('turn');
     GAME.startRound(ROUND_TIMERS[index] ?? 28000);
@@ -195,6 +259,8 @@ export class FollowThePathScene extends Phaser.Scene {
     chantRing(this, new Phaser.Math.Vector2(x, y));
     // Sequential tile reveal — light this tile briefly then fade back out
     if (this.grid) flashTileOn(this.grid, pos.row, pos.col, this, TIMING.chantStep - 100);
+    // Bit hovers to each glowing tile in turn, helping the player track order.
+    this.bit?.moveTo(x + 18, y - 24, Math.min(280, TIMING.chantStep * 0.6));
     if (prevPos) void this.walkPlayerTo(prevPos, pos);
     return new Promise<void>((resolve) =>
       this.time.delayedCall(TIMING.chantStep, () => resolve()),
@@ -336,6 +402,10 @@ export class FollowThePathScene extends Phaser.Scene {
     void this.walkPlayerTo(prevPos, pos);
     this.seqPanel?.update(this.hopIndex);
     this.npcReact('correct');
+    // Bit bounces beside the tile the player just landed — earned celebration.
+    this.bit?.moveTo(at.x + 18, at.y - 24, 200);
+    this.bit?.pulse();
+    this.updateCursor();
 
     // Reset alpha dimming from hover
     this.grid.cells.forEach((c) => c.base.setAlpha(1));
@@ -558,6 +628,27 @@ export class FollowThePathScene extends Phaser.Scene {
   private setState(next: PuzzleState): void {
     this.state = next;
     this.hud.setState(STATE_LABEL[next] ?? '');
+    this.updateCursor();
+  }
+
+  /** Redraw the player-cell cursor + legal-neighbour hints (turn phase only). */
+  private updateCursor(): void {
+    if (!this.cursorG || !this.neighborG) return;
+    this.neighborG.clear();
+    const active = this.state === 'turn' && !!this.grid;
+    this.cursorG.setVisible(active);
+    if (!active || !this.grid) return;
+
+    const here = cellWorldPos(this.playerPos.row, this.playerPos.col);
+    this.cursorG.setPosition(here.x, here.y);
+
+    for (const n of getNeighbors(this.grid, this.playerPos.row, this.playerPos.col)) {
+      const w = cellWorldPos(n.row, n.col);
+      this.neighborG.fillStyle(0x3ce6ff, 0.12);
+      fillDiamond(this.neighborG, w.x, w.y, 0.82);
+      this.neighborG.lineStyle(s(1.5), 0x3ce6ff, 0.5);
+      strokeDiamond(this.neighborG, w.x, w.y, 0.82);
+    }
   }
 
   private spawnBonusPopups(

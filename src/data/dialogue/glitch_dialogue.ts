@@ -147,6 +147,107 @@ export const GLITCH_FAILURE_TAUNTS: string[] = [
   "Closer than I would have got, honestly.",
 ];
 
+/**
+ * In-puzzle Glitch banter — the live voice of the brute-force rival WHILE you
+ * play, fed to BruteForceActor so each puzzle's foil heckles in character.
+ *
+ * Hard rule (FEEL_IT contract): lines brag about Glitch's brute-force approach
+ * and NEVER teach the technique. Each set is themed to its keeper's world
+ * (furrows, baskets, bins, tiles, river) so the rival ties into the lore.
+ *
+ *   opening — fires once as play begins.
+ *   brags   — Glitch crows about flailing through it; cycled on a slow timer.
+ *   defeat  — fires when you out-solve them and the actor freezes.
+ */
+export interface GlitchBanterConfig {
+  readonly opening?: string;
+  readonly brags?: ReadonlyArray<string>;
+  readonly defeat?: ReadonlyArray<string>;
+}
+
+export const GLITCH_BANTER: Record<string, GlitchBanterConfig> = {
+  // Array Plains — Sorting Shed (swap furrows). Glitch grabs rows at random.
+  ap_1: {
+    opening: "Swapping neighbors? That's your big plan?",
+    brags: [
+      "I could swap furrows all day. Faster than you, even.",
+      "I just grab rows till it looks right. Way more natural.",
+      "Order is for people who can't handle a little chaos.",
+    ],
+    defeat: GLITCH_EXIT_LINES,
+  },
+  // Indexing Barn (go straight to slot N). Glitch lifts every lid.
+  ap_2: {
+    opening: "Painted numbers? I just open every lid till I find it.",
+    brags: [
+      "Slot four, slot two — who cares, I'll check them all.",
+      "Lids are MEANT to be opened. All of them.",
+      "Why remember where things are? Searching builds character.",
+    ],
+    defeat: GLITCH_EXIT_LINES,
+  },
+  // Grain Hopper (a rule decides the bin). Glitch tosses crops anywhere.
+  ap_3: {
+    opening: "A rule for which bin? Nah. I just toss crops till they land.",
+    brags: [
+      "Same crop, different bin every time. Keeps it exciting.",
+      "Sorting by a formula sounds like a LOT of thinking.",
+      "I lose track of half of them. That's the fun part.",
+    ],
+    defeat: GLITCH_EXIT_LINES,
+  },
+  // Pairing Grounds (complement = target − x). Glitch guesses pairs.
+  ap_4: {
+    opening: "Complements? Targets? I just guess numbers till they add up.",
+    brags: [
+      "Check every pair, every time. Thorough, that's me.",
+      "You're overcomplicating arithmetic, you know that?",
+      "I'll try all of them. Eventually one works.",
+    ],
+    defeat: GLITCH_EXIT_LINES,
+  },
+  // Twin Rivers — Mirror Walk (two pointers). Glitch walks one way at a time.
+  tr_1: {
+    opening: "Walk from both ends at once? Why not just walk normally?",
+    brags: [
+      "I'll reach the middle eventually. From one side. Like a NORMAL person.",
+      "Two of me? There's barely room for the one.",
+      "Back, then forth, then back. Basically the same thing.",
+    ],
+    defeat: GLITCH_EXIT_LINES,
+  },
+  // Pointer Bridge (converge). Glitch crosses wherever, twice.
+  tr_2: {
+    opening: "Meet in the middle? I just cross wherever I want.",
+    brags: [
+      "I'll check every plank. Some of them twice.",
+      "Bridges are more of a suggestion, really.",
+      "Why aim for the middle? I'll stumble onto it.",
+    ],
+    defeat: GLITCH_EXIT_LINES,
+  },
+  // Fixed Window (constant-size net). Glitch nets the whole river.
+  tr_3: {
+    opening: "A sliding net? I just throw a giant one over the whole river.",
+    brags: [
+      "Constant size? My net is constant-ENORMOUS.",
+      "Re-counting every fish, every time. Very rigorous.",
+      "Who needs a window when you can have the whole river?",
+    ],
+    defeat: GLITCH_EXIT_LINES,
+  },
+  // Current Rider (variable window on the stream). Glitch thrashes downstream.
+  tr_4: {
+    opening: "Riding the current? I just thrash around till I'm downstream.",
+    brags: [
+      "I'll re-check the whole stretch. Twice, for safety.",
+      "Windows, currents — I go fast and hope.",
+      "Eventually the river does the work for me.",
+    ],
+    defeat: GLITCH_EXIT_LINES,
+  },
+};
+
 // ─── Cameo Dialogue Trees ─────────────────────────────────────────────────────
 // Sparse on purpose: Glitch shouldn't appear after every puzzle (that would
 // devalue them). The cameos fire at AP_1, AP_4, TR_1, TR_3 — bookending each

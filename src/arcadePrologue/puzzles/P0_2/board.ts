@@ -16,6 +16,7 @@ export type Role = 'source' | 'sink' | 'fork' | 'wire';
 export type FlowBoard = {
   glyphs: Map<string, Glyph>;
   roles: Map<string, Role>;
+  decor: Phaser.GameObjects.GameObject[];
   anchor: Phaser.Math.Vector2;
   sourceKey: string;
   sinkKey: string;
@@ -42,10 +43,16 @@ export function mountFlowBoard(scene: Phaser.Scene, round: FlowRound): FlowBoard
 
   const glyphs = new Map<string, Glyph>();
   const roles = new Map<string, Role>();
+  const decor: Phaser.GameObjects.GameObject[] = [];
+  const plinths = scene.add.graphics().setDepth(5);
+  decor.push(plinths);
 
   for (const a of round.field) {
     const key = axialKey(a.q, a.r);
     const off = axialToPxFlatTop(a.q, a.r, HEX_RADIUS);
+    const x = anchor.x + off.x;
+    const y = anchor.y + off.y;
+    paintConsoleSocket(plinths, x, y);
     const node = placeRune(scene, anchor.x + off.x, anchor.y + off.y);
     node.setInteractive(
       new Phaser.Geom.Circle(node.width / 2, node.height / 2, HEX_RADIUS + s(8)),
@@ -63,6 +70,7 @@ export function mountFlowBoard(scene: Phaser.Scene, round: FlowRound): FlowBoard
   return {
     glyphs,
     roles,
+    decor,
     anchor,
     sourceKey,
     sinkKey,
@@ -71,6 +79,8 @@ export function mountFlowBoard(scene: Phaser.Scene, round: FlowRound): FlowBoard
 }
 
 export function unmountFlowBoard(board: FlowBoard): void {
+  board.decor.forEach((obj) => obj.destroy());
+  board.decor.length = 0;
   board.glyphs.forEach((g) => {
     g.disableInteractive();
     g.removeAllListeners();
@@ -82,4 +92,18 @@ export function unmountFlowBoard(board: FlowBoard): void {
 export function coordsOf(board: FlowBoard, key: string): Phaser.Math.Vector2 {
   const node = board.glyphs.get(key)!;
   return new Phaser.Math.Vector2(node.x, node.y);
+}
+
+function paintConsoleSocket(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  const w = s(84);
+  const h = s(54);
+  const bevel = s(10);
+  g.fillStyle(0x04070d, 0.52);
+  g.fillRoundedRect(x - w / 2 + s(3), y - h / 2 + s(6), w, h, bevel);
+  g.fillStyle(0x1c2730, 0.92);
+  g.fillRoundedRect(x - w / 2, y - h / 2, w, h, bevel);
+  g.lineStyle(s(1.2), 0x6a7a70, 0.72);
+  g.strokeRoundedRect(x - w / 2 + s(2), y - h / 2 + s(2), w - s(4), h - s(4), bevel - s(2));
+  g.lineStyle(s(1), 0x22d3ee, 0.32);
+  g.strokeCircle(x, y, HEX_RADIUS - s(10));
 }

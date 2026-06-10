@@ -14,7 +14,6 @@ import {
   WORLD_WIDTH,
 } from '../../config/constants';
 import {
-  PROLOGUE_REWORK_KEYS,
   PROLOGUE_SCENE_IMAGE_ASSETS,
   PROLOGUE_SCENE_SPRITE_ASSETS,
   PROLOGUE_SHEET_KEYS,
@@ -1041,49 +1040,67 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   /**
-   * Opening cinematic — the BRUTE FORCE WAKEUP.
+   * Opening cinematic — the SERENE WAKEUP ("Pallet Town" wonder).
    *
-   * Replaces the prior instructional text crawl with a ~22-second cold open
-   * that puts the game's elegance-vs-brute-force thesis on stage from frame
-   * 1. Beats:
+   * Per docs/story/game_script.md Scene 0-1: the void is beautiful, not
+   * threatening. The player wakes gently; the world renders in like a
+   * painting still being painted; Bit blinks awake as a spark beside them.
+   * There are NO alarms, NO screen shake, NO brute-force cold open — that
+   * tonal beat lives later, in Scene 0-5 (Glitch's introduction).
    *
-   *   Beat 1 (0-4.5s)  : Black void. Three OS-voice text slams hammer in with
-   *                      low-pitch sawtooth impacts and camera shake.
-   *                      "> MEMORY RESTORED." / "> INDEX: CORRUPTED." /
-   *                      "> EXTERNAL ACTOR DETECTED."
-   *   Beat 2 (4.5-9s)  : Cut to Glitch mid-attack on a flow console. Console
-   *                      damaged sprite swaps in; spark burst; screen flash.
-   *   Beat 3 (9-12s)   : Red alarm vignette pulses. Glitch laughs, fades to void.
-   *   Beat 4 (12-17s)  : Camera returns to player on the awakening platform.
-   *                      Bit blinks awake. Soft chime. OS voice softens:
-   *                      "> Repair the sequence."
-   *   Beat 5 (17-22s)  : Tutorial whisper ("[WASD] move · [SPACE] interact"),
-   *                      then handoff to player control via endStoryBeat.
+   *   Beat 1 (0-4.4s)  : Black void. Cyan motes drift up like inverse snow.
+   *                      Three calm OS-restore lines breathe in with soft
+   *                      chimes. "> System restored." / "> Memory: fragmented" /
+   *                      "> Welcome back."
+   *   Beat 2 (5-8s)    : The world renders in — blackout dissolves to reveal
+   *                      the Chamber of Flow. A gentle cyan bloom + warm chime
+   *                      marks Bit blinking awake beside the player.
+   *   Beat 3 (8.2-11s) : Soft tutorial whisper, then handoff to player control.
    *
    * Architectural notes:
    * - The whole cinematic is screen-space (scrollFactor 0) so it works
    *   regardless of where the world camera is parked.
    * - All visuals live in `container`; one master destroy at end cleans up.
-   * - Uses existing Glitch idle sprite for now; will swap to attack sheet
-   *   when codex+imagegen finishes generating `glitch_attack_v1.png`.
-   * - Bridge corruption beat is implied (red alarm vignette + dimmed lighting)
-   *   rather than literally swapping the bridge texture, which would require
-   *   the world camera be positioned over the bridge mid-cinematic.
+   * - The recurring mote spawner is tracked and stopped on cleanup.
    */
   private playOpeningScene(onComplete: () => void): void {
-    this.beginStoryBeat('brute_force_wakeup');
+    this.beginStoryBeat('opening_scene');
 
     const { width, height } = this.cameras.main;
     const container = this.add.container(0, 0).setDepth(9500).setScrollFactor(0);
 
-    // --- Beat 0: full-screen blackout (will fade through cinematic) ---
-    const blackout = this.add.rectangle(0, 0, width, height, 0x000000, 1)
+    // --- Beat 0: full-screen blackout — dissolves as the world renders in ---
+    const blackout = this.add.rectangle(0, 0, width, height, 0x05050f, 1)
       .setOrigin(0)
       .setScrollFactor(0);
     container.add(blackout);
 
-    // --- Beat 1 helpers: OS-voice text slams ---
-    const makeOSLine = (text: string, color: string, y: number, size = 26) => {
+    // Cyan motes drifting upward like inverse snow — the void "still being
+    // painted". A gentle recurring spawner; tracked so cleanup can stop it.
+    const moteTimer = this.time.addEvent({
+      delay: 150,
+      loop: true,
+      callback: () => {
+        const mx = Math.random() * width;
+        const my = height + 8;
+        const mote = this.add.circle(mx, my, 1 + Math.random() * 1.5, 0x7fdfff, 0.9)
+          .setScrollFactor(0)
+          .setDepth(9520);
+        container.add(mote);
+        this.tweens.add({
+          targets: mote,
+          y: my - (120 + Math.random() * 200),
+          alpha: 0,
+          duration: 2600 + Math.random() * 1600,
+          ease: 'Sine.easeOut',
+          onComplete: () => mote.destroy(),
+        });
+      },
+    });
+    this.trackCinematicCleanup(() => moteTimer.remove());
+
+    // --- Beat 1 helper: calm OS-restore line that breathes in ---
+    const makeOSLine = (text: string, color: string, y: number, size = 22) => {
       const t = this.add.text(width / 2, y, text, {
         fontFamily: FONTS.MONO,
         fontSize: `${size}px`,
@@ -1095,258 +1112,77 @@ export class PrologueScene extends Phaser.Scene {
       return t;
     };
 
-    const slamLine = (line: Phaser.GameObjects.Text, freq: number, shakeAmp: number, duration: number) => {
-      audioManager.playTone(freq, 90, 'square');
-      JuiceSystem.cameraShake(this, duration, shakeAmp);
-      this.tweens.add({ targets: line, alpha: 1, duration: 80, ease: 'Cubic.easeOut' });
-      // Tiny scale punch — line snaps in like a system stamp.
-      line.setScale(1.08);
-      this.tweens.add({ targets: line, scale: 1, duration: 220, ease: 'Back.easeOut' });
+    const breatheIn = (line: Phaser.GameObjects.Text, chime: number) => {
+      audioManager.playTone(chime, 220, 'sine');
+      line.setScale(0.98);
+      this.tweens.add({ targets: line, alpha: 1, duration: 540, ease: 'Sine.easeOut' });
+      this.tweens.add({ targets: line, scale: 1, duration: 760, ease: 'Sine.easeOut' });
     };
 
-    // Three OS slams stacked vertically in the upper third.
-    const osLine1 = makeOSLine('> MEMORY RESTORED.', '#88c070', height / 2 - 80);
-    const osLine2 = makeOSLine('> INDEX: CORRUPTED.', '#ef4444', height / 2 - 20);
-    const osLine3 = makeOSLine('> EXTERNAL ACTOR DETECTED.', '#ef4444', height / 2 + 40, 28);
+    // Three calm restore lines — soft, no shake, no red.
+    const osLine1 = makeOSLine('> System restored.', '#88c070', height / 2 - 54);
+    const osLine2 = makeOSLine('> Memory: fragmented', '#7fdfff', height / 2 - 14);
+    const osLine3 = makeOSLine('> Welcome back.', '#e2e8f0', height / 2 + 26, 24);
 
-    // --- Beat 2 visuals: Glitch + smashable console (pre-built, alpha 0) ---
-    // Use existing Glitch idle sprite for now. When `glitch_attack_v1.png`
-    // generation lands, replace with sprite-sheet keyframes.
-    const sceneStageY = height / 2 + 30;
-    const consoleSprite = this.add.image(width / 2 + 40, sceneStageY, PROLOGUE_REWORK_KEYS.FLOW_CONSOLES)
-      .setOrigin(0.5, 1)
-      .setScale(2)
-      .setScrollFactor(0)
-      .setAlpha(0);
-    // The flow_consoles sheet has 3 horizontally-arranged consoles; we want
-    // the leftmost (cyan) one. Crop the image to show only that one.
-    consoleSprite.setCrop(0, 0, 128, 128);
-    container.add(consoleSprite);
+    // --- Beat 1: the three lines breathe in, one at a time ---
+    this.time.delayedCall(700,  () => breatheIn(osLine1, 523));
+    this.time.delayedCall(1900, () => breatheIn(osLine2, 587));
+    this.time.delayedCall(3100, () => breatheIn(osLine3, 698));
 
-    // Glitch's 4-frame attack sheet: 0=wind-up, 1=kick mid-strike,
-    // 2=impact (sparks erupt from the foot's contact), 3=recovery/laugh
-    // (both hands crackling). Single Sprite — frame index advances at the
-    // kick beats below.
-    const glitchSprite = this.add.sprite(width / 2 - 60, sceneStageY, PROLOGUE_SHEET_KEYS.GLITCH_ATTACK, 0)
-      .setOrigin(0.5, 1)
-      .setScale(0.7)
-      .setScrollFactor(0)
-      .setAlpha(0);
-    container.add(glitchSprite);
-
-    // Damaged-console swap (alpha 0 until the impact beat).
-    const consoleDamagedSprite = this.add.image(width / 2 + 40, sceneStageY, PROLOGUE_REWORK_KEYS.FLOW_CONSOLE_DAMAGED)
-      .setOrigin(0.5, 1)
-      .setScale(2)
-      .setScrollFactor(0)
-      .setAlpha(0);
-    container.add(consoleDamagedSprite);
-
-    // Red alarm vignette — radial gradient stand-in: a full-screen red rect
-    // with low alpha that pulses in/out.
-    const alarmOverlay = this.add.rectangle(0, 0, width, height, 0xef4444, 0)
-      .setOrigin(0)
-      .setScrollFactor(0);
-    container.add(alarmOverlay);
-
-    // --- Beat 1: text slams (0 → 4500ms) ---
-    this.time.delayedCall(800,  () => slamLine(osLine1, 130, 80,  0.0012));
-    this.time.delayedCall(1800, () => slamLine(osLine2, 165, 90,  0.0016));
-    this.time.delayedCall(2900, () => slamLine(osLine3, 210, 130, 0.0022));
-
-    // Hold final slam for 1.2s, then dissolve to Beat 2.
-    this.time.delayedCall(4100, () => {
+    // Hold, then let the lines fade as the world begins to render in.
+    this.time.delayedCall(4400, () => {
       this.tweens.add({
         targets: [osLine1, osLine2, osLine3],
         alpha: 0,
-        duration: 500,
-        ease: 'Cubic.easeIn',
+        duration: 700,
+        ease: 'Sine.easeInOut',
       });
     });
 
-    // --- Beat 2: cut to Glitch attacking console (4600 → 9000ms) ---
-    this.time.delayedCall(4600, () => {
-      // Fade the blackout slightly so the scene reads, but keep it dark
-      // and oppressive — this is still a system-down moment.
-      this.tweens.add({ targets: blackout, alpha: 0.55, duration: 400 });
-      this.tweens.add({ targets: glitchSprite, alpha: 1, duration: 300 });
-      this.tweens.add({ targets: consoleSprite, alpha: 1, duration: 300 });
+    // --- Beat 2: the world renders in + Bit blinks awake ---
+    this.time.delayedCall(5000, () => {
+      // Blackout dissolves to a faint haze so the chamber shows through —
+      // "a painting still being painted".
+      this.tweens.add({ targets: blackout, alpha: 0.12, duration: 1500, ease: 'Sine.easeInOut' });
     });
 
-    // Beat 2 motion: Glitch goes through the 4-frame attack on a fixed cadence.
-    // - 5200ms: hold frame 0 (wind-up) as the scene fades in.
-    // - 5800ms: frame 1 (kick mid-strike) — leg extends. Audio thwack.
-    // - 6500ms: frame 2 (impact) — sparks erupt from the kick. Audio + shake.
-    // - 7300ms: back to frame 0 briefly for the second swing.
-    // - 7800ms: see climax block below (texture-swap on console).
-    const setGlitchFrame = (atMs: number, frame: number, freq: number | null, shake: number) => {
-      this.time.delayedCall(atMs, () => {
-        glitchSprite.setFrame(frame);
-        if (freq !== null) audioManager.playTone(freq, 70, 'square');
-        if (shake > 0) JuiceSystem.cameraShake(this, 80, shake);
-        // Console rocks back from the kick impact.
-        if (frame === 2) {
-          this.tweens.add({
-            targets: consoleSprite,
-            x: consoleSprite.x + 14,
-            duration: 110,
-            yoyo: true,
-            ease: 'Cubic.easeOut',
-          });
-          this.spawnSparkBurst(consoleSprite.x, consoleSprite.y - 32, 8);
-        }
-      });
-    };
-    setGlitchFrame(5400, 0, null,  0);          // wind-up
-    setGlitchFrame(5800, 1, 130, 0.0014);       // kick mid-strike
-    setGlitchFrame(6400, 2, 100, 0.0020);       // impact (sparks erupt)
-    setGlitchFrame(6900, 0, null,  0);          // recoil
-    setGlitchFrame(7200, 1, 145, 0.0016);       // second strike wind
-    setGlitchFrame(7500, 2, 90,  0.0024);       // second impact
-
-    // --- Beat 2 climax: final kick + console shatters (~7800ms) ---
-    this.time.delayedCall(7800, () => {
-      audioManager.playTone(70, 220, 'sawtooth');
-      audioManager.playTone(720, 100, 'square');
-      JuiceSystem.cameraShake(this, 200, 0.005);
-      // Bright white screen flash.
-      const flash = this.add.rectangle(0, 0, width, height, 0xffffff, 0)
-        .setOrigin(0)
+    this.time.delayedCall(5800, () => {
+      // Soft cyan bloom near screen-centre (where the camera frames the
+      // player) — Bit blinking awake. Warm chime + a few gentle sparkles.
+      audioManager.playTone(880, 260, 'sine');
+      const bloom = this.add.circle(width / 2, height / 2 - 8, 70, 0x7fdfff, 0)
         .setScrollFactor(0)
-        .setDepth(9700);
+        .setDepth(9540);
+      container.add(bloom);
       this.tweens.add({
-        targets: flash, alpha: 0.85, duration: 60, yoyo: true, ease: 'Cubic.easeOut',
-        onComplete: () => flash.destroy(),
+        targets: bloom, alpha: 0.42, scale: 1.5, duration: 760, yoyo: true,
+        ease: 'Sine.easeInOut',
+        onComplete: () => bloom.destroy(),
       });
-      // Texture swap: intact console → damaged console.
-      this.tweens.add({ targets: consoleSprite, alpha: 0, duration: 120 });
-      this.tweens.add({ targets: consoleDamagedSprite, alpha: 1, duration: 200, delay: 60 });
-      // Massive spark burst at the shatter point.
-      this.spawnSparkBurst(consoleSprite.x, consoleSprite.y - 32, 18);
-    });
+      this.spawnSparkBurst(width / 2, height / 2 - 8, 10, 0x7fdfff);
 
-    // --- Beat 3: alarm pulse + Glitch laughs and fades (8400 → 11800ms) ---
-    this.time.delayedCall(8400, () => {
-      // Alarm pulse: red overlay tweens to alpha 0.32 and back, twice.
-      this.tweens.add({
-        targets: alarmOverlay, alpha: 0.32, duration: 280, yoyo: true, repeat: 1, ease: 'Sine.easeInOut',
-      });
-      // Three alarm beeps.
-      audioManager.playTone(440, 90, 'square');
-      this.time.delayedCall(220, () => audioManager.playTone(440, 90, 'square'));
-      this.time.delayedCall(440, () => audioManager.playTone(440, 90, 'square'));
-    });
-
-    this.time.delayedCall(10200, () => {
-      // Glitch's "laugh" — swap to frame 3 (recovery/laugh, hands crackling).
-      // Scale-up punch on the laugh, then dissipate into the void.
-      glitchSprite.setFrame(3);
-      this.tweens.add({
-        targets: glitchSprite, scale: 0.78, duration: 180, yoyo: true, ease: 'Back.easeOut',
-      });
-      audioManager.playTone(220, 80, 'sawtooth');
-      this.time.delayedCall(120, () => audioManager.playTone(180, 80, 'sawtooth'));
-      this.time.delayedCall(420, () => {
-        this.tweens.add({
-          targets: glitchSprite, alpha: 0, x: glitchSprite.x - 80, duration: 600,
-          ease: 'Cubic.easeIn',
-        });
-      });
-    });
-
-    // --- Beat 3.5: cut to broken bridge — "this is what Glitch broke" ---
-    // Quick visual beat showing the corrupted bridge: the player sees the
-    // damage they're about to repair. Bridge sprite is wide so it sits low
-    // and large on screen; faint violet pulse plays over it before the cut
-    // to player wakeup.
-    this.time.delayedCall(11800, () => {
-      // Fade out the staged Glitch-attack scene first.
-      this.tweens.add({
-        targets: [consoleDamagedSprite, alarmOverlay],
-        alpha: 0,
-        duration: 500,
-        ease: 'Cubic.easeOut',
-      });
-      this.tweens.add({ targets: blackout, alpha: 0.92, duration: 500 });
-    });
-
-    const brokenBridgeSprite = this.add.image(width / 2, height / 2 + 30, PROLOGUE_REWORK_KEYS.ROUTE_BRIDGE_BROKEN)
-      .setOrigin(0.5)
-      .setScale(1.4)
-      .setScrollFactor(0)
-      .setAlpha(0);
-    container.add(brokenBridgeSprite);
-
-    this.time.delayedCall(12500, () => {
-      // Fade in the broken bridge against the dim blackout. Violet ambient
-      // pulse signals the corruption is active.
-      this.tweens.add({ targets: brokenBridgeSprite, alpha: 1, duration: 500 });
-      this.tweens.add({ targets: blackout, alpha: 0.55, duration: 500 });
-      audioManager.playTone(95, 380, 'sawtooth');
-    });
-
-    this.time.delayedCall(14000, () => {
-      // Quick label so the moment lands narratively.
-      const label = this.add.text(width / 2, height / 2 + 130, '— the chamber sequence is broken —', {
+      const wakeLine = this.add.text(width / 2, height / 2 + 96, 'A small light blinks awake beside you.', {
         fontFamily: FONTS.MONO,
         fontSize: '14px',
-        color: '#a78bfa',
+        color: '#7fdfff',
         stroke: '#000000',
         strokeThickness: 3,
         fontStyle: 'italic',
       }).setOrigin(0.5).setScrollFactor(0).setAlpha(0);
-      container.add(label);
-      this.tweens.add({ targets: label, alpha: 1, duration: 350 });
-      this.time.delayedCall(1400, () => {
-        this.tweens.add({ targets: label, alpha: 0, duration: 350 });
+      container.add(wakeLine);
+      this.tweens.add({ targets: wakeLine, alpha: 1, duration: 520 });
+      this.time.delayedCall(2000, () => {
+        this.tweens.add({ targets: wakeLine, alpha: 0, duration: 520 });
       });
     });
 
-    // --- Beat 4: cut from broken bridge to player wakeup ---
-    this.time.delayedCall(15800, () => {
-      this.tweens.add({ targets: brokenBridgeSprite, alpha: 0, duration: 500 });
-      this.tweens.add({ targets: blackout, alpha: 0.78, duration: 500 });
+    // --- Beat 3: clear the haze, soft tutorial whisper, handoff ---
+    this.time.delayedCall(8200, () => {
+      this.tweens.add({ targets: blackout, alpha: 0, duration: 900, ease: 'Sine.easeInOut' });
+      moteTimer.remove();
     });
 
-    // Soft chime as the player "wakes" (the world camera will be over the
-    // actual awakening platform; we just play audio + a soft cyan glow pulse
-    // in the center of screen as a visual cue).
-    this.time.delayedCall(16800, () => {
-      audioManager.playTone(880, 220, 'sine');
-      const glow = this.add.circle(width / 2, height / 2, 80, 0x88c070, 0)
-        .setScrollFactor(0)
-        .setDepth(9600);
-      container.add(glow);
-      this.tweens.add({
-        targets: glow, alpha: 0.4, scale: 1.4, duration: 600, yoyo: true,
-        ease: 'Sine.easeInOut',
-        onComplete: () => glow.destroy(),
-      });
-    });
-
-    // Soft OS voice line.
-    this.time.delayedCall(17800, () => {
-      const repair = this.add.text(width / 2, height / 2 + 30, '> Repair the sequence.', {
-        fontFamily: FONTS.MONO,
-        fontSize: '20px',
-        color: '#88c070',
-        stroke: '#000000',
-        strokeThickness: 3,
-      }).setOrigin(0.5).setScrollFactor(0).setAlpha(0);
-      container.add(repair);
-      this.tweens.add({ targets: repair, alpha: 1, duration: 400, ease: 'Cubic.easeOut' });
-      this.time.delayedCall(2200, () => {
-        this.tweens.add({ targets: repair, alpha: 0, duration: 500, ease: 'Cubic.easeIn' });
-      });
-    });
-
-    // --- Beat 5: tutorial whisper + handoff (20500 → 25500ms) ---
-    this.time.delayedCall(20500, () => {
-      // Drop the blackout to mostly clear so the world reveals through.
-      this.tweens.add({ targets: blackout, alpha: 0, duration: 900, ease: 'Cubic.easeInOut' });
-    });
-
-    this.time.delayedCall(21500, () => {
+    this.time.delayedCall(8800, () => {
       const tutorial = this.add.text(width / 2, height - 70, '[WASD] move   ·   [SPACE] interact', {
         fontFamily: FONTS.MONO,
         fontSize: '14px',
@@ -1356,15 +1192,13 @@ export class PrologueScene extends Phaser.Scene {
       }).setOrigin(0.5).setScrollFactor(0).setAlpha(0);
       container.add(tutorial);
       this.tweens.add({ targets: tutorial, alpha: 1, duration: 400 });
-      this.time.delayedCall(3000, () => {
-        this.tweens.add({
-          targets: tutorial, alpha: 0, duration: 500,
-        });
+      this.time.delayedCall(2600, () => {
+        this.tweens.add({ targets: tutorial, alpha: 0, duration: 500 });
       });
     });
 
     // --- Cleanup + handoff to game control ---
-    this.time.delayedCall(25500, () => {
+    this.time.delayedCall(11200, () => {
       this.tweens.add({
         targets: container, alpha: 0, duration: 400, ease: 'Cubic.easeOut',
         onComplete: () => container.destroy(),
@@ -1378,17 +1212,18 @@ export class PrologueScene extends Phaser.Scene {
 
   /**
    * One-shot spark burst — N small bright pixels exploding outward from
-   * (x, y) and decaying. Used in the cold open's kick beats. Particles
-   * live on the cinematic depth and clean themselves up.
+   * (x, y) and decaying. Optional `color` tints them (e.g. cyan for Bit's
+   * wake-sparkle). Particles live on the cinematic depth and clean up.
    */
-  private spawnSparkBurst(x: number, y: number, count: number): void {
+  private spawnSparkBurst(x: number, y: number, count: number, color?: number): void {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 80 + Math.random() * 80;
       const dx = Math.cos(angle) * speed;
       const dy = Math.sin(angle) * speed - 30; // upward bias
+      const tint = color ?? (Math.random() < 0.5 ? 0xfbbf24 : 0xffffff);
       const spark = this.add.rectangle(x, y, 3, 3,
-        Math.random() < 0.5 ? 0xfbbf24 : 0xffffff, 1)
+        Math.random() < 0.5 ? tint : 0xffffff, 1)
         .setScrollFactor(0)
         .setDepth(9650);
       this.tweens.add({
@@ -1627,8 +1462,7 @@ export class PrologueScene extends Phaser.Scene {
     const endX = worldView.right + 50;
     const y = worldView.top + worldView.height * 0.25;
 
-    const watcher = this.add
-      .image(startX, y, VISUAL_REVAMP_KEYS.WATCHER)
+    const watcher = this.createWatcherSprite(startX, y)
       .setDisplaySize(76, 110)
       .setDepth(8)
       .setAlpha(0.9);
@@ -1721,5 +1555,27 @@ export class PrologueScene extends Phaser.Scene {
       ease: 'Linear',
       onComplete: () => finishFlyby(false),
     });
+  }
+
+  private createWatcherSprite(x: number, y: number): Phaser.GameObjects.Image | Phaser.GameObjects.Sprite {
+    const textureKey = VISUAL_REVAMP_KEYS.WATCHER;
+    const texture = this.textures.get(textureKey);
+    const frameCount = texture && texture.key !== '__MISSING'
+      ? Math.max(0, texture.frameTotal - 1)
+      : 0;
+    if (frameCount <= 1) return this.add.image(x, y, textureKey);
+
+    const sprite = this.add.sprite(x, y, textureKey, 0);
+    const animKey = `${textureKey}-watcher-idle`;
+    if (!this.anims.exists(animKey)) {
+      this.anims.create({
+        key: animKey,
+        frames: this.anims.generateFrameNumbers(textureKey, { start: 0, end: frameCount - 1 }),
+        frameRate: 6,
+        repeat: -1,
+      });
+    }
+    sprite.anims.play(animKey);
+    return sprite;
   }
 }

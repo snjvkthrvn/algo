@@ -109,6 +109,7 @@ export interface LessonCardOptions {
   readonly variant?: LessonCardVariant;
   readonly width?: number;
   readonly height?: number;
+  readonly dockPosition?: 'center' | 'top' | 'bottom';
   /** Auto-dismiss after this many ms. Set to 0 to require an explicit dismiss. */
   readonly autoDismissMs?: number;
   readonly onDismiss?: () => void;
@@ -208,12 +209,24 @@ export class LessonCard {
     const pillTextCss = riversideDark ? '#cff6ff' : cssGold;
 
     const { width: sw, height: sh } = scene.cameras.main;
-    const w = opts.width ?? Math.min(sw - 200, 560);
-    const minH = 220;
+    const dockPosition = opts.dockPosition ?? 'center';
+    const docked = dockPosition !== 'center';
+    const w = opts.width ?? (docked ? Math.min(sw - 160, 760) : Math.min(sw - 200, 560));
+    const minH = docked ? 144 : 220;
     // Estimate height — bullet count + comparison + heading.
-    const bulletLineH = 22;
-    const estimatedH = 110 + data.bullets.length * bulletLineH + (data.comparison ? 36 : 0);
+    const bulletLineH = docked ? 18 : 22;
+    const estimatedH = (docked ? 86 : 110) + data.bullets.length * bulletLineH + (data.comparison ? (docked ? 26 : 36) : 0);
     const h = Math.max(opts.height ?? estimatedH, minH);
+    const edgePad = docked ? 18 : 20;
+    const eyebrowFont = docked ? '8px' : '9px';
+    const titleFont = docked ? '14px' : '18px';
+    const dotFont = docked ? '10px' : '12px';
+    const bulletFont = docked ? '11px' : '13px';
+    const dividerOffset = docked ? 24 : 30;
+    const bulletTopGap = docked ? 10 : 14;
+    const pillH = docked ? 22 : 28;
+    const hintFont = docked ? '9px' : '10px';
+    const hintY = h / 2 - (docked ? 13 : 18);
 
     // Scene-level dim overlay at a depth strictly below the card container.
     // Putting the dim INSIDE the container made some platforms render the
@@ -225,13 +238,18 @@ export class LessonCard {
     // tiles, pointers, etc.) while still reading the intro card clearly.
     // The card body has its own dark stroke + shadow so it stays legible
     // against the partially-visible scene underneath.
-    this.dim = scene.add.rectangle(0, 0, sw, sh, 0x000000, 0.30)
+    const targetDimAlpha = docked ? 0.08 : 0.30;
+    this.dim = scene.add.rectangle(0, 0, sw, sh, 0x000000, 0)
       .setOrigin(0, 0)
       .setDepth(8999)
       .setInteractive();
     this.objects.push(this.dim);
 
-    this.container = scene.add.container(sw / 2, sh / 2).setDepth(9000);
+    const containerY =
+      dockPosition === 'top' ? h / 2 + 18 :
+      dockPosition === 'bottom' ? sh - h / 2 - 18 :
+      sh / 2;
+    this.container = scene.add.container(sw / 2, containerY).setDepth(9000);
 
     // Card body. Round-7 art-pass: when a diegetic frame texture is available,
     // render the card as a 9-sliced in-world prop (wood barn sign / stone
@@ -280,8 +298,8 @@ export class LessonCard {
 
     // Top accent strip — sub-title eyebrow.
     if (data.subtitle) {
-      const eyebrow = scene.add.text(-w / 2 + 20, -h / 2 + 14, data.subtitle.toUpperCase(), {
-        fontSize: '9px',
+      const eyebrow = scene.add.text(-w / 2 + edgePad, -h / 2 + (docked ? 10 : 14), data.subtitle.toUpperCase(), {
+        fontSize: eyebrowFont,
         fontFamily: '"Press Start 2P", monospace',
         color: cssAccent,
       }).setOrigin(0, 0);
@@ -290,39 +308,42 @@ export class LessonCard {
     }
 
     // Title.
-    const titleY = data.subtitle ? -h / 2 + 36 : -h / 2 + 20;
-    const title = scene.add.text(-w / 2 + 20, titleY, data.title, {
-      fontSize: '18px',
+    const titleY = data.subtitle ? -h / 2 + (docked ? 28 : 36) : -h / 2 + (docked ? 16 : 20);
+    const title = scene.add.text(-w / 2 + edgePad, titleY, data.title, {
+      fontSize: titleFont,
       fontFamily: '"Press Start 2P", monospace',
       color: cssInk,
+      wordWrap: { width: w - edgePad * 2, useAdvancedWrap: true },
     }).setOrigin(0, 0);
     this.container.add(title);
     this.objects.push(title);
 
     // Divider.
-    const dividerY = titleY + 30;
+    const dividerY = titleY + dividerOffset;
     const divider = scene.add.graphics();
     divider.lineStyle(1, dividerColor, dividerAlpha);
     divider.beginPath();
-    divider.moveTo(-w / 2 + 20, dividerY);
-    divider.lineTo(w / 2 - 20, dividerY);
+    divider.moveTo(-w / 2 + edgePad, dividerY);
+    divider.lineTo(w / 2 - edgePad, dividerY);
     divider.strokePath();
     this.container.add(divider);
     this.objects.push(divider);
 
     // Bullets.
-    let cursorY = dividerY + 14;
+    let cursorY = dividerY + bulletTopGap;
     for (const bullet of data.bullets) {
       const dot = scene.add.text(-w / 2 + 20, cursorY, '⦿', {
         fontSize: '12px',
         fontFamily: '"IBM Plex Mono", monospace',
         color: cssAccent,
       }).setOrigin(0, 0);
-      const txt = scene.add.text(-w / 2 + 42, cursorY, bullet, {
-        fontSize: '13px',
+      dot.setX(-w / 2 + edgePad);
+      dot.setFontSize(dotFont);
+      const txt = scene.add.text(-w / 2 + edgePad + 22, cursorY, bullet, {
+        fontSize: bulletFont,
         fontFamily: '"IBM Plex Mono", monospace',
         color: cssInk,
-        wordWrap: { width: w - 80, useAdvancedWrap: true },
+        wordWrap: { width: w - edgePad * 2 - 28, useAdvancedWrap: true },
       }).setOrigin(0, 0);
       this.container.add([dot, txt]);
       this.objects.push(dot, txt);
@@ -332,17 +353,17 @@ export class LessonCard {
     // Comparison line (optional) — pill displaying the O-notation contrast.
     if (data.comparison) {
       cursorY += 6;
-      const pillW = w - 40;
-      const pillH = 28;
+      const pillW = w - edgePad * 2;
       const pill = scene.add.graphics();
       pill.fillStyle(pillFill, 1);
       pill.fillRoundedRect(-pillW / 2, cursorY, pillW, pillH, 2);
       pill.lineStyle(1, pillStroke, 0.85);
       pill.strokeRoundedRect(-pillW / 2, cursorY, pillW, pillH, 2);
       const cmp = scene.add.text(0, cursorY + pillH / 2, data.comparison, {
-        fontSize: '11px',
+        fontSize: docked ? '9px' : '11px',
         fontFamily: '"Press Start 2P", monospace',
         color: pillTextCss,
+        wordWrap: { width: pillW - 20, useAdvancedWrap: true },
       }).setOrigin(0.5, 0.5);
       this.container.add([pill, cmp]);
       this.objects.push(pill, cmp);
@@ -356,6 +377,8 @@ export class LessonCard {
       color: cssDim,
       fontStyle: 'italic',
     }).setOrigin(0.5, 0.5);
+    hint.setY(hintY);
+    hint.setFontSize(hintFont);
     this.container.add(hint);
     this.objects.push(hint);
 
@@ -373,7 +396,7 @@ export class LessonCard {
     }));
     this.tweens.push(scene.tweens.add({
       targets: this.dim,
-      alpha: 0.55,
+      alpha: targetDimAlpha,
       duration: 220,
       ease: 'Power2.easeOut',
     }));
@@ -450,13 +473,17 @@ export function showLessonCard(
   scene: Phaser.Scene,
   data: LessonCardData,
   variant: LessonCardVariant = 'parchment',
-  autoDismissMs?: number,
+  optionsOrAutoDismissMs?: number | Omit<LessonCardOptions, 'variant' | 'onDismiss'>,
 ): Promise<void> {
+  const options =
+    typeof optionsOrAutoDismissMs === 'number'
+      ? { autoDismissMs: optionsOrAutoDismissMs }
+      : optionsOrAutoDismissMs ?? {};
   return new Promise((resolve) => {
     // eslint-disable-next-line no-new
     new LessonCard(scene, data, {
       variant,
-      autoDismissMs,
+      ...options,
       onDismiss: resolve,
     });
   });

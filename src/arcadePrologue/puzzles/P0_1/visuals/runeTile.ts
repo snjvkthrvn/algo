@@ -29,20 +29,28 @@ const KEYS = {
 export type TileState = 'off' | 'on' | 'done';
 const RUNE_FRAME: Record<TileState, number> = { off: 0, on: 1, done: 2 };
 
+// rune_tiles.png is a SQUARE tile sheet — it does not tessellate at the 2:1
+// diamond spacing, which is why the floor used to be hidden. The procedural
+// diamond textures below share edges exactly and keep the logical grid
+// legible. Flip to true only if a diamond-shaped tile sheet replaces it.
+const USE_RUNE_TILE_ART = false;
+
 export function getTileKey(
   state: TileState,
   scene: Phaser.Scene,
 ): { key: string; frame?: number; needsResize: boolean } {
-  if (scene.textures.exists(P0_1_PUZZLE_KEYS.RUNE_TILES)) {
+  if (USE_RUNE_TILE_ART && scene.textures.exists(P0_1_PUZZLE_KEYS.RUNE_TILES)) {
     return { key: P0_1_PUZZLE_KEYS.RUNE_TILES, frame: RUNE_FRAME[state], needsResize: true };
   }
   return { key: KEYS[state], needsResize: false };
 }
 
 export function ensureTileTextures(scene: Phaser.Scene): void {
-  if (!scene.textures.exists(KEYS.off))  drawTile(scene, KEYS.off,  0x0c1830, 0.96, 0x1e3558, 0.45, 0x1a3060, 0.32);
-  if (!scene.textures.exists(KEYS.on))   drawTile(scene, KEYS.on,   0x071e36, 0.96, 0x06b6d4, 0.9,  0x06b6d4, 0.88);
-  if (!scene.textures.exists(KEYS.done)) drawTile(scene, KEYS.done,  0x0d2540, 0.96, 0x3d8fa0, 0.55, 0x06b6d4, 0.42);
+  // Brighter edges than before so the un-lit lattice itself reads as a grid of
+  // steppable cells; vivid on/done so the reveal and the player's trail pop.
+  if (!scene.textures.exists(KEYS.off))  drawTile(scene, KEYS.off,  0x0e1a33, 0.90, 0x37598f, 0.78, 0x2a4a7e, 0.42);
+  if (!scene.textures.exists(KEYS.on))   drawTile(scene, KEYS.on,   0x0a3550, 0.96, 0x3ce6ff, 1.0,  0x9af4ff, 1.0);
+  if (!scene.textures.exists(KEYS.done)) drawTile(scene, KEYS.done,  0x0c3a3c, 0.96, 0x34d399, 0.92, 0x8affd8, 0.82);
   if (!scene.textures.exists(KEYS.glow)) drawGlow(scene);
 }
 

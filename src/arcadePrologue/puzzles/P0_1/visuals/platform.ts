@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { P0_1_PUZZLE_KEYS } from '../../../../config/assets';
 import { STAGE } from '../tokens';
 
 /**
@@ -14,24 +13,23 @@ import { STAGE } from '../tokens';
  */
 
 const CX = STAGE.width / 2;
-const CY = 330;
-const RX = 365; // horizontal radius
-const RY = 200; // vertical radius
+const CY = 340;
+const RX = 404; // horizontal radius — sized to contain the 6×8 diamond grid
+const RY = 216; // vertical radius
 
 /**
- * Returns true when real art is used — caller should skip procedural atmosphere
- * and edge vignette, which would layer over the baked-in space background.
+ * Procedural stone arena that grounds the diamond grid.
+ *
+ * Always returns false so the caller (a) keeps the logical diamond tiles
+ * VISIBLE and (b) runs paintAtmosphere — which paints the cosmic_void backdrop
+ * AND wires emitPuzzleActionPulse (PuzzleKinetics).
+ *
+ * The previous `stone_arena.png` path baked an oval floor that never aligned
+ * with the logical diamond lattice, so the playfield was hidden and unreadable.
+ * The procedural disc + tessellating diamond tiles are self-consistent: what
+ * you see is exactly where you can step.
  */
 export function paintPlatform(scene: Phaser.Scene): boolean {
-  if (scene.textures.exists(P0_1_PUZZLE_KEYS.STONE_ARENA)) {
-    // The art already contains the space background, arena, perimeter ring, and portal.
-    // Centre it on the canvas — origin defaults to 0.5.
-    scene.add
-      .image(STAGE.width / 2, STAGE.height / 2, P0_1_PUZZLE_KEYS.STONE_ARENA)
-      .setDisplaySize(STAGE.width, STAGE.height)
-      .setDepth(1);
-    return true;
-  }
   paintShadow(scene);
   paintSurface(scene);
   paintPerimeterRing(scene);
@@ -40,23 +38,33 @@ export function paintPlatform(scene: Phaser.Scene): boolean {
 }
 
 export function paintEdgeVignette(scene: Phaser.Scene): void {
-  const g = scene.add.graphics().setDepth(4);
-  // top fade
-  g.fillGradientStyle(0x030610, 0x030610, 0x030610, 0x030610, 0.88, 0.88, 0, 0);
-  g.fillRect(0, 0, STAGE.width, 90);
-  // bottom fade
-  g.fillGradientStyle(0x030610, 0x030610, 0x030610, 0x030610, 0, 0, 0.72, 0.72);
-  g.fillRect(0, STAGE.height - 70, STAGE.width, 70);
+  // Depth 7 sits above the backdrop/platform (0-6) but below the tiles (10+),
+  // so the cosmic edges darken to focus the eye on the bright playfield while
+  // the play area itself stays crisp.
+  const g = scene.add.graphics().setDepth(7);
+  const V = 0x02030a;
+  // top
+  g.fillGradientStyle(V, V, V, V, 0.92, 0.92, 0, 0);
+  g.fillRect(0, 0, STAGE.width, 130);
+  // bottom
+  g.fillGradientStyle(V, V, V, V, 0, 0, 0.82, 0.82);
+  g.fillRect(0, STAGE.height - 120, STAGE.width, 120);
+  // left
+  g.fillGradientStyle(V, V, V, V, 0.7, 0, 0.7, 0);
+  g.fillRect(0, 0, 160, STAGE.height);
+  // right
+  g.fillGradientStyle(V, V, V, V, 0, 0.7, 0, 0.7);
+  g.fillRect(STAGE.width - 160, 0, 160, STAGE.height);
 }
 
 function paintShadow(scene: Phaser.Scene): void {
-  const g = scene.add.graphics().setDepth(1);
+  const g = scene.add.graphics().setDepth(4);
   g.fillStyle(0x000000, 0.5);
   g.fillEllipse(CX + 5, CY + 14, RX * 2 + 20, RY * 2 + 16);
 }
 
 function paintSurface(scene: Phaser.Scene): void {
-  const g = scene.add.graphics().setDepth(2);
+  const g = scene.add.graphics().setDepth(5);
 
   // Outer stone fill
   g.fillStyle(0x080e20, 0.94);
@@ -67,7 +75,7 @@ function paintSurface(scene: Phaser.Scene): void {
   g.fillEllipse(CX, CY - 6, RX * 2 - 40, RY * 2 - 32);
 
   // Subtle horizontal tile-grid haze lines clipped to the ellipse
-  const gLines = scene.add.graphics().setDepth(3);
+  const gLines = scene.add.graphics().setDepth(6);
   gLines.lineStyle(1, 0x1a3058, 0.22);
   for (let row = 0; row <= 5; row++) {
     const tileY = 195 + row * 54;
@@ -82,7 +90,7 @@ function paintSurface(scene: Phaser.Scene): void {
 }
 
 function paintPerimeterRing(scene: Phaser.Scene): void {
-  const g = scene.add.graphics().setDepth(3);
+  const g = scene.add.graphics().setDepth(6);
 
   // Double-ring glow effect
   g.lineStyle(3, 0x06b6d4, 0.28);
@@ -121,7 +129,7 @@ function paintPerimeterRing(scene: Phaser.Scene): void {
 }
 
 function paintPortal(scene: Phaser.Scene): void {
-  const g = scene.add.graphics().setDepth(3);
+  const g = scene.add.graphics().setDepth(6);
   const px = CX;
   const py = CY - RY + 4; // just inside the top of the arena
 

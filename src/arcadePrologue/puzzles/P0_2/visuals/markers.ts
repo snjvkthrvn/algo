@@ -24,12 +24,12 @@ export function createMarkers(scene: Phaser.Scene): Markers {
     g.clear();
 
     const src = coordsOf(board, board.sourceKey);
-    g.lineStyle(s(1), COLORS.accent, 0.35);
-    g.strokeCircle(src.x, src.y, s(12));
+    drawSocket(g, src.x, src.y, 'source');
     g.fillStyle(COLORS.accent, 1);
     g.fillCircle(src.x, src.y, s(5.5));
 
     const sink = coordsOf(board, board.sinkKey);
+    drawSocket(g, sink.x, sink.y, 'sink');
     g.lineStyle(s(2.2), COLORS.accent, 0.85);
     g.strokeCircle(sink.x, sink.y, s(9));
     g.lineStyle(s(1), COLORS.accent, 0.35);
@@ -38,6 +38,7 @@ export function createMarkers(scene: Phaser.Scene): Markers {
     for (const f of round.forks) {
       const fk = axialKey(f.at.q, f.at.r);
       const center = coordsOf(board, fk);
+      drawSocket(g, center.x, center.y, 'fork');
       for (const choice of f.choices) {
         const tip = coordsOf(board, axialKey(choice.q, choice.r));
         drawShortArrow(g, center, tip);
@@ -50,6 +51,23 @@ export function createMarkers(scene: Phaser.Scene): Markers {
   }
 
   return { paint, clear };
+}
+
+function drawSocket(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  role: 'source' | 'sink' | 'fork',
+): void {
+  const accentAlpha = role === 'fork' ? 0.28 : 0.44;
+  g.fillStyle(0x05070a, 0.48);
+  g.fillCircle(x + s(2), y + s(4), s(19));
+  g.fillStyle(0x111c24, 0.88);
+  g.fillCircle(x, y, s(18));
+  g.lineStyle(s(2), 0x586a64, 0.72);
+  g.strokeCircle(x, y, s(18));
+  g.lineStyle(s(1), COLORS.accent, accentAlpha);
+  g.strokeCircle(x, y, s(13));
 }
 
 function drawShortArrow(

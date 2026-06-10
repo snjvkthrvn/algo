@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "phaser-best-practices": {
+      "source": "onmax/nuxt-skills",
+      "sourceType": "github",
+      "skillPath": "skills/phaser-best-practices/SKILL.md",
+      "computedHash": "da5012faabdfa9cebf589dc089acb6d06c97cdf0b440f072382de678a66c2733"
+    }
+  }
+}

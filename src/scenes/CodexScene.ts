@@ -3,13 +3,29 @@
  * Full-screen dark UI with sidebar (entry list) and content panel.
  */
 
-import { VISUAL_REVAMP_KEYS } from '../config/assets';
-import { COLORS, COLOR_HEX, FONTS, SCENE_KEYS } from '../config/constants';
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../config/assets';
+import { COLORS, FONTS, SCENE_KEYS } from '../config/constants';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
 import { CODEX_ENTRIES } from '../data/codex/entries';
 import type { CodexSection } from '../data/types';
 import { drawPanel } from '../ui/panel';
+
+const CODEX_PALETTE = {
+  ink: '#1a1208',
+  inkMuted: '#5a3a1a',
+  page: 0xf0e4c2,
+  pageAlt: 0xd8c890,
+  row: 0xe6d19a,
+  rowSelected: 0xf5b820,
+  frame: 0x5a3a1a,
+  dark: 0x1a1208,
+  rune: 0x06b6d4,
+  runeCss: '#06b6d4',
+  greenCss: '#346856',
+  orangeCss: '#a05a2a',
+  goldCss: '#8a5a12',
+};
 
 export class CodexScene extends Phaser.Scene {
   private contentContainer!: Phaser.GameObjects.Container;
@@ -30,6 +46,13 @@ export class CodexScene extends Phaser.Scene {
     this.returnScene = data.returnScene || SCENE_KEYS.PROLOGUE;
   }
 
+  preload(): void {
+    const path = getImageAssetPath(VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG);
+    if (path && !this.textures.exists(VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG)) {
+      this.load.image(VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG, path);
+    }
+  }
+
   create(): void {
     const { width, height } = this.cameras.main;
     // Fade in via tween overlay
@@ -43,39 +66,48 @@ export class CodexScene extends Phaser.Scene {
 
     audioManager.setScene(this);
 
-    // Background
-    this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0);
-    if (this.textures.exists(VISUAL_REVAMP_KEYS.TITLE_BG)) {
-      const bg = this.add.image(width / 2, height / 2, VISUAL_REVAMP_KEYS.TITLE_BG).setOrigin(0.5).setAlpha(0.18);
+    // Background: in-world artifact first, dark fallback second. The generated
+    // tome has page regions reserved for Phaser text so the Codex reads like a
+    // physical object instead of a terminal overlay.
+    if (this.textures.exists(VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG)) {
+      const bg = this.add.image(width / 2, height / 2, VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG).setOrigin(0.5);
       const source = bg.texture.getSourceImage() as HTMLImageElement;
       bg.setScale(Math.max(width / source.width, height / source.height));
+      this.add.rectangle(0, 0, width, height, 0x1a1208, 0.04).setOrigin(0);
+    } else {
+      this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0);
+      if (this.textures.exists(VISUAL_REVAMP_KEYS.TITLE_BG)) {
+        const bg = this.add.image(width / 2, height / 2, VISUAL_REVAMP_KEYS.TITLE_BG).setOrigin(0.5).setAlpha(0.18);
+        const source = bg.texture.getSourceImage() as HTMLImageElement;
+        bg.setScale(Math.max(width / source.width, height / source.height));
+      }
+      this.add.rectangle(0, 0, width, height, 0x081820, 0.72).setOrigin(0);
     }
-    this.add.rectangle(0, 0, width, height, 0x081820, 0.72).setOrigin(0);
 
     // Title
-    drawPanel(this, 20, 16, width - 40, 54, {
+    drawPanel(this, 26, 18, width - 52, 48, {
       depth: 1,
-      fill: COLORS.ERROR,
-      frame: COLORS.FRAME_BORDER_LIGHT,
-      inner: COLORS.SUCCESS,
+      fill: CODEX_PALETTE.pageAlt,
+      frame: CODEX_PALETTE.frame,
+      inner: 0xb7893a,
       shadow: true,
-      shadowAlpha: 0.22,
-      accent: COLORS.CYAN_GLOW,
+      shadowAlpha: 0.14,
+      accent: CODEX_PALETTE.rune,
       accentSide: 'top',
     });
 
-    this.add.text(width / 2, 30, 'CODEX', {
-      fontSize: '18px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_LIGHT,
+    this.add.text(width / 2, 28, 'CODEX', {
+      fontSize: '17px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.ink,
     }).setOrigin(0.5, 0).setDepth(2);
 
-    this.add.text(width / 2, 54, 'ESC / C CLOSE', {
-      fontSize: '8px', fontFamily: FONTS.RETRO, color: COLOR_HEX.CYAN_GLOW,
+    this.add.text(width / 2, 51, 'ESC / C CLOSE', {
+      fontSize: '8px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.inkMuted,
     }).setOrigin(0.5, 0).setDepth(2);
 
     // Close button
     const closeBtn = this.add.text(width - 54, 31, 'X', {
-      fontSize: '14px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_LIGHT,
-      backgroundColor: COLOR_HEX.TEXT_DARK,
+      fontSize: '14px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.ink,
+      backgroundColor: '#d8c890',
       padding: { x: 6, y: 4 },
     }).setOrigin(0.5).setDepth(3).setInteractive({ useHandCursor: true });
 
@@ -97,13 +129,13 @@ export class CodexScene extends Phaser.Scene {
     const sidebarWidth = width * 0.3;
     drawPanel(this, 20, 84, sidebarWidth - 28, height - 112, {
       depth: 1,
-      fill: COLORS.ERROR,
-      frame: COLORS.FRAME_BORDER_LIGHT,
-      inner: COLORS.SUCCESS,
-      alpha: 0.96,
+      fill: CODEX_PALETTE.page,
+      frame: CODEX_PALETTE.frame,
+      inner: 0xb7893a,
+      alpha: 0.32,
       shadow: true,
-      shadowAlpha: 0.22,
-      accent: COLORS.CYAN_GLOW,
+      shadowAlpha: 0.10,
+      accent: CODEX_PALETTE.rune,
     });
 
     // Sidebar entries
@@ -112,12 +144,12 @@ export class CodexScene extends Phaser.Scene {
     // Content panel (right 70%)
     drawPanel(this, sidebarWidth + 12, 84, width - sidebarWidth - 32, height - 112, {
       depth: 1,
-      fill: COLORS.ERROR,
-      frame: COLORS.FRAME_BORDER_LIGHT,
-      inner: COLORS.SUCCESS,
-      alpha: 0.96,
+      fill: CODEX_PALETTE.page,
+      frame: CODEX_PALETTE.frame,
+      inner: 0xb7893a,
+      alpha: 0.24,
       shadow: true,
-      shadowAlpha: 0.22,
+      shadowAlpha: 0.08,
     });
     this.contentBaseY = 100;
     this.contentViewportH = height - 144;
@@ -131,7 +163,7 @@ export class CodexScene extends Phaser.Scene {
     this.scrollHintText = this.add.text(width - 52, height - 46, 'PGUP / PGDN', {
       fontSize: '8px',
       fontFamily: FONTS.RETRO,
-      color: COLOR_HEX.CYAN_GLOW,
+      color: CODEX_PALETTE.inkMuted,
     }).setOrigin(1, 1).setDepth(3).setVisible(false);
 
     // Show first unlocked entry
@@ -152,34 +184,34 @@ export class CodexScene extends Phaser.Scene {
 
       const container = this.add.container(30, y).setDepth(2);
 
-      const bg = this.add.rectangle(0, 0, sidebarWidth - 52, 36, unlocked ? COLORS.ERROR : COLORS.WARNING, unlocked ? 0.94 : 0.34);
+      const bg = this.add.rectangle(0, 0, sidebarWidth - 52, 36, unlocked ? CODEX_PALETTE.row : CODEX_PALETTE.pageAlt, unlocked ? 0.78 : 0.28);
       bg.setOrigin(0, 0.5);
       if (unlocked) {
-        bg.setStrokeStyle(1, COLORS.FRAME_BORDER_LIGHT);
+        bg.setStrokeStyle(1, CODEX_PALETTE.frame, 0.72);
         bg.setInteractive({ useHandCursor: true });
       }
       container.add(bg);
 
       const text = this.add.text(10, 0, unlocked ? this.compactSidebarLabel(entry.algorithmName, sidebarWidth) : '???', {
         fontSize: '9px', fontFamily: FONTS.RETRO,
-        color: unlocked ? COLOR_HEX.TEXT_LIGHT : COLOR_HEX.TEXT_MUTED,
+        color: unlocked ? CODEX_PALETTE.ink : CODEX_PALETTE.inkMuted,
         fixedWidth: sidebarWidth - 92,
       }).setOrigin(0, 0.5);
       container.add(text);
 
       if (unlocked) {
         // Status dot
-        const dot = this.add.circle(sidebarWidth - 55, 0, 4, COLORS.GOLD_ACCENT);
+        const dot = this.add.circle(sidebarWidth - 55, 0, 4, CODEX_PALETTE.rune);
         container.add(dot);
 
         bg.on('pointerover', () => {
-          bg.setFillStyle(COLORS.CYAN_GLOW, 0.22);
-          text.setColor(COLOR_HEX.TEXT_LIGHT);
+          bg.setFillStyle(CODEX_PALETTE.rowSelected, 0.62);
+          text.setColor(CODEX_PALETTE.ink);
         });
 
         bg.on('pointerout', () => {
-          bg.setFillStyle(this.selectedIndex === i ? COLORS.WARNING : COLORS.ERROR, this.selectedIndex === i ? 1 : 0.94);
-          text.setColor(COLOR_HEX.TEXT_LIGHT);
+          bg.setFillStyle(this.selectedIndex === i ? CODEX_PALETTE.rowSelected : CODEX_PALETTE.row, this.selectedIndex === i ? 0.86 : 0.78);
+          text.setColor(CODEX_PALETTE.ink);
         });
 
         bg.on('pointerdown', () => {
@@ -224,8 +256,8 @@ export class CodexScene extends Phaser.Scene {
       const isSelected = this.selectedIndex === i;
       const isUnlocked = gameState.isCodexUnlocked(CODEX_ENTRIES[i].id);
       if (!isUnlocked) continue;
-      bg.setFillStyle(isSelected ? COLORS.WARNING : COLORS.ERROR, isSelected ? 1 : 0.94);
-      text.setColor(COLOR_HEX.TEXT_LIGHT);
+      bg.setFillStyle(isSelected ? CODEX_PALETTE.rowSelected : CODEX_PALETTE.row, isSelected ? 0.86 : 0.78);
+      text.setColor(CODEX_PALETTE.ink);
     }
   }
 
@@ -242,14 +274,14 @@ export class CodexScene extends Phaser.Scene {
 
     // Entry title
     const title = this.add.text(10, 10, entry.algorithmName, {
-      fontSize: '14px', fontFamily: FONTS.RETRO, color: COLOR_HEX.TEXT_LIGHT,
+      fontSize: '14px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.ink,
       wordWrap: { width: contentWidth - 48, useAdvancedWrap: true },
     });
     this.contentContainer.add(title);
 
     // Difficulty
     const diffText = this.add.text(10, title.y + title.height + 10, `Difficulty: ${entry.difficulty}`, {
-      fontSize: '10px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_MUTED,
+      fontSize: '10px', fontFamily: FONTS.MONO, color: CODEX_PALETTE.inkMuted,
     });
     this.contentContainer.add(diffText);
 
@@ -276,7 +308,7 @@ export class CodexScene extends Phaser.Scene {
     const contentLines = Array.isArray(section.content) ? section.content : [section.content];
     for (const line of contentLines) {
       const text = this.add.text(10, y, line, {
-        fontSize: '11px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_LIGHT,
+        fontSize: '11px', fontFamily: FONTS.MONO, color: CODEX_PALETTE.ink,
         wordWrap: { width: maxWidth - 40 }, lineSpacing: 3,
       });
       this.contentContainer.add(text);
@@ -289,12 +321,12 @@ export class CodexScene extends Phaser.Scene {
 
   private getSectionColor(type: string): string {
     switch (type) {
-      case 'what_you_felt': return COLOR_HEX.CYAN_GLOW;
-      case 'plain_explanation': return COLOR_HEX.TEXT_LIGHT;
-      case 'pattern_steps': return '#22c55e';
-      case 'real_world': return '#f97316';
-      case 'unlocked_ability': return COLOR_HEX.GOLD;
-      default: return COLOR_HEX.TEXT_MUTED;
+      case 'what_you_felt': return CODEX_PALETTE.runeCss;
+      case 'plain_explanation': return CODEX_PALETTE.ink;
+      case 'pattern_steps': return CODEX_PALETTE.greenCss;
+      case 'real_world': return CODEX_PALETTE.orangeCss;
+      case 'unlocked_ability': return CODEX_PALETTE.goldCss;
+      default: return CODEX_PALETTE.inkMuted;
     }
   }
 
@@ -303,7 +335,7 @@ export class CodexScene extends Phaser.Scene {
     const sidebarWidth = width * 0.3;
     const contentWidth = width - sidebarWidth - 64;
     const text = this.add.text(contentWidth / 2, height / 2 - 120, 'No entries unlocked yet.\nComplete puzzles to fill the Codex.', {
-      fontSize: '12px', fontFamily: FONTS.MONO, color: COLOR_HEX.TEXT_LIGHT,
+      fontSize: '12px', fontFamily: FONTS.MONO, color: CODEX_PALETTE.ink,
       align: 'center',
     }).setOrigin(0.5);
     this.contentContainer.add(text);

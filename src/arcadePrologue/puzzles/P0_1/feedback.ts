@@ -3,6 +3,10 @@ import { COLORS, HEX_RADIUS, s } from './tokens';
 import { MOTION, TIMING } from './motion';
 import type { Glyph } from './board';
 
+type PulseScene = Phaser.Scene & {
+  emitPuzzleActionPulse?: (x: number, y: number, kind?: 'neutral' | 'correct' | 'wrong' | 'hint' | 'complete') => void;
+};
+
 /**
  * Effect primitives. Every duration and ease sources from motion.ts.
  * reduceMotion is respected at the glyph-scale level — rings still play (gameplay info),
@@ -36,6 +40,7 @@ export function chantPulse(scene: Phaser.Scene, glyph: Glyph, reduceMotion: bool
 }
 
 export function chantRing(scene: Phaser.Scene, at: Phaser.Math.Vector2): void {
+  (scene as PulseScene).emitPuzzleActionPulse?.(at.x, at.y, 'neutral');
   // Outer expanding ring
   const ring = scene.add
     .circle(at.x, at.y, HEX_RADIUS + s(2), 0, 0)
@@ -66,6 +71,7 @@ export function chantRing(scene: Phaser.Scene, at: Phaser.Math.Vector2): void {
 }
 
 export function stepCorrect(scene: Phaser.Scene, at: Phaser.Math.Vector2): void {
+  (scene as PulseScene).emitPuzzleActionPulse?.(at.x, at.y, 'correct');
   // Fast inner ring — snap of confirmation
   const inner = scene.add
     .circle(at.x, at.y, HEX_RADIUS + s(2), 0, 0)
@@ -101,6 +107,7 @@ export function stepMistake(
   at: Phaser.Math.Vector2,
   reduceMotion: boolean,
 ): void {
+  (scene as PulseScene).emitPuzzleActionPulse?.(at.x, at.y, 'wrong');
   const ring = scene.add
     .circle(at.x, at.y, HEX_RADIUS + s(4), 0, 0)
     .setStrokeStyle(s(1.5), COLORS.warn, 0.6)
@@ -146,6 +153,7 @@ export async function winCascade(
 ): Promise<void> {
   const stagger = reduceMotion ? 36 : TIMING.winStaggerStep;
   for (const p of points) {
+    (scene as PulseScene).emitPuzzleActionPulse?.(p.x, p.y, 'complete');
     // Filled flash — tile "completes"
     const flash = scene.add
       .circle(p.x, p.y, HEX_RADIUS + s(2), COLORS.accent, 0.25)

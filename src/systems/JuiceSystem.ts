@@ -11,12 +11,29 @@
 import Phaser from 'phaser';
 import { gameState } from '../core/GameStateManager';
 
+type PuzzleActionPulseScene = Phaser.Scene & {
+  emitPuzzleActionPulse?: (x: number, y: number, kind: 'neutral' | 'correct' | 'wrong' | 'hint' | 'complete') => void;
+};
+
 const motionReduced = (): boolean => {
   try {
     return gameState.getSettings().reduceMotion;
   } catch {
     // gameState may not be initialized in test mocks — fail safe (false).
     return false;
+  }
+};
+
+const emitPuzzlePulse = (
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  kind: 'correct' | 'wrong',
+): void => {
+  try {
+    (scene as PuzzleActionPulseScene).emitPuzzleActionPulse?.(x, y, kind);
+  } catch {
+    // Optional visual hook only; particle feedback should never fail.
   }
 };
 
@@ -59,6 +76,7 @@ export const JuiceSystem = {
 
   // Gold arc upward + green inner burst — for correct answers
   correctBurst(scene: Phaser.Scene, x: number, y: number): void {
+    emitPuzzlePulse(scene, x, y, 'correct');
     JuiceSystem.burst(scene, x, y, 0xfbbf24, 14, 72);
     JuiceSystem.burst(scene, x, y, 0x88c070, 8, 36);
   },
@@ -66,6 +84,7 @@ export const JuiceSystem = {
   // Red pixels drooping downward — for wrong answers
   wrongBurst(scene: Phaser.Scene, x: number, y: number): void {
     if (!scene?.add?.rectangle || !scene?.tweens) return;
+    emitPuzzlePulse(scene, x, y, 'wrong');
     for (let i = 0; i < 10; i++) {
       const angle = Math.PI * 0.2 + Math.random() * Math.PI * 0.8;
       const speed = 30 + Math.random() * 40;

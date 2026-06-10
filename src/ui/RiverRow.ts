@@ -14,6 +14,10 @@
 import Phaser from 'phaser';
 import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
 
+type PuzzlePulseScene = Phaser.Scene & {
+  emitPuzzleActionPulse?: (x: number, y: number, kind?: 'neutral' | 'correct' | 'wrong' | 'hint' | 'complete') => void;
+};
+
 export interface RiverRowOptions {
   values: ReadonlyArray<string | number>;
   centerX: number;
@@ -21,6 +25,14 @@ export interface RiverRowOptions {
   tileSize?: number;
   gap?: number;
   showIndices?: boolean;
+  /** Optional direct board input. Kept opt-in so display-only rows stay inert. */
+  onTilePress?: (index: number) => void;
+  /**
+   * PuzzleCursor also listens to SPACE/ENTER. Most RiverRow scenes already bind
+   * those keys, so row tiles are ignored by the shared cursor unless a scene
+   * explicitly opts in.
+   */
+  allowPuzzleCursor?: boolean;
 }
 
 export interface RiverCursorOptions {
@@ -53,7 +65,11 @@ interface CursorVisual {
 
 export class RiverRow {
   private readonly scene: Phaser.Scene;
-  private readonly options: Required<Omit<RiverRowOptions, 'showIndices'>> & { showIndices: boolean };
+  private readonly options: Required<Omit<RiverRowOptions, 'showIndices' | 'onTilePress' | 'allowPuzzleCursor'>> & {
+    showIndices: boolean;
+    onTilePress?: (index: number) => void;
+    allowPuzzleCursor: boolean;
+  };
   private readonly tiles: TileVisual[] = [];
   private readonly cursors: Map<string, CursorVisual> = new Map();
   private windowHighlight: Phaser.GameObjects.Rectangle | null = null;
@@ -68,6 +84,8 @@ export class RiverRow {
       tileSize: options.tileSize ?? 64,
       gap: options.gap ?? 8,
       showIndices: options.showIndices ?? true,
+      onTilePress: options.onTilePress,
+      allowPuzzleCursor: options.allowPuzzleCursor ?? false,
     };
     this.renderTiles();
   }
@@ -91,6 +109,33 @@ export class RiverRow {
       }).setOrigin(0.5);
 
       container.add([shadow, box, label]);
+
+      if (this.options.onTilePress) {
+        box.setInteractive({ useHandCursor: true });
+        if (!this.options.allowPuzzleCursor) {
+          box.setData('puzzleCursorIgnore', true);
+        }
+        box.on('pointerdown', () => {
+          this.emitTilePressPulse(i);
+          this.options.onTilePress?.(i);
+        });
+        box.on('pointerover', () => {
+          this.scene.tweens.add({
+            targets: container,
+            scale: 1.04,
+            duration: 80,
+            ease: 'Sine.easeOut',
+          });
+        });
+        box.on('pointerout', () => {
+          this.scene.tweens.add({
+            targets: container,
+            scale: 1,
+            duration: 100,
+            ease: 'Sine.easeIn',
+          });
+        });
+      }
 
       if (showIndices) {
         const idxText = this.scene.add.text(0, tileSize / 2 + 14, String(i), {
@@ -177,6 +222,42 @@ export class RiverRow {
       yoyo: true,
       ease: 'Back.easeOut',
       onComplete: () => tile.box.setFillStyle(orig, 0.96),
+    });
+  }
+
+  private emitTilePressPulse(index: number): void {
+    const tile = this.tiles[index];
+    if (!tile) return;
+
+    (this.scene as PuzzlePulseScene).emitPuzzleActionPulse?.(tile.x, tile.y, 'neutral');
+
+    const rowCenterX = this.options.centerX;
+    const color = COLORS.CYAN_GLOW;
+    const ring = this.scene.add
+      .circle(tile.x, tile.y, this.options.tileSize * 0.42, color, 0.08)
+      .setStrokeStyle(2, color, 0.82)
+      .setDepth(24);
+    this.scene.tweens.add({
+      targets: ring,
+      scale: 1.45,
+      alpha: 0,
+      duration: 220,
+      ease: 'Sine.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+
+    const line = this.scene.add.graphics().setDepth(23);
+    line.lineStyle(2, color, 0.32);
+    line.beginPath();
+    line.moveTo(tile.x, tile.y);
+    line.lineTo(rowCenterX, tile.y);
+    line.strokePath();
+    this.scene.tweens.add({
+      targets: line,
+      alpha: 0,
+      duration: 220,
+      ease: 'Quad.easeOut',
+      onComplete: () => line.destroy(),
     });
   }
 

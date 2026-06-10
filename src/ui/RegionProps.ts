@@ -113,13 +113,13 @@ const PLACEMENTS: Record<RegionId, PropPlacement[]> = {
     {
       key: VISUAL_REVAMP_KEYS.PROP_CHICKEN,
       x: 540, y: 480, depth: 3,
-      anim: { key: 'prop-chicken-peck', frameCount: 4, frameRate: 3 },
+      anim: { key: 'prop-chicken-peck', frameCount: 8, frameRate: 6 },
     },
     // Second chicken farther east, walking in the opposite direction
     {
       key: VISUAL_REVAMP_KEYS.PROP_CHICKEN,
       x: 1240, y: 510, depth: 3,
-      anim: { key: 'prop-chicken-peck', frameCount: 4, frameRate: 3 },
+      anim: { key: 'prop-chicken-peck', frameCount: 8, frameRate: 6 },
       flipX: true,
     },
     // Scarecrow in the centre fields
@@ -148,24 +148,24 @@ const PLACEMENTS: Record<RegionId, PropPlacement[]> = {
     {
       key: VISUAL_REVAMP_KEYS.PROP_LANTERN_POST,
       x: 760, y: 340, depth: 3,
-      anim: { key: 'prop-lantern-flicker', frameCount: 3, frameRate: 5 },
+      anim: { key: 'prop-lantern-flicker', frameCount: 6, frameRate: 7 },
     },
     {
       key: VISUAL_REVAMP_KEYS.PROP_LANTERN_POST,
       x: 1180, y: 340, depth: 3,
-      anim: { key: 'prop-lantern-flicker', frameCount: 3, frameRate: 5 },
+      anim: { key: 'prop-lantern-flicker', frameCount: 6, frameRate: 7 },
     },
     // Dragonflies hovering over the water at varied heights
     {
       key: VISUAL_REVAMP_KEYS.PROP_DRAGONFLY,
       x: 880, y: 420, depth: 5,
-      anim: { key: 'prop-dragonfly-wings', frameCount: 2, frameRate: 14 },
+      anim: { key: 'prop-dragonfly-wings', frameCount: 6, frameRate: 16 },
       hover: { amplitude: 6, duration: 800 },
     },
     {
       key: VISUAL_REVAMP_KEYS.PROP_DRAGONFLY,
       x: 1480, y: 380, depth: 5,
-      anim: { key: 'prop-dragonfly-wings', frameCount: 2, frameRate: 14 },
+      anim: { key: 'prop-dragonfly-wings', frameCount: 6, frameRate: 16 },
       hover: { amplitude: 8, duration: 950 },
       flipX: true,
     },

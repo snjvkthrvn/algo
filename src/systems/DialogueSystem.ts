@@ -9,6 +9,7 @@ import { eventBus, GameEvents } from '../core/EventBus';
 import { gameState } from '../core/GameStateManager';
 import { audioManager } from '../core/AudioManager';
 import type { DialogueTree, DialogueNode, DialogueAction, DialogueChoice } from '../data/types';
+import { GamepadActionBridge } from '../input/GamepadActionBridge';
 
 export class DialogueSystem {
   private scene: Phaser.Scene;
@@ -27,6 +28,7 @@ export class DialogueSystem {
   private endCooldown: boolean = false;
   private activationTime: number = 0;
   private destroyed: boolean = false;
+  private gamepadBridge: GamepadActionBridge;
 
   /** SPACE that opens dialogue must not also advance it on the same frame. */
   private static readonly OPEN_COOLDOWN_MS = 100;
@@ -52,6 +54,11 @@ export class DialogueSystem {
     scene.input.keyboard?.on('keydown-DOWN', this.onChoiceDown);
     scene.input.keyboard?.on('keydown-S', this.onChoiceDown);
     scene.input.on('pointerdown', this.onPointerDown);
+    this.gamepadBridge = new GamepadActionBridge(scene, {
+      up: this.onChoiceUp,
+      down: this.onChoiceDown,
+      action: this.onAdvanceKey,
+    });
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
 
@@ -315,6 +322,7 @@ export class DialogueSystem {
     this.scene.input.keyboard?.off('keydown-DOWN', this.onChoiceDown);
     this.scene.input.keyboard?.off('keydown-S', this.onChoiceDown);
     this.scene.input.off('pointerdown', this.onPointerDown);
+    this.gamepadBridge.destroy();
     this.dialogueBox.destroy();
     this.destroyChoices();
   }

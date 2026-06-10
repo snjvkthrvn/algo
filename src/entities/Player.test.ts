@@ -8,8 +8,10 @@ vi.mock('phaser', () => ({
         KeyCodes: {
           W: 87,
           A: 65,
+          B: 66,
           S: 83,
           D: 68,
+          SHIFT: 16,
         },
       },
     },
@@ -23,10 +25,19 @@ type FakeKey = {
 
 type FakeBody = {
   velocity: { x: number; y: number };
-  calls: { setOffset: number; setCollideWorldBounds: number; setVelocity: number; resets: Array<{ x: number; y: number }> };
+  calls: {
+    setAllowGravity: number;
+    setImmovable: number;
+    setOffset: number;
+    setCollideWorldBounds: number;
+    setVelocity: number;
+    resets: Array<{ x: number; y: number }>;
+  };
   setSize: () => void;
+  setAllowGravity: (allowGravity: boolean) => void;
+  setImmovable: (immovable: boolean) => void;
   setOffset: () => void;
-  setCollideWorldBounds: () => void;
+  setCollideWorldBounds: (collide: boolean) => void;
   setVelocity: (x: number, y: number) => void;
   reset: (x: number, y: number) => void;
 };
@@ -90,16 +101,31 @@ function createPlayer(canMoveTo: (position: { x: number; y: number }) => boolean
     down: createKey(),
     W: createKey(),
     A: createKey(),
+    B: createKey(),
     S: createKey(),
     D: createKey(),
+    SHIFT: createKey(),
   };
 
   const velocity = { x: 0, y: 0 };
-  const calls = { setOffset: 0, setCollideWorldBounds: 0, setVelocity: 0, resets: [] as Array<{ x: number; y: number }> };
+  const calls = {
+    setAllowGravity: 0,
+    setImmovable: 0,
+    setOffset: 0,
+    setCollideWorldBounds: 0,
+    setVelocity: 0,
+    resets: [] as Array<{ x: number; y: number }>,
+  };
   const body: FakeBody = {
     velocity,
     calls,
     setSize: () => undefined,
+    setAllowGravity: () => {
+      calls.setAllowGravity += 1;
+    },
+    setImmovable: () => {
+      calls.setImmovable += 1;
+    },
     setOffset: () => {
       calls.setOffset += 1;
     },
@@ -146,6 +172,8 @@ function createPlayer(canMoveTo: (position: { x: number; y: number }) => boolean
     x: number;
     y: number;
     duration: number;
+    yoyo?: boolean;
+    onUpdate?: () => void;
     onComplete?: () => void;
   }> = [];
   const createSprite = (x: number, y: number, key: string, frame?: number | string): FakeSprite => {
@@ -219,19 +247,25 @@ function createPlayer(canMoveTo: (position: { x: number; y: number }) => boolean
           const keyMap: Record<number, FakeKey> = {
             87: keys.W,
             65: keys.A,
+            66: keys.B,
             83: keys.S,
             68: keys.D,
+            16: keys.SHIFT,
           };
           return keyMap[keyCode];
         },
       },
+      gamepad: null,
     },
+    time: { now: 0 },
     tweens: {
       add: (config: {
         targets: FakeSprite;
         x: number;
         y: number;
         duration: number;
+        yoyo?: boolean;
+        onUpdate?: () => void;
         onComplete?: () => void;
       }) => {
         tweenCalls.push(config);
@@ -412,10 +446,12 @@ describe('Player', () => {
     expect(body.calls.setOffset).toBe(0);
   });
 
-  it('does not configure world-bounds collision since movement is tween-driven, not physics-driven', () => {
+  it('configures a top-down Arcade body for collision without using velocity movement', () => {
     const { body } = createPlayer();
 
-    expect(body.calls.setCollideWorldBounds).toBe(0);
+    expect(body.calls.setAllowGravity).toBe(1);
+    expect(body.calls.setImmovable).toBe(1);
+    expect(body.calls.setCollideWorldBounds).toBe(1);
   });
 
   it('does not touch body.velocity from update() because movement never sets a non-zero velocity', () => {
@@ -432,15 +468,41 @@ describe('Player', () => {
   });
 
   it('blocks a tile step when the target position is not walkable', () => {
-    const { keys, player, tweenCalls } = createPlayer(({ x }) => x <= 100);
+    const { body, keys, player, sprite, tweenCalls } = createPlayer(({ x }) => x <= 100);
 
     keys.right.isDown = true;
     keys.right.timeDown = 10;
     player.update(0, 16.67);
 
-    expect(tweenCalls).toHaveLength(0);
+    const collisionTweens = tweenCalls.filter((call) => call.targets === sprite && call.yoyo);
+    expect(collisionTweens).toHaveLength(1);
+    expect(collisionTweens[0]).toMatchObject({
+      x: 106,
+      y: 100,
+      duration: 58,
+      yoyo: true,
+    });
+    collisionTweens[0].onUpdate?.();
+    expect(body.calls.resets[body.calls.resets.length - 1]).toEqual({ x: 100, y: 100 });
+    collisionTweens[0].onComplete?.();
     expect(player.getPosition()).toEqual({ x: 100, y: 100 });
     expect(player.getFacingDirection()).toBe('right');
+  });
+
+  it('shortens the tile-step duration while the run key is held', () => {
+    const { keys, player, tweenCalls } = createPlayer();
+
+    keys.SHIFT.isDown = true;
+    keys.right.isDown = true;
+    keys.right.timeDown = 10;
+
+    player.update(0, 16.67);
+
+    expect(tweenCalls[0]).toMatchObject({
+      x: 100 + PLAYER_GRID_STEP,
+      y: 100,
+      duration: 112,
+    });
   });
 
   it('does not finish a partially completed step when movement is interrupted', () => {

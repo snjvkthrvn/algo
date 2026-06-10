@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ARRAY_PLAINS_SCENE_IMAGE_ASSETS, ARRAY_PLAINS_PROP_SPRITE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
+import { ARRAY_PLAINS_SCENE_IMAGE_ASSETS, ARRAY_PLAINS_SCENE_SPRITE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
 import { COLORS, FONTS, REGIONS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { eventBus } from '../core/EventBus';
@@ -86,8 +86,7 @@ export class ArrayPlainsScene extends BaseOverworldScene {
   }
 
   protected override getRegionSpriteSheetAssets() {
-    // Animated farmland props (pecking chickens) consumed by placeRegionProps.
-    return ARRAY_PLAINS_PROP_SPRITE_ASSETS;
+    return ARRAY_PLAINS_SCENE_SPRITE_ASSETS;
   }
 
   create(): void {
@@ -424,7 +423,7 @@ export class ArrayPlainsScene extends BaseOverworldScene {
                 JuiceSystem.correctBurst(this, tile.x, tile.y);
               }
 
-              this.showFieldNote('System', 'Sequence recognized. Overworld traversal complete.');
+              this.showFieldNote('Array Guide', 'The index stones wake in order. The field will let you deeper now.');
             }
           } else if (i > this.currentSequenceIndex) {
             // Out of order

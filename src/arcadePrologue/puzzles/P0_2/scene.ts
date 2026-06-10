@@ -24,7 +24,7 @@ import {
   type Pulse,
 } from './visuals/pulse';
 import { deadEndShimmer, sinkBloom } from './feedback';
-import { bindFlowInput } from './input';
+import { bindDirectionalChoiceInput, bindFlowInput } from './input';
 import { GAME, PENALTIES, POINTS } from '../../game/state';
 import {
   completeAlgorithmiaPuzzle,
@@ -35,6 +35,7 @@ import { scorePopup } from '../../ui/popups';
 import { hexColorToNumber, sparkle } from '../../ui/particles';
 import { comboMilestone } from '../../game/milestone';
 import { SCENE_KEYS } from '../../../config/constants';
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../../../config/assets';
 
 const ROUND_TIMERS = [30000, 40000, 50000];
 const TIME_BONUS_MAX = [320, 420, 540];
@@ -68,6 +69,13 @@ export class FlowConsolesScene extends Phaser.Scene {
     this.returnScene = resolveReturnScene(data);
   }
 
+  preload(): void {
+    const path = getImageAssetPath(VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG);
+    if (path && !this.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG)) {
+      this.load.image(VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG, path);
+    }
+  }
+
   create(): void {
     this.cameras.main.setBackgroundColor(COLORS.bg.deep);
     this.startedAt = Date.now();
@@ -84,7 +92,7 @@ export class FlowConsolesScene extends Phaser.Scene {
     this.pulse = createPulse(this);
     this.hud = buildHud(this, {
       eyebrow: 'LESSON 02  \u00b7  SELECTION',
-      footerHint: 'Click a fork as the pulse arrives   \u00b7   [M] reduce motion',
+      footerHint: 'Arrows / WASD choose each fork   \u00b7   [M] reduce motion',
     });
 
     this.unbindInput = bindFlowInput(this, {
@@ -161,7 +169,7 @@ export class FlowConsolesScene extends Phaser.Scene {
     this.onFizzle(result.finalKey, result.outcome);
   }
 
-  private async decideAtFork(_current: string, choices: string[]): Promise<string | null> {
+  private async decideAtFork(current: string, choices: string[]): Promise<string | null> {
     if (!this.board) return null;
     const rings = highlightChoices(this, this.board, choices);
     const handlers = new Map<string, () => void>();
@@ -169,18 +177,21 @@ export class FlowConsolesScene extends Phaser.Scene {
 
     return new Promise<string | null>((resolve) => {
       let resolved = false;
+      let unbindDirectional = (): void => {};
       const finish = (next: string | null): void => {
         if (resolved) return;
         resolved = true;
         handlers.forEach((handler, key) => {
           this.board?.glyphs.get(key)?.off('pointerdown', handler);
         });
+        unbindDirectional();
         clearHighlights(this, rings);
         timer.remove();
         resolve(next);
       };
 
       const timer = this.time.delayedCall(window, () => finish(null));
+      unbindDirectional = bindDirectionalChoiceInput(this, this.board!, current, choices, finish);
 
       for (const key of choices) {
         const glyph = this.board?.glyphs.get(key);

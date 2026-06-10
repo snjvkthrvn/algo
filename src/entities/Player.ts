@@ -9,13 +9,18 @@ import { COLORS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { PlayerState } from '../data/types';
 import { JuiceSystem } from '../systems/JuiceSystem';
+import { isGamepadButtonPressed, readGamepadDirection } from '../input/GamepadInput';
 
 const PLAYER_SPRITE_SCALE = 0.25;
 export const PLAYER_GRID_STEP = 32;
 const PLAYER_STEP_DURATION_MS = 160;
+const PLAYER_RUN_STEP_DURATION_MS = 112;
 const PLAYER_WALK_FRAME_RATE = 50; // 8 frames per 160ms step — one FULL footfall cycle per tile. Halves perceived foot-glide vs 4 frames/step.
 const SHADOW_BASE_ALPHA = 0.28;
 const SHADOW_BASE_SCALE = 1;
+const COLLISION_BUMP_DISTANCE = 6;
+const COLLISION_BUMP_DURATION_MS = 58;
+const COLLISION_BUMP_COOLDOWN_MS = 135;
 
 type FacingDirection = 'down' | 'up' | 'left' | 'right';
 
@@ -32,13 +37,18 @@ export class Player {
   private shadow: Phaser.GameObjects.Ellipse;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd?: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
+  private runKeys?: { SHIFT: Phaser.Input.Keyboard.Key; B: Phaser.Input.Keyboard.Key };
   private facingDirection: FacingDirection = 'down';
   private movementTween: Phaser.Tweens.Tween | null = null;
+  private collisionBumpTween: Phaser.Tweens.Tween | null = null;
+  private collisionBumpAnchor: { x: number; y: number } | null = null;
+  private collisionBumpCooldownUntil = 0;
   private canMoveTo: (position: { x: number; y: number }) => boolean;
   private autoWalkTarget: { x: number; y: number } | null = null;
   private autoWalkCallback: (() => void) | null = null;
   private nextMoveBuffer: FacingDirection | null = null; // buffers input during tween for responsive chaining
   private walkStepElapsedMs = 0;
+  private activeStepDurationMs = PLAYER_STEP_DURATION_MS;
   private lastFootstepLift = 0; // tracks bob envelope so we can fire one audio tic per contact phase
   private stepCount = 0; // every other step landing emits a dust puff (avoids clutter)
 
@@ -65,6 +75,9 @@ export class Player {
     scene.physics.world.enable(this.sprite);
     this.body = this.sprite.body as Phaser.Physics.Arcade.Body;
     this.body.setSize(24, 28);
+    this.body.setAllowGravity(false);
+    this.body.setImmovable(true);
+    this.body.setCollideWorldBounds(true);
 
     // Setup input
     if (scene.input.keyboard) {
@@ -74,6 +87,10 @@ export class Player {
         A: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
         S: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
         D: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+      };
+      this.runKeys = {
+        SHIFT: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT),
+        B: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B),
       };
     }
   }
@@ -94,9 +111,16 @@ export class Player {
     }
 
     if (this.movementTween) {
-      this.walkStepElapsedMs = Math.min(PLAYER_STEP_DURATION_MS, this.walkStepElapsedMs + _delta);
+      this.walkStepElapsedMs = Math.min(this.activeStepDurationMs, this.walkStepElapsedMs + _delta);
       this.applyWalkPolish();
       // Buffer latest direction for immediate chaining on step complete (feels responsive)
+      const buffered = this.resolveMoveDirection();
+      if (buffered) this.nextMoveBuffer = buffered;
+      return;
+    }
+
+    if (this.collisionBumpTween) {
+      this.keepBodyOnCollisionAnchor();
       const buffered = this.resolveMoveDirection();
       if (buffered) this.nextMoveBuffer = buffered;
       return;
@@ -137,6 +161,7 @@ export class Player {
   }
 
   freeze(): void {
+    this.stopCollisionBumpTween();
     this.stopMovementTween();
     this.state = PlayerState.FROZEN;
     this.playIdleAnimation();
@@ -147,6 +172,7 @@ export class Player {
   }
 
   setInteracting(interacting: boolean): void {
+    if (interacting) this.stopCollisionBumpTween();
     if (interacting) this.stopMovementTween();
     this.state = interacting ? PlayerState.INTERACTING : PlayerState.IDLE;
     this.playIdleAnimation();
@@ -157,6 +183,7 @@ export class Player {
   }
 
   setPosition(x: number, y: number): void {
+    this.stopCollisionBumpTween();
     this.stopMovementTween();
     this.sprite.setPosition(x, y);
     this.body.reset(x, y);
@@ -233,19 +260,20 @@ export class Player {
     this.facingDirection = direction;
 
     if (!this.canMoveTo(target)) {
-      this.playIdleAnimation();
+      this.playCollisionBump(direction, offset);
       return;
     }
 
     this.state = PlayerState.WALKING;
     this.walkStepElapsedMs = 0;
+    this.activeStepDurationMs = this.isRunHeld() ? PLAYER_RUN_STEP_DURATION_MS : PLAYER_STEP_DURATION_MS;
     this.updateSpriteAnimation(offset.x, offset.y);
 
     this.movementTween = this.scene.tweens.add({
       targets: this.sprite,
       x: target.x,
       y: target.y,
-      duration: PLAYER_STEP_DURATION_MS,
+      duration: this.activeStepDurationMs,
       ease: 'Linear', // Linear movement removes start/stop stutter for smooth contiguous tile steps
       onUpdate: () => {
         this.body.reset(this.sprite.x, this.sprite.y);
@@ -294,7 +322,7 @@ export class Player {
   }
 
   private applyWalkPolish(): void {
-    const phase = Math.min(1, this.walkStepElapsedMs / PLAYER_STEP_DURATION_MS);
+    const phase = Math.min(1, this.walkStepElapsedMs / this.activeStepDurationMs);
 
     // Two footfalls per tile step → 2π over one phase. |sin| gives a peaked
     // envelope at phase 0.25 and 0.75 (mid-stride apex), zero at contact.
@@ -346,6 +374,13 @@ export class Player {
   }
 
   private resolveMoveDirection(): FacingDirection | null {
+    const keyboardDirection = this.resolveKeyboardDirection();
+    if (keyboardDirection) return keyboardDirection;
+
+    return readGamepadDirection(this.scene) as FacingDirection | null;
+  }
+
+  private resolveKeyboardDirection(): FacingDirection | null {
     if (!this.cursors || !this.wasd) return null;
     const candidates: Array<{ direction: FacingDirection; time: number | null }> = [
       { direction: 'left', time: this.getLatestDownKeyTime([this.cursors.left, this.wasd.A]) },
@@ -359,6 +394,10 @@ export class Player {
       .sort((a, b) => b.time - a.time);
 
     return active[0]?.direction ?? null;
+  }
+
+  private isRunHeld(): boolean {
+    return Boolean(this.runKeys?.SHIFT.isDown || this.runKeys?.B.isDown || isGamepadButtonPressed(this.scene, 1));
   }
 
   private getLatestDownKeyTime(keys: Phaser.Input.Keyboard.Key[]): number | null {
@@ -390,7 +429,73 @@ export class Player {
     this.body.reset(this.sprite.x, this.sprite.y);
   }
 
+  private playCollisionBump(direction: FacingDirection, offset: { x: number; y: number }): void {
+    this.state = PlayerState.IDLE;
+    this.walkStepElapsedMs = 0;
+    this.lastFootstepLift = 0;
+    this.playIdleAnimation();
+
+    if (this.collisionBumpTween) return;
+    const now = this.scene.time?.now ?? 0;
+    if (now < this.collisionBumpCooldownUntil) {
+      this.body.reset(this.sprite.x, this.sprite.y);
+      return;
+    }
+
+    const anchor = { x: this.sprite.x, y: this.sprite.y };
+    const bumpTarget = {
+      x: anchor.x + Math.sign(offset.x) * COLLISION_BUMP_DISTANCE,
+      y: anchor.y + Math.sign(offset.y) * COLLISION_BUMP_DISTANCE,
+    };
+    this.collisionBumpAnchor = anchor;
+    this.collisionBumpCooldownUntil = now + COLLISION_BUMP_COOLDOWN_MS;
+
+    audioManager.playTone(92, 46, 'triangle');
+    JuiceSystem.cameraShake(this.scene, 42, 0.0014);
+    JuiceSystem.burst(
+      this.scene,
+      anchor.x + Math.sign(offset.x) * 14,
+      anchor.y + Math.sign(offset.y) * 14 + 10,
+      COLORS.WARNING,
+      2,
+      8,
+    );
+
+    this.collisionBumpTween = this.scene.tweens.add({
+      targets: this.sprite,
+      x: bumpTarget.x,
+      y: bumpTarget.y,
+      duration: COLLISION_BUMP_DURATION_MS,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      onUpdate: () => this.keepBodyOnCollisionAnchor(),
+      onComplete: () => {
+        this.sprite.setPosition(anchor.x, anchor.y);
+        this.body.reset(anchor.x, anchor.y);
+        this.collisionBumpTween = null;
+        this.collisionBumpAnchor = null;
+        if (this.nextMoveBuffer === direction) this.nextMoveBuffer = null;
+      },
+    });
+  }
+
+  private keepBodyOnCollisionAnchor(): void {
+    if (!this.collisionBumpAnchor) return;
+    this.body.reset(this.collisionBumpAnchor.x, this.collisionBumpAnchor.y);
+  }
+
+  private stopCollisionBumpTween(): void {
+    if (!this.collisionBumpTween) return;
+    this.collisionBumpTween.stop();
+    const anchor = this.collisionBumpAnchor ?? { x: this.sprite.x, y: this.sprite.y };
+    this.sprite.setPosition(anchor.x, anchor.y);
+    this.body.reset(anchor.x, anchor.y);
+    this.collisionBumpTween = null;
+    this.collisionBumpAnchor = null;
+  }
+
   destroy(): void {
+    this.stopCollisionBumpTween();
     this.stopMovementTween();
     this.shadow.destroy();
     this.sprite.destroy();

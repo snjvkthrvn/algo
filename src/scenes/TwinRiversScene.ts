@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TWIN_RIVERS_SCENE_IMAGE_ASSETS, TWIN_RIVERS_PROP_SPRITE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
+import { TWIN_RIVERS_SCENE_IMAGE_ASSETS, TWIN_RIVERS_SCENE_SPRITE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
 import { CAMERA_TUNING, COLORS, FONTS, REGIONS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { eventBus } from '../core/EventBus';
@@ -89,9 +89,7 @@ export class TwinRiversScene extends BaseOverworldScene {
   }
 
   protected override getRegionSpriteSheetAssets() {
-    // Animated river props (flickering lanterns, dragonfly wings) consumed
-    // by placeRegionProps.
-    return TWIN_RIVERS_PROP_SPRITE_ASSETS;
+    return TWIN_RIVERS_SCENE_SPRITE_ASSETS;
   }
 
   create(): void {

@@ -8,6 +8,7 @@ import { distance } from '../utils/math';
 import type { Player } from '../entities/Player';
 import type { NPC } from '../entities/NPC';
 import type { InteractableObject } from '../entities/InteractableObject';
+import { isGamepadButtonPressed } from '../input/GamepadInput';
 
 interface InteractableEntry {
   target: NPC | InteractableObject;
@@ -25,6 +26,7 @@ export class InteractionSystem {
 
   private readonly onInteractKey = () => this.tryInteract();
   private keyboardAttached = false;
+  private actionButtonWasDown = false;
 
   constructor(scene: Phaser.Scene, player: Player) {
     this.scene = scene;
@@ -69,6 +71,7 @@ export class InteractionSystem {
     if (!showPrompts) {
       this.clearCurrentTarget();
       this.prompt.hide();
+      this.actionButtonWasDown = false;
       return;
     }
 
@@ -117,6 +120,10 @@ export class InteractionSystem {
 
       this.currentTarget = closest;
     }
+
+    const actionDown = isGamepadButtonPressed(this.scene, 0);
+    if (actionDown && !this.actionButtonWasDown) this.tryInteract();
+    this.actionButtonWasDown = actionDown;
   }
 
   private tryInteract(): void {

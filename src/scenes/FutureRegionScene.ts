@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
-import { getImageAssetPath, OVERWORLD_PLAYER_SPRITE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
+import {
+  getImageAssetPath,
+  OVERWORLD_PLAYER_SPRITE_ASSETS,
+  OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS,
+  VISUAL_REVAMP_KEYS,
+} from '../config/assets';
 import { CAMERA_TUNING, COLORS, FONTS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { gameState } from '../core/GameStateManager';
@@ -70,7 +75,7 @@ abstract class BaseFutureRegionScene extends Phaser.Scene {
   }
 
   preload(): void {
-    for (const asset of OVERWORLD_PLAYER_SPRITE_ASSETS) {
+    for (const asset of [...OVERWORLD_PLAYER_SPRITE_ASSETS, ...OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS]) {
       if (this.textures.exists(asset.key)) continue;
       this.load.spritesheet(asset.key, asset.path, {
         frameWidth: asset.frameWidth || 32,

@@ -51,8 +51,13 @@ describe('DialogueBox', () => {
     new DialogueBox(scene as never);
 
     expect(imageCalls.some((call) => call.key === 'prologue-ui-portrait_active')).toBe(true);
+    // drawPanel renders the body fill AND a frame border entirely from
+    // fillRects (the border is four fillRect edges, not a strokeRect) so every
+    // edge lands on exact pixels. A framed panel therefore emits multiple
+    // fillRect calls (1 body + 4 frame edges), never a strokeRect.
     expect(graphicsCalls).toContain('fillRect');
-    expect(graphicsCalls).toContain('strokeRect');
+    expect(graphicsCalls).not.toContain('strokeRect');
+    expect(graphicsCalls.filter((call) => call === 'fillRect').length).toBeGreaterThanOrEqual(5);
   });
 
   it('does not start a typewriter timer for empty body text', () => {

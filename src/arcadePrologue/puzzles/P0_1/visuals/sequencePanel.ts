@@ -3,15 +3,16 @@ import { COLORS, TYPE } from '../tokens';
 import type { GridPos } from '../isogrid';
 
 /**
- * Left-side code-trace panel.
+ * Left-side "the chant" panel — an embodied step list, not code.
  *
- * Shows the round's path as an array with live progress:
- *   path[0]  •  ✓
- *   path[1]  ↑  ▶  ← player is here
- *   path[2]  →  ?
+ * Shows the round's route as ordered moves with live progress:
+ *   STEP 1   ◉   (start)
+ *   STEP 2   ↑   ▶  ← player is here
+ *   STEP 3   →   ·
  *
- * Gives the puzzle explicit CS framing — the player is executing
- * a sequence by index, not just walking tiles.
+ * The player is following an ORDERED sequence of moves — felt as a dance/route
+ * rather than array indices. The "sequence" name lands; the techy path[i]
+ * framing does not (FEEL → NAME).
  */
 
 type Destroyable = { destroy(): void };
@@ -27,14 +28,13 @@ const HEADER_H = 38;
 const ROW_H = 26;
 
 function dirArrow(path: GridPos[], i: number): string {
-  if (i === 0) return '*';
+  if (i === 0) return '◉';
   const prev = path[i - 1]!;
   const curr = path[i]!;
-  if (curr === prev) return 'R';
-  if (curr.row > prev.row) return 'D';
-  if (curr.row < prev.row) return 'U';
-  if (curr.col > prev.col) return '>';
-  return '<';
+  if (curr.row > prev.row) return '↓';
+  if (curr.row < prev.row) return '↑';
+  if (curr.col > prev.col) return '→';
+  return '←';
 }
 
 export type SequencePanel = {
@@ -81,9 +81,9 @@ export function createSequencePanel(scene: Phaser.Scene, path: GridPos[]): Seque
     const ry = PY + HEADER_H + i * ROW_H + 2;
 
     const row = scene.add
-      .text(PX + 12, ry, `path[${i}]  ${arrows[i]}`, {
+      .text(PX + 14, ry, `STEP ${i + 1}    ${arrows[i]}`, {
         fontFamily: MONO,
-        fontSize: '13px',
+        fontSize: '14px',
         color: COLORS.text.muted,
       })
       .setDepth(DEPTH + 1);
@@ -91,9 +91,9 @@ export function createSequencePanel(scene: Phaser.Scene, path: GridPos[]): Seque
     objects.push(row);
 
     const status = scene.add
-      .text(PX + PW - 26, ry, '?', {
+      .text(PX + PW - 26, ry, '·', {
         fontFamily: MONO,
-        fontSize: '13px',
+        fontSize: '15px',
         color: COLORS.text.muted,
       })
       .setDepth(DEPTH + 1);
@@ -104,14 +104,14 @@ export function createSequencePanel(scene: Phaser.Scene, path: GridPos[]): Seque
   function update(hopIndex: number): void {
     for (let i = 0; i < path.length; i++) {
       if (i < hopIndex) {
-        rowTexts[i]!.setColor(COLORS.text.muted);
-        statusTexts[i]!.setText('OK').setColor('#4ade80');
+        rowTexts[i]!.setColor('#5ee08a');
+        statusTexts[i]!.setText('✓').setColor('#4ade80');
       } else if (i === hopIndex) {
         rowTexts[i]!.setColor(COLORS.text.primary);
-        statusTexts[i]!.setText('>').setColor(COLORS.text.accent);
+        statusTexts[i]!.setText('▶').setColor(COLORS.text.accent);
       } else {
         rowTexts[i]!.setColor(COLORS.text.muted);
-        statusTexts[i]!.setText('?').setColor(COLORS.text.muted);
+        statusTexts[i]!.setText('·').setColor(COLORS.text.muted);
       }
     }
   }

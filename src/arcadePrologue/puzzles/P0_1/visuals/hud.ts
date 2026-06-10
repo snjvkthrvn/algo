@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, s, SPACING, STAGE, TYPE } from '../tokens';
+import { COLORS, px, s, SPACING, STAGE, TYPE } from '../tokens';
 
 /**
  * Heads-up display — shared between puzzles.
@@ -28,21 +28,34 @@ export type Hud = {
 };
 
 export function buildHud(scene: Phaser.Scene, config: HudConfig): Hud {
+  const headerBg = scene.add.graphics().setDepth(20).setAlpha(0.86);
+  paintHeaderBg(headerBg, s(760), s(92));
+
   scene.add
-    .text(STAGE.width / 2, SPACING.md, config.eyebrow, TYPE.eyebrow)
+    .text(STAGE.width / 2, SPACING.sm, config.eyebrow, {
+      ...TYPE.eyebrow,
+      fontSize: px(8),
+      letterSpacing: s(1),
+    })
     .setOrigin(0.5, 0)
     .setDepth(22)
     .setAlpha(0.85);
 
   const title = scene.add
-    .text(STAGE.width / 2, SPACING.xl + s(2), '', TYPE.display)
+    .text(STAGE.width / 2, SPACING.lg + s(6), '', {
+      ...TYPE.display,
+      fontSize: px(15),
+      wordWrap: { width: STAGE.width - SPACING.xxxl * 4 },
+      align: 'center',
+    })
     .setOrigin(0.5, 0)
     .setDepth(22)
-    .setShadow(0, s(2), '#0b1020', s(12), true, true);
+    .setShadow(0, s(2), '#0b1020', s(8), true, true);
 
   const principle = scene.add
-    .text(STAGE.width / 2, SPACING.xl + s(38), '', {
+    .text(STAGE.width / 2, SPACING.lg + s(34), '', {
       ...TYPE.body,
+      fontSize: px(9),
       color: COLORS.text.primary,
       align: 'center',
       wordWrap: { width: STAGE.width - SPACING.xxxl * 4 },
@@ -52,8 +65,9 @@ export function buildHud(scene: Phaser.Scene, config: HudConfig): Hud {
     .setAlpha(0);
 
   const teach = scene.add
-    .text(STAGE.width / 2, SPACING.xl + s(78), '', {
+    .text(STAGE.width / 2, SPACING.lg + s(56), '', {
       ...TYPE.body,
+      fontSize: px(9),
       align: 'center',
       wordWrap: { width: STAGE.width - SPACING.xxxl * 4 },
     })
@@ -142,5 +156,14 @@ function paintFooterBg(g: Phaser.GameObjects.Graphics, w: number, h: number): vo
   g.fillStyle(COLORS.surface.glass, 0.78);
   g.fillRoundedRect(x, y, w, h, s(10));
   g.lineStyle(s(1), COLORS.accent, 0.22);
+  g.strokeRoundedRect(x, y, w, h, s(10));
+}
+
+function paintHeaderBg(g: Phaser.GameObjects.Graphics, w: number, h: number): void {
+  const x = STAGE.width / 2 - w / 2;
+  const y = SPACING.xs;
+  g.fillStyle(COLORS.surface.glass, 0.78);
+  g.fillRoundedRect(x, y, w, h, s(10));
+  g.lineStyle(s(1), COLORS.accent, 0.26);
   g.strokeRoundedRect(x, y, w, h, s(10));
 }

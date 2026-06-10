@@ -2,12 +2,17 @@ import Phaser from 'phaser';
 import { COLORS, HEX_RADIUS, s } from '../P0_1/tokens';
 import { MOTION } from '../P0_1/motion';
 
+type PulseScene = Phaser.Scene & {
+  emitPuzzleActionPulse?: (x: number, y: number, kind?: 'neutral' | 'correct' | 'wrong' | 'hint' | 'complete') => void;
+};
+
 /**
  * Boss-specific feedback. The reached-sink case escalates relative to P0_2's
  * sinkBloom — three rings + a slow halo — because this is the climax.
  */
 
 export function finalCascade(scene: Phaser.Scene, at: Phaser.Math.Vector2): Promise<void> {
+  (scene as PulseScene).emitPuzzleActionPulse?.(at.x, at.y, 'complete');
   return new Promise<void>((resolve) => {
     for (let i = 0; i < 4; i += 1) {
       const ring = scene.add

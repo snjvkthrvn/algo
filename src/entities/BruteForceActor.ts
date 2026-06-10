@@ -21,6 +21,7 @@
  */
 
 import Phaser from 'phaser';
+import type { GlitchBanterConfig } from '../data/dialogue/glitch_dialogue';
 
 export interface BruteForceStrategy {
   /** Starting state for Glitch's row. Typically identical to the player's start. */
@@ -55,6 +56,13 @@ export interface BruteForceActorOptions {
    *  scan-style brute force (indexing), "tries" for hashing, etc. Keep
    *  diegetic — not "iterations". */
   readonly verbLabel?: string;
+  /** In-character heckling config. When provided, the actor speaks an opening
+   *  line, cycles brute-force brags on a slow timer while it flails, and
+   *  delivers a defeat line when it freezes — turning the silent foil into a
+   *  live rival. Lines come from GLITCH_BANTER (glitch_dialogue). */
+  readonly banter?: GlitchBanterConfig;
+  /** Interval between brute-force brags (ms). Default 7000. */
+  readonly bragIntervalMs?: number;
 }
 
 const DEFAULT_TICK_MS = 900;
@@ -89,6 +97,8 @@ export class BruteForceActor {
   private timer: Phaser.Time.TimerEvent | null = null;
   private speech: Phaser.GameObjects.Text | null = null;
   private speechTimer: Phaser.Time.TimerEvent | null = null;
+  private banter: GlitchBanterConfig | null = null;
+  private bragTimer: Phaser.Time.TimerEvent | null = null;
 
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
   private readonly headingText: Phaser.GameObjects.Text;
@@ -145,6 +155,7 @@ export class BruteForceActor {
 
     this.layoutTiles(opts.x, opts.y, depth);
     this.startTicking();
+    this.startBanter(opts.banter ?? null, opts.bragIntervalMs ?? 7000);
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
@@ -367,6 +378,40 @@ export class BruteForceActor {
     const finalLabel = `Glitch's ${this.verbLabel}: ${this.moves} · (you beat them)`;
     this.counterText.setText(finalLabel);
     this.subtitleText.setText('(...you did it differently)');
+    this.bragTimer?.remove();
+    this.bragTimer = null;
+    // You out-solved them: Glitch saves face with a deflecting exit line.
+    const defeat = this.banter?.defeat;
+    if (defeat && defeat.length > 0) this.say(pickRandom(defeat), 3200);
+  }
+
+  /** Wire up self-driven heckling: an opening line, then brute-force brags on
+   *  a slow loop while the actor is still flailing. Defeat lines fire in
+   *  freeze(). No-op when no banter config is supplied. */
+  private startBanter(config: GlitchBanterConfig | null, bragIntervalMs: number): void {
+    this.banter = config;
+    if (!config || (!config.opening && !(config.brags && config.brags.length))) return;
+    // One looping timer carries the rival's voice while it flails: the opening
+    // line first, then random brute-force brags. `startAt` brings the first
+    // line in ~3.2s after spawn (past the intro card on a typical dismiss),
+    // then it keeps heckling through play. Gated so it never talks over a
+    // win/freeze or a swap animation.
+    let openingPending = Boolean(config.opening);
+    this.bragTimer = this.scene.time.addEvent({
+      delay: bragIntervalMs,
+      startAt: Math.max(0, bragIntervalMs - 3200),
+      loop: true,
+      callback: () => {
+        if (this.stopped || this.animating) return;
+        if (openingPending && config.opening) {
+          openingPending = false;
+          this.say(config.opening, 3000);
+          return;
+        }
+        const brags = this.banter?.brags;
+        if (brags && brags.length > 0) this.say(pickRandom(brags), 2600);
+      },
+    });
   }
 
   /**
@@ -433,6 +478,8 @@ export class BruteForceActor {
     this.timer = null;
     this.speechTimer?.remove();
     this.speechTimer = null;
+    this.bragTimer?.remove();
+    this.bragTimer = null;
     for (const obj of this.objects) {
       if (obj.active) obj.destroy();
     }
@@ -449,6 +496,10 @@ export class BruteForceActor {
  * force strategies; the indexing/hashing strategies fall through to the
  * non-swap path which updates labels instantly.
  */
+function pickRandom(lines: ReadonlyArray<string>): string {
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
 function findSwapPair(
   before: ReadonlyArray<number>,
   after: ReadonlyArray<number>,

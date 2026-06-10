@@ -18,7 +18,7 @@ export type EdgeLayer = {
 const SHORTEN = s(18);
 
 export function createEdges(scene: Phaser.Scene): EdgeLayer {
-  const g = scene.add.graphics().setDepth(4);
+  const g = scene.add.graphics().setDepth(5.4);
 
   function paint(round: FlowRound, board: FlowBoard): void {
     g.clear();
@@ -54,9 +54,27 @@ function drawEdge(
   const x1 = to.x - ux * SHORTEN;
   const y1 = to.y - uy * SHORTEN;
 
-  g.lineStyle(s(1.6), COLORS.surface.line, 0.55);
+  g.lineStyle(s(7), 0x05070a, 0.54);
+  g.beginPath();
+  g.moveTo(x0, y0 + s(2));
+  g.lineTo(x1, y1 + s(2));
+  g.strokePath();
+
+  g.lineStyle(s(4), 0x182832, 0.92);
   g.beginPath();
   g.moveTo(x0, y0);
   g.lineTo(x1, y1);
+  g.strokePath();
+
+  g.lineStyle(s(1.5), COLORS.surface.line, 0.74);
+  g.beginPath();
+  g.moveTo(x0, y0);
+  g.lineTo(x1, y1);
+  g.strokePath();
+
+  g.lineStyle(s(0.8), COLORS.accent, 0.34);
+  g.beginPath();
+  g.moveTo(x0, y0 - s(1));
+  g.lineTo(x1, y1 - s(1));
   g.strokePath();
 }

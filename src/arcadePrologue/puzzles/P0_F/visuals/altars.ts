@@ -71,6 +71,19 @@ export function createAltars(scene: Phaser.Scene): Altars {
 }
 
 function drawAltar(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  const w = s(52);
+  const h = s(30);
+  g.fillStyle(0x05070a, 0.55);
+  g.fillTriangle(x, y - h / 2 + s(5), x + w / 2, y + s(5), x, y + h / 2 + s(5));
+  g.fillTriangle(x, y - h / 2 + s(5), x - w / 2, y + s(5), x, y + h / 2 + s(5));
+  g.fillStyle(0x241c26, 0.96);
+  g.fillTriangle(x, y - h / 2, x + w / 2, y, x, y + h / 2);
+  g.fillTriangle(x, y - h / 2, x - w / 2, y, x, y + h / 2);
+  g.lineStyle(s(1), 0xd1b36a, 0.65);
+  g.strokeTriangle(x, y - h / 2, x + w / 2, y, x, y + h / 2);
+  g.strokeTriangle(x, y - h / 2, x - w / 2, y, x, y + h / 2);
+  g.fillStyle(COLORS.warn, 0.16);
+  g.fillCircle(x, y, s(17));
   g.lineStyle(s(2.2), COLORS.warn, 0.95);
   g.beginPath();
   g.moveTo(x - s(8), y);

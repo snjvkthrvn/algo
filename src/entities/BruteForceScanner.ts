@@ -19,6 +19,7 @@
  */
 
 import Phaser from 'phaser';
+import type { GlitchBanterConfig } from '../data/dialogue/glitch_dialogue';
 
 export interface BruteForceScannerOptions {
   /** Row centerpoint (px). The row is centered horizontally on x. */
@@ -43,6 +44,13 @@ export interface BruteForceScannerOptions {
   /** Verb in the counter line. Default "checks". Examples: "tries", "scans". */
   readonly verbLabel?: string;
   readonly tickIntervalMs?: number;
+  /** In-character heckling config. When provided, the scanner speaks an opening
+   *  line, cycles brute-force brags on a slow timer while it scans, and delivers
+   *  a defeat line when it freezes — the same live-rival treatment as
+   *  BruteForceActor. Lines come from GLITCH_BANTER (glitch_dialogue). */
+  readonly banter?: GlitchBanterConfig;
+  /** Interval between brute-force brags (ms). Default 7000. */
+  readonly bragIntervalMs?: number;
 }
 
 const DEFAULT_TICK_MS = 700;
@@ -77,6 +85,10 @@ export class BruteForceScanner {
   private checks = 0;
   private stopped = false;
   private timer: Phaser.Time.TimerEvent | null = null;
+  private speech: Phaser.GameObjects.Text | null = null;
+  private speechTimer: Phaser.Time.TimerEvent | null = null;
+  private banter: GlitchBanterConfig | null = null;
+  private bragTimer: Phaser.Time.TimerEvent | null = null;
 
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
   private readonly headingText: Phaser.GameObjects.Text;
@@ -154,6 +166,7 @@ export class BruteForceScanner {
     });
 
     this.startTicking();
+    this.startBanter(opts.banter ?? null, opts.bragIntervalMs ?? 7000);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
 
@@ -265,6 +278,76 @@ export class BruteForceScanner {
     this.timer = null;
     this.counterText.setText(`Glitch's ${this.verbLabel}: ${this.checks} · (you beat them)`);
     this.subtitleText.setText('(...you didn\'t even check)');
+    this.bragTimer?.remove();
+    this.bragTimer = null;
+    // You out-solved them: Glitch saves face with a deflecting exit line.
+    const defeat = this.banter?.defeat;
+    if (defeat && defeat.length > 0) this.say(pickRandom(defeat), 3200);
+  }
+
+  /** Wire up self-driven heckling: an opening line, then brute-force brags on
+   *  a slow loop while the scanner is still searching. Defeat lines fire in
+   *  freeze(). No-op when no banter config is supplied. */
+  private startBanter(config: GlitchBanterConfig | null, bragIntervalMs: number): void {
+    this.banter = config;
+    if (!config || (!config.opening && !(config.brags && config.brags.length))) return;
+    // Unlike BruteForceActor (which flails indefinitely until you win), the
+    // scanner is a one-shot: it walks to its target and stops in a few ticks.
+    // So the opening line gets its own short delay (~900ms) — early enough to
+    // land before even a 3-4 slot scan completes — rather than riding the
+    // brag-loop's `startAt`. Both are gated on `stopped` so Glitch never
+    // talks over the "found it eventually" freeze or a player win.
+    if (config.opening) {
+      this.scene.time.delayedCall(900, () => {
+        if (!this.stopped && config.opening) this.say(config.opening, 3000);
+      });
+    }
+    this.bragTimer = this.scene.time.addEvent({
+      delay: bragIntervalMs,
+      startAt: Math.max(0, bragIntervalMs - 4400),
+      loop: true,
+      callback: () => {
+        if (this.stopped) return;
+        const brags = this.banter?.brags;
+        if (brags && brags.length > 0) this.say(pickRandom(brags), 2600);
+      },
+    });
+  }
+
+  /**
+   * Glitch speaks. Shows a short, transient speech line above the row so the
+   * rival heckles and reacts *in character* during play. Authentic lines come
+   * from glitch_dialogue. Non-blocking; auto-fades after `holdMs`. Matches
+   * BruteForceActor.say so Glitch's voice reads identically across both rivals.
+   */
+  say(text: string, holdMs = 2800): void {
+    const x = this.headingText.x;
+    const y = this.headingText.y - 14;
+    if (!this.speech) {
+      this.speech = this.scene.add.text(x, y, '', {
+        fontSize: '9px',
+        fontFamily: '"IBM Plex Mono", monospace',
+        color: '#ffd9c2',
+        backgroundColor: '#2a1208',
+        padding: { x: 7, y: 5 },
+        stroke: '#0a0502',
+        strokeThickness: 1,
+        align: 'center',
+        wordWrap: { width: 320, useAdvancedWrap: true },
+      }).setOrigin(0.5, 1).setDepth(55);
+      this.objects.push(this.speech);
+    }
+    this.speech.setText(text).setPosition(x, y).setAlpha(0).setVisible(true);
+    this.scene.tweens.add({ targets: this.speech, alpha: 1, y: y - 6, duration: 180, ease: 'Back.easeOut' });
+    this.speechTimer?.remove();
+    this.speechTimer = this.scene.time.delayedCall(holdMs, () => {
+      if (this.speech?.active) {
+        this.scene.tweens.add({
+          targets: this.speech, alpha: 0, duration: 260,
+          onComplete: () => this.speech?.setVisible(false),
+        });
+      }
+    });
   }
 
   getChecks(): number {
@@ -275,10 +358,18 @@ export class BruteForceScanner {
     this.stopped = true;
     this.timer?.remove();
     this.timer = null;
+    this.speechTimer?.remove();
+    this.speechTimer = null;
+    this.bragTimer?.remove();
+    this.bragTimer = null;
     for (const obj of this.objects) {
       if (obj.active) obj.destroy();
     }
     this.objects.length = 0;
     this.slots.length = 0;
   }
+}
+
+function pickRandom(lines: ReadonlyArray<string>): string {
+  return lines[Math.floor(Math.random() * lines.length)];
 }

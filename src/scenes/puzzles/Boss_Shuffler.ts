@@ -27,6 +27,7 @@ import {
 } from '../../data/puzzles/arrayPlainsPuzzleLogic';
 import { buildShufflerPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
+import { GamepadActionBridge } from '../../input/GamepadActionBridge';
 import { playBossPhaseTransition } from '../../ui/BossPhaseTransition';
 import { playBossEntryBanner } from '../../ui/BossEntryBanner';
 
@@ -66,6 +67,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
   private row!: RiverRow;
   private actionLocked = false;
   private preview: PuzzlePreviewSidePanel | null = null;
+  private bossFocusIndex = 0;
 
   // Bubble phase
   private bubbleValues: number[] = [];
@@ -95,7 +97,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_SHUFFLER_DOMAIN_BG;
+    return VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG;
   }
 
   // Preload the visible boss figure (Phase 16) — BasePuzzleScene only
@@ -207,6 +209,11 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.preview.show();
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.onKey(event));
+    new GamepadActionBridge(this, {
+      left: () => this.moveBossFocus(-1),
+      right: () => this.moveBossFocus(1),
+      action: () => this.activateBossFocus(),
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.preview?.destroy();
       this.preview = null;
@@ -216,7 +223,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
   }
 
   private controlsHelp(): string {
-    return 'phase 1 [1]-[4] swap a left tile  -  phase 2 [1]-[4] pick a bucket  -  phase 3 click two tiles';
+    return 'tap row or use [1]-[4]  -  gamepad: move focus + A  -  phase 3 pick two tiles';
   }
 
   // -------- Phase 1: Bubble Storm --------
@@ -230,6 +237,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.statusText.setText('Sort the row before the Shuffler scrambles it.');
     this.detailText.setText('press 1-4 to swap with the right neighbour');
     this.cycleRow(this.bubbleValues);
+    this.setBossFocus(0, Math.max(0, this.bubbleValues.length - 2), 'SWAP');
     this.startChaosTimer();
     this.refreshPreview();
   }
@@ -321,6 +329,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
     this.banner.setText('PHASE II  -  HASH STORM');
     this.statusText.setText('Compute index % 4 and slam the bucket key.');
     this.cycleHashBuckets();
+    this.setBossFocus(0, 3, 'PICK');
     this.queueNextHashCrop();
     this.refreshPreview();
   }
@@ -334,6 +343,7 @@ export class Boss_Shuffler extends BasePuzzleScene {
       tileSize: 96,
       gap: 16,
       showIndices: false,
+      onTilePress: (index) => this.tryHashChoice(index),
     });
   }
 
@@ -577,7 +587,43 @@ export class Boss_Shuffler extends BasePuzzleScene {
       y: this.cameras.main.height / 2 + 64,
       tileSize: 64,
       gap: 8,
+      onTilePress: (index) => {
+        const maxLeft = Math.max(0, this.bubbleValues.length - 2);
+        void this.tryBubbleSwap(Math.min(index, maxLeft));
+      },
     });
+  }
+
+  private setBossFocus(index: number, maxIndex: number, label: string): void {
+    this.bossFocusIndex = Phaser.Math.Clamp(index, 0, Math.max(0, maxIndex));
+    this.row.setCursor('ACT', {
+      label,
+      color: COLORS.GOLD_ACCENT,
+      index: this.bossFocusIndex,
+      side: 'bottom',
+    });
+  }
+
+  private moveBossFocus(direction: -1 | 1): void {
+    if (this.phase === 'bubble') {
+      this.setBossFocus(this.bossFocusIndex + direction, this.bubbleValues.length - 2, 'SWAP');
+      audioManager.playTone(560, 35, 'triangle');
+      return;
+    }
+    if (this.phase === 'hash') {
+      this.setBossFocus(this.bossFocusIndex + direction, 3, 'PICK');
+      audioManager.playTone(560, 35, 'triangle');
+    }
+  }
+
+  private activateBossFocus(): void {
+    if (this.phase === 'bubble') {
+      void this.tryBubbleSwap(this.bossFocusIndex);
+      return;
+    }
+    if (this.phase === 'hash') {
+      this.tryHashChoice(this.bossFocusIndex);
+    }
   }
 
   private onKey(event: KeyboardEvent): void {

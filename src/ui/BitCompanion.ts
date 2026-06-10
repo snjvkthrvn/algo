@@ -81,6 +81,56 @@ export class BitCompanion {
     if (this.stage === 'byte') this.repaintByte();
   }
 
+  /**
+   * Smoothly glide Bit to a world position, leaving a short comet trail so the
+   * eye can follow it tracing a sequence tile-by-tile (P0-1). The idle bob
+   * lives on an inner node, so moving the root never fights it.
+   */
+  moveTo(x: number, y: number, duration = 320): void {
+    const sx = this.container.x;
+    const sy = this.container.y;
+    const dist = Math.hypot(x - sx, y - sy);
+    if (dist > 22) {
+      const n = Math.min(6, Math.max(2, Math.round(dist / 18)));
+      const depth = this.container.depth - 1;
+      for (let i = 1; i <= n; i++) {
+        const t = i / (n + 1);
+        const dot = this.scene.add
+          .circle(sx + (x - sx) * t, sy + (y - sy) * t, 2.5, 0x9af4ff, 0.85)
+          .setDepth(depth);
+        this.scene.tweens.add({
+          targets: dot,
+          alpha: 0,
+          scale: 0.3,
+          duration: duration + 140,
+          delay: i * 16,
+          ease: 'Sine.easeOut',
+          onComplete: () => dot.destroy(),
+        });
+      }
+    }
+    this.scene.tweens.add({
+      targets: this.container,
+      x,
+      y,
+      duration,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  /** Quick celebratory scale-punch — Bit's "bounce" on a correct step. */
+  pulse(): void {
+    const base = this.container.scaleX || 1;
+    this.scene.tweens.add({
+      targets: this.container,
+      scaleX: base * 1.35,
+      scaleY: base * 1.35,
+      duration: 150,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+    });
+  }
+
   destroy(): void {
     for (const t of this.tweens) t.stop();
     for (const o of this.objects) o.destroy();
@@ -94,24 +144,31 @@ export class BitCompanion {
   // ──────────────────────────────────────────────────────────────────
 
   private buildSpark(): void {
-    const halo = this.scene.add.circle(0, 0, 14, CYAN, 0.18);
-    const mid = this.scene.add.circle(0, 0, 8, CYAN, 0.55);
-    const core = this.scene.add.circle(0, 0, 4, 0xffffff, 1);
-    this.container.add([halo, mid, core]);
-    this.objects.push(halo, mid, core);
+    // The idle bob/trail live on an inner node so the root container is free
+    // for positional tweens (moveTo) without the two fighting over `y`.
+    const bob = this.scene.add.container(0, 0);
+    this.container.add(bob);
+    this.objects.push(bob);
+
+    const outerGlow = this.scene.add.circle(0, 0, 20, CYAN, 0.12);
+    const halo = this.scene.add.circle(0, 0, 14, CYAN, 0.28);
+    const mid = this.scene.add.circle(0, 0, 8, CYAN, 0.72);
+    const core = this.scene.add.circle(0, 0, 4.5, 0xffffff, 1);
+    bob.add([outerGlow, halo, mid, core]);
+    this.objects.push(outerGlow, halo, mid, core);
 
     this.tweens.push(this.scene.tweens.add({
-      targets: [halo, mid],
-      scale: { from: 1, to: 1.4 },
-      alpha: { from: 0.55, to: 0.20 },
+      targets: [outerGlow, halo, mid],
+      scale: { from: 1, to: 1.42 },
+      alpha: { from: 0.62, to: 0.18 },
       duration: 1600,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     }));
     this.tweens.push(this.scene.tweens.add({
-      targets: this.container,
-      y: this.container.y - 4,
+      targets: bob,
+      y: -4,
       duration: 1800,
       yoyo: true,
       repeat: -1,
@@ -121,7 +178,7 @@ export class BitCompanion {
     // Small particle trail dots.
     for (let i = 0; i < 3; i++) {
       const dot = this.scene.add.circle(-6 - i * 4, 2 + i * 1.5, 2, CYAN, 0.7);
-      this.container.add(dot);
+      bob.add(dot);
       this.objects.push(dot);
       this.tweens.push(this.scene.tweens.add({
         targets: dot,

@@ -3,8 +3,13 @@ import { COLORS, HEX_RADIUS, s } from '../P0_1/tokens';
 import { MOTION } from '../P0_1/motion';
 import { coordsOf, type FlowBoard } from './board';
 
+type PulseScene = Phaser.Scene & {
+  emitPuzzleActionPulse?: (x: number, y: number, kind?: 'neutral' | 'correct' | 'wrong' | 'hint' | 'complete') => void;
+};
+
 export function deadEndShimmer(scene: Phaser.Scene, board: FlowBoard, key: string): void {
   const at = coordsOf(board, key);
+  (scene as PulseScene).emitPuzzleActionPulse?.(at.x, at.y, 'wrong');
   const ring = scene.add
     .circle(at.x, at.y, HEX_RADIUS + s(4), 0, 0)
     .setStrokeStyle(s(1.5), COLORS.warn, 0.62)
@@ -20,6 +25,7 @@ export function deadEndShimmer(scene: Phaser.Scene, board: FlowBoard, key: strin
 }
 
 export function sinkBloom(scene: Phaser.Scene, at: Phaser.Math.Vector2): void {
+  (scene as PulseScene).emitPuzzleActionPulse?.(at.x, at.y, 'correct');
   for (let i = 0; i < 3; i += 1) {
     const ring = scene.add
       .circle(at.x, at.y, HEX_RADIUS + s(4), 0, 0)
@@ -42,6 +48,7 @@ export function forkPressPulse(
   glyph: Phaser.GameObjects.Image,
   reduceMotion: boolean,
 ): void {
+  (scene as PulseScene).emitPuzzleActionPulse?.(glyph.x, glyph.y, 'neutral');
   if (reduceMotion) return;
   scene.tweens.killTweensOf(glyph);
   scene.tweens.add({

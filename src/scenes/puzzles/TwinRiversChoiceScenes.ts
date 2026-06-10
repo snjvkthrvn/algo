@@ -49,9 +49,11 @@ import {
   type PointerBridgeRound,
 } from '../../data/puzzles/twinRiversPuzzleLogic';
 import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
+import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
 import { PuzzlePhase } from '../../data/types';
 import { playBossPhaseTransition } from '../../ui/BossPhaseTransition';
 import { playBossEntryBanner } from '../../ui/BossEntryBanner';
+import { GamepadActionBridge } from '../../input/GamepadActionBridge';
 
 const BLUE_BANK = 0x5ab7d4;
 const ORANGE_BANK = 0xf97316;
@@ -97,7 +99,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG;
+    return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_ACTION_ARENA_BG;
   }
   protected getPuzzleFrameFillAlpha(): number {
     return 0;
@@ -150,6 +152,11 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     // Arrow-key aliases — RIGHT advances L (inward), LEFT retreats R (inward).
     this.input.keyboard?.on('keydown-RIGHT', () => this.tryMoveLeft());
     this.input.keyboard?.on('keydown-LEFT', () => this.tryMoveRight());
+    new GamepadActionBridge(this, {
+      action: this.onSwap,
+      right: () => this.tryMoveLeft(),
+      left: () => this.tryMoveRight(),
+    });
 
     this.hint = new NextMoveHint(this, { tone: 'gold', depth: 45 });
 
@@ -169,7 +176,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = MIRROR_WALK_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'riverside');
+    if (lesson) await showLessonCard(this, lesson, 'riverside', { dockPosition: 'top' });
     this.startRound(index);
   }
 
@@ -213,6 +220,21 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     void this.trySwap();
   };
 
+  private performMirrorWalkBoardStep(): void {
+    if (this.actionLocked || this.roundCompleting) return;
+    if (this.leftIndex >= this.rightIndex || !this.swappedThisPair) {
+      this.onSwap();
+      return;
+    }
+    if (!this.leftAdvancedThisPair) {
+      this.tryMoveLeft();
+      return;
+    }
+    if (!this.rightRetreatedThisPair) {
+      this.tryMoveRight();
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────
   // Phase gating (FEEL_IT vs USE_IT)
   // ──────────────────────────────────────────────────────────────────
@@ -238,6 +260,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       notDoneLabel: 'still flailing',
       doneLabel: 'gave up',
       verbLabel: 'random swaps',
+      banter: GLITCH_BANTER.tr_1,
       depth: 40,
     });
   }
@@ -301,6 +324,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       y: this.cameras.main.height / 2 + 28,
       tileSize: 56,
       gap: 10,
+      onTilePress: () => this.performMirrorWalkBoardStep(),
     });
     this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: this.leftIndex, side: 'top' });
     this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.rightIndex, side: 'top' });
@@ -618,7 +642,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG;
+    return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_ACTION_ARENA_BG;
   }
   protected getPuzzleFrameFillAlpha(): number {
     return 0;
@@ -672,6 +696,15 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     this.input.keyboard?.on('keydown-L', () => this.tryMoveRight(1));
     this.input.keyboard?.on('keydown-ENTER', () => this.tryLock());
     this.input.keyboard?.on('keydown-SPACE', () => this.tryLock());
+    new GamepadActionBridge(this, {
+      left: () => this.tryMoveLeft(-1),
+      right: () => this.tryMoveLeft(1),
+      up: () => this.tryMoveRight(-1),
+      down: () => this.tryMoveRight(1),
+      secondaryLeft: () => this.tryMoveRight(-1),
+      secondaryRight: () => this.tryMoveRight(1),
+      action: () => this.tryLock(),
+    });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.bruteForce?.destroy();
@@ -703,6 +736,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
       notDoneLabel: 'still flailing',
       doneLabel: 'gave up',
       verbLabel: 'pair checks',
+      banter: GLITCH_BANTER.tr_2,
       depth: 40,
     });
   }
@@ -760,7 +794,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = POINTER_BRIDGE_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'riverside');
+    if (lesson) await showLessonCard(this, lesson, 'riverside', { dockPosition: 'top' });
     this.startRound(index);
   }
 
@@ -778,6 +812,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
       y: this.cameras.main.height / 2 + 36,
       tileSize: 54,
       gap: 8,
+      onTilePress: () => this.performPointerBridgeBoardStep(),
     });
     this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: this.leftIndex, side: 'top' });
     this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.rightIndex, side: 'top' });
@@ -901,6 +936,18 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     });
   }
 
+  private performPointerBridgeBoardStep(): void {
+    if (this.actionLocked) return;
+    const directive = pointerDirective(this.currentSum(), this.round.target);
+    if (directive === 'lock') {
+      this.tryLock();
+    } else if (directive === 'advance_left') {
+      this.tryMoveLeft(1);
+    } else {
+      this.tryMoveRight(-1);
+    }
+  }
+
   private flashWrong(message: string): void {
     this.mistakes++;
     JuiceSystem.cameraShake(this, 80, 0.002);
@@ -970,7 +1017,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG;
+    return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_ACTION_ARENA_BG;
   }
   protected getPuzzleFrameFillAlpha(): number {
     return 0;
@@ -1008,6 +1055,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
       notDoneLabel: 'still counting',
       doneLabel: 'gave up',
       verbLabel: 'window rescans',
+      banter: GLITCH_BANTER.tr_3,
       depth: 40,
     });
   }
@@ -1110,6 +1158,11 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     this.input.keyboard?.on('keydown-D', () => this.slide(1));
     this.input.keyboard?.on('keydown-SPACE', () => this.tryLock());
     this.input.keyboard?.on('keydown-ENTER', () => this.tryLock());
+    new GamepadActionBridge(this, {
+      left: () => this.slide(-1),
+      right: () => this.slide(1),
+      action: () => this.tryLock(),
+    });
 
     void this.beginRound(0);
   }
@@ -1117,7 +1170,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = FIXED_WINDOW_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'riverside');
+    if (lesson) await showLessonCard(this, lesson, 'riverside', { dockPosition: 'top' });
     this.startRound(index);
   }
 
@@ -1135,6 +1188,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
       y: this.cameras.main.height / 2 + 36,
       tileSize: 50,
       gap: 6,
+      onTilePress: (index) => this.performFixedWindowBoardStep(index),
     });
 
     if (this.isFeelItRound()) {
@@ -1248,6 +1302,19 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     });
   }
 
+  private performFixedWindowBoardStep(index: number): void {
+    if (this.actionLocked) return;
+    const left = this.windowStart;
+    const right = this.windowStart + this.round.windowSize - 1;
+    if (index < left) {
+      this.slide(-1);
+    } else if (index > right) {
+      this.slide(1);
+    } else {
+      this.tryLock();
+    }
+  }
+
   private completePuzzle(): void {
     // Tightened scoring: 3 stars only for a flawless run, and the optimal
     // window must be reached on the first lock per round (mistakes counts
@@ -1308,7 +1375,7 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG;
+    return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_ACTION_ARENA_BG;
   }
   protected getPuzzleFrameFillAlpha(): number {
     return 0;
@@ -1345,6 +1412,7 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
       notDoneLabel: 'still checking',
       doneLabel: 'gave up',
       verbLabel: 'substring checks',
+      banter: GLITCH_BANTER.tr_4,
       depth: 40,
     });
   }
@@ -1433,6 +1501,13 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     this.input.keyboard?.on('keydown-LEFT', () => this.shrinkLeft());
     this.input.keyboard?.on('keydown-SPACE', () => this.trySubmit());
     this.input.keyboard?.on('keydown-ENTER', () => this.trySubmit());
+    new GamepadActionBridge(this, {
+      left: () => this.shrinkLeft(),
+      right: () => this.extendRight(),
+      secondaryLeft: () => this.shrinkLeft(),
+      secondaryRight: () => this.extendRight(),
+      action: () => this.trySubmit(),
+    });
 
     void this.beginRound(0);
   }
@@ -1440,7 +1515,7 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = CURRENT_RIDER_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'riverside');
+    if (lesson) await showLessonCard(this, lesson, 'riverside', { dockPosition: 'top' });
     this.startRound(index);
   }
 
@@ -1459,6 +1534,7 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
       y: this.cameras.main.height / 2 + 36,
       tileSize: 48,
       gap: 6,
+      onTilePress: () => this.performCurrentRiderBoardStep(),
     });
     this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: 0, side: 'top' });
     this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: 0, side: 'bottom' });
@@ -1573,6 +1649,17 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     });
   }
 
+  private performCurrentRiderBoardStep(): void {
+    if (this.actionLocked) return;
+    if (this.row.markDuplicatesInWindow(this.leftIndex, this.rightIndex)) {
+      this.shrinkLeft();
+    } else if (this.rightIndex + 1 < this.round.letters.length) {
+      this.extendRight();
+    } else {
+      this.trySubmit();
+    }
+  }
+
   private completePuzzle(): void {
     // Tightened scoring: 3 stars requires a flawless run.
     const stars = this.mistakes === 0 && this.hintsUsed === 0 ? 3
@@ -1639,7 +1726,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_MIRROR_SERPENT_BG;
+    return VISUAL_REVAMP_KEYS.PUZZLE_TWIN_ACTION_ARENA_BG;
   }
   protected getPuzzleFrameFillAlpha(): number {
     return 0.03;
@@ -1673,6 +1760,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     super.create();
     new PuzzleAmbience(this, 'river', { intensity: 1.1 });
     const { width, height } = this.cameras.main;
+    this.instructionText.setVisible(false);
 
     // Boss entry banner — teal accent matches the river/water palette and
     // the Mirror Walker's mirrored-shore visual register. Fires immediately;
@@ -1690,15 +1778,15 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     // play area. The 3-segment S-curve mirrors the boss's own 3-phase
     // structure (reverse → twoSum → fixedWindow). Slow vertical hover +
     // very-slow horizontal drift simulates the serpent breathing.
-    const serpentFigure = this.add.image(width / 2, 110, VISUAL_REVAMP_KEYS.BOSS_MIRROR_SERPENT_FIGURE)
+    const serpentFigure = this.add.image(width / 2, 128, VISUAL_REVAMP_KEYS.BOSS_MIRROR_SERPENT_FIGURE)
       .setOrigin(0.5, 0.5)
-      .setScale(0.55)
-      .setAlpha(0.82)
+      .setScale(0.5)
+      .setAlpha(0.72)
       .setDepth(4)
       .setScrollFactor(0);
     this.tweens.add({
       targets: serpentFigure,
-      y: 104,
+      y: 120,
       duration: 2200,
       yoyo: true,
       repeat: -1,
@@ -1713,20 +1801,20 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       ease: 'Sine.easeInOut',
     });
 
-    this.serpentBanner = this.add.text(width / 2, 158, '', {
-      fontSize: '18px',
+    this.serpentBanner = this.add.text(width / 2, 160, '', {
+      fontSize: '13px',
       fontFamily: FONTS.RETRO,
       color: '#e0f8d0',
-      backgroundColor: '#1a1a3e',
-      padding: { x: 14, y: 8 },
+      backgroundColor: '#081820',
+      padding: { x: 10, y: 6 },
       stroke: '#06b6d4',
       strokeThickness: 2,
     }).setOrigin(0.5).setDepth(21);
 
-    this.statusText = this.createStatusReadout(width / 2, 196, { fontSize: 11 });
+    this.statusText = this.createStatusReadout(width / 2, 190, { fontSize: 11 });
 
-    this.detailText = this.add.text(width / 2, 232, '', {
-      fontSize: '14px',
+    this.detailText = this.add.text(width / 2, 224, '', {
+      fontSize: '11px',
       fontFamily: FONTS.RETRO,
       color: '#fbbf24',
       stroke: '#081820',
@@ -1743,7 +1831,9 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     // Teal accent — Mirror Serpent matches the water/river palette and the
     // boss figure's coiled-teal silhouette behind the play area.
     this.preview = new PuzzlePreviewSidePanel(this, {
-      side: 'right', yOffset: -8,
+      side: 'right', yOffset: 42,
+      width: 280,
+      height: 304,
       accentColor: 0x22d3ee, accentColorHex: '#22d3ee',
     });
     this.preview.setTitle('SERPENT PREVIEW');
@@ -1757,12 +1847,21 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.input.keyboard?.on('keydown-L', () => this.handleL());
     this.input.keyboard?.on('keydown-LEFT', () => this.handleA());
     this.input.keyboard?.on('keydown-RIGHT', () => this.handleD());
+    new GamepadActionBridge(this, {
+      left: () => this.handleA(),
+      right: () => this.handleD(),
+      up: () => this.handleJ(),
+      down: () => this.handleL(),
+      secondaryLeft: () => this.handleJ(),
+      secondaryRight: () => this.handleL(),
+      action: () => this.handleSpace(),
+    });
 
     this.startReversePhase();
   }
 
   private controlsHelpText(): string {
-    return 'phase 1 [SPACE] swap-step  -  phase 2 [D] raise L, [J] lower R, [ENTER] lock  -  phase 3 [<-][->] slide, [SPACE] lock';
+    return 'SPACE/ENTER act   A/D move L   J/L move R   arrows slide';
   }
 
   // ---- Phase 1: reverse ----
@@ -1776,9 +1875,9 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.reverseLeft = 0;
     this.reverseRight = this.reverseValues.length - 1;
 
-    this.serpentBanner.setText('PHASE I  -  REVERSE THE CURRENT');
-    this.statusText.setText('The serpent demands the river run backward.');
-    this.detailText.setText('two pointers - swap and converge');
+    this.serpentBanner.setText('PHASE I  -  REVERSE');
+    this.statusText.setText('Run the river backward.');
+    this.detailText.setText('swap the ends, then converge');
     this.cycleRow(this.reverseValues);
     this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: 0, side: 'top' });
     this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.reverseRight, side: 'top' });
@@ -1794,8 +1893,8 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.twoSumLeft = 0;
     this.twoSumRight = MIRROR_SERPENT_PHASES.twoSum.values.length - 1;
 
-    this.serpentBanner.setText('PHASE II  -  PAIR THE WARDS');
-    this.statusText.setText(`Find two stones that sum to ${MIRROR_SERPENT_PHASES.twoSum.target}.`);
+    this.serpentBanner.setText('PHASE II  -  PAIR');
+    this.statusText.setText(`Find a pair that sums to ${MIRROR_SERPENT_PHASES.twoSum.target}.`);
     this.cycleRow(MIRROR_SERPENT_PHASES.twoSum.values);
     this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: 0, side: 'top' });
     this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.twoSumRight, side: 'top' });
@@ -1811,7 +1910,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.windowOptimalStart = bestFixedWindowStart(round.values, round.windowSize);
     this.windowOptimalSum = windowSumAt(round.values, this.windowOptimalStart, round.windowSize);
 
-    this.serpentBanner.setText('PHASE III  -  RIDE THE FLOOD');
+    this.serpentBanner.setText('PHASE III  -  WINDOW');
     this.statusText.setText(`Lock the window of size ${round.windowSize} on its heaviest catch.`);
     this.cycleRow(round.values);
     this.refreshFixedWindowDetail();
@@ -1860,10 +1959,37 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       y: this.cameras.main.height / 2 + 64,
       tileSize: 50,
       gap: 8,
+      onTilePress: (index) => this.handleSerpentRowPress(index),
     });
   }
 
   // ---- Inputs ----
+
+  private handleSerpentRowPress(index: number): void {
+    if (this.actionLocked) return;
+
+    if (this.phase === 'reverse') {
+      void this.reverseStep();
+      return;
+    }
+
+    if (this.phase === 'twoSum') {
+      const directive = pointerDirective(this.currentTwoSum(), MIRROR_SERPENT_PHASES.twoSum.target);
+      if (directive === 'lock') this.tryLockTwoSum();
+      else if (directive === 'advance_left') this.advanceTwoSumLeft(1);
+      else this.retreatTwoSumRight(-1);
+      return;
+    }
+
+    if (this.phase === 'fixedWindow') {
+      const round = MIRROR_SERPENT_PHASES.fixedWindow;
+      const left = this.windowStart;
+      const right = left + round.windowSize - 1;
+      if (index < left) this.slideWindow(-1);
+      else if (index > right) this.slideWindow(1);
+      else this.tryLockFixedWindow();
+    }
+  }
 
   private handleSpace(): void {
     if (this.actionLocked) return;

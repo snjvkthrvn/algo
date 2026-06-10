@@ -14,7 +14,7 @@ export const LITANY_LABEL: Record<LitanyState, string> = {
   idle: '',
   intro: '',
   preparing: 'Ready \u2014 pulse incoming',
-  flowing: 'Click a fork to steer',
+  flowing: 'Steer the fork',
   cleared: 'Heard',
   outro: '',
 };

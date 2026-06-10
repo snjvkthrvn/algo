@@ -72,4 +72,41 @@ describe('first three regions quality guards', () => {
       expect(round.values.length).toBeLessThanOrEqual(9);
     }
   });
+
+  it('keeps row-based first-three puzzles directly playable from the board', () => {
+    const riverRow = readSource('src/ui/RiverRow.ts');
+    const twinRivers = readSource('src/scenes/puzzles/TwinRiversChoiceScenes.ts');
+    const shuffler = readSource('src/scenes/puzzles/Boss_Shuffler.ts');
+
+    expect(riverRow).toContain('onTilePress?:');
+    expect(riverRow).toContain("box.setData('puzzleCursorIgnore', true)");
+    expect(riverRow).toContain('emitTilePressPulse');
+    expect(riverRow).toContain('emitPuzzleActionPulse');
+
+    expect(twinRivers).toContain('performMirrorWalkBoardStep');
+    expect(twinRivers).toContain('performPointerBridgeBoardStep');
+    expect(twinRivers).toContain('performFixedWindowBoardStep');
+    expect(twinRivers).toContain('performCurrentRiderBoardStep');
+    expect(twinRivers).toContain('handleSerpentRowPress');
+
+    expect(shuffler).toContain('moveBossFocus');
+    expect(shuffler).toContain('activateBossFocus');
+    expect(shuffler).toContain('onTilePress');
+  });
+
+  it('keeps first-three puzzle actions tied into the shared kinetic arena layer', () => {
+    const basePuzzle = readSource('src/scenes/puzzles/BasePuzzleScene.ts');
+    const kinetics = readSource('src/ui/PuzzleKinetics.ts');
+    const juice = readSource('src/systems/JuiceSystem.ts');
+    const cursor = readSource('src/ui/PuzzleCursor.ts');
+
+    expect(basePuzzle).toContain('new PuzzleKinetics');
+    expect(basePuzzle).toContain('emitPuzzleActionPulse');
+    expect(basePuzzle).toContain('PUZZLE_ARRAY_ACTION_ARENA_BG');
+    expect(basePuzzle).toContain('PUZZLE_TWIN_ACTION_ARENA_BG');
+    expect(kinetics).toContain('spawnSignalBolt');
+    expect(kinetics).toContain('pulseCore');
+    expect(juice).toContain('emitPuzzlePulse');
+    expect(cursor).toContain('emitPuzzleActionPulse');
+  });
 });

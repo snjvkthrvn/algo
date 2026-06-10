@@ -126,15 +126,16 @@ export class PuzzlePreviewSidePanel {
       .setScrollFactor(0);
 
     // Divider between state and next-action
+    const dividerY = y + Math.round(panelHeight * 0.62);
     this.divider = scene.add
-      .rectangle(x + padX, y + panelHeight / 2 + 12, panelWidth - padX * 2, 1, COLORS.FRAME_BORDER_LIGHT, 0.8)
+      .rectangle(x + padX, dividerY, panelWidth - padX * 2, 1, COLORS.FRAME_BORDER_LIGHT, 0.8)
       .setOrigin(0, 0.5)
       .setDepth(depth + 1)
       .setScrollFactor(0);
 
     // Section 2: next action preview
     this.nextLabel = scene.add
-      .text(x + padX, y + panelHeight / 2 + 24, 'NEXT ACTION', {
+      .text(x + padX, dividerY + 12, 'NEXT ACTION', {
         fontSize: '8px',
         fontFamily: FONTS.RETRO,
         color: COLOR_HEX.CYAN_GLOW,
@@ -143,7 +144,7 @@ export class PuzzlePreviewSidePanel {
       .setScrollFactor(0);
 
     this.nextBody = scene.add
-      .text(x + padX, y + panelHeight / 2 + 44, '', {
+      .text(x + padX, dividerY + 32, '', {
         fontSize: '11px',
         fontFamily: FONTS.RETRO,
         color: bodyColor,

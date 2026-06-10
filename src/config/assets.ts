@@ -72,14 +72,14 @@ export const VISUAL_REVAMP_KEYS = {
   PROP_FLOATING_ORB: 'visual-revamp-prop-floating-orb',
   PROP_RUNE_TOTEM: 'visual-revamp-prop-rune-totem',
   PROP_ENERGY_BEAM: 'visual-revamp-prop-energy-beam',
-  PROP_CHICKEN: 'visual-revamp-prop-chicken',                    // 4-frame pecking
+  PROP_CHICKEN: 'visual-revamp-prop-chicken',                    // 8-frame pecking
   PROP_SCARECROW: 'visual-revamp-prop-scarecrow',
   PROP_HAY_BALE: 'visual-revamp-prop-hay-bale',
   PROP_WATERING_CAN: 'visual-revamp-prop-watering-can',
   PROP_SMALL_BOAT: 'visual-revamp-prop-small-boat',
-  PROP_LANTERN_POST: 'visual-revamp-prop-lantern-post',          // 3-frame flicker
+  PROP_LANTERN_POST: 'visual-revamp-prop-lantern-post',          // 6-frame flicker
   PROP_LILY_PAD_CLUSTER: 'visual-revamp-prop-lily-pad-cluster',
-  PROP_DRAGONFLY: 'visual-revamp-prop-dragonfly',                // 2-frame wings
+  PROP_DRAGONFLY: 'visual-revamp-prop-dragonfly',                // 6-frame wings
   // Speaker portraits (Phase 11) — 64x64 head-and-shoulders crops generated
   // by art_sources/generate_portraits.py from the existing character sprites.
   // DialogueBox.show() swaps PORTRAIT_FRAME texture based on speaker name.
@@ -127,6 +127,10 @@ export const VISUAL_REVAMP_KEYS = {
   // carved river-stone tablet (Twin Rivers) — rendered via Phaser NineSlice.
   LESSON_CARD_AP: 'visual-revamp-lesson-card-ap',
   LESSON_CARD_TR: 'visual-revamp-lesson-card-tr',
+  CODEX_ARTIFACT_BG: 'visual-revamp-codex-artifact-bg',
+  PUZZLE_PROLOGUE_ACTION_ARENA_BG: 'visual-revamp-puzzle-prologue-action-arena-bg',
+  PUZZLE_ARRAY_ACTION_ARENA_BG: 'visual-revamp-puzzle-array-action-arena-bg',
+  PUZZLE_TWIN_ACTION_ARENA_BG: 'visual-revamp-puzzle-twin-action-arena-bg',
   PUZZLE_RUNE_MEMORY_BG: 'visual-revamp-puzzle-rune-memory-bg',
   PUZZLE_FLOW_CONSOLES_BG: 'visual-revamp-puzzle-flow-consoles-bg',
   PUZZLE_LITANY_TRIAL_BG: 'visual-revamp-puzzle-litany-trial-bg',
@@ -190,19 +194,6 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.CONSOLE_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/console_keeper.png` },
   { key: VISUAL_REVAMP_KEYS.VILLAGE_ELDER, path: `${VISUAL_REVAMP_BASE}/characters/village_elder.png` },
   { key: VISUAL_REVAMP_KEYS.HASH_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/hash_keeper_v1.png` },
-  { key: VISUAL_REVAMP_KEYS.SORTING_FARMER, path: `${VISUAL_REVAMP_BASE}/characters/sorting_farmer.png` },
-  { key: VISUAL_REVAMP_KEYS.BASKET_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/basket_keeper.png` },
-  { key: VISUAL_REVAMP_KEYS.CROP_SORTER, path: `${VISUAL_REVAMP_BASE}/characters/crop_sorter.png` },
-  { key: VISUAL_REVAMP_KEYS.TILE_WORKER, path: `${VISUAL_REVAMP_BASE}/characters/tile_worker.png` },
-  { key: VISUAL_REVAMP_KEYS.MIRROR_WALKER, path: `${VISUAL_REVAMP_BASE}/characters/mirror_walker_v2.png` },
-  { key: VISUAL_REVAMP_KEYS.BRIDGE_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/bridge_keeper_v2.png` },
-  { key: VISUAL_REVAMP_KEYS.WINDOW_FISHER, path: `${VISUAL_REVAMP_BASE}/characters/window_fisher_v2.png` },
-  { key: VISUAL_REVAMP_KEYS.CURRENT_RIDER, path: `${VISUAL_REVAMP_BASE}/characters/current_rider_v2.png` },
-  { key: VISUAL_REVAMP_KEYS.GLITCH, path: `${VISUAL_REVAMP_BASE}/characters/glitch.png` },
-  { key: VISUAL_REVAMP_KEYS.WATCHER, path: `${VISUAL_REVAMP_BASE}/characters/watcher.png` },
-  { key: VISUAL_REVAMP_KEYS.BIT_SPARK, path: `${VISUAL_REVAMP_BASE}/characters/bit_spark.png` },
-  { key: VISUAL_REVAMP_KEYS.BIT_BYTE, path: `${VISUAL_REVAMP_BASE}/characters/bit_byte.png` },
-  { key: VISUAL_REVAMP_KEYS.BIT_FRAME, path: `${VISUAL_REVAMP_BASE}/characters/bit_frame.png` },
   { key: VISUAL_REVAMP_KEYS.PORTAL_VOID, path: `${VISUAL_REVAMP_BASE}/objects/portals/void.png` },
   { key: VISUAL_REVAMP_KEYS.PORTAL_FIELD, path: `${VISUAL_REVAMP_BASE}/objects/portals/field.png` },
   { key: VISUAL_REVAMP_KEYS.PORTAL_WATER, path: `${VISUAL_REVAMP_BASE}/objects/portals/water.png` },
@@ -265,9 +256,13 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PUZZLE_FRAME, path: `${VISUAL_REVAMP_BASE}/ui/puzzle_encounter_frame_v2.png` },
   { key: VISUAL_REVAMP_KEYS.LESSON_CARD_AP, path: `${VISUAL_REVAMP_BASE}/ui/lesson_card_ap_wood_v1.png` },
   { key: VISUAL_REVAMP_KEYS.LESSON_CARD_TR, path: `${VISUAL_REVAMP_BASE}/ui/lesson_card_tr_stone_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG, path: `${VISUAL_REVAMP_BASE}/ui/codex_artifact_bg_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/action_arena_prologue_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/action_arena_array_plains_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.PUZZLE_TWIN_ACTION_ARENA_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/action_arena_twin_rivers_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/rune_memory_backdrop_v1.png` },
-  { key: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/flow_consoles_backdrop_v2.png` },
-  { key: VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/litany_trial_backdrop_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/flow_consoles_backdrop_v4.png` },
+  { key: VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/litany_trial_backdrop_v2.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_SORTING_SHED_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/sorting_shed_backdrop_v2.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_INDEXING_BARN_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/indexing_barn_backdrop_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PUZZLE_GRAIN_HOPPER_BG, path: `${VISUAL_REVAMP_BASE}/puzzles/grain_hopper_backdrop_v1.png` },
@@ -428,7 +423,7 @@ export const PROLOGUE_SHEET_KEYS = {
 
 export const PROLOGUE_SHEET_SPRITE_ASSETS: AssetEntry[] = [
   { key: PROLOGUE_SHEET_KEYS.ROUTE_TILESET, path: `${SHEET_BASE}/environment/prologue_route_tileset_v3.png`, frameWidth: 32, frameHeight: 32 },
-  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_smooth_v7.png`, frameWidth: 256, frameHeight: 256 },
+  { key: PROLOGUE_SHEET_KEYS.PLAYER, path: `${SHEET_BASE}/characters/imagegen_player_walk_smooth_v9.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.NPCS, path: `${SHEET_BASE}/characters/imagegen_npc_idle.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.COMPANIONS, path: `${SHEET_BASE}/characters/companion_sheet.png`, frameWidth: 256, frameHeight: 256 },
   { key: PROLOGUE_SHEET_KEYS.OBJECTS, path: `${SHEET_BASE}/objects/object_sheet.png`, frameWidth: 256, frameHeight: 256 },
@@ -459,6 +454,34 @@ export const REGION_PROP_SPRITE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.PROP_DRAGONFLY, path: `${VISUAL_REVAMP_BASE}/props/twin_rivers/dragonfly.png`, frameWidth: 24, frameHeight: 16 },
 ];
 
+export const OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS: AssetEntry[] = [
+  { key: VISUAL_REVAMP_KEYS.GLITCH, path: `${VISUAL_REVAMP_BASE}/characters/glitch_idle_v1.png`, frameWidth: 128, frameHeight: 128 },
+  { key: VISUAL_REVAMP_KEYS.WATCHER, path: `${VISUAL_REVAMP_BASE}/characters/watcher_idle_v1.png`, frameWidth: 128, frameHeight: 160 },
+  { key: VISUAL_REVAMP_KEYS.BIT_SPARK, path: `${VISUAL_REVAMP_BASE}/characters/bit_spark_idle_v1.png`, frameWidth: 96, frameHeight: 96 },
+  { key: VISUAL_REVAMP_KEYS.BIT_BYTE, path: `${VISUAL_REVAMP_BASE}/characters/bit_byte_idle_v1.png`, frameWidth: 96, frameHeight: 96 },
+  { key: VISUAL_REVAMP_KEYS.BIT_FRAME, path: `${VISUAL_REVAMP_BASE}/characters/bit_frame_idle_v1.png`, frameWidth: 96, frameHeight: 96 },
+];
+
+export const ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS: AssetEntry[] = [
+  { key: VISUAL_REVAMP_KEYS.SORTING_FARMER, path: `${VISUAL_REVAMP_BASE}/characters/sorting_farmer_idle_v1.png`, frameWidth: 192, frameHeight: 192 },
+  { key: VISUAL_REVAMP_KEYS.BASKET_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/basket_keeper_idle_v1.png`, frameWidth: 192, frameHeight: 192 },
+  { key: VISUAL_REVAMP_KEYS.CROP_SORTER, path: `${VISUAL_REVAMP_BASE}/characters/crop_sorter_idle_v1.png`, frameWidth: 192, frameHeight: 192 },
+  { key: VISUAL_REVAMP_KEYS.TILE_WORKER, path: `${VISUAL_REVAMP_BASE}/characters/tile_worker_idle_v1.png`, frameWidth: 192, frameHeight: 192 },
+];
+
+export const TWIN_RIVERS_CHARACTER_SPRITE_ASSETS: AssetEntry[] = [
+  { key: VISUAL_REVAMP_KEYS.MIRROR_WALKER, path: `${VISUAL_REVAMP_BASE}/characters/mirror_walker_idle_v1.png`, frameWidth: 192, frameHeight: 192 },
+  { key: VISUAL_REVAMP_KEYS.BRIDGE_KEEPER, path: `${VISUAL_REVAMP_BASE}/characters/bridge_keeper_idle_v1.png`, frameWidth: 192, frameHeight: 192 },
+  { key: VISUAL_REVAMP_KEYS.WINDOW_FISHER, path: `${VISUAL_REVAMP_BASE}/characters/window_fisher_idle_v1.png`, frameWidth: 192, frameHeight: 192 },
+  { key: VISUAL_REVAMP_KEYS.CURRENT_RIDER, path: `${VISUAL_REVAMP_BASE}/characters/current_rider_idle_v1.png`, frameWidth: 192, frameHeight: 192 },
+];
+
+export const OVERWORLD_CHARACTER_SPRITE_ASSETS: AssetEntry[] = [
+  ...OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS,
+  ...ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS,
+  ...TWIN_RIVERS_CHARACTER_SPRITE_ASSETS,
+];
+
 /** Per-region animated-prop preload bundles. Keep in sync with PLACEMENTS in src/ui/RegionProps.ts. */
 const PROLOGUE_PROP_SPRITE_KEYS = new Set<string>([
   VISUAL_REVAMP_KEYS.PROP_RUNE_CRYSTAL,
@@ -478,6 +501,15 @@ export const ARRAY_PLAINS_PROP_SPRITE_ASSETS: AssetEntry[] =
 export const TWIN_RIVERS_PROP_SPRITE_ASSETS: AssetEntry[] =
   REGION_PROP_SPRITE_ASSETS.filter((asset) => TWIN_RIVERS_PROP_SPRITE_KEYS.has(asset.key));
 
+export const ARRAY_PLAINS_SCENE_SPRITE_ASSETS: AssetEntry[] = [
+  ...ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS,
+  ...ARRAY_PLAINS_PROP_SPRITE_ASSETS,
+];
+export const TWIN_RIVERS_SCENE_SPRITE_ASSETS: AssetEntry[] = [
+  ...TWIN_RIVERS_CHARACTER_SPRITE_ASSETS,
+  ...TWIN_RIVERS_PROP_SPRITE_ASSETS,
+];
+
 const LEGACY_PROLOGUE_TILESET_ASSET: AssetEntry = {
   key: 'prologue-tileset',
   path: `${BASE}/tileset/sheet.png`,
@@ -496,6 +528,7 @@ export const SPRITE_ASSETS: AssetEntry[] = [
   { key: 'prologue-p01-tiles', path: `${BASE}/p01-tiles/sheet.png`, frameWidth: 704, frameHeight: 512 },
   { key: 'prologue-atmosphere', path: `${BASE}/atmosphere/sheet.png`, frameWidth: 313, frameHeight: 384 },
   ...PROLOGUE_SHEET_SPRITE_ASSETS,
+  ...OVERWORLD_CHARACTER_SPRITE_ASSETS,
   ...REGION_PROP_SPRITE_ASSETS,
 ];
 
@@ -511,6 +544,7 @@ export const PROLOGUE_SCENE_SPRITE_ASSETS: AssetEntry[] = [
   ...PROLOGUE_SHEET_SPRITE_ASSETS.filter((asset) => PROLOGUE_SCENE_SPRITE_KEYS.has(asset.key)),
   // Region prop sprite-sheets needed by placeRegionProps('prologue').
   ...PROLOGUE_PROP_SPRITE_ASSETS,
+  ...OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS,
 ];
 
 export const OVERWORLD_PLAYER_SPRITE_ASSETS: AssetEntry[] = PROLOGUE_SHEET_SPRITE_ASSETS.filter(

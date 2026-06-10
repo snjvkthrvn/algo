@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   IMAGE_ASSETS,
   BOOT_IMAGE_ASSETS,
@@ -6,6 +8,11 @@ import {
   PROLOGUE_SCENE_IMAGE_ASSETS,
   PROLOGUE_SCENE_SPRITE_ASSETS,
   OVERWORLD_PLAYER_SPRITE_ASSETS,
+  OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS,
+  ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS,
+  TWIN_RIVERS_CHARACTER_SPRITE_ASSETS,
+  ARRAY_PLAINS_SCENE_SPRITE_ASSETS,
+  TWIN_RIVERS_SCENE_SPRITE_ASSETS,
   ARRAY_PLAINS_SCENE_IMAGE_ASSETS,
   TWIN_RIVERS_SCENE_IMAGE_ASSETS,
   ARRAY_PLAINS_IMAGE_ASSETS,
@@ -114,8 +121,52 @@ describe('prologue spritesheet manifest', () => {
   it('uses imagegen-derived field sheets for the playable prologue cast', () => {
     const sheets = new Map(PROLOGUE_SHEET_SPRITE_ASSETS.map((asset) => [asset.key, asset.path]));
 
-    expect(sheets.get(PROLOGUE_SHEET_KEYS.PLAYER)).toBe('assets/prologue_sheets/characters/imagegen_player_walk_smooth_v7.png');
+    expect(sheets.get(PROLOGUE_SHEET_KEYS.PLAYER)).toBe('assets/prologue_sheets/characters/imagegen_player_walk_smooth_v9.png');
     expect(sheets.get(PROLOGUE_SHEET_KEYS.NPCS)).toBe('assets/prologue_sheets/characters/imagegen_npc_idle.png');
+  });
+
+  it('keeps the regenerated player movement sheet on the Phaser frame grid', () => {
+    const sheet = PROLOGUE_SHEET_SPRITE_ASSETS.find((asset) => asset.key === PROLOGUE_SHEET_KEYS.PLAYER);
+    expect(sheet).toBeDefined();
+
+    const bytes = readFileSync(join(process.cwd(), 'public', sheet!.path));
+    expect(bytes.readUInt32BE(16)).toBe(2048);
+    expect(bytes.readUInt32BE(20)).toBe(1024);
+    expect(bytes.length).toBeGreaterThan(25);
+
+    // PNG color type 6 means RGBA; the movement sheet needs alpha because the
+    // frames are drawn directly over painted overworld backgrounds.
+    expect(bytes[25]).toBe(6);
+  });
+
+  it('registers imagegen-derived first-three overworld actor sheets with measured frames', () => {
+    const shared = new Map(OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS.map((asset) => [asset.key, asset]));
+    expect(shared.get(VISUAL_REVAMP_KEYS.GLITCH)).toMatchObject({
+      path: 'assets/visual_revamp/characters/glitch_idle_v1.png',
+      frameWidth: 128,
+      frameHeight: 128,
+    });
+    expect(shared.get(VISUAL_REVAMP_KEYS.WATCHER)).toMatchObject({
+      path: 'assets/visual_revamp/characters/watcher_idle_v1.png',
+      frameWidth: 128,
+      frameHeight: 160,
+    });
+    expect(shared.get(VISUAL_REVAMP_KEYS.BIT_SPARK)).toMatchObject({
+      path: 'assets/visual_revamp/characters/bit_spark_idle_v1.png',
+      frameWidth: 96,
+      frameHeight: 96,
+    });
+
+    for (const asset of ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS) {
+      expect(asset.path).toMatch(/^assets\/visual_revamp\/characters\/.+_idle_v1\.png$/);
+      expect(asset.frameWidth).toBe(192);
+      expect(asset.frameHeight).toBe(192);
+    }
+    for (const asset of TWIN_RIVERS_CHARACTER_SPRITE_ASSETS) {
+      expect(asset.path).toMatch(/^assets\/visual_revamp\/characters\/.+_idle_v1\.png$/);
+      expect(asset.frameWidth).toBe(192);
+      expect(asset.frameHeight).toBe(192);
+    }
   });
 
   it('includes prologue sheets in the global spritesheet preload list', () => {
@@ -218,9 +269,23 @@ describe('visual revamp asset manifest', () => {
   it('uses regenerated imagegen backdrops for the prologue arcade puzzle suite', () => {
     const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
 
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)).toBe('assets/visual_revamp/puzzles/action_arena_prologue_v1.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_RUNE_MEMORY_BG)).toBe('assets/visual_revamp/puzzles/rune_memory_backdrop_v1.png');
-    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG)).toBe('assets/visual_revamp/puzzles/flow_consoles_backdrop_v2.png');
-    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG)).toBe('assets/visual_revamp/puzzles/litany_trial_backdrop_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_FLOW_CONSOLES_BG)).toBe('assets/visual_revamp/puzzles/flow_consoles_backdrop_v4.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_LITANY_TRIAL_BG)).toBe('assets/visual_revamp/puzzles/litany_trial_backdrop_v2.png');
+  });
+
+  it('registers cohesive action arenas for Array Plains and Twin Rivers puzzles', () => {
+    const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
+
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG)).toBe('assets/visual_revamp/puzzles/action_arena_array_plains_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.PUZZLE_TWIN_ACTION_ARENA_BG)).toBe('assets/visual_revamp/puzzles/action_arena_twin_rivers_v1.png');
+  });
+
+  it('uses an imagegen artifact background for the Codex overlay', () => {
+    const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
+
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG)).toBe('assets/visual_revamp/ui/codex_artifact_bg_v1.png');
   });
 
   it('registers the full-region visual asset set', () => {
@@ -271,7 +336,9 @@ describe('visual revamp asset manifest', () => {
     const prologueSpriteKeys = new Set(PROLOGUE_SCENE_SPRITE_ASSETS.map((asset) => asset.key));
     const playerSpriteKeys = new Set(OVERWORLD_PLAYER_SPRITE_ASSETS.map((asset) => asset.key));
     const arrayKeys = new Set(ARRAY_PLAINS_SCENE_IMAGE_ASSETS.map((asset) => asset.key));
+    const arraySpriteKeys = new Set(ARRAY_PLAINS_SCENE_SPRITE_ASSETS.map((asset) => asset.key));
     const twinKeys = new Set(TWIN_RIVERS_SCENE_IMAGE_ASSETS.map((asset) => asset.key));
+    const twinSpriteKeys = new Set(TWIN_RIVERS_SCENE_SPRITE_ASSETS.map((asset) => asset.key));
 
     expect(prologueImageKeys.has(VISUAL_REVAMP_KEYS.PROLOGUE_BG)).toBe(true);
     expect(prologueImageKeys.has(VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED)).toBe(true);
@@ -279,10 +346,18 @@ describe('visual revamp asset manifest', () => {
     expect(prologueSpriteKeys.has(PROLOGUE_SHEET_KEYS.PLAYER)).toBe(true);
     expect(prologueSpriteKeys.has(PROLOGUE_SHEET_KEYS.COMPANIONS)).toBe(true);
     expect(prologueSpriteKeys.has(PROLOGUE_SHEET_KEYS.NPCS)).toBe(false);
+    expect(prologueSpriteKeys.has(VISUAL_REVAMP_KEYS.BIT_SPARK)).toBe(true);
+    expect(prologueSpriteKeys.has(VISUAL_REVAMP_KEYS.WATCHER)).toBe(true);
     expect(playerSpriteKeys).toEqual(new Set([PROLOGUE_SHEET_KEYS.PLAYER]));
     expect(arrayKeys.has(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe(true);
+    expect(arrayKeys.has(VISUAL_REVAMP_KEYS.SORTING_FARMER)).toBe(false);
+    expect(arraySpriteKeys.has(VISUAL_REVAMP_KEYS.SORTING_FARMER)).toBe(true);
+    expect(arraySpriteKeys.has(VISUAL_REVAMP_KEYS.PROP_CHICKEN)).toBe(true);
     expect(arrayKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_SHUFFLER_DOMAIN_BG)).toBe(false);
     expect(twinKeys.has(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe(true);
+    expect(twinKeys.has(VISUAL_REVAMP_KEYS.MIRROR_WALKER)).toBe(false);
+    expect(twinSpriteKeys.has(VISUAL_REVAMP_KEYS.MIRROR_WALKER)).toBe(true);
+    expect(twinSpriteKeys.has(VISUAL_REVAMP_KEYS.PROP_DRAGONFLY)).toBe(true);
     expect(twinKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_MIRROR_SERPENT_BG)).toBe(false);
   });
 });

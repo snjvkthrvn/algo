@@ -97,8 +97,11 @@ describe('InteractionPrompt', () => {
     // of truth for how far above themselves the prompt should float.
     expect(containers[0].x).toBe(900);
     expect(containers[0].y).toBe(385);
+    // drawPanel draws the body fill and frame border from fillRects only (the
+    // border is four fillRect edges, not a strokeRect) for pixel-crisp chrome.
     expect(graphicsCalls).toContain('fillRect');
-    expect(graphicsCalls).toContain('strokeRect');
+    expect(graphicsCalls).not.toContain('strokeRect');
+    expect(graphicsCalls.filter((call) => call === 'fillRect').length).toBeGreaterThanOrEqual(5);
     expect(tweenTargets[0]).not.toBe(containers[0]);
     expect(containers[0].children).toContain(tweenTargets[0]);
   });

@@ -46,6 +46,9 @@ These improvements bring the later regions up to the intended "live execution" f
 - Clear "what just happened" + "why it matters" on every answer.
 - Entrance/Exit animations feel intentional (not abrupt).
 - All puzzles pass visual regression at high quality.
+- First-three-region puzzles must feel like action-room gameplay, not form UI: direct board interaction, keyboard/mouse/gamepad parity, smooth object motion, and arena-wide feedback connected through `PuzzleKinetics`.
+- First-three puzzle backdrops are now cohesive imagegen-generated rooms (`action_arena_prologue_v1.png`, `action_arena_array_plains_v1.png`, `action_arena_twin_rivers_v1.png`) registered through `VISUAL_REVAMP_KEYS`. Future art replacements must be copied into `public/assets/visual_revamp/...` and registered in `src/config/assets.ts`.
+- Algorithm teaching must be mechanical first: swaps, pointers, sliding windows, hashing, and boss phases should move in-world pieces and emit causal feedback from the interacted object to the room core. Text can explain, but it cannot carry the mechanic alone.
 
 ---
 

@@ -81,7 +81,19 @@ Game Boy 4-color palette with pixel-art rendering (all assets loaded with `pixel
 - All UI panel chrome goes through `drawPanel()` (`src/ui/panel.ts`) so borders stay 1-pixel sharp.
 - Positions must snap to 8-pixel grid for crisp rendering.
 
+### First three regions production bar
+
+The first three regions (Prologue, Array Plains, Twin Rivers) must play like top-down action-room encounters, not passive forms or quiz cards. Every puzzle needs keyboard, mouse, and gamepad play, smooth movement/selection, clear spatial rules, and immediate cause/effect animation from input to board state to feedback.
+
+- Use `VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG`, `PUZZLE_ARRAY_ACTION_ARENA_BG`, and `PUZZLE_TWIN_ACTION_ARENA_BG` for first-three puzzle rooms unless intentionally replacing them with better project-bound art.
+- Use `$imagegen`/the imagegen skill for new raster room assets, then copy the output into `public/assets/visual_revamp/...` and register it in `src/config/assets.ts`. Never leave a game-referenced asset only under `$CODEX_HOME/generated_images`.
+- Preserve `PuzzleKinetics`, `BasePuzzleScene.emitPuzzleActionPulse`, and the `JuiceSystem` pulse hook so actions visibly travel through the room instead of appearing as disconnected UI flashes.
+- Direct board interaction is required. Row, tile, and object puzzles should respond to pointer, keyboard, and gamepad controls; `RiverRow.onTilePress`, `PuzzleCursor`, and `GamepadActionBridge` are the current patterns.
+- Algorithm concepts should be embodied as mechanics: swaps move physical objects, pointers walk, windows slide, hashes route to buckets, and failures visibly rebound or misroute. Do not solve this by adding explanatory text alone.
+
 ### Key systems
+
+- **`PuzzleKinetics`** (`src/ui/PuzzleKinetics.ts`) - shared action-room rail/core feedback for first-three puzzle rooms. `JuiceSystem.correctBurst`/`wrongBurst`, `PuzzleCursor`, and `RiverRow` feed into it when a scene exposes `emitPuzzleActionPulse`.
 
 - **`JuiceSystem`** (`src/systems/JuiceSystem.ts`) — stateless particle/feedback utilities. Call from any scene: `JuiceSystem.correctBurst`, `wrongBurst`, `screenFlash`, `cameraShake`, etc.
 - **`TransitionManager`** (`src/core/TransitionManager.ts`) — scene transitions: `swirl`, `fade`, `flash`, `pixelDissolve`. Use `pixelDissolve` to exit a puzzle back to overworld.

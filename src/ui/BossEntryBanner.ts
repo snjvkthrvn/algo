@@ -67,14 +67,14 @@ export function playBossEntryBanner(
       .setOrigin(0)
       .setDepth(9985)
       .setScrollFactor(0);
-    scene.tweens.add({ targets: scrim, alpha: 0.55, duration: 280, ease: 'Sine.easeOut' });
+    scene.tweens.add({ targets: scrim, alpha: 0.38, duration: 140, ease: 'Sine.easeOut' });
   }
 
   // Banner card — wide horizontal panel that descends from above.
-  const cardW = Math.min(width - 60, 720);
-  const cardH = 168;
+  const cardW = Math.min(width - 160, 640);
+  const cardH = 132;
   const cardX = width / 2 - cardW / 2;
-  const cardYFinal = height / 2 - cardH / 2;
+  const cardYFinal = height / 2 - cardH / 2 - 12;
   const cardYStart = reduceMotion ? cardYFinal : -cardH - 20;
 
   const container = scene.add.container(0, cardYStart)
@@ -105,18 +105,18 @@ export function playBossEntryBanner(
   // as a category tag rather than a name.
   const eyebrow = scene.add
     .text(width / 2, 22, 'BOSS  BATTLE', {
-      fontSize: '11px',
+      fontSize: '9px',
       fontFamily: FONTS.RETRO,
       color: '#fca5a5',
-      letterSpacing: 6,
+      letterSpacing: 4,
     })
     .setOrigin(0.5, 0);
   container.add(eyebrow);
 
   // Boss name — large mythic letters, owns the centre of the card.
   const nameLine = scene.add
-    .text(width / 2, 48, options.bossName, {
-      fontSize: '30px',
+    .text(width / 2, 42, options.bossName, {
+      fontSize: '24px',
       fontFamily: FONTS.RETRO,
       color: '#f8f8f6',
       stroke: '#0a0a1a',
@@ -127,8 +127,8 @@ export function playBossEntryBanner(
 
   // Region tag — small line below name to ground the boss in its region.
   const regionLine = scene.add
-    .text(width / 2, 100, options.regionTag.toUpperCase(), {
-      fontSize: '10px',
+    .text(width / 2, 82, options.regionTag.toUpperCase(), {
+      fontSize: '8px',
       fontFamily: FONTS.RETRO,
       color: '#88c070',
       letterSpacing: 3,
@@ -139,8 +139,8 @@ export function playBossEntryBanner(
   // Optional thesis — one-line description of what the boss tests.
   if (options.thesis) {
     const thesisLine = scene.add
-      .text(width / 2, 126, options.thesis, {
-        fontSize: '11px',
+      .text(width / 2, 104, options.thesis, {
+        fontSize: '9px',
         fontFamily: FONTS.RETRO,
         color: '#7ffcff',
         align: 'center',
@@ -164,9 +164,9 @@ export function playBossEntryBanner(
   // Total duration calibration:
   //   slide-in (520ms) + hold (1800ms) + slide-out (480ms) = ~2.8s
   //   reduceMotion: fade-in (260ms) + hold (900ms) + fade-out (260ms) = ~1.4s
-  const slideInMs = reduceMotion ? 260 : 520;
-  const holdMs = reduceMotion ? 900 : 1800;
-  const slideOutMs = reduceMotion ? 260 : 480;
+  const slideInMs = reduceMotion ? 120 : 180;
+  const holdMs = reduceMotion ? 180 : 260;
+  const slideOutMs = reduceMotion ? 120 : 180;
 
   scene.tweens.add({
     targets: container,
@@ -188,7 +188,7 @@ export function playBossEntryBanner(
               scene.tweens.add({
                 targets: scrim,
                 alpha: 0,
-                duration: 240,
+                duration: 140,
                 onComplete: () => scrim?.destroy(),
               });
             }

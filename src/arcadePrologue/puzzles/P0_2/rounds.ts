@@ -42,7 +42,7 @@ const round1: FlowRound = {
   // arc from the cold open. The forks were left scrambled when Glitch
   // tried to brute-force the consoles.
   principle: 'Glitch slammed every fork open. The pulse cannot find its way home.',
-  teach: 'Click the fork to rotate where the signal flows. Send the pulse to the sink.',
+  teach: 'Steer toward the live fork as the signal arrives. Send the pulse to the sink.',
   field: [A1, B1, C1, D1, E1],
   source: A1,
   sink: D1,

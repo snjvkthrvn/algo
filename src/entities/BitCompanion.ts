@@ -56,7 +56,7 @@ export class BitCompanion {
   private scene: Phaser.Scene;
   private container: Phaser.GameObjects.Container;
   private dots: ParticleDot[] = [];
-  private sparkImage: Phaser.GameObjects.Image | null = null;
+  private sparkImage: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | null = null;
   private orbitAngle: number = 0;
   private currentX: number;
   private currentY: number;
@@ -139,8 +139,8 @@ export class BitCompanion {
 
     const color = STAGE_COLORS[this.stage];
     const offsets = this.getStageOffsets(this.stage);
-    this.sparkImage = this.scene.add
-      .image(0, 0, this.getStageImageKey(this.stage))
+    const stageImageKey = this.getStageImageKey(this.stage);
+    this.sparkImage = this.createStageSprite(stageImageKey)
       .setDisplaySize(...this.getStageDisplaySize(this.stage))
       .setAlpha(0.98);
     this.container.add(this.sparkImage);
@@ -174,6 +174,32 @@ export class BitCompanion {
     if (stage === BitStage.SPARK) return VISUAL_REVAMP_KEYS.BIT_SPARK;
     if (stage === BitStage.BYTE) return VISUAL_REVAMP_KEYS.BIT_BYTE;
     return VISUAL_REVAMP_KEYS.BIT_FRAME;
+  }
+
+  private createStageSprite(textureKey: string): Phaser.GameObjects.Image | Phaser.GameObjects.Sprite {
+    const frameCount = this.getLoadedFrameCount(textureKey);
+    if (frameCount <= 1) return this.scene.add.image(0, 0, textureKey);
+
+    const sprite = this.scene.add.sprite(0, 0, textureKey, 0);
+    if (!gameState.getSettings().reduceMotion) {
+      const animKey = `${textureKey}-bit-idle`;
+      if (!this.scene.anims.exists(animKey)) {
+        this.scene.anims.create({
+          key: animKey,
+          frames: this.scene.anims.generateFrameNumbers(textureKey, { start: 0, end: frameCount - 1 }),
+          frameRate: 8,
+          repeat: -1,
+        });
+      }
+      sprite.anims.play(animKey);
+    }
+    return sprite;
+  }
+
+  private getLoadedFrameCount(textureKey: string): number {
+    const texture = this.scene.textures.get(textureKey);
+    if (!texture || texture.key === '__MISSING') return 0;
+    return Math.max(0, texture.frameTotal - 1);
   }
 
   private getStageDisplaySize(stage: BitStage): [number, number] {

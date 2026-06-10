@@ -38,6 +38,7 @@ import {
 import { buildHashRoutingPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
+import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
 import { PuzzlePhase } from '../../data/types';
 
 /** Bucket fill colours used for chip backgrounds — one per crop family. */
@@ -148,7 +149,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
   }
 
   protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG;
+    return VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG;
   }
   protected getPuzzleFrameFillAlpha(): number {
     return 0;
@@ -318,7 +319,12 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       ? `${round.label}  ·  expect collisions — two keys can hash to one bucket`
       : `${round.label}  ·  ${round.stream.length} crops at speed`;
 
-    await showLessonCard(this, round.lesson, 'parchment');
+    await showLessonCard(this, round.lesson, 'parchment', {
+      dockPosition: 'top',
+      width: 760,
+      height: 168,
+      autoDismissMs: 5000,
+    });
 
     await showRoundBanner(this, {
       label: `ROUND ${idx + 1} / ${total}`,
@@ -353,6 +359,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       notDoneLabel: 'still fumbling',
       doneLabel: 'gave up',
       verbLabel: 'misroutes',
+      banter: GLITCH_BANTER.ap_3,
       depth: 40,
     });
   }
