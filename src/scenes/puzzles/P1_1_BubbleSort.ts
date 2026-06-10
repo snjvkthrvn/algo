@@ -52,6 +52,7 @@ import { buildBubbleSortPreview } from '../../data/puzzles/puzzlePreviewLogic';
 import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
 import { PuzzlePhase } from '../../data/types';
+import { PuzzleRoom } from '../../puzzleRooms/PuzzleRoom';
 
 interface SortTile {
   value: number;
@@ -120,6 +121,14 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
    *  the algorithm (no "swap neighbours" / "sort"). */
   private affordancePrompt: Phaser.GameObjects.Text | null = null;
   private affordanceFaded = false;
+  /** The embodiment layer (docs/VISION.md §2): the player character walks the
+   *  soil lane below the furrow row; the pair they stand between is the
+   *  focus pair, and the act input swaps it. */
+  private room: PuzzleRoom | null = null;
+  /** Left index of the pair the player currently stands between (-1 = none). */
+  private playerGapIndex = -1;
+  /** Ground marker under the player-focused gap. */
+  private gapMarker: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_1 });
@@ -137,6 +146,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     const propKeys = [
       VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE,
       VISUAL_REVAMP_KEYS.AP_CORRUPTED_CRATE,
+      VISUAL_REVAMP_KEYS.SORTING_FARMER,
     ];
     for (const key of propKeys) {
       const path = getImageAssetPath(key);
@@ -144,6 +154,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
         this.load.image(key, path);
       }
     }
+    PuzzleRoom.preload(this);
   }
 
   create(): void {
@@ -171,6 +182,8 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     // mountUseItPanels(). FEEL_IT mounts a BruteForceActor instead.
     new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40 });
 
+    this.mountRoom();
+
     this.startRound(0).catch(() => undefined);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -182,13 +195,139 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       this.bruteForce = null;
       this.affordancePrompt?.destroy();
       this.affordancePrompt = null;
+      this.gapMarker?.destroy();
+      this.gapMarker = null;
     });
 
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       if (this.isResolving || this.actionLocked) return;
       const left = numberKeyToIndex(event.key, this.values.length - 1);
-      if (left !== null) this.trySwap(left);
+      // Number keys stay as an accessibility shortcut, but they move the
+      // body too — the player dashes to the gap and the swap lands on
+      // arrival, so the embodiment never desyncs from the row state.
+      if (left !== null) this.walkToGapAndSwap(left);
     });
+  }
+
+  /**
+   * The walkable layer: a soil lane directly below the furrow row. The same
+   * overworld Player walks in here; standing between two furrows focuses
+   * that pair, and SPACE / gamepad A / a click on open floor swaps it.
+   */
+  private mountRoom(): void {
+    const { width, height } = this.cameras.main;
+    const laneTop = this.rowY + TILE_H / 2 + 26;
+    this.room = new PuzzleRoom(this, {
+      bounds: { x: 96, y: laneTop, width: width - 192, height: 110 },
+      spawn: { x: width / 2 - 220, y: laneTop + 52 },
+      onAct: () => {
+        if (this.playerGapIndex >= 0) this.trySwap(this.playerGapIndex);
+      },
+      onStep: () => this.refreshPlayerGapFocus(),
+    });
+    this.gapMarker = this.add.graphics().setDepth(10);
+
+    // The Sorting Farmer watches from the lane's west edge — the keeper
+    // stays present in their own trial instead of vanishing into a text box.
+    if (this.textures.exists(VISUAL_REVAMP_KEYS.SORTING_FARMER)) {
+      const farmer = this.add
+        .image(64, this.rowY + TILE_H / 2 + 64, VISUAL_REVAMP_KEYS.SORTING_FARMER)
+        .setOrigin(0.5, 0.78)
+        .setScale(0.5)
+        .setDepth(29);
+      this.tweens.add({
+        targets: farmer,
+        scaleX: 0.5 * 1.012,
+        scaleY: 0.5 * 1.012,
+        duration: 2600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+    void height;
+  }
+
+  /** Walk the player to gap `leftIndex`, then swap on arrival. */
+  private walkToGapAndSwap(leftIndex: number): void {
+    if (!this.room) {
+      this.trySwap(leftIndex);
+      return;
+    }
+    const gapX = this.gapCenterX(leftIndex);
+    if (gapX === null) {
+      this.trySwap(leftIndex); // out-of-range — let trySwap show its message
+      return;
+    }
+    const laneY = this.rowY + TILE_H / 2 + 64;
+    this.room.player.walkTo(gapX, laneY, () => this.trySwap(leftIndex));
+  }
+
+  /** World x of the midpoint between tile `i` and `i+1`, or null. */
+  private gapCenterX(i: number): number | null {
+    const left = this.tiles[i];
+    const right = this.tiles[i + 1];
+    if (!left || !right) return null;
+    return (left.container.x + right.container.x) / 2;
+  }
+
+  /**
+   * The pair the player stands between is the focus pair. This is the
+   * embodied replacement for hover focus: proximity is attention.
+   */
+  private refreshPlayerGapFocus(): void {
+    if (!this.room || this.tiles.length < 2) return;
+    const px = this.room.player.getPosition().x;
+
+    let best = -1;
+    let bestDist = Infinity;
+    for (let i = 0; i < this.tiles.length - 1; i++) {
+      const gapX = this.gapCenterX(i);
+      if (gapX === null) continue;
+      const dist = Math.abs(px - gapX);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    // Outside half a tile-span of any gap = no focus (standing at row ends).
+    if (bestDist > (TILE_W + TILE_GAP) * 0.75) best = -1;
+    if (best === this.playerGapIndex) return;
+
+    this.playerGapIndex = best;
+    this.repaintGapFocus();
+  }
+
+  /** Paint the focus frames on the player-adjacent pair + the gap marker. */
+  private repaintGapFocus(): void {
+    for (let i = 0; i < this.tiles.length; i++) {
+      const isFocus = this.playerGapIndex >= 0 &&
+        (i === this.playerGapIndex || i === this.playerGapIndex + 1);
+      this.paintSoil(this.tiles[i].soil, isFocus ? 'focus' : 'idle');
+    }
+
+    const g = this.gapMarker;
+    if (!g) return;
+    g.clear();
+    const gapX = this.playerGapIndex >= 0 ? this.gapCenterX(this.playerGapIndex) : null;
+    if (gapX === null) return;
+    const y = this.rowY + TILE_H / 2 + 18;
+    g.fillStyle(COLORS.CYAN_GLOW, 0.5);
+    g.fillTriangle(gapX - 6, y + 8, gapX + 6, y + 8, gapX, y);
+    g.lineStyle(2, COLORS.CYAN_GLOW, 0.35);
+    g.strokeCircle(gapX, y + 14, 4);
+  }
+
+  update(time: number, delta: number): void {
+    this.room?.update(time, delta);
+  }
+
+  /** Freeze the walking layer while the keeper speaks — the naming beat is
+   *  a held moment, not background chatter. */
+  protected async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
+    this.room?.setActive(false);
+    await super.showNameItBeat(beat);
+    this.room?.setActive(true);
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -418,7 +557,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     // fades the moment the player makes their first interaction.
     const promptY = this.rowY - TILE_H / 2 - 22;
     this.affordancePrompt = this.add.text(width / 2, promptY,
-      'Tap a furrow. Its neighbour will trade places.',
+      'Walk between two furrows. SPACE trades their places.',
       {
         fontSize: '11px',
         fontFamily: '"IBM Plex Mono", monospace',
@@ -493,6 +632,10 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       });
       this.tiles.push(tile);
     }
+
+    // New row, new geometry — re-derive the player's focus pair.
+    this.playerGapIndex = -1;
+    this.refreshPlayerGapFocus();
   }
 
   /** Phase helper — true when the current round is FEEL_IT. Used to gate
@@ -554,49 +697,16 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     this.paintSprout(sprout, value, false);
     sprout.y = -TILE_H / 2 - 2;
 
-    // Hit zone matches the soil rectangle. We support BOTH click-to-swap
-    // (legacy / keyboard accessible) and drag-to-swap (a more physical
-    // gesture that matches the bubble-sort mental model — pick up a furrow,
-    // drag it past its neighbour to swap).
+    // Hit zone matches the soil rectangle. Clicking a furrow walks the
+    // player to the gap beside it and swaps on arrival — pointer users
+    // steer the same body keyboard users do (docs/VISION.md §2). The old
+    // disembodied drag-to-swap gesture is gone: the player character IS
+    // the hand now.
     const hit = this.add.rectangle(0, 0, TILE_W, TILE_H, 0x000000, 0)
-      .setInteractive({ useHandCursor: true, draggable: true });
-    let dragStartX = 0;
-    let didDrag = false;
-    hit.on('pointerdown', () => {
-      dragStartX = container.x;
-      didDrag = false;
-    });
-    hit.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number) => {
-      if (this.isResolving || this.actionLocked) return;
-      didDrag = true;
-      const span = TILE_W + TILE_GAP;
-      // Clamp horizontal drag to ±1 tile-span; the player only ever swaps
-      // with an immediate neighbour, so capping the cursor distance prevents
-      // multi-tile drags from feeling like dead input.
-      const clamped = Phaser.Math.Clamp(dragX - dragStartX, -span, span);
-      container.x = dragStartX + clamped;
-    });
-    hit.on('dragend', () => {
-      if (this.isResolving || this.actionLocked) {
-        this.tweens.add({ targets: container, x: dragStartX, duration: 140, ease: 'Quad.easeOut' });
-        return;
-      }
-      const span = TILE_W + TILE_GAP;
-      const delta = container.x - dragStartX;
-      // Snap home, then dispatch a swap if the drag crossed a neighbour midpoint.
-      container.x = dragStartX;
-      if (delta >= span * 0.45) {
-        this.trySwap(index);
-      } else if (delta <= -span * 0.45 && index > 0) {
-        this.trySwap(index - 1);
-      } else if (didDrag) {
-        // No swap committed — give a soft snap-back so the gesture feels
-        // physical instead of silent.
-        audioManager.playTone(280, 60, 'sine');
-      }
-    });
+      .setInteractive({ useHandCursor: true });
     hit.on('pointerup', () => {
-      if (!didDrag) this.trySwap(index);
+      if (this.isResolving || this.actionLocked) return;
+      this.walkToGapAndSwap(index);
     });
     hit.on('pointerover', () => this.tweens.add({ targets: container, scale: 1.03, duration: 90 }));
     hit.on('pointerout', () => this.tweens.add({ targets: container, scale: 1, duration: 90 }));
@@ -817,13 +927,15 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     const focus = firstInversionIndex(this.values);
     const feelIt = this.isFeelItRound();
 
+    // Soil focus paint belongs to the BODY now: the pair the player stands
+    // between is the highlighted pair (repaintGapFocus). The algorithm's
+    // own suggestion is carried by BitHint + the swap-pair arrow below —
+    // two visually distinct voices: "where I am" vs "what the pattern
+    // would do". Carets are retired with hover focus.
+    this.repaintGapFocus();
     this.tiles.forEach((tile, index) => {
-      const inPair = index === focus || index === focus + 1;
-      // FEEL_IT keeps every tile idle — no cyan focus rim, no caret. The
-      // player has to *see* which neighbours are out of order themselves.
-      // USE_IT (post-NAME_IT) restores the focus highlight as a guided cue.
-      this.paintSoil(tile.soil, feelIt ? 'idle' : (inPair ? 'focus' : 'idle'));
-      tile.caret.setAlpha(feelIt ? 0 : (index === focus ? 1 : 0));
+      tile.caret.setAlpha(0);
+      void index;
     });
 
     if (feelIt) {
@@ -921,6 +1033,9 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
 
     if (isFinal) {
       this.bitHint?.celebrate();
+      // Hold the body still through the victory + naming beat — the walk
+      // input would otherwise fight the post-solve dialogue for SPACE.
+      this.room?.setActive(false);
       this.time.delayedCall(1400, async () => {
         // Show the round-4 recap, then the final aggregate stars.
         await this.showRecapForCompletedRound(round, optimal, wasted, roundStars);
