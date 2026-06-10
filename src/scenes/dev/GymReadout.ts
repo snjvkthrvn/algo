@@ -5,10 +5,10 @@
  * 3000+ with scrollFactor 0 so setupUICamera claims it for the UI camera.
  */
 
-import Phaser from 'phaser';
-import { FONTS } from '../../config/constants';
-import { PLAYER_GRID_STEP } from '../../entities/Player';
-import { drawPanel } from '../../ui/panel';
+import Phaser from "phaser";
+import { FONTS } from "../../config/constants";
+import { PLAYER_GRID_STEP } from "../../entities/Player";
+import { drawPanel } from "../../ui/panel";
 
 export interface ReadoutData {
   x: number;
@@ -47,12 +47,13 @@ export class GymReadout {
       depth: READOUT_DEPTH,
       scrollFactor: 0,
       alpha: 0.88,
+      fill: 0x101a20, // dark fill — default palette washes out the light text
     });
     this.text = scene.add
-      .text(PANEL_X + 8, PANEL_Y + 8, '', {
-        fontSize: '12px',
+      .text(PANEL_X + 8, PANEL_Y + 8, "", {
+        fontSize: "12px",
         fontFamily: FONTS.RETRO,
-        color: '#e0f8d0',
+        color: "#e0f8d0",
         lineSpacing: 6,
       })
       .setDepth(READOUT_DEPTH + 1)
