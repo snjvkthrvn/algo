@@ -64,7 +64,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private roundIndex = 0;
   private selectedIndices: number[] = [];
   private mistakesTotal = 0;
-  private slowRounds = 0;
   private isResolving = false;
   private actionLocked = false;
 
@@ -73,10 +72,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private roundBadge!: Phaser.GameObjects.Text;
   private beam!: Phaser.GameObjects.Graphics;
   private bitHint: BitHint | null = null;
-  private softTimer: Phaser.Time.TimerEvent | null = null;
-  private softTimeLeftMs = 0;
-  private softTimeBudgetMs = 0;
-  private timerBar!: Phaser.GameObjects.Rectangle;
   private preview: PuzzlePreviewSidePanel | null = null;
   /** Brute force pair-check count per round vs the player's click count. */
   private complexity: ComplexityMeter | null = null;
@@ -131,7 +126,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
 
     this.buildRoundBadge(width);
     this.buildTargetPanel(width);
-    this.buildTimerBar(width);
     new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40 });
 
     this.beam = this.add.graphics().setDepth(25);
@@ -144,7 +138,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.bitHint?.destroy();
       this.bitHint = null;
-      this.softTimer?.destroy();
       this.preview?.destroy();
       this.preview = null;
       this.bruteForce?.destroy();
@@ -184,16 +177,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       fontFamily: FONTS.RETRO,
       color: '#081820',
     }).setOrigin(0.5).setDepth(20);
-  }
-
-  private buildTimerBar(width: number): void {
-    const barW = 240;
-    const barX = width / 2 - barW / 2;
-    const barY = 248;
-    this.add.rectangle(barX, barY, barW, 6, 0x081820, 0.6)
-      .setOrigin(0, 0).setDepth(18);
-    this.timerBar = this.add.rectangle(barX, barY, barW, 6, COLORS.SUCCESS, 0.95)
-      .setOrigin(0, 0).setDepth(19);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -343,7 +326,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     });
 
     this.isResolving = false;
-    this.startSoftTimer(round);
   }
 
   private layoutTiles(round: TwoSumRoundConfig): void {
@@ -458,35 +440,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     });
 
     return { index, value, container, box, label, needBadge };
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Soft round timer (star rating only)
-  // ──────────────────────────────────────────────────────────────────
-
-  private startSoftTimer(round: TwoSumRoundConfig): void {
-    this.softTimeBudgetMs = round.seconds * 1000;
-    this.softTimeLeftMs = this.softTimeBudgetMs;
-    this.timerBar.scaleX = 1;
-    this.timerBar.fillColor = COLORS.SUCCESS;
-
-    this.softTimer?.destroy();
-    this.softTimer = this.time.addEvent({
-      delay: 100, loop: true,
-      callback: () => this.tickSoftTimer(),
-    });
-  }
-
-  private tickSoftTimer(): void {
-    this.softTimeLeftMs -= 100;
-    const ratio = Math.max(0, this.softTimeLeftMs / this.softTimeBudgetMs);
-    this.timerBar.scaleX = ratio;
-    if (ratio < 0.25) this.timerBar.fillColor = 0xef4444;
-    else if (ratio < 0.5) this.timerBar.fillColor = COLORS.GOLD_ACCENT;
-    if (this.softTimeLeftMs <= 0) {
-      this.softTimer?.destroy();
-      this.softTimer = null;
-    }
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -652,8 +605,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
 
   private handleCorrectPair(): void {
     this.isResolving = true;
-    this.softTimer?.destroy();
-    this.softTimer = null;
 
     const a = this.tiles[this.selectedIndices[0]];
     const b = this.tiles[this.selectedIndices[1]];
@@ -686,8 +637,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       onComplete: () => this.beam.clear(),
     });
 
-    if (this.softTimeLeftMs <= 0) this.slowRounds++;
-
     const isFinal = this.roundIndex >= TWO_SUM_ROUND_CONFIGS.length - 1;
     this.bitHint?.showWarm();
     this.showMessage(`${a.value} + ${b.value} = ${a.value + b.value}. Pair locked.`, COLORS.SUCCESS);
@@ -695,8 +644,9 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     if (isFinal) {
       this.bitHint?.celebrate();
       this.time.delayedCall(1400, () => {
-        const effectiveMistakes = this.mistakesTotal + this.slowRounds;
-        const stars = starsFromMistakesAndHints(effectiveMistakes, this.hintsUsed);
+        // Serene wonder (docs/VISION.md §6): accuracy + hints decide stars;
+        // no speed pressure on first contact with the concept.
+        const stars = starsFromMistakesAndHints(this.mistakesTotal, this.hintsUsed);
         this.onPuzzleComplete(stars);
       });
       return;

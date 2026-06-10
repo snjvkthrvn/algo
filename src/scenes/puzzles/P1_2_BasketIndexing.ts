@@ -56,16 +56,12 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
   private roundIndex = 0;
   private requestIndex = 0;
   private mistakesTotal = 0;
-  private slowResponses = 0;
   private isResolving = false;
 
   private baskets: Basket[] = [];
   private requestLabel!: Phaser.GameObjects.Text;
   private roundBadge!: Phaser.GameObjects.Text;
   private bitHint: BitHint | null = null;
-  private softTimer: Phaser.Time.TimerEvent | null = null;
-  private softTimeLeftMs = 0;
-  private softTimeBudgetMs = 0;
   private obscureTimer: Phaser.Time.TimerEvent | null = null;
   private labelsObscured = false;
   private preview: PuzzlePreviewSidePanel | null = null;
@@ -119,7 +115,6 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.bitHint?.destroy();
       this.bitHint = null;
-      this.softTimer?.destroy();
       this.obscureTimer?.destroy();
       this.preview?.destroy();
       this.preview = null;
@@ -466,14 +461,9 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
       this.bitHint?.showNeutral();
     }
 
-    // Soft round timer drives star rating, not failure.
-    this.softTimeBudgetMs = round.secondsPerRequest * 1000;
-    this.softTimeLeftMs = this.softTimeBudgetMs;
-    this.softTimer?.destroy();
-    this.softTimer = this.time.addEvent({
-      delay: 200, repeat: -1,
-      callback: () => this.tickSoftTimer(),
-    });
+    // Serene wonder (docs/VISION.md §6): no countdown on first contact with
+    // indexing. Stars are earned by accuracy alone; urgency belongs to the
+    // boss, not to the moment a concept is being felt.
 
     // Round 3: labels fade after `obscureAfterMs`, simulating "you already
     // perceived the address; now commit". The request panel still shows the
@@ -509,17 +499,6 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     JuiceSystem.cameraShake(this, 40, 0.0008);
   }
 
-  private tickSoftTimer(): void {
-    this.softTimeLeftMs -= 200;
-    const ratio = Math.max(0, this.softTimeLeftMs / this.softTimeBudgetMs);
-    if (ratio < 0.4) this.requestLabel.setColor('#ef4444');
-    else if (ratio < 0.7) this.requestLabel.setColor('#a04040');
-    if (this.softTimeLeftMs <= 0) {
-      this.softTimer?.destroy();
-      this.slowResponses++;
-    }
-  }
-
   private chooseBasket(index: number): void {
     if (this.isResolving) return;
     // Fade the affordance prompt on first interaction (any tap — even wrong
@@ -546,7 +525,6 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     // throw when reading request.index. P1_1/P1_3/P1_4 release isResolving
     // at safer points so this guard isn't needed there.
     if (!request) return;
-    this.softTimer?.destroy();
     this.obscureTimer?.destroy();
     this.isResolving = true;
 
@@ -619,10 +597,9 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     if (isFinal) {
       this.bitHint?.celebrate();
       this.time.delayedCall(1200, () => {
-        // Slow responses add a "half-mistake" to the star formula so dawdling
-        // through Master round still drops the rating.
-        const effectiveMistakes = this.mistakesTotal + Math.floor(this.slowResponses / 2);
-        const stars = starsFromMistakesAndHints(effectiveMistakes, this.hintsUsed);
+        // Stars come from accuracy + hints only — no speed pressure on a
+        // first-contact puzzle (docs/VISION.md §6).
+        const stars = starsFromMistakesAndHints(this.mistakesTotal, this.hintsUsed);
         this.onPuzzleComplete(stars);
       });
       return;
