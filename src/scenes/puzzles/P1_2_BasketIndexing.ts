@@ -37,6 +37,8 @@ import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 import { BruteForceScanner } from '../../entities/BruteForceScanner';
 import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
 import { PuzzlePhase } from '../../data/types';
+import { PuzzleRoom } from '../../puzzleRooms/PuzzleRoom';
+import { getImageAssetPath } from '../../config/assets';
 
 interface Basket {
   index: number;
@@ -73,6 +75,11 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
   private namedYet = false;
   private affordancePrompt: Phaser.GameObjects.Text | null = null;
   private affordanceFaded = false;
+  /** The embodiment layer (docs/VISION.md §2): the player walks the storeroom
+   *  aisle among the baskets; standing beside one focuses it, SPACE opens it.
+   *  Number keys stay as the O(1) jump — that contrast IS the lesson. */
+  private room: PuzzleRoom | null = null;
+  private focusedBasket = -1;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_2 });
@@ -94,6 +101,15 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     return { id: 'array-plains', options: { intensity: 0.85 } };
   }
 
+  preload(): void {
+    super.preload();
+    const keeperPath = getImageAssetPath(VISUAL_REVAMP_KEYS.BASKET_KEEPER);
+    if (keeperPath && !this.textures.exists(VISUAL_REVAMP_KEYS.BASKET_KEEPER)) {
+      this.load.image(VISUAL_REVAMP_KEYS.BASKET_KEEPER, keeperPath);
+    }
+    PuzzleRoom.preload(this);
+  }
+
   create(): void {
     // FEEL_IT diegetic puzzleDescription override — strip "the index tells
     // you exactly which basket" (that names the mechanic before play).
@@ -109,6 +125,8 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
     // BitCompanion stays — fictional character. All algorithm-named UI
     // (preview, GlitchCorner→BruteForceActor) mounts per-phase.
     new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40, highlight: 5 });
+
+    this.mountRoom();
 
     this.startRound(0).catch(() => undefined);
 
@@ -131,6 +149,82 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
       const idx = event.key === '0' ? 9 : numberKeyToIndex(event.key, round.basketCount);
       if (idx !== null && idx < round.basketCount) this.chooseBasket(idx);
     });
+  }
+
+  /**
+   * The storeroom aisle: the player walks among the baskets; the nearest
+   * one within reach is focused, and SPACE / gamepad A / a floor click
+   * opens it. Walking the shelf IS the linear scan — the number-key jump
+   * the player learns later is the O(1) contrast (docs/VISION.md §2).
+   */
+  private mountRoom(): void {
+    const { width, height } = this.cameras.main;
+    this.room = new PuzzleRoom(this, {
+      bounds: { x: width / 2 - 460, y: height / 2 - 110, width: 920, height: 300 },
+      spawn: { x: width / 2 - 380, y: height / 2 + 150 },
+      isBlocked: (point) =>
+        this.baskets.some(
+          (b) =>
+            Math.abs(point.x - b.container.x) < BASKET_W / 2 + 6 &&
+            Math.abs(point.y - b.container.y) < BASKET_H / 2 + 6,
+        ),
+      onAct: () => {
+        if (this.focusedBasket >= 0) this.chooseBasket(this.focusedBasket);
+      },
+      onStep: () => this.refreshBasketFocus(),
+    });
+
+    // The Basket Keeper watches from the aisle's west edge.
+    if (this.textures.exists(VISUAL_REVAMP_KEYS.BASKET_KEEPER)) {
+      const keeper = this.add
+        .image(width / 2 - 470, height / 2 + 130, VISUAL_REVAMP_KEYS.BASKET_KEEPER)
+        .setOrigin(0.5, 0.78)
+        .setScale(0.5)
+        .setDepth(29);
+      this.tweens.add({
+        targets: keeper,
+        scaleX: 0.5 * 1.012,
+        scaleY: 0.5 * 1.012,
+        duration: 2700,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+  }
+
+  update(time: number, delta: number): void {
+    this.room?.update(time, delta);
+  }
+
+  /** Standing near a basket focuses it — proximity is attention. */
+  private refreshBasketFocus(): void {
+    if (!this.room) return;
+    const pos = this.room.player.getPosition();
+    let best = -1;
+    let bestDist = Infinity;
+    for (const basket of this.baskets) {
+      const dist = Math.hypot(pos.x - basket.container.x, pos.y - basket.container.y);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = basket.index;
+      }
+    }
+    if (bestDist > BASKET_W * 1.15) best = -1;
+    if (best === this.focusedBasket) return;
+
+    const prev = this.baskets.find((b) => b.index === this.focusedBasket);
+    if (prev) this.tweens.add({ targets: prev.container, scale: 1, duration: 90 });
+    this.focusedBasket = best;
+    const next = this.baskets.find((b) => b.index === best);
+    if (next) this.tweens.add({ targets: next.container, scale: 1.06, duration: 90 });
+  }
+
+  /** Freeze the walking layer while the keeper names the concept. */
+  protected async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
+    this.room?.setActive(false);
+    await super.showNameItBeat(beat);
+    this.room?.setActive(true);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -288,6 +382,7 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
   private layoutBaskets(round: IndexingRound): void {
     this.baskets.forEach((b) => b.container.destroy());
     this.baskets = [];
+    this.focusedBasket = -1;
 
     const { width, height } = this.cameras.main;
     const n = round.basketCount;
@@ -596,6 +691,8 @@ export class P1_2_BasketIndexing extends BasePuzzleScene {
 
     if (isFinal) {
       this.bitHint?.celebrate();
+      // Hold the body still through the victory + naming beat.
+      this.room?.setActive(false);
       this.time.delayedCall(1200, () => {
         // Stars come from accuracy + hints only — no speed pressure on a
         // first-contact puzzle (docs/VISION.md §6).

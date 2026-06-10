@@ -46,6 +46,8 @@ import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
 import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
 import { PuzzlePhase } from '../../data/types';
+import { PuzzleRoom } from '../../puzzleRooms/PuzzleRoom';
+import { getImageAssetPath } from '../../config/assets';
 
 interface NumberTile {
   index: number;
@@ -91,6 +93,11 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   /** True between FEEL_IT round completion and USE_IT round mount. Guards
    *  against re-firing the NAME_IT beat on restart. */
   private namedYet = false;
+  /** The embodiment layer (docs/VISION.md §2): the player walks the stone
+   *  field among the runestones; standing beside one focuses it, SPACE
+   *  anchors/pairs it. */
+  private room: PuzzleRoom | null = null;
+  private focusedTile = -1;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_4 });
@@ -110,6 +117,15 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   }
   protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
     return { id: 'array-plains', options: { intensity: 0.7 } };
+  }
+
+  preload(): void {
+    super.preload();
+    const keeperPath = getImageAssetPath(VISUAL_REVAMP_KEYS.TILE_WORKER);
+    if (keeperPath && !this.textures.exists(VISUAL_REVAMP_KEYS.TILE_WORKER)) {
+      this.load.image(VISUAL_REVAMP_KEYS.TILE_WORKER, keeperPath);
+    }
+    PuzzleRoom.preload(this);
   }
 
   create(): void {
@@ -133,6 +149,8 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.bitHint = new BitHint(this, 100, 280);
     this.bitHint.showNeutral();
 
+    this.mountRoom();
+
     this.startRound(0).catch(() => undefined);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -149,6 +167,82 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       const idx = numberKeyToIndex(event.key, this.tiles.length);
       if (idx !== null) this.chooseTile(idx);
     });
+  }
+
+  /**
+   * The stone field: the player walks among the runestones; standing
+   * beside one focuses it, SPACE anchors it (first press) or pairs it
+   * (second press). Remembering where the complement STOOD becomes
+   * spatial memory — the hash-set insight, felt (docs/VISION.md §2).
+   */
+  private mountRoom(): void {
+    const { width, height } = this.cameras.main;
+    this.room = new PuzzleRoom(this, {
+      bounds: { x: width / 2 - 460, y: height / 2 - 120, width: 920, height: 320 },
+      spawn: { x: width / 2 - 380, y: height / 2 + 160 },
+      isBlocked: (point) =>
+        this.tiles.some(
+          (t) =>
+            Math.abs(point.x - t.container.x) < TILE_BASE_W / 2 + 4 &&
+            Math.abs(point.y - t.container.y) < TILE_BASE_H / 2 + 4,
+        ),
+      onAct: () => {
+        if (this.focusedTile >= 0) this.chooseTile(this.focusedTile);
+      },
+      onStep: () => this.refreshTileFocus(),
+    });
+
+    // The Tile Worker watches from the field's west edge.
+    if (this.textures.exists(VISUAL_REVAMP_KEYS.TILE_WORKER)) {
+      const keeper = this.add
+        .image(width / 2 - 470, height / 2 + 140, VISUAL_REVAMP_KEYS.TILE_WORKER)
+        .setOrigin(0.5, 0.78)
+        .setScale(0.5)
+        .setDepth(29);
+      this.tweens.add({
+        targets: keeper,
+        scaleX: 0.5 * 1.012,
+        scaleY: 0.5 * 1.012,
+        duration: 2500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+  }
+
+  update(time: number, delta: number): void {
+    this.room?.update(time, delta);
+  }
+
+  /** Standing near a runestone focuses it — proximity is attention. */
+  private refreshTileFocus(): void {
+    if (!this.room) return;
+    const pos = this.room.player.getPosition();
+    let best = -1;
+    let bestDist = Infinity;
+    for (const tile of this.tiles) {
+      const dist = Math.hypot(pos.x - tile.container.x, pos.y - tile.container.y);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = tile.index;
+      }
+    }
+    if (bestDist > TILE_BASE_W * 1.3) best = -1;
+    if (best === this.focusedTile) return;
+
+    const prev = this.tiles.find((t) => t.index === this.focusedTile);
+    if (prev) this.tweens.add({ targets: prev.container, scale: 1, duration: 90 });
+    this.focusedTile = best;
+    const next = this.tiles.find((t) => t.index === best);
+    if (next) this.tweens.add({ targets: next.container, scale: 1.07, duration: 90 });
+  }
+
+  /** Freeze the walking layer while the keeper names the concept. */
+  protected async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
+    this.room?.setActive(false);
+    await super.showNameItBeat(beat);
+    this.room?.setActive(true);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -331,6 +425,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private layoutTiles(round: TwoSumRoundConfig): void {
     this.tiles.forEach((t) => t.container.destroy());
     this.tiles = [];
+    this.focusedTile = -1;
 
     const { width, height } = this.cameras.main;
     const n = round.values.length;
@@ -643,6 +738,8 @@ export class P1_4_TwoSum extends BasePuzzleScene {
 
     if (isFinal) {
       this.bitHint?.celebrate();
+      // Hold the body still through the victory + naming beat.
+      this.room?.setActive(false);
       this.time.delayedCall(1400, () => {
         // Serene wonder (docs/VISION.md §6): accuracy + hints decide stars;
         // no speed pressure on first contact with the concept.

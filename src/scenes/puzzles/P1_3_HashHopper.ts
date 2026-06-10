@@ -40,6 +40,7 @@ import { numberKeyToIndex } from '../../input/NumberKeyCommand';
 import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
 import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
 import { PuzzlePhase } from '../../data/types';
+import { PuzzleRoom } from '../../puzzleRooms/PuzzleRoom';
 
 /** Bucket fill colours used for chip backgrounds — one per crop family. */
 const CROP_PALETTE: Record<string, { fill: number; stroke: number; glyph: string }> = {
@@ -120,6 +121,11 @@ export class P1_3_HashHopper extends BasePuzzleScene {
   private preview: PuzzlePreviewSidePanel | null = null;
   private bruteForce: BruteForceActor | null = null;
   private namedYet = false;
+  /** The embodiment layer (docs/VISION.md §2): the player works the chute
+   *  lane in front of the buckets; the bucket they stand at receives the
+   *  next crop on SPACE. Number keys stay as the formula shortcut. */
+  private room: PuzzleRoom | null = null;
+  private focusedBucket = -1;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_3 });
@@ -139,6 +145,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       VISUAL_REVAMP_KEYS.AP_GRAIN_BUCKET,
       VISUAL_REVAMP_KEYS.AP_CROP_WHEAT,
       VISUAL_REVAMP_KEYS.AP_CROP_BEAN,
+      VISUAL_REVAMP_KEYS.CROP_SORTER,
     ];
     for (const key of propKeys) {
       const path = getImageAssetPath(key);
@@ -146,6 +153,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
         this.load.image(key, path);
       }
     }
+    PuzzleRoom.preload(this);
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -208,6 +216,79 @@ export class P1_3_HashHopper extends BasePuzzleScene {
       const idx = numberKeyToIndex(event.key, round.bucketCount);
       if (idx !== null) this.routeLowestCropTo(idx);
     });
+
+    this.mountRoom();
+  }
+
+  /**
+   * The chute lane: the player works the floor in front of the buckets.
+   * Standing at a bucket focuses it; SPACE sends the next crop there. The
+   * hash formula decides whether the body chose the right place
+   * (docs/VISION.md §2).
+   */
+  private mountRoom(): void {
+    const { width, height } = this.cameras.main;
+    const laneTop = this.floorY + 58;
+    this.room = new PuzzleRoom(this, {
+      bounds: { x: 96, y: laneTop, width: width - 192, height: Math.max(40, height - laneTop - 8) },
+      spawn: { x: width / 2 - 280, y: laneTop + 24 },
+      onAct: () => {
+        if (this.focusedBucket >= 0) this.routeLowestCropTo(this.focusedBucket);
+      },
+      onStep: () => this.refreshBucketFocus(),
+    });
+
+    // The Crop Sorter oversees the line from the west end.
+    if (this.textures.exists(VISUAL_REVAMP_KEYS.CROP_SORTER)) {
+      const keeper = this.add
+        .image(60, this.floorY + 40, VISUAL_REVAMP_KEYS.CROP_SORTER)
+        .setOrigin(0.5, 0.78)
+        .setScale(0.48)
+        .setDepth(29);
+      this.tweens.add({
+        targets: keeper,
+        scaleX: 0.48 * 1.012,
+        scaleY: 0.48 * 1.012,
+        duration: 2600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+  }
+
+  update(time: number, delta: number): void {
+    this.room?.update(time, delta);
+  }
+
+  /** Standing in front of a bucket focuses it — proximity is attention. */
+  private refreshBucketFocus(): void {
+    if (!this.room) return;
+    const px = this.room.player.getPosition().x;
+    let best = -1;
+    let bestDist = Infinity;
+    for (const bucket of this.buckets) {
+      const dist = Math.abs(px - bucket.container.x);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = bucket.index;
+      }
+    }
+    if (bestDist > 90) best = -1;
+    if (best === this.focusedBucket) return;
+
+    const prev = this.buckets.find((b) => b.index === this.focusedBucket);
+    if (prev) this.tweens.add({ targets: prev.container, scale: 1, duration: 90 });
+    this.focusedBucket = best;
+    const next = this.buckets.find((b) => b.index === best);
+    if (next) this.tweens.add({ targets: next.container, scale: 1.05, duration: 90 });
+  }
+
+  /** Freeze the walking layer while the keeper names the concept. */
+  protected async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
+    this.room?.setActive(false);
+    await super.showNameItBeat(beat);
+    this.room?.setActive(true);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -380,6 +461,7 @@ export class P1_3_HashHopper extends BasePuzzleScene {
   private layoutBuckets(round: HashRound): void {
     this.buckets.forEach((b) => b.container.destroy());
     this.buckets = [];
+    this.focusedBucket = -1;
     this.activeCrops.forEach((c) => c.container.destroy());
     this.activeCrops = [];
 
@@ -765,6 +847,8 @@ export class P1_3_HashHopper extends BasePuzzleScene {
 
     if (isFinal) {
       this.bitHint?.celebrate();
+      // Hold the body still through the victory + naming beat.
+      this.room?.setActive(false);
       this.time.delayedCall(1400, () => {
         const stars = starsFromMistakesAndHints(this.mistakesTotal, this.hintsUsed);
         this.onPuzzleComplete(stars);
