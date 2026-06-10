@@ -1,8 +1,8 @@
-import Phaser from 'phaser';
-import { SCENE_KEYS, FONTS } from '../config/constants';
-import { TransitionManager } from '../core/TransitionManager';
-import { audioManager } from '../core/AudioManager';
-import { gameState } from '../core/GameStateManager';
+import Phaser from "phaser";
+import { SCENE_KEYS, FONTS } from "../config/constants";
+import { TransitionManager } from "../core/TransitionManager";
+import { audioManager } from "../core/AudioManager";
+import { gameState } from "../core/GameStateManager";
 
 export class DebugSelectScene extends Phaser.Scene {
   constructor() {
@@ -13,29 +13,35 @@ export class DebugSelectScene extends Phaser.Scene {
     const { width, height } = this.cameras.main;
     this.add.rectangle(0, 0, width, height, 0x0a0a1a, 1).setOrigin(0);
 
-    this.add.text(width / 2, 40, 'DEBUG SCENE SELECT', {
-      fontSize: '24px',
-      fontFamily: FONTS.RETRO,
-      color: '#e0f8d0',
-    }).setOrigin(0.5);
+    this.add
+      .text(width / 2, 40, "DEBUG SCENE SELECT", {
+        fontSize: "24px",
+        fontFamily: FONTS.RETRO,
+        color: "#e0f8d0",
+      })
+      .setOrigin(0.5);
 
-    const backBtn = this.add.text(width / 2, height - 40, '[ ESC / BACK TO MENU ]', {
-      fontSize: '16px',
-      fontFamily: FONTS.RETRO,
-      color: '#88c070',
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const backBtn = this.add
+      .text(width / 2, height - 40, "[ ESC / BACK TO MENU ]", {
+        fontSize: "16px",
+        fontFamily: FONTS.RETRO,
+        color: "#88c070",
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
 
-    backBtn.on('pointerdown', () => {
+    backBtn.on("pointerdown", () => {
       audioManager.playClickTone();
       TransitionManager.fade(this, SCENE_KEYS.MENU);
     });
 
-    this.input.keyboard?.on('keydown-ESC', () => {
+    this.input.keyboard?.on("keydown-ESC", () => {
       audioManager.playClickTone();
       TransitionManager.fade(this, SCENE_KEYS.MENU);
     });
 
     const scenesToTest = [
+      SCENE_KEYS.MOVEMENT_GYM,
       SCENE_KEYS.PROLOGUE,
       SCENE_KEYS.PUZZLE_P0_1,
       SCENE_KEYS.PUZZLE_P0_2,
@@ -103,16 +109,32 @@ export class DebugSelectScene extends Phaser.Scene {
       const x = startX + col * colSpacing;
       const y = startY + row * rowSpacing;
 
-      const txt = this.add.text(x, y, sceneKey, {
-        fontSize: '12px',
-        fontFamily: FONTS.RETRO,
-        color: sceneKey.includes('Scene') ? '#06b6d4' : (sceneKey.includes('Boss') ? '#f97316' : '#88c070'),
-      }).setInteractive({ useHandCursor: true });
+      const txt = this.add
+        .text(x, y, sceneKey, {
+          fontSize: "12px",
+          fontFamily: FONTS.RETRO,
+          color: sceneKey.includes("Scene")
+            ? "#06b6d4"
+            : sceneKey.includes("Boss")
+              ? "#f97316"
+              : "#88c070",
+        })
+        .setInteractive({ useHandCursor: true });
 
-      txt.on('pointerover', () => txt.setColor('#e0f8d0').setScale(1.1));
-      txt.on('pointerout', () => txt.setColor(sceneKey.includes('Scene') ? '#06b6d4' : (sceneKey.includes('Boss') ? '#f97316' : '#88c070')).setScale(1));
+      txt.on("pointerover", () => txt.setColor("#e0f8d0").setScale(1.1));
+      txt.on("pointerout", () =>
+        txt
+          .setColor(
+            sceneKey.includes("Scene")
+              ? "#06b6d4"
+              : sceneKey.includes("Boss")
+                ? "#f97316"
+                : "#88c070",
+          )
+          .setScale(1),
+      );
 
-      txt.on('pointerdown', () => {
+      txt.on("pointerdown", () => {
         audioManager.playClickTone();
         // Reset state so tests are fresh, but maybe don't block access
         gameState.resetState();
