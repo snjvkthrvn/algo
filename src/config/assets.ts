@@ -179,8 +179,10 @@ export const VISUAL_REVAMP_KEYS = {
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   { key: VISUAL_REVAMP_KEYS.TITLE_BG, path: `${VISUAL_REVAMP_BASE}/title/title_first_three_overhaul_v1.png` },
   { key: VISUAL_REVAMP_KEYS.PROLOGUE_BG, path: `${VISUAL_REVAMP_BASE}/regions/prologue_chamber.png` },
-  { key: VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG, path: `${VISUAL_REVAMP_BASE}/regions/array_plains_grounded_v1.png` },
-  { key: VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG, path: `${VISUAL_REVAMP_BASE}/regions/twin_rivers_grounded_v1.png` },
+  // Living explorable maps (docs/VISION.md §2) — 1920x1440, multi-route,
+  // secrets + mastery-gated crossings baked into the art.
+  { key: VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG, path: `${VISUAL_REVAMP_BASE}/regions/array_plains_living_v1.png` },
+  { key: VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG, path: `${VISUAL_REVAMP_BASE}/regions/twin_rivers_living_v1.png` },
   { key: VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG, path: `${VISUAL_REVAMP_BASE}/regions/hash_highlands_grounded_v1.png` },
   { key: VISUAL_REVAMP_KEYS.STACK_SPIRES_BG, path: `${VISUAL_REVAMP_BASE}/regions/stack_spires_grounded_v1.png` },
   { key: VISUAL_REVAMP_KEYS.QUEUE_CANALS_BG, path: `${VISUAL_REVAMP_BASE}/regions/queue_canals_grounded_v1.png` },

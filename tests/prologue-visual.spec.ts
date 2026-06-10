@@ -112,37 +112,18 @@ async function prepareP01Round(page: Page, roundIndex: number) {
   await waitForP01PlayerTurn(page, 5_000);
 }
 
-/** Advance the six-section Concept Bridge and wait for the Prologue return. */
-async function advanceConceptBridge(page: Page) {
-  for (let i = 0; i < 3; i++) {
-    await page.waitForTimeout(800);
+/**
+ * Advance the post-solve NAME_IT beat (FEEL→NAME, docs/VISION.md §3): the
+ * keeper speaks 1-2 DialogueBox lines, the codex whisper settles, and the
+ * scene fades back to the overworld on its own. Space both completes the
+ * typewriter and advances lines, so a short press loop covers all states.
+ */
+async function advanceNameItBeat(page: Page, returnScene = 'PrologueScene') {
+  for (let i = 0; i < 6; i++) {
+    await page.waitForTimeout(900);
     await page.keyboard.press('Space');
   }
-
-  await page.waitForFunction(() => {
-    const game = (window as GameWindow).__PHASER_GAME__;
-    const scene = game?.scene.getScene('ConceptBridgeScene') as Record<string, unknown> | null;
-    return scene?.['currentSection'] === 3;
-  }, { timeout: 8_000 });
-
-  await page.evaluate(() => {
-    const game = (window as GameWindow).__PHASER_GAME__;
-    const scene = game?.scene.getScene('ConceptBridgeScene') as Record<string, unknown> | null;
-    const content = scene?.['content'] as { sections?: { miniForge?: { correctIndex?: number } } } | undefined;
-    const correctIndex = content?.sections?.miniForge?.correctIndex ?? 0;
-    scene!['miniForgeSelectedIndex'] = correctIndex;
-    scene!['miniForgeAnswered'] = true;
-    const showSection = scene?.['showSection'];
-    if (typeof showSection === 'function') {
-      (showSection as (index: number) => void).call(scene, 3);
-    }
-  });
-
-  for (let i = 0; i < 3; i++) {
-    await page.waitForTimeout(800);
-    await page.keyboard.press('Space');
-  }
-  await waitForScene(page, 'PrologueScene');
+  await waitForScene(page, returnScene, 15_000);
 }
 
 /** Trigger onPuzzleComplete(3) on the active puzzle scene via JS injection. */
@@ -730,9 +711,11 @@ test.describe('Prologue region – visual audit', () => {
       'ArrowRight',
     ]);
 
-    await waitForScene(page, 'ConceptBridgeScene', 10_000);
+    // FEEL→NAME: the Rune Keeper names the pattern in-scene, then the
+    // puzzle returns straight to the Prologue. No bridge scene.
+    await page.waitForTimeout(2_600);
     await snap(page, '10-p0-1-complete.png');
-    await advanceConceptBridge(page);
+    await advanceNameItBeat(page);
 
     const flagSet = await page.evaluate(() =>
       !!(window as GameWindow).__gameState__?.getFlag('puzzle_p0_1_complete')
@@ -769,9 +752,10 @@ test.describe('Prologue region – visual audit', () => {
       }
     });
 
-    await waitForScene(page, 'ConceptBridgeScene', 8_000);
+    // FEEL→NAME: Console Keeper naming beat, then straight back.
+    await page.waitForTimeout(2_600);
     await snap(page, '11-p0-2-complete.png');
-    await advanceConceptBridge(page);
+    await advanceNameItBeat(page);
 
     const flagSet = await page.evaluate(() =>
       !!(window as GameWindow).__gameState__?.getFlag('puzzle_p0_2_complete')
@@ -824,13 +808,9 @@ test.describe('Prologue region – visual audit', () => {
     await page.waitForTimeout(1_000);
     await completePuzzleViaInjection(page, 'Boss_Sentinel');
 
-    await waitForScene(page, 'ConceptBridgeScene', 10_000);
-    await page.evaluate(() => {
-      const game = (window as GameWindow).__PHASER_GAME__;
-      game?.scene.stop('ConceptBridgeScene');
-      game?.scene.start('PrologueScene');
-    });
-    await waitForScene(page, 'PrologueScene', 10_000);
+    // Bosses have no naming beat — the completion fades straight back to
+    // the overworld (FEEL→NAME flow, docs/VISION.md §3).
+    await waitForScene(page, 'PrologueScene', 15_000);
     await page.waitForTimeout(2_000);
     await snap(page, '12-gateway-unlocked.png');
 
@@ -845,7 +825,8 @@ test.describe('Prologue region – visual audit', () => {
 
     await page.evaluate(() => {
       localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: 560, y: 384, region: 'array_plains' },
+        // Living-map coords: main road, two steps west of index marker 0.
+        player: { x: 496, y: 664, region: 'array_plains' },
         companion: { stage: 'spark', mood: 'neutral' },
         rival: { encountered: false, encounterStage: 0 },
         shardsCollected: [],
@@ -881,7 +862,9 @@ test.describe('Prologue region – visual audit', () => {
     await page.keyboard.press('Space');
     await page.waitForTimeout(400);
 
-    await setScenePlayerPosition(page, 'ArrayPlainsScene', 200, 384);
+    // Walk to the prologue gateway arch on the living map's west edge —
+    // within the interaction prompt radius (~40px) of the portal at x=88.
+    await setScenePlayerPosition(page, 'ArrayPlainsScene', 126, 664);
     await page.waitForTimeout(250);
     await page.keyboard.press('Space');
 

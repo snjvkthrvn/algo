@@ -105,29 +105,33 @@ const PLACEMENTS: Record<RegionId, PropPlacement[]> = {
     { key: VISUAL_REVAMP_KEYS.PROP_ENERGY_BEAM, x: 1900, y: 380, depth: 1 },
   ],
 
-  // ── ARRAY PLAINS — farmland, world 1920×720 ──────────────────────────
-  // Static farm props + one pecking chicken to make the farmstead feel
-  // inhabited instead of being four NPCs on an empty field.
+  // ── ARRAY PLAINS — living farmland map, world 1920×1440 ──────────────
+  // Ambient life scattered across the living map's landmarks: the
+  // farmstead by the pond, both barn yards, the hopper, and the wheat.
   array_plains: [
-    // Chicken pecking near the Sorting Farmer's shed
+    // Chickens: farmstead yard, shed plots, barn yard.
     {
       key: VISUAL_REVAMP_KEYS.PROP_CHICKEN,
-      x: 540, y: 480, depth: 3,
+      x: 870, y: 1140, depth: 3,
       anim: { key: 'prop-chicken-peck', frameCount: 8, frameRate: 6 },
     },
-    // Second chicken farther east, walking in the opposite direction
     {
       key: VISUAL_REVAMP_KEYS.PROP_CHICKEN,
-      x: 1240, y: 510, depth: 3,
+      x: 384, y: 330, depth: 3,
       anim: { key: 'prop-chicken-peck', frameCount: 8, frameRate: 6 },
       flipX: true,
     },
-    // Scarecrow in the centre fields
-    { key: VISUAL_REVAMP_KEYS.PROP_SCARECROW, x: 880, y: 520, depth: 2 },
-    // Hay bale + tabby cat near the Basket Keeper barn
-    { key: VISUAL_REVAMP_KEYS.PROP_HAY_BALE, x: 1380, y: 560, depth: 2 },
-    // Watering can sitting in dirt near the Crop Sorter hopper
-    { key: VISUAL_REVAMP_KEYS.PROP_WATERING_CAN, x: 1620, y: 540, depth: 2 },
+    {
+      key: VISUAL_REVAMP_KEYS.PROP_CHICKEN,
+      x: 1052, y: 318, depth: 3,
+      anim: { key: 'prop-chicken-peck', frameCount: 8, frameRate: 6 },
+    },
+    // Scarecrow watching the northeast wheat near the secret trail.
+    { key: VISUAL_REVAMP_KEYS.PROP_SCARECROW, x: 1240, y: 196, depth: 2 },
+    // Hay bale beside the Indexing Barn.
+    { key: VISUAL_REVAMP_KEYS.PROP_HAY_BALE, x: 1108, y: 276, depth: 2 },
+    // Watering can resting in the Grain Hopper's work yard.
+    { key: VISUAL_REVAMP_KEYS.PROP_WATERING_CAN, x: 322, y: 1052, depth: 2 },
   ],
 
   // ── TWIN RIVERS — water + bridges, world 1920×720 ───────────────────

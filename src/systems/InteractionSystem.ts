@@ -62,6 +62,14 @@ export class InteractionSystem {
     this.interactables.push({ target: obj, type: 'object' });
   }
 
+  /** Remove a target (e.g. a repaired gate) so it stops prompting. */
+  removeObject(obj: InteractableObject | NPC): void {
+    this.interactables = this.interactables.filter((entry) => entry.target !== obj);
+    if (this.currentTarget?.target === obj) {
+      this.clearCurrentTarget();
+    }
+  }
+
   onInteract(callback: (target: InteractableEntry) => void): void {
     this.interactionCallback = callback;
   }

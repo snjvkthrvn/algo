@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -248,8 +248,8 @@ describe('visual revamp asset manifest', () => {
   it('uses grounded imagegen region backgrounds for every post-prologue overworld', () => {
     const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
 
-    expect(assetPaths.get(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe('assets/visual_revamp/regions/array_plains_grounded_v1.png');
-    expect(assetPaths.get(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe('assets/visual_revamp/regions/twin_rivers_grounded_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe('assets/visual_revamp/regions/array_plains_living_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe('assets/visual_revamp/regions/twin_rivers_living_v1.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG)).toBe('assets/visual_revamp/regions/hash_highlands_grounded_v1.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.STACK_SPIRES_BG)).toBe('assets/visual_revamp/regions/stack_spires_grounded_v1.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.QUEUE_CANALS_BG)).toBe('assets/visual_revamp/regions/queue_canals_grounded_v1.png');
@@ -305,7 +305,7 @@ describe('visual revamp asset manifest', () => {
   });
 
   it('includes visual revamp images in the global preload list', () => {
-    // Visual-revamp keys are loaded as either images or spritesheets — both
+    // Visual-revamp keys are loaded as either images or spritesheets â€” both
     // count as "preloaded somewhere", so we union the two registries.
     const loadedKeys = new Set([
       ...IMAGE_ASSETS.map((asset) => asset.key),

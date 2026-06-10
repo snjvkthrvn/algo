@@ -2,7 +2,7 @@ import type { Interactable, RegionConfig } from '../types';
 import { REGIONS } from '../../config/constants';
 
 export const ARRAY_PLAINS_WORLD_WIDTH = 1920;
-export const ARRAY_PLAINS_WORLD_HEIGHT = 720;
+export const ARRAY_PLAINS_WORLD_HEIGHT = 1440;
 
 export interface ArrayPlainsRouteRect {
   id: string;
@@ -18,18 +18,45 @@ export interface ArrayPlainsCollisionBlocker {
   radiusTiles?: number;
 }
 
+/**
+ * Walkable lanes traced over array_plains_living_v1.png (1920x1440). The
+ * map is a real place now (docs/VISION.md §2): a main east-west road, a
+ * north loop (Sorting Shed + Indexing Barn), a south loop (pond farmstead,
+ * Grain Hopper, Pairing Grounds), a faint secret trail into the wheat
+ * grove, and a broken-bridge stream crossing that sorting mastery repairs.
+ */
 export const ARRAY_PLAINS_ROUTE_RECTS: ArrayPlainsRouteRect[] = [
-  { id: 'entry_lane', x: 80, y: 304, width: 360, height: 112 },
-  { id: 'index_walk', x: 360, y: 304, width: 1224, height: 112 },
-  { id: 'guide_clearing', x: 760, y: 264, width: 416, height: 128 },
-  { id: 'return_lane', x: 80, y: 272, width: 192, height: 176 },
-  { id: 'sorting_shed', x: 384, y: 304, width: 256, height: 88 },
-  { id: 'indexing_barn', x: 680, y: 304, width: 256, height: 88 },
-  { id: 'grain_hopper', x: 1000, y: 304, width: 256, height: 88 },
-  { id: 'pairing_grounds', x: 1320, y: 304, width: 256, height: 88 },
-  { id: 'shuffler_lane', x: 1544, y: 312, width: 336, height: 168 },
-  { id: 'sequence_puzzle', x: 400, y: 416, width: 320, height: 160 },
+  // Main east-west road: gateway arch to the Shuffler palisade.
+  { id: 'main_road', x: 48, y: 608, width: 1726, height: 112 },
+  // North loop.
+  { id: 'north_road', x: 700, y: 264, width: 100, height: 376 },
+  { id: 'barn_yard', x: 744, y: 280, width: 392, height: 140 },
+  { id: 'shed_branch', x: 328, y: 384, width: 420, height: 96 },
+  { id: 'shed_yard', x: 296, y: 288, width: 330, height: 192 },
+  // Secret wheat-grove trail (narrow on purpose — it should feel found).
+  { id: 'grove_trail', x: 1128, y: 240, width: 216, height: 72 },
+  { id: 'grove_clearing', x: 1336, y: 96, width: 312, height: 248 },
+  // South loop around the pond + farmstead.
+  { id: 'south_west_road', x: 616, y: 704, width: 88, height: 580 },
+  { id: 'south_road', x: 616, y: 1212, width: 648, height: 92 },
+  { id: 'south_east_road', x: 1180, y: 704, width: 84, height: 600 },
+  { id: 'farm_yard', x: 660, y: 1096, width: 560, height: 132 },
+  // Grain Hopper spur (southwest) + its work yard.
+  { id: 'hopper_road', x: 212, y: 704, width: 96, height: 364 },
+  { id: 'hopper_yard', x: 140, y: 912, width: 240, height: 212 },
+  // Pairing Grounds spur (southeast) + the standing-stone field.
+  { id: 'pairing_road', x: 1248, y: 948, width: 160, height: 84 },
+  { id: 'pairing_field', x: 1376, y: 872, width: 348, height: 344 },
 ];
+
+/**
+ * The broken plank bridge over the hopper stream. NOT part of the route
+ * rects — it becomes walkable only after the sorting-mastery repair (the
+ * script's HM parallel: mastered algorithms unlock traversal).
+ */
+export const ARRAY_PLAINS_BRIDGE_RECT: ArrayPlainsRouteRect = {
+  id: 'stream_crossing', x: 372, y: 948, width: 252, height: 104,
+};
 
 const pointInsideRect = (
   point: { x: number; y: number },
@@ -106,37 +133,38 @@ export const ARRAY_PLAINS_CONFIG: RegionConfig = {
   },
   // Reuses prologue BGM until a dedicated Array Plains track is shipped (see AUDIO_ASSETS).
   backgroundMusic: 'prologue-bgm',
-  spawnPoint: { x: 224, y: 336 },
+  spawnPoint: { x: 168, y: 664 },
   exitPoints: [
     {
       id: 'prologue_gateway',
-      position: { x: 160, y: 384 },
+      position: { x: 88, y: 664 },
       leadsTo: REGIONS.PROLOGUE,
       requiresUnlock: false,
     },
     {
       id: 'twin_rivers_gateway',
-      position: { x: 1784, y: 384 },
+      position: { x: 1736, y: 664 },
       leadsTo: REGIONS.TWIN_RIVERS,
       requiresUnlock: true,
       unlockCondition: 'twin_rivers_gateway_open',
     },
   ],
   npcs: [
-    { id: 'array_guide', position: { x: 912, y: 336 }, enabled: true },
+    { id: 'array_guide', position: { x: 836, y: 664 }, enabled: true },
   ],
   puzzles: [
-    { id: 'ap_1', position: { x: 504, y: 320 }, enabled: true },
-    { id: 'ap_2', position: { x: 792, y: 320 }, enabled: true },
-    { id: 'ap_3', position: { x: 1112, y: 320 }, enabled: true },
-    { id: 'ap_4', position: { x: 1432, y: 320 }, enabled: true },
-    { id: 'boss_shuffler', position: { x: 1744, y: 360 }, enabled: true },
+    // Each trial lives at its landmark now: shed, barn, silo, stone field.
+    { id: 'ap_1', position: { x: 452, y: 388 }, enabled: true },
+    { id: 'ap_2', position: { x: 948, y: 372 }, enabled: true },
+    { id: 'ap_3', position: { x: 268, y: 980 }, enabled: true },
+    { id: 'ap_4', position: { x: 1532, y: 1020 }, enabled: true },
+    { id: 'boss_shuffler', position: { x: 1672, y: 664 }, enabled: true },
   ],
   interactables: [
-    indexMarker('index_marker_0', 640, 384),
-    indexMarker('index_marker_1', 880, 384),
-    indexMarker('index_marker_2', 1120, 384),
-    indexMarker('index_marker_3', 1360, 384),
-    indexMarker('index_marker_4', 1520, 384),
+    indexMarker('index_marker_0', 560, 696),
+    indexMarker('index_marker_1', 880, 696),
+    indexMarker('index_marker_2', 1056, 696),
+    indexMarker('index_marker_3', 1312, 696),
+    indexMarker('index_marker_4', 1480, 696),
   ],
 };

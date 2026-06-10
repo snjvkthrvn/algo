@@ -231,7 +231,7 @@ export class NPC {
     const sprite = this.scene.add
       .sprite(config.defaultPosition.x, config.defaultPosition.y, config.spriteKey, firstFrame)
       .setDepth(4)
-      .setScale(this.getSpriteScale(config.spriteKey));
+      .setScale(config.spriteScale ?? this.getSpriteScale(config.spriteKey));
 
     const animKey = `${config.id}-idle`;
     if (!this.scene.anims.exists(animKey) && config.idleFrames && config.idleFrames.length > 0) {

@@ -8,10 +8,11 @@ import { TransitionManager } from '../core/TransitionManager';
 import { BitCompanion } from '../entities/BitCompanion';
 import { GlitchRival } from '../entities/GlitchRival';
 import { InteractableObject } from '../entities/InteractableObject';
+import { NPC } from '../entities/NPC';
 import { Player } from '../entities/Player';
 import {
+  ARRAY_PLAINS_BRIDGE_RECT,
   ARRAY_PLAINS_CONFIG,
-  ARRAY_PLAINS_ROUTE_RECTS,
   ARRAY_PLAINS_WORLD_HEIGHT,
   ARRAY_PLAINS_WORLD_WIDTH,
   isArrayPlainsStepWalkable,
@@ -22,14 +23,11 @@ import { DialogueSystem } from '../systems/DialogueSystem';
 import { HUDManager } from '../systems/HUDManager';
 import { JuiceSystem } from '../systems/JuiceSystem';
 import { OverworldAmbience } from '../ui/OverworldAmbience';
-import { InteractionSystem } from '../systems/InteractionSystem';
+import { InteractionSystem, type InteractableEntry } from '../systems/InteractionSystem';
+import { NPCBehaviorSystem } from '../systems/NPCBehaviorSystem';
 import { progressionSystem } from '../systems/ProgressionSystem';
-import {
-  ROUTE_SURFACE_STYLES,
-  renderRouteStopPads,
-  renderRouteSurfaces,
-} from '../systems/RouteSurfaceRenderer';
-import type { DialogueTree } from '../data/types';
+import { a11yManager } from '../core/A11yManager';
+import { NPCType, type DialogueTree } from '../data/types';
 import { setupUICamera } from '../utils/uiCamera';
 import { ObjectPool } from '../utils/ObjectPool';
 import { openPauseOverlay } from './titleNavigation';
@@ -56,9 +54,18 @@ export class ArrayPlainsScene extends BaseOverworldScene {
   private returnGateway: InteractableObject | null = null;
   private twinRiversGateway: InteractableObject | null = null;
   private shufflerGate: InteractableObject | null = null;
+  private bridgeGate: InteractableObject | null = null;
   private markerObjects: InteractableObject[] = [];
   private puzzleObjects: InteractableObject[] = [];
   private onDialogueAction!: (...args: unknown[]) => void;
+
+  /** Living-world cast (docs/VISION.md §2): keepers wander their posts. */
+  private npcBehavior: NPCBehaviorSystem | null = null;
+  private livingNPCs: NPC[] = [];
+  /** NPC id → puzzle id, for dialogue routing on interact. */
+  private npcPuzzleMap: Record<string, string> = {};
+  /** True once the sorting-mastery bridge repair has run (flag-backed). */
+  private bridgeRepaired = false;
 
   // Overworld sequence puzzle
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];
@@ -68,7 +75,7 @@ export class ArrayPlainsScene extends BaseOverworldScene {
 
   // Glitch cameo (Stage 3 — first AP visit after Sentinel)
   private glitch: GlitchRival | null = null;
-  private glitchSpawnPos = { x: 768, y: 384 };
+  private glitchSpawnPos = { x: 1240, y: 664 };
   private glitchProximityTriggered = false;
 
   private readonly onEscPause = () => {
@@ -132,6 +139,8 @@ export class ArrayPlainsScene extends BaseOverworldScene {
 
     this.interactionSystem = new InteractionSystem(this, this.player);
     this.dialogueSystem = new DialogueSystem(this);
+    this.npcBehavior = new NPCBehaviorSystem();
+    this.bridgeRepaired = gameState.getFlag('ap_bridge_repaired');
 
     this.onDialogueAction = ((...args: unknown[]) => {
       const data = args[0] as { type: string; value: string };
@@ -154,6 +163,8 @@ export class ArrayPlainsScene extends BaseOverworldScene {
 
     this.createInteractables();
     this.createFarmerNPCs();
+    this.createBridgeGate();
+    this.createGroveShrine();
     this.renderPortalHaloes();
     this.createSequencePuzzle();
     this.maybeSpawnGlitchCameo();
@@ -175,8 +186,10 @@ export class ArrayPlainsScene extends BaseOverworldScene {
 
 
   private createSequencePuzzle(): void {
-    const startX = 460;
-    const startY = 480;
+    // Index stones sit on the main road just east of the spawn — the
+    // region's first footsteps walk straight across them.
+    const startX = 480;
+    const startY = 672;
     const spacing = 64;
 
     for (let i = 0; i < 4; i++) {
@@ -207,6 +220,7 @@ export class ArrayPlainsScene extends BaseOverworldScene {
     this.bit.update(pos.x, pos.y, delta);
     const canInteract = !dialogueActive && this.time.now >= this.interactionEnabledTime;
     this.interactionSystem.update(canInteract);
+    this.npcBehavior?.update(time);
     if (pos.x !== this.lastPlayerX || pos.y !== this.lastPlayerY) {
       gameState.setPlayerPosition(pos.x, pos.y);
       this.lastPlayerX = pos.x;
@@ -269,46 +283,173 @@ export class ArrayPlainsScene extends BaseOverworldScene {
       },
     ];
 
+    // Living NPCs (docs/VISION.md §2): the keepers wander their own yards,
+    // pause to talk, and resume. No more `type: 'sign'` text dispensers and
+    // no floating name plaques — the NPC's own name tag appears on approach.
     for (const farmer of farmers) {
       const puzzle = ARRAY_PLAINS_CONFIG.puzzles.find((p) => p.id === farmer.puzzleId);
       if (!puzzle) continue;
-      const x = puzzle.position.x - 80;
-      const y = puzzle.position.y + 12;
+      const x = puzzle.position.x - 72;
+      const y = puzzle.position.y + 16;
 
-      const obj = this.interactablePool.acquire({
+      const npc = new NPC(this, {
         id: farmer.farmerId,
-        type: 'sign',
-        x,
-        y,
-        prompt: `[SPACE] Speak with ${farmer.name}`,
-        locked: false,
-        spriteImageKey: farmer.spriteKey,
-        imageScale: 0.14,
-        imageOriginY: 0.86,
-        onInteract: () => {
-          const tree = this.getDialogueTreeForPuzzle(farmer.puzzleId);
-          if (tree) {
-            this.player.setInteracting(true);
-            this.dialogueSystem.startDialogue(tree, farmer.farmerId, () => {
-              this.player.setInteracting(false);
-            });
-          }
+        name: farmer.name,
+        type: NPCType.VILLAGER,
+        spriteKey: farmer.spriteKey,
+        spriteScale: 0.34,
+        defaultPosition: { x, y },
+        dialogue: this.getDialogueTreeForPuzzle(farmer.puzzleId) ?? { startNodeId: '', nodes: [] },
+        movement: {
+          kind: 'wander',
+          leashRadius: 56,
+          canWalk: (point) => isPointOnArrayPlainsRoute(point, 4),
         },
       });
-      this.markerObjects.push(obj);
-      this.interactionSystem.addObject(obj);
-
-      // Name plaque above each farmer.
-      this.labelObjects.push(
-        this.add.text(x, y - 74, farmer.name.toUpperCase(), {
-          fontSize: '8px',
-          fontFamily: FONTS.RETRO,
-          color: '#e0f8d0',
-          backgroundColor: '#346856',
-          padding: { x: 4, y: 3 },
-        }).setOrigin(0.5).setDepth(5),
-      );
+      this.npcPuzzleMap[farmer.farmerId] = farmer.puzzleId;
+      this.livingNPCs.push(npc);
+      this.npcBehavior?.registerNPC(npc);
+      this.interactionSystem.addNPC(npc);
     }
+  }
+
+  /** Route NPC interactions to the right keeper dialogue; objects keep the
+   *  base behaviour. */
+  protected override handleInteract(entry: InteractableEntry): void {
+    if (entry.type !== 'npc') {
+      super.handleInteract(entry);
+      return;
+    }
+    if (!this.canOpenOverlay()) return;
+
+    const npc = entry.target as NPC;
+    const puzzleId = this.npcPuzzleMap[npc.config.id];
+    const tree = puzzleId
+      ? this.getDialogueTreeForPuzzle(puzzleId)
+      : npc.config.dialogue;
+    if (!tree || tree.nodes.length === 0) return;
+
+    this.player.setInteracting(true);
+    this.dialogueSystem.startDialogue(tree, npc.config.id, () => {
+      this.player.setInteracting(false);
+    });
+  }
+
+  /**
+   * The broken plank bridge over the hopper stream — the script's HM
+   * parallel made real: sorting mastery repairs it. Before AP-1 is solved
+   * the planks just lie scattered; after, interacting plays the repair
+   * beat (planks assemble shortest-to-tallest, because of course they do)
+   * and the crossing becomes walkable for the rest of the save.
+   */
+  private createBridgeGate(): void {
+    const bx = ARRAY_PLAINS_BRIDGE_RECT.x + ARRAY_PLAINS_BRIDGE_RECT.width / 2;
+    const by = ARRAY_PLAINS_BRIDGE_RECT.y + ARRAY_PLAINS_BRIDGE_RECT.height / 2;
+
+    if (this.bridgeRepaired) return; // crossing already open — art shows planks
+
+    // The prompt anchor sits at the bridge's west landing, a step from the
+    // hopper-yard edge — close enough for the proximity prompt to fire
+    // while the crossing itself stays unwalkable.
+    this.bridgeGate = this.interactablePool.acquire({
+      id: 'ap_broken_bridge',
+      type: 'gate',
+      x: ARRAY_PLAINS_BRIDGE_RECT.x + 28,
+      y: by,
+      prompt: gameState.isPuzzleCompleted('ap_1') ? '[SPACE] Repair bridge' : '[SPACE] Inspect planks',
+      locked: true,
+      onInteract: () => this.onBridgeInteract(bx, by),
+    });
+    this.markerObjects.push(this.bridgeGate);
+    this.interactionSystem.addObject(this.bridgeGate);
+  }
+
+  private onBridgeInteract(bx: number, by: number): void {
+    if (this.bridgeRepaired) return;
+
+    if (!gameState.isPuzzleCompleted('ap_1')) {
+      this.showFieldNote('Bit', [
+        'Scattered planks. Short ones, long ones — all jumbled.',
+        'Bit hovers over them, dims, and looks at you. They seem to WANT an order.',
+      ]);
+      return;
+    }
+
+    // The repair beat: planks rise and settle shortest to tallest. The
+    // mechanic the player mastered IS the thing fixing the world.
+    this.player.setInteracting(true);
+    const plankLengths = [18, 26, 34, 42, 50];
+    const planks: Phaser.GameObjects.Rectangle[] = plankLengths.map((len, i) =>
+      this.add
+        .rectangle(bx - 48 + i * 24, by + 20, len, 8, 0x8a5a2a)
+        .setStrokeStyle(1, 0x3b2510)
+        .setDepth(3)
+        .setAngle(Phaser.Math.Between(-40, 40)),
+    );
+
+    planks.forEach((plank, i) => {
+      this.tweens.add({
+        targets: plank,
+        angle: 0,
+        x: bx - 48 + i * 24,
+        y: by - 4,
+        duration: 420,
+        delay: 280 * i,
+        ease: 'Back.easeOut',
+        onStart: () => audioManager.playTone(320 + i * 60, 90, 'square'),
+        onComplete: () => {
+          JuiceSystem.burst(this, plank.x, plank.y, 0xfbbf24, 4, 18);
+        },
+      });
+    });
+
+    this.time.delayedCall(280 * plankLengths.length + 500, () => {
+      this.bridgeRepaired = true;
+      gameState.setFlag('ap_bridge_repaired', true);
+      audioManager.playCorrectTone();
+      JuiceSystem.correctBurst(this, bx, by);
+      a11yManager.announce('The bridge is repaired. The stream crossing is open.', true);
+      this.showFieldNote('Bit', 'Shortest to tallest — the planks remember order now. The crossing holds.');
+      if (this.bridgeGate) {
+        this.interactionSystem.removeObject(this.bridgeGate);
+        this.markerObjects = this.markerObjects.filter((o) => o !== this.bridgeGate);
+        this.interactablePool.release(this.bridgeGate);
+        this.bridgeGate = null;
+      }
+      this.player.setInteracting(false);
+    });
+  }
+
+  /**
+   * The hidden grove shrine in the northeast wheat (docs/VISION.md §2:
+   * secrets reward wandering). One-time discovery beat, then it stays as
+   * quiet lore.
+   */
+  private createGroveShrine(): void {
+    const shrine = this.interactablePool.acquire({
+      id: 'ap_grove_shrine',
+      type: 'sign',
+      x: 1492,
+      y: 220,
+      prompt: '[SPACE] Touch the old stone',
+      locked: false,
+      onInteract: () => {
+        if (!gameState.getFlag('ap_grove_found')) {
+          gameState.setFlag('ap_grove_found', true);
+          JuiceSystem.correctBurst(this, 1492, 220);
+          audioManager.playCorrectTone();
+          this.showFieldNote('Old Stone', [
+            'You found the grove the wheat keeps hidden.',
+            'Carved into the stone, worn almost smooth: "BEFORE THE FIRST SORT, THE WORLD WAS ONLY NOISE."',
+            'Bit spins once, slowly, like a held breath.',
+          ]);
+          return;
+        }
+        this.showFieldNote('Old Stone', 'The grove is quiet. The wheat keeps its secret with you now.');
+      },
+    });
+    this.markerObjects.push(shrine);
+    this.interactionSystem.addObject(shrine);
   }
 
   /**
@@ -469,61 +610,11 @@ export class ArrayPlainsScene extends BaseOverworldScene {
   }
 
   private renderRoute(): void {
-    const style = ROUTE_SURFACE_STYLES.field;
-    renderRouteSurfaces(this, ARRAY_PLAINS_ROUTE_RECTS, style, VISUAL_REVAMP_KEYS.ROUTE_MATERIALS);
-    renderRouteStopPads(this, this.getRouteStopPads(), style);
-
-    const route = this.add.graphics().setDepth(1.3);
-
-    for (const rect of ARRAY_PLAINS_ROUTE_RECTS) {
-      route.lineStyle(2, 0xe0f8d0, 0.055);
-      route.beginPath();
-      route.moveTo(rect.x + 14, rect.y + rect.height / 2);
-      route.lineTo(rect.x + rect.width - 14, rect.y + rect.height / 2);
-      route.strokePath();
-    }
-
-    const cursor = this.add.rectangle(608, 416, 40, 40, COLORS.GOLD_ACCENT, 0.04)
-      .setStrokeStyle(1, COLORS.GOLD_ACCENT, 0.42)
-      .setDepth(2);
-
-    if (!this.prefersReducedMotion()) {
-      this.tweens.add({
-        targets: cursor,
-        x: 1120,
-        alpha: 0.28,
-        duration: 2600,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
-  }
-
-  private getRouteStopPads(): Array<{ x: number; y: number; radius?: number }> {
-    return [
-      ...ARRAY_PLAINS_CONFIG.exitPoints.map((exit) => ({
-        x: exit.position.x,
-        y: exit.position.y,
-        radius: 58,
-      })),
-      ...ARRAY_PLAINS_CONFIG.npcs.map((npc) => ({
-        x: npc.position.x,
-        y: npc.position.y,
-        radius: 46,
-      })),
-      ...ARRAY_PLAINS_CONFIG.interactables.map((interactable) => ({
-        x: interactable.position.x,
-        y: interactable.position.y,
-        radius: 38,
-      })),
-      ...ARRAY_PLAINS_CONFIG.puzzles.map((puzzle) => ({
-        x: puzzle.position.x,
-        y: puzzle.position.y,
-        radius: puzzle.id === 'boss_shuffler' ? 58 : 44,
-      })),
-      { x: 560, y: 480, radius: 54 }, // sequence puzzle span centre
-    ];
+    // The living map (array_plains_living_v1.png) bakes the roads into the
+    // art itself — walkable lanes are readable because they ARE the dirt
+    // paths the painter drew. Procedural route surfaces, stop pads, and the
+    // scanning cursor are retired with the corridor map; route rects now
+    // exist purely as collision data.
   }
 
   private createInteractables(): void {
@@ -588,39 +679,37 @@ export class ArrayPlainsScene extends BaseOverworldScene {
     this.markerObjects.push(guide);
     this.interactionSystem.addObject(guide);
 
-    // Village Elder — first NPC encountered after stepping through the prologue gateway.
-    // Position sits on the main east-bound route, just past the spawn point.
-    const villageElder = this.interactablePool.acquire({
+    // Village Elder — a living resident now: paces the main road near the
+    // gateway so new arrivals meet them first, and their welcome carries the
+    // whole region setup that used to live on a static sign.
+    const elderDialogue: DialogueTree = {
+      startNodeId: 'elder_0',
+      nodes: [
+        { id: 'elder_0', speaker: 'Village Elder', text: 'A graduate of the Flow Chamber! Welcome, young seeker.', nextNodeId: 'elder_1' },
+        { id: 'elder_1', speaker: 'Village Elder', text: 'Array Plains — where data grows in rows and every element finds its index. Or... it used to.', nextNodeId: 'elder_2' },
+        { id: 'elder_2', speaker: 'Village Elder', text: "A chaotic force called the Shuffler has been terrorizing our farmers. Everything's out of order. Tiles scrambled. Tools misplaced. Crops in the wrong bins.", nextNodeId: 'elder_3' },
+        { id: 'elder_3', speaker: 'Village Elder', text: 'Four farmers need help — north at the shed and barn, south at the silo and the stone field. Help them all, and the palisade to the Shuffler opens.', nextNodeId: 'elder_4' },
+        { id: 'elder_4', speaker: 'Village Elder', text: 'Wander. Poke around. The Plains reward the curious. And... if you ever learn to put things in ORDER, that broken bridge by the silo might remember how to be a bridge.' },
+      ],
+    };
+    const elder = new NPC(this, {
       id: 'village_elder',
-      type: 'sign',
-      x: 320,
-      y: 384,
-      prompt: '[SPACE] Speak with Elder',
-      locked: false,
-      spriteImageKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
-      imageScale: 0.14,
-      imageOriginY: 0.86,
-      onInteract: () => this.showFieldNote('Village Elder', [
-        'A graduate of the Flow Chamber! Welcome, young seeker.',
-        'Array Plains — where data grows in rows and every element finds its index. Or... it used to.',
-        "A chaotic force called the Shuffler has been terrorizing our farmers. Everything's out of order. Tiles scrambled. Tools misplaced. Crops in the wrong bins. Nobody can find anything.",
-        'Four farmers need help. Each faces a different kind of disorder. Help them all, and the path to the Shuffler opens.',
-        'Array Plains believes in you.',
-      ]),
+      name: 'Village Elder',
+      type: NPCType.MENTOR,
+      spriteKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
+      spriteScale: 0.34,
+      defaultPosition: { x: 300, y: 668 },
+      dialogue: elderDialogue,
+      movement: {
+        kind: 'wander',
+        leashRadius: 72,
+        pauseMsRange: [2600, 5200],
+        canWalk: (point) => isPointOnArrayPlainsRoute(point, 4),
+      },
     });
-    this.markerObjects.push(villageElder);
-    this.interactionSystem.addObject(villageElder);
-
-    // Name plaque above the Elder so they read as a named character, not generic NPC art
-    this.labelObjects.push(
-      this.add.text(320, 384 - 152, 'VILLAGE ELDER', {
-        fontSize: '8px',
-        fontFamily: FONTS.RETRO,
-        color: '#e0f8d0',
-        backgroundColor: '#346856',
-        padding: { x: 5, y: 3 },
-      }).setOrigin(0.5).setDepth(5),
-    );
+    this.livingNPCs.push(elder);
+    this.npcBehavior?.registerNPC(elder);
+    this.interactionSystem.addNPC(elder);
 
     ARRAY_PLAINS_CONFIG.interactables.forEach((marker, index) => {
       const object = this.interactablePool.acquire({
@@ -862,7 +951,17 @@ export class ArrayPlainsScene extends BaseOverworldScene {
   }
 
   private isPlayerStepWalkable(point: { x: number; y: number }): boolean {
-    return isArrayPlainsStepWalkable(point, this.getCollisionBlockers(), 0);
+    if (isArrayPlainsStepWalkable(point, this.getCollisionBlockers(), 0)) return true;
+    // The stream crossing joins the walkable world once sorting mastery
+    // repaired it (docs/VISION.md §2 — algorithms unlock traversal).
+    if (this.bridgeRepaired) {
+      const b = ARRAY_PLAINS_BRIDGE_RECT;
+      return (
+        point.x >= b.x && point.x <= b.x + b.width &&
+        point.y >= b.y && point.y <= b.y + b.height
+      );
+    }
+    return false;
   }
 
   private getCollisionBlockers(): ArrayPlainsCollisionBlocker[] {
@@ -901,11 +1000,11 @@ export class ArrayPlainsScene extends BaseOverworldScene {
 
   private checkCameos(): void {
     if (gameState.isPuzzleCompleted('ap_1') && !gameState.getFlag('glitch_ap_1_done')) {
-      this.runGlitchCameo('ap_1', glitchAP1Dialogue, 570, 320, 'glitch_ap_1_done');
+      this.runGlitchCameo('ap_1', glitchAP1Dialogue, 472, 444, 'glitch_ap_1_done');
       return;
     }
     if (gameState.isPuzzleCompleted('ap_4') && !gameState.getFlag('glitch_ap_4_done')) {
-      this.runGlitchCameo('ap_4', glitchAP4Dialogue, 1492, 320, 'glitch_ap_4_done');
+      this.runGlitchCameo('ap_4', glitchAP4Dialogue, 1496, 1060, 'glitch_ap_4_done');
       return;
     }
   }
@@ -940,6 +1039,13 @@ export class ArrayPlainsScene extends BaseOverworldScene {
     if (this.returnGateway) { this.interactablePool.release(this.returnGateway); this.returnGateway = null; }
     if (this.twinRiversGateway) { this.interactablePool.release(this.twinRiversGateway); this.twinRiversGateway = null; }
     if (this.shufflerGate) { this.interactablePool.release(this.shufflerGate); this.shufflerGate = null; }
+    if (this.bridgeGate) { this.interactablePool.release(this.bridgeGate); this.bridgeGate = null; }
+
+    for (const npc of this.livingNPCs) npc.destroy();
+    this.livingNPCs = [];
+    this.npcPuzzleMap = {};
+    this.npcBehavior?.destroy();
+    this.npcBehavior = null;
 
     for (const object of this.markerObjects) this.interactablePool.release(object);
     this.markerObjects = [];

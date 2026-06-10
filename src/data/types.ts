@@ -296,6 +296,8 @@ export interface NPCConfig {
   questRelated?: boolean;
   /** Optional living-world movement (docs/VISION.md §2). Absent = stationary. */
   movement?: NPCMovementConfig;
+  /** Per-instance display scale override; falls back to STATIC_NPC_SCALES. */
+  spriteScale?: number;
 }
 
 /**
