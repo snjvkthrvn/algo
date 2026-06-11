@@ -49,7 +49,7 @@ describe("prologue puzzle replacement scenes", () => {
 
     // First-contact rooms run no clock at all; only the boss starts one.
     expect(p01).not.toContain("GAME.startRound");
-    expect(p02).toContain("GAME.startRound(0)");
+    expect(p02).not.toContain("GAME.startRound");
     expect(p01).not.toContain("ROUND_TIMERS");
     expect(p02).not.toContain("ROUND_TIMERS");
     expect(boss).toContain("GAME.startRound(LITANY_TIMER_MS)");

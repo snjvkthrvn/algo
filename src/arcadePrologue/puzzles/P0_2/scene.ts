@@ -1,13 +1,11 @@
 import Phaser from "phaser";
-import { COLORS, HEX_RADIUS, s, STAGE } from "../P0_1/tokens";
+import { COLORS, s, STAGE } from "../P0_1/tokens";
 import { BitCompanion } from "../../../ui/BitCompanion";
-import { GlitchCorner } from "../../../ui/GlitchCorner";
 import { paintAtmosphere, type Atmosphere } from "../P0_1/visuals/atmosphere";
 import { ensureRuneTexture } from "../P0_1/visuals/rune";
-import { buildHud, type Hud } from "../P0_1/visuals/hud";
 import { readReduceMotion, writeReduceMotion } from "../P0_1/prefs";
 import { FLOW_ROUNDS, type FlowRound } from "./rounds";
-import { FLOW_LABEL, type FlowState } from "./state";
+import { type FlowState } from "./state";
 import { buildOutMap, forkKeySet } from "./flow";
 import {
   coordsOf,
@@ -25,30 +23,71 @@ import {
 } from "./visuals/pulse";
 import { deadEndShimmer, sinkBloom } from "./feedback";
 import { bindDirectionalChoiceInput, bindFlowInput } from "./input";
-import { GAME, PENALTIES, POINTS } from "../../game/state";
+import { GAME } from "../../game/state";
 import {
   completeAlgorithmiaPuzzle,
   PROLOGUE_RUN_UI_KEY,
   resolveReturnScene,
 } from "../../game/algorithmiaIntegration";
-import { scorePopup } from "../../ui/popups";
-import { hexColorToNumber, sparkle } from "../../ui/particles";
-import { comboMilestone } from "../../game/milestone";
 import { SCENE_KEYS } from "../../../config/constants";
 import { VISUAL_REVAMP_KEYS, getImageAssetPath } from "../../../config/assets";
+import { a11yManager } from "../../../core/A11yManager";
+import { audioManager } from "../../../core/AudioManager";
+import { mountTransientLegend } from "../../../ui/transientLegend";
+import { ChamberCast } from "../../../puzzleRooms/chamber/ChamberCast";
+import type { ChamberShell } from "../../../puzzleRooms/chamber/ChamberShell";
+import { GamepadActionBridge } from "../../../input/GamepadActionBridge";
+import {
+  emptyLedger,
+  recordTrade,
+  starsForTrades,
+  type GrainLedger,
+} from "../../../puzzleRooms/grainChamber/grainEconomy";
+import { flowPar } from "../../chamber/prologuePar";
+import { forkChoicesAlong, routeThrough } from "../../chamber/flowRoute";
+import {
+  createPrologueShell,
+  launchHomewardPulse,
+  paintExitChannel,
+  placeRuneLever,
+  type RuneLever,
+} from "../../chamber/prologueShell";
+import { createDecalLayer, type DecalLayer } from "../../chamber/runeDecals";
+import { PulseGhost } from "../../chamber/PulseGhost";
 
-// First-contact rooms run untimed (docs/VISION.md §6 — urgency belongs to
-// bosses). The per-fork decision window below is the mechanic itself — the
-// pulse is a moving thing you steer — not a bolted-on round clock.
-const PERFECT_BONUS = [400, 500, 640];
+// The per-fork decision window is the mechanic itself — the pulse is a
+// moving thing you steer — not a bolted-on round clock (docs/VISION.md §6).
 const DECISION_WINDOW_MS = [1500, 1200, 1000];
 const PREPARE_BEAT_MS = 520;
 const RETRY_BEAT_MS = 640;
 const RESULT_BEAT_MS = 520;
 
+const P0_2_CAST = {
+  keeperKey: VISUAL_REVAMP_KEYS.CONSOLE_KEEPER,
+  keeperScale: 0.26,
+  entryLine:
+    "Glitch tore through and left every fork hanging open. The pulses can't find home.",
+  reactions: {
+    waste: [
+      "Another one gone dark.",
+      "The floor keeps the scorch. The pulse won't.",
+    ],
+    clean: [
+      "Home. Listen to it settle.",
+      "Straight through — the network remembers.",
+    ],
+    clear: ["Every console singing again.", "The flow is whole."],
+  },
+  tallyNoun: "pulses",
+  tallyVerdicts: {
+    thrifty: "Barely a scorch on the floor.",
+    lever: "Pull the lever by the gate — watch one pulse make the whole run.",
+  },
+  bubble: { color: "#dbe7ff", backgroundColor: "#101630" },
+} as const;
+
 export class FlowConsolesScene extends Phaser.Scene {
   private atmosphere!: Atmosphere;
-  private hud!: Hud;
   private edges!: EdgeLayer;
   private markers!: Markers;
   private pulse!: Pulse;
@@ -62,6 +101,19 @@ export class FlowConsolesScene extends Phaser.Scene {
   private returnScene: string = SCENE_KEYS.PROLOGUE;
   private startedAt = Date.now();
 
+  private shell!: ChamberShell;
+  private cast!: ChamberCast;
+  private decals!: DecalLayer;
+  private ghostPulse!: PulseGhost;
+  private lever: RuneLever | null = null;
+  private glitchBody: Phaser.GameObjects.Image | null = null;
+
+  private ledger: GrainLedger = emptyLedger(0);
+  private hintsUsed = 0;
+  private fizzleCount = 0;
+  private roomCleared = false;
+  private exiting = false;
+
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_P0_2 });
   }
@@ -71,10 +123,15 @@ export class FlowConsolesScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const arenaKey = VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG;
-    const path = getImageAssetPath(arenaKey);
-    if (path && !this.textures.exists(arenaKey)) {
-      this.load.image(arenaKey, path);
+    // Direct scene jumps never ran PrologueScene — load the arena floor,
+    // the keeper, and Glitch guarded so the chamber is fully inhabited.
+    for (const key of [
+      VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
+      VISUAL_REVAMP_KEYS.CONSOLE_KEEPER,
+      VISUAL_REVAMP_KEYS.GLITCH,
+    ]) {
+      const path = getImageAssetPath(key);
+      if (path && !this.textures.exists(key)) this.load.image(key, path);
     }
   }
 
@@ -82,6 +139,7 @@ export class FlowConsolesScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.bg.deep);
     this.startedAt = Date.now();
     this.reduceMotion = readReduceMotion();
+    audioManager.setScene(this);
     GAME.reset();
     GAME.setCurrentPuzzle(this.scene.key);
     if (!this.scene.isActive(PROLOGUE_RUN_UI_KEY))
@@ -93,13 +151,25 @@ export class FlowConsolesScene extends Phaser.Scene {
     this.edges = createEdges(this);
     this.markers = createMarkers(this);
     this.pulse = createPulse(this);
-    this.hud = buildHud(this, {
-      eyebrow: "LESSON 02  \u00b7  SELECTION",
-      footerHint: "Arrows / WASD choose each fork   \u00b7   [M] reduce motion",
-    });
+
+    this.ledger = emptyLedger(0);
+    this.hintsUsed = 0;
+    this.fizzleCount = 0;
+    this.roomCleared = false;
+    this.exiting = false;
+    this.decals = createDecalLayer(this, 6, this.reduceMotion);
+    this.shell = createPrologueShell(this, flowPar(FLOW_ROUNDS));
+    this.cast = new ChamberCast(this, 96, 250, P0_2_CAST);
+    this.ghostPulse = new PulseGhost(this);
+    this.spawnGlitchBody();
+    mountTransientLegend(
+      this,
+      this.cameras.main.height - 18,
+      "ARROWS / WASD steer the pulse at each fork · H hint · M motion",
+    );
 
     this.unbindInput = bindFlowInput(this, {
-      onReplay: () => {},
+      onReplay: () => void this.playGhost(),
       onToggleReduceMotion: () => this.toggleReduceMotion(),
     });
 
@@ -107,8 +177,12 @@ export class FlowConsolesScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.ESC,
     );
     escape?.on("down", this.exitToReturnScene, this);
+    const hintKey = this.input.keyboard?.addKey(
+      Phaser.Input.Keyboard.KeyCodes.H,
+    );
+    hintKey?.on("down", this.showHint, this);
 
-    // Region companions — Bit spark + Glitch corner keep the room inhabited
+    // Region companions — Bit spark keeps the room inhabited
     // (docs/VISION.md §5: a paused screenshot should still look alive).
     new BitCompanion(this, {
       stage: "spark",
@@ -117,23 +191,40 @@ export class FlowConsolesScene extends Phaser.Scene {
       scale: 1.2,
       depth: 9,
     });
-    new GlitchCorner(this, {
-      x: s(124),
-      y: STAGE.height - s(64),
-      width: s(220),
-      height: s(74),
-      variant: "cosmic",
-      heading: "Nearby · Glitch",
-      body: '"Nope. Nope. Come ON. WHY WON\'T YOU FIT?!"',
-      depth: 9,
-    });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       escape?.removeAllListeners();
+      hintKey?.removeAllListeners();
       this.unbindInput?.();
     });
 
+    this.shell.seal();
+    this.cast.entry();
+
     void this.runRound(0);
+  }
+
+  /**
+   * Glitch is IN the room he broke — fidgeting by the wreckage, heckling
+   * dead ends. Pure theatre: he never blocks anything (VISION §3).
+   */
+  private spawnGlitchBody(): void {
+    const key = VISUAL_REVAMP_KEYS.GLITCH;
+    if (!this.textures.exists(key)) return;
+    this.glitchBody = this.add
+      .image(170, STAGE.height - 130, key)
+      .setScale(0.2)
+      .setDepth(9)
+      .setFlipX(true);
+    this.tweens.add({
+      targets: this.glitchBody,
+      y: "-=8",
+      angle: { from: -2, to: 2 },
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
   }
 
   private async runRound(index: number): Promise<void> {
@@ -142,7 +233,6 @@ export class FlowConsolesScene extends Phaser.Scene {
 
     const def = FLOW_ROUNDS[index]!;
     this.round = def;
-    this.hud.setRound(def.title, def.principle, def.teach);
     this.board = mountFlowBoard(this, def);
     this.outMap = buildOutMap(def);
     this.forks = forkKeySet(def);
@@ -150,13 +240,15 @@ export class FlowConsolesScene extends Phaser.Scene {
     this.repaint();
     this.setState("preparing");
     await this.wait(PREPARE_BEAT_MS);
-    GAME.startRound(0); // untimed — tracks mistakes for the clean-round bonus
     void this.firePulse();
   }
 
   private async firePulse(): Promise<void> {
     if (!this.board || !this.round) return;
     this.setState("flowing");
+    // Every pulse fired is a cost the floor remembers — the economy is
+    // pulse count, physicalized as scorch marks where they die.
+    this.ledger = recordTrade(this.ledger);
 
     const result = await this.pulse.fireReactive(this.board, {
       sourceKey: this.board.sourceKey,
@@ -170,7 +262,7 @@ export class FlowConsolesScene extends Phaser.Scene {
       void this.onReached();
       return;
     }
-    this.onFizzle(result.finalKey, result.outcome);
+    this.onFizzle(result.finalKey);
   }
 
   private async decideAtFork(
@@ -220,84 +312,33 @@ export class FlowConsolesScene extends Phaser.Scene {
     if (!this.board) return;
     const sinkAt = coordsOf(this.board, this.board.sinkKey);
     sinkBloom(this, sinkAt);
-
-    GAME.bumpCombo();
-    const awarded = GAME.addScore(POINTS.pulse, "pulse");
-    scorePopup(this, sinkAt.x, sinkAt.y - s(32), `+${awarded}`);
-    sparkle(this, sinkAt.x, sinkAt.y, { count: 10, spread: 36 });
-
-    const milestone = comboMilestone(GAME.combo);
-    if (milestone) {
-      scorePopup(this, sinkAt.x, sinkAt.y - s(64), milestone.label, {
-        color: milestone.color,
-        size: 17,
-        rise: 38,
-        duration: 980,
-      });
-      sparkle(this, sinkAt.x, sinkAt.y, {
-        count: 14,
-        color: hexColorToNumber(milestone.color),
-        spread: 44,
-      });
-    }
-
-    const bonuses = GAME.endRound(0, PERFECT_BONUS[this.wave] ?? 500);
-    this.spawnRoundBonusPopups(sinkAt, bonuses);
+    audioManager.playTone(659, 110, "triangle");
+    this.cast.onCleanStretch();
+    a11yManager.announce("The pulse reaches its console.", false);
 
     this.setState("cleared");
     void this.advance();
   }
 
-  private onFizzle(finalKey: string, outcome: "dead-end" | "timeout"): void {
+  private onFizzle(finalKey: string): void {
     if (!this.board) return;
     deadEndShimmer(this, this.board, finalKey);
-    if (outcome === "timeout") this.flashHesitation();
-    GAME.recordMistake();
-    GAME.losePoints(PENALTIES.p2DeadEnd);
-    GAME.breakCombo();
-    this.time.delayedCall(RETRY_BEAT_MS, () => void this.firePulse());
-  }
-
-  private flashHesitation(): void {
-    if (!this.board) return;
-    const center = new Phaser.Math.Vector2(
-      this.cameras.main.centerX,
-      this.cameras.main.centerY,
-    );
-    // Soft information, not a scolding — the pulse simply got away this time.
-    scorePopup(
-      this,
-      center.x,
-      center.y - HEX_RADIUS - s(32),
-      "The pulse slipped by",
-      {
-        color: "#8896c4",
-        size: 13,
-        rise: 28,
-        duration: 720,
-      },
-    );
-  }
-
-  private spawnRoundBonusPopups(
-    at: Phaser.Math.Vector2,
-    bonuses: { timeBonus: number; perfectBonus: number; wasPerfect: boolean },
-  ): void {
-    if (bonuses.wasPerfect && bonuses.perfectBonus > 0) {
-      scorePopup(
-        this,
-        at.x,
-        at.y - s(58),
-        `+${bonuses.perfectBonus}  PERFECT!`,
-        {
-          color: "#a3e635",
-          size: 17,
-          rise: 40,
-          duration: 1200,
-        },
-      );
-      sparkle(this, at.x, at.y, { count: 14, color: 0xa3e635, spread: 46 });
+    // The cost is physical and permanent: the floor scorches where the
+    // pulse died, and the mark stays for the whole run. No lives, no score.
+    const at = coordsOf(this.board, finalKey);
+    this.decals.scorchAt(at.x, at.y + 18);
+    audioManager.playTone(150, 140, "sawtooth");
+    this.fizzleCount += 1;
+    if (this.fizzleCount % 2 === 0) {
+      this.cast.glitchHeckle(170, STAGE.height - 170);
+    } else {
+      this.cast.onSpillStreak();
     }
+    a11yManager.announce(
+      "The pulse dies in a dead end — the floor scorches where it fell.",
+      false,
+    );
+    this.time.delayedCall(RETRY_BEAT_MS, () => void this.firePulse());
   }
 
   private async advance(): Promise<void> {
@@ -306,17 +347,104 @@ export class FlowConsolesScene extends Phaser.Scene {
       void this.runRound(this.wave + 1);
       return;
     }
-    this.hud.showSummary("Selection learned. The signal obeys your reflexes.");
-    this.hud.showPromptNext("Return to the Chamber");
-    this.time.delayedCall(1700, () =>
+    this.finishConsoles();
+  }
+
+  // ── Debrief: unbarred gate, plaque tally, lever ghost, homeward pulse ──────
+
+  private finishConsoles(): void {
+    this.cast.onBloom();
+    this.shell.unbar(() => {
+      const par = flowPar(FLOW_ROUNDS);
+      this.roomCleared = true;
+      this.shell.setPlaqueTally(this.ledger.trades, par);
+      this.cast.tallyLine(this.ledger.trades, par);
+      this.lever = placeRuneLever(
+        this,
+        this.cameras.main.width / 2 - 110,
+        70,
+        () => void this.playGhost(),
+      );
+      const sinkAt = coordsOf(this.board!, this.board!.sinkKey);
+      paintExitChannel(this, sinkAt.x, sinkAt.y);
+      this.bindExitInput();
+      a11yManager.announce(
+        `Consoles cleared in ${this.ledger.trades} pulses; the minimum is ${par}. ` +
+          "Pull the lever to watch the spectral pulse, or send your pulse up through the open gate.",
+        true,
+      );
+    });
+  }
+
+  private bindExitInput(): void {
+    const kb = this.input.keyboard;
+    const exit = (): void => this.sendHomeward();
+    const replay = (): void => void this.playGhost();
+    kb?.on("keydown-UP", exit);
+    kb?.on("keydown-W", exit);
+    new GamepadActionBridge(this, { up: exit, action: replay });
+    const gate = this.add
+      .zone(this.cameras.main.width / 2, 24, 140, 56)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    gate.on("pointerdown", exit);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      kb?.off("keydown-UP", exit);
+      kb?.off("keydown-W", exit);
+    });
+  }
+
+  private sendHomeward(): void {
+    if (!this.roomCleared || this.exiting || !this.board) return;
+    this.exiting = true;
+    a11yManager.announce("The pulse sails home through the open gate.", true);
+    const sinkAt = coordsOf(this.board, this.board.sinkKey);
+    launchHomewardPulse(this, sinkAt.x, sinkAt.y, () => {
+      const par = flowPar(FLOW_ROUNDS);
+      const base = starsForTrades(this.ledger.trades, par);
+      const stars = Math.max(1, base - (this.hintsUsed > 0 ? 1 : 0));
       completeAlgorithmiaPuzzle(this, {
         puzzleId: "p0_2",
         puzzleName: "Flow Consoles",
         concept: "Key-Value Mapping",
         returnScene: this.returnScene,
         startedAt: this.startedAt,
-      }),
+        stars,
+        hintsUsed: this.hintsUsed,
+        delayMs: 200,
+      });
+    });
+  }
+
+  private async playGhost(): Promise<void> {
+    if (!this.roomCleared || !this.board || this.ghostPulse.isPlaying) return;
+    this.lever?.pull();
+    const route = routeThrough(
+      this.outMap,
+      this.board.sourceKey,
+      this.board.sinkKey,
     );
+    if (!route) return;
+    await this.ghostPulse.play(
+      this.board,
+      this.outMap,
+      this.forks,
+      forkChoicesAlong(route, this.forks),
+    );
+  }
+
+  // ── Hints (H — the only prompting path) ────────────────────────────────────
+
+  private showHint(): void {
+    if (this.roomCleared) return;
+    this.hintsUsed += 1;
+    const lines = [
+      "Watch the arms before the pulse arrives — one of them dies in the dark.",
+      "Steer toward the arm that still breathes.",
+    ];
+    const line = lines[Math.min(this.hintsUsed, lines.length) - 1]!;
+    this.cast.speak(line);
+    a11yManager.announce(line, false);
   }
 
   puzzleComplete(): void {
@@ -337,7 +465,6 @@ export class FlowConsolesScene extends Phaser.Scene {
   }
 
   private setState(next: FlowState): void {
-    this.hud.setState(FLOW_LABEL[next] ?? "");
     if (next === "flowing") this.atmosphere.setMood("preview");
     else this.atmosphere.setMood("normal");
   }
