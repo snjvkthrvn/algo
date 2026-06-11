@@ -1263,16 +1263,70 @@ test.describe("Prologue region â€“ visual audit", () => {
     await snap(page, "18b-ap2-basket-cellar-mess.png");
   });
 
-  test("19 - AP-3 Grain Hopper - region encounter layout", async ({ page }) => {
+  test("19 - AP-3 Sorting Mill - sealed room with first arrival", async ({
+    page,
+  }) => {
     await jumpToScene(page, "P1_3_HashHopper", {
       returnScene: "ArrayPlainsScene",
     });
+    // Sorting Mill: no cards or banners — wait out the door seal, the entry
+    // legend settle, and the first crop's chute drop (~1.8x RAF throttle).
+    await page.waitForTimeout(4200);
+    await snap(page, "19-ap3-sorting-mill-arrival.png");
+  });
+
+  test("19b - AP-3 Sorting Mill - wrong bin spits the crop back", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P1_3_HashHopper", {
+      returnScene: "ArrayPlainsScene",
+    });
+    await page.waitForTimeout(4200);
+    // Pick the first crop up at the bench (act on arrival so timing can't
+    // race the walk), then toss it at the wrong bin.
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const game = (window as GameWindow).__PHASER_GAME__;
+          const scene = game?.scene.getScene("P1_3_HashHopper") as Record<
+            string,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            any
+          > | null;
+          if (!scene) return resolve();
+          const bench = scene["bench"].benchPosition;
+          scene["room"].player.walkTo(bench.x, bench.y, () => {
+            scene["onAct"]();
+            resolve();
+          });
+        }),
+    );
     await page.waitForTimeout(700);
-    await page.keyboard.press("Space");
-    await page.waitForTimeout(700);
-    await page.keyboard.press("Space");
-    await page.waitForTimeout(2500);
-    await snap(page, "19-ap3-grain-hopper-layout.png");
+    // WHEAT's home is bin 3 (its count walked along four bins); bin 1 is
+    // wrong: the toss is recorded, a bruise drops, the crop stays carried.
+    await page.keyboard.press("1");
+    await page.waitForTimeout(4200);
+    const state = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("P1_3_HashHopper") as Record<
+        string,
+        unknown
+      > | null;
+      const ledger = scene?.["ledger"] as { trades?: number } | undefined;
+      const bench = scene?.["bench"] as { isCarrying?: boolean } | undefined;
+      const bins = scene?.["bins"] as
+        | { bruisePositions?: () => unknown[] }
+        | undefined;
+      return {
+        tosses: ledger?.trades ?? 0,
+        carrying: bench?.isCarrying ?? false,
+        bruises: bins?.bruisePositions?.()?.length ?? 0,
+      };
+    });
+    expect(state.tosses).toBe(1);
+    expect(state.carrying).toBe(true); // spit back — cost, not refusal
+    expect(state.bruises).toBeGreaterThan(0);
+    await snap(page, "19b-ap3-sorting-mill-spitback.png");
   });
 
   test("20 - AP-4 Pairing Grounds - region encounter layout", async ({
