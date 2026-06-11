@@ -458,9 +458,9 @@ export const HASH_ROUNDS: ReadonlyArray<HashRound> = [
       title: 'Collisions are not bugs',
       subtitle: 'Round 3 · Master',
       bullets: [
-        'Two keys can hash to the same bucket. That\'s allowed.',
-        'The bucket holds a *list* of items, not a single one.',
-        'Real hash tables resolve collisions with chaining or probing.',
+        'Two crops can share a bucket. That\'s allowed.',
+        'A bucket holds a pile, not a single thing.',
+        'Crowded buckets are part of the design, not a mistake.',
       ],
     },
   },
@@ -491,14 +491,13 @@ export const HASH_ROUNDS: ReadonlyArray<HashRound> = [
     spawnGapMs: 750,
     hasCollisions: true,
     lesson: {
-      title: 'The modulus is the design',
+      title: 'More buckets, fewer pile-ups',
       subtitle: 'Round 4 · Master+',
       bullets: [
-        'A bigger modulus = more buckets = fewer collisions per bucket.',
-        'But you pay in memory. Hash table tuning is balance.',
-        'For random keys, expected lookup remains O(1).',
+        'More buckets means fewer crops sharing a home.',
+        'But every bucket takes space on the wall.',
+        'Choosing how many is the sorter\'s real craft.',
       ],
-      comparison: 'expected O(1)  ·  pathological O(n)',
     },
   },
 ];

@@ -310,6 +310,15 @@ export const CODEX_ENTRIES: CodexEntry[] = [
         ],
       },
       {
+        type: 'plain_explanation',
+        title: 'The Cost',
+        content: [
+          'The wrapping walk you paced in the mill is the modulo operation: bucket = key % bucketCount. Same key, same bucket, every time.',
+          'Expected lookup is O(1) — one toss, no matter how many crops exist. The pathological case is O(n): every key colliding into one bucket, which real tables avoid with good hash functions and chaining or probing.',
+          'When the fifth bin arrived and every home moved, that was a RESIZE: changing the modulus rehashes every key. Tables grow rarely and re-place everything when they do.',
+        ],
+      },
+      {
         type: 'real_world',
         title: 'In the Real World',
         content: ['Hash tables', 'Password hashing', 'Cache keys', 'Load distribution'],
