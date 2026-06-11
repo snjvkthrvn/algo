@@ -365,6 +365,15 @@ export const CODEX_ENTRIES: CodexEntry[] = [
         ],
       },
       {
+        type: 'plain_explanation',
+        title: 'The Cost',
+        content: [
+          'Holding a stone, its partner is fixed: complement = target − value. That is the entire insight.',
+          'Checking every pair costs n·(n−1)/2 comparisons — O(n²); 9 stones already means 36 checks, which is what Glitch was grinding through.',
+          'Remembering values you have passed in a hash set answers "have I seen target − v?" in O(1), so one pass — O(n) — finds the pair. Memory is the speedup.',
+        ],
+      },
+      {
         type: 'real_world',
         title: 'In the Real World',
         content: ['Budget pairs', 'Matching inventory counts', 'Finding complementary constraints', 'Interview problem foundations'],

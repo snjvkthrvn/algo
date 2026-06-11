@@ -577,9 +577,9 @@ export const TWO_SUM_ROUND_CONFIGS: ReadonlyArray<TwoSumRoundConfig> = (() => {
       title: 'A bigger field, same idea',
       subtitle: 'Round 2 · Twist',
       bullets: [
-        'More tiles means more decoys.',
-        'Your complement is still a single number.',
-        'Naïve check-every-pair is n·(n−1)/2 — start counting at 8 tiles.',
+        'More stones means more decoys.',
+        'What your stone needs is still a single number.',
+        'Checking every pair grows brutal fast — watch Glitch try.',
       ],
     },
   };
@@ -592,11 +592,10 @@ export const TWO_SUM_ROUND_CONFIGS: ReadonlyArray<TwoSumRoundConfig> = (() => {
       title: 'Memorize what you\'ve seen',
       subtitle: 'Round 3 · Master',
       bullets: [
-        'For each new tile, ask: have I already seen target − v?',
-        'A hash set turns that question into O(1).',
-        'Total work: one pass. O(n). Beats every double-loop solution.',
+        'For each new stone, ask: have I already passed what it needs?',
+        'Remembering what you\'ve seen turns searching into knowing.',
+        'One walk through the field can be enough.',
       ],
-      comparison: 'check-all-pairs O(n²)  ·  hash-set walk O(n)',
     },
   };
   // MASTER+: 9 tiles, ONE valid pair (4+27=31), 14s budget. Stays within
@@ -613,11 +612,10 @@ export const TWO_SUM_ROUND_CONFIGS: ReadonlyArray<TwoSumRoundConfig> = (() => {
       title: 'One pair in the haystack',
       subtitle: 'Round 4 · Master+',
       bullets: [
-        'Only one pair sums to 31. Find it without checking every pair.',
-        'Walk once. For each value v, ask: have I seen 31 − v?',
-        'Hash sets remember in O(1). That\'s the whole speedup.',
+        'Only one pair in the whole field makes the weight.',
+        'Walk once and remember every stone you pass.',
+        'Memory is the whole speedup.',
       ],
-      comparison: '9·8/2 = 36 brute-force checks  ·  walk + hash = 9 checks',
     },
   };
   return [teach, twist, master, masterPlus].map((r) => ({
