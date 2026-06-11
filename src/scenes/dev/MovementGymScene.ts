@@ -31,6 +31,7 @@ import { ObjectPool } from "../../utils/ObjectPool";
 import { setupUICamera } from "../../utils/uiCamera";
 import { BaseOverworldScene } from "../BaseOverworldScene";
 import { GymReadout } from "./GymReadout";
+import { placeDropShowcase, preloadDropShowcase } from "./gymShowcase";
 import { pickGymTile, type GymTilePlan } from "./gymTiles";
 
 const TILE = PLAYER_GRID_STEP; // 32 — one checkerboard square per step
@@ -72,6 +73,11 @@ export class MovementGymScene extends BaseOverworldScene {
     ];
   }
 
+  preload(): void {
+    super.preload();
+    preloadDropShowcase(this);
+  }
+
   create(): void {
     this.hasShutdown = false;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
@@ -96,6 +102,10 @@ export class MovementGymScene extends BaseOverworldScene {
 
     this.createSign();
     this.createWanderNPC();
+    // Art-review shelf: any imagegen drop assets present are lined up on
+    // the north floor at game scale, so candidates are judged next to the
+    // walking player before being registered.
+    placeDropShowcase(this, { x: 640, y: 320 });
     this.interactionSystem.onInteract((entry) => this.handleInteract(entry));
 
     this.hud = new HUDManager(this);
