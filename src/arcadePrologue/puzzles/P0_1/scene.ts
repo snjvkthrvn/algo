@@ -4,20 +4,14 @@ import { TIMING } from "./motion";
 import { paintAtmosphere } from "./visuals/atmosphere";
 import { paintPlatform, paintEdgeVignette } from "./visuals/platform";
 import { ensureTileTextures } from "./visuals/runeTile";
-import { buildPrologueHud, type PrologueHud } from "./visuals/prologueHud";
-import { createDialogueBox, type DialogueBox } from "./visuals/dialogueBox";
-import {
-  createSequencePanel,
-  type SequencePanel,
-} from "./visuals/sequencePanel";
 import {
   cellKey,
   cellWorldPos,
   flashCellError,
+  flashTileOn,
   getNeighbors,
   IsoGrid,
   dimPathTiles,
-  flashTileOn,
   markCellDone,
   mountIsoGrid,
   nearestCell,
@@ -29,19 +23,17 @@ import {
 } from "./isogrid";
 import { PATH_ROUNDS } from "./pathRounds";
 import { bindInput } from "./input";
-import { canAcceptStep, STATE_LABEL, type PuzzleState } from "./state";
+import { canAcceptStep, canRoam, type PuzzleState } from "./state";
 import { readReduceMotion, writeReduceMotion } from "./prefs";
 import { chantRing, stepCorrect, stepMistake, winCascade } from "./feedback";
-import { GAME, PENALTIES, POINTS } from "../../game/state";
+import { GAME } from "../../game/state";
 import {
   completeAlgorithmiaPuzzle,
   PROLOGUE_RUN_UI_KEY,
   resolveReturnScene,
 } from "../../game/algorithmiaIntegration";
-import { scorePopup } from "../../ui/popups";
-import { hexColorToNumber, sparkle } from "../../ui/particles";
+import { sparkle } from "../../ui/particles";
 import { BitCompanion } from "../../../ui/BitCompanion";
-import { comboMilestone } from "../../game/milestone";
 import {
   getImageAssetPath,
   OVERWORLD_PLAYER_SPRITE_ASSETS,
@@ -51,13 +43,54 @@ import {
 } from "../../../config/assets";
 import { MOTION } from "./motion";
 import { SCENE_KEYS } from "../../../config/constants";
+import { a11yManager } from "../../../core/A11yManager";
+import { audioManager } from "../../../core/AudioManager";
+import { mountTransientLegend } from "../../../ui/transientLegend";
+import { ChamberCast } from "../../../puzzleRooms/chamber/ChamberCast";
+import type { ChamberShell } from "../../../puzzleRooms/chamber/ChamberShell";
+import {
+  emptyLedger,
+  recordTrade,
+  starsForTrades,
+  type GrainLedger,
+} from "../../../puzzleRooms/grainChamber/grainEconomy";
+import { pathPar } from "../../chamber/prologuePar";
+import {
+  createPrologueShell,
+  placeRuneLever,
+  type RuneLever,
+} from "../../chamber/prologueShell";
+import { createDecalLayer, type DecalLayer } from "../../chamber/runeDecals";
+import { PathGhost } from "../../chamber/PathGhost";
 
 const HIT_RADIUS = Math.max(TILE_W, TILE_H) * 0.72;
 
-// First-contact rooms run untimed and unkillable (docs/VISION.md §6 — serene
-// wonder; urgency belongs to bosses). Only the clean-round bonus survives: it
-// rewards care without ever pressuring the clock.
-const PERFECT_BONUS = [250, 280, 320, 360];
+// Chamber walk-out geometry: cell (0,1) sits at world (640, 180), directly
+// under the north gate; the old rune one tile west is the replay lever's
+// floor trigger.
+const EXIT_CELL: GridPos = { row: 0, col: 1 };
+const LEVER_CELL: GridPos = { row: 0, col: 0 };
+
+const P0_1_CAST = {
+  keeperKey: VISUAL_REVAMP_KEYS.RUNE_KEEPER,
+  keeperScale: 0.26,
+  entryLine: "The runes forgot their order. Walk it back into them.",
+  reactions: {
+    waste: [
+      "The stone remembers every false step.",
+      "Easy — let the chant come back to you.",
+    ],
+    clean: ["You hold it well.", "The runes warm to you."],
+    clear: ["The chant stands whole again.", "Listen — the chamber hums."],
+  },
+  tallyNoun: "steps",
+  tallyVerdicts: {
+    thrifty: "A clean walk.",
+    lever:
+      "Stand on the old rune by the gate — see the walk as the chant means it.",
+  },
+  bubble: { color: "#dbe7ff", backgroundColor: "#101630" },
+} as const;
 
 /** Trace an isometric diamond path on a Graphics, centred at (cx, cy). */
 function diamondPath(
@@ -97,22 +130,31 @@ function fillDiamond(
 }
 
 export class FollowThePathScene extends Phaser.Scene {
-  private hud!: PrologueHud;
-  private dialogue!: DialogueBox;
-  private seqPanel: SequencePanel | null = null;
   private grid: IsoGrid | null = null;
   private traceG!: Phaser.GameObjects.Graphics;
   private playerSprite!: Phaser.GameObjects.Sprite;
   private playerGlow!: Phaser.GameObjects.Arc;
-  private runeKeeper: Phaser.GameObjects.Image | null = null;
   private bit!: BitCompanion;
   private cursorG!: Phaser.GameObjects.Graphics;
   private neighborG!: Phaser.GameObjects.Graphics;
+  private exitG: Phaser.GameObjects.Graphics | null = null;
+
+  private shell!: ChamberShell;
+  private cast!: ChamberCast;
+  private decals!: DecalLayer;
+  private ghost!: PathGhost;
+  private lever: RuneLever | null = null;
 
   private state: PuzzleState = "idle";
   private wave = 0;
   private hopIndex = 0;
   private playerPos: GridPos = { row: 5, col: 2 };
+
+  private ledger: GrainLedger = emptyLedger(0);
+  private hintsUsed = 0;
+  private roundCracks = 0;
+  private cleanStreak = 0;
+  private exiting = false;
 
   private reduceMotion = false;
   private unbindInput?: () => void;
@@ -149,17 +191,14 @@ export class FollowThePathScene extends Phaser.Scene {
       }
     }
 
-    const arenaPath = getImageAssetPath(
+    // Direct scene jumps (tests, dev) never ran PrologueScene — load the
+    // arena floor and the keeper guarded so the chamber is fully dressed.
+    for (const key of [
       VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
-    );
-    if (
-      arenaPath &&
-      !this.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)
-    ) {
-      this.load.image(
-        VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
-        arenaPath,
-      );
+      VISUAL_REVAMP_KEYS.RUNE_KEEPER,
+    ]) {
+      const path = getImageAssetPath(key);
+      if (path && !this.textures.exists(key)) this.load.image(key, path);
     }
   }
 
@@ -167,6 +206,7 @@ export class FollowThePathScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.bg.deep);
     this.startedAt = Date.now();
     this.reduceMotion = readReduceMotion();
+    audioManager.setScene(this);
 
     GAME.reset();
     GAME.setCurrentPuzzle(this.scene.key);
@@ -185,8 +225,11 @@ export class FollowThePathScene extends Phaser.Scene {
     }
     ensureTileTextures(this);
 
+    this.ledger = emptyLedger(0);
+    this.hintsUsed = 0;
+    this.exiting = false;
+    this.decals = createDecalLayer(this, 9, this.reduceMotion);
     this.traceG = this.add.graphics().setDepth(30);
-    this.spawnRuneKeeper();
     this.buildPlayerSprite();
 
     // Bit joins the puzzle as a Spark — it traces the chant during preview
@@ -217,24 +260,39 @@ export class FollowThePathScene extends Phaser.Scene {
       repeat: -1,
       ease: "Sine.easeInOut",
     });
+    this.exitG = this.add.graphics().setDepth(23);
 
-    this.hud = buildPrologueHud(this);
-    this.dialogue = createDialogueBox(this);
+    // ── Chamber ──────────────────────────────────────────────────────────────
+    this.shell = createPrologueShell(this, pathPar(PATH_ROUNDS));
+    this.cast = new ChamberCast(this, 1040, 320, P0_1_CAST);
+    this.ghost = new PathGhost(this);
+    mountTransientLegend(
+      this,
+      this.cameras.main.height - 18,
+      "ARROWS / WASD step · R echo the chant · H hint · M motion",
+    );
+    this.shell.seal();
+    this.cast.entry();
 
     // ── Input ────────────────────────────────────────────────────────────────
     this.unbindInput = bindInput(this, {
       onSteer: (dx, dy) => this.steer(dx, dy),
       onPickWorld: (x, y) => this.pickAt(x, y),
       onHoverWorld: (x, y) => this.hoverAt(x, y),
-      onReplay: () => void this.replay(),
+      onReplay: () => this.onReplayKey(),
       onToggleReduceMotion: () => this.toggleReduceMotion(),
     });
 
     const esc = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     esc?.on("down", this.exitScene, this);
+    const hintKey = this.input.keyboard?.addKey(
+      Phaser.Input.Keyboard.KeyCodes.H,
+    );
+    hintKey?.on("down", this.showHint, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       esc?.removeAllListeners();
+      hintKey?.removeAllListeners();
       this.unbindInput?.();
     });
 
@@ -251,13 +309,12 @@ export class FollowThePathScene extends Phaser.Scene {
     this.grid = mountIsoGrid(this, round.field, round.path);
     this.playerPos = { ...round.path[0]! };
     this.hopIndex = 0;
+    this.roundCracks = 0;
 
-    // Sequence panel: one tile-lit-at-a-time panel — rebuild each round
-    this.seqPanel = createSequencePanel(this, round.path);
-
-    this.hud.setRound(index + 1, PATH_ROUNDS.length);
-    this.hud.showRoundTitle(round.principle);
-    this.dialogue.show("Rune Keeper", round.npcLine);
+    // The keeper sets the round's stakes in one bubble line — no banner,
+    // no panel (VISION §3: characters carry story).
+    this.cast.speak(round.npcLine);
+    a11yManager.announce(round.npcLine, false);
 
     this.positionPlayer(this.playerPos);
 
@@ -271,7 +328,7 @@ export class FollowThePathScene extends Phaser.Scene {
     this.bit?.moveTo(bitHome.x + 22, bitHome.y - 26, 300);
     // Tiles are already dark — flashTileOn faded them individually
     this.setState("turn");
-    GAME.startRound(0); // untimed — tracks mistakes for the clean-round bonus
+    a11yManager.announce("Your turn. Echo the chant, one step at a time.", false);
   }
 
   private async runPreview(): Promise<void> {
@@ -296,6 +353,14 @@ export class FollowThePathScene extends Phaser.Scene {
     );
   }
 
+  private onReplayKey(): void {
+    if (canRoam(this.state)) {
+      this.pullLever();
+      return;
+    }
+    void this.replay();
+  }
+
   private async replay(): Promise<void> {
     if (this.state !== "turn" || !this.grid) return;
     this.hopIndex = 0;
@@ -313,15 +378,6 @@ export class FollowThePathScene extends Phaser.Scene {
     this.setState("cleared");
 
     const path = PATH_ROUNDS[this.wave]!.path;
-    const bonuses = GAME.endRound(0, PERFECT_BONUS[this.wave] ?? 280);
-
-    const lastPos = path[path.length - 1]!;
-    const lastAt = new Phaser.Math.Vector2(
-      cellWorldPos(lastPos.row, lastPos.col).x,
-      cellWorldPos(lastPos.row, lastPos.col).y,
-    );
-    this.spawnBonusPopups(lastAt, bonuses);
-
     const pathPoints = path.map((p) => {
       const w = cellWorldPos(p.row, p.col);
       return new Phaser.Math.Vector2(w.x, w.y);
@@ -335,27 +391,114 @@ export class FollowThePathScene extends Phaser.Scene {
       return;
     }
 
-    this.dialogue.hide();
-    this.hud.showSummary("Sequencing learned. The chant is yours.");
-    this.hud.showPromptNext("Return to the Chamber");
+    this.openChamber();
+  }
 
-    this.time.delayedCall(1700, () =>
-      completeAlgorithmiaPuzzle(this, {
-        puzzleId: "p0_1",
-        puzzleName: "Follow the Path",
-        concept: "Sequential Processing",
-        returnScene: this.returnScene,
-        startedAt: this.startedAt,
-      }),
-    );
+  // ── Debrief: unbarred gate, plaque tally, lever ghost, walk-out ────────────
+
+  private openChamber(): void {
+    const par = pathPar(PATH_ROUNDS);
+    this.cast.onBloom();
+    this.shell.unbar(() => {
+      this.shell.setPlaqueTally(this.ledger.trades, par);
+      this.cast.tallyLine(this.ledger.trades, par);
+      this.lever = placeRuneLever(this, 560, 96, () => this.pullLever());
+      this.setState("roam");
+      this.paintExitMarkers();
+      this.mountGateZone();
+      a11yManager.announce(
+        `The gate stands open. ${this.ledger.trades} steps to walk the chant; the chant itself is ${par}. ` +
+          "Stand on the old rune west of the gate to see the spectral walk, or step out through the north gate.",
+        true,
+      );
+    });
+  }
+
+  /** Soft glow on the exit cell + lever cell so the open gate reads spatially. */
+  private paintExitMarkers(): void {
+    if (!this.exitG) return;
+    this.exitG.clear();
+    const exit = cellWorldPos(EXIT_CELL.row, EXIT_CELL.col);
+    this.exitG.fillStyle(0x9fe8f7, 0.16);
+    fillDiamond(this.exitG, exit.x, exit.y, 0.9);
+    this.exitG.lineStyle(s(1.5), 0x9fe8f7, 0.6);
+    strokeDiamond(this.exitG, exit.x, exit.y, 0.9);
+    const lever = cellWorldPos(LEVER_CELL.row, LEVER_CELL.col);
+    this.exitG.lineStyle(s(1.5), 0x7fd9e8, 0.4);
+    strokeDiamond(this.exitG, lever.x, lever.y, 0.8);
+    this.tweens.add({
+      targets: this.exitG,
+      alpha: { from: 1, to: 0.45 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
+  private mountGateZone(): void {
+    const gate = this.add
+      .zone(this.cameras.main.width / 2, 24, 140, 60)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    gate.on("pointerdown", () => {
+      if (
+        this.playerPos.row === EXIT_CELL.row &&
+        this.playerPos.col === EXIT_CELL.col
+      ) {
+        this.walkOut();
+      }
+    });
+  }
+
+  private pullLever(): void {
+    if (!canRoam(this.state) || this.ghost.isPlaying) return;
+    this.lever?.pull();
+    void this.ghost.play(PATH_ROUNDS[PATH_ROUNDS.length - 1]!.path);
+  }
+
+  private walkOut(): void {
+    if (this.exiting) return;
+    this.exiting = true;
+    this.setState("cleared");
+    a11yManager.announce("You step out through the open gate.", true);
+    audioManager.playTone(587, 160, "triangle");
+    this.playerSprite.play("p0-walk-up", true);
+    this.tweens.add({
+      targets: [this.playerSprite, this.playerGlow],
+      y: "-=170",
+      alpha: 0.2,
+      duration: 900,
+      ease: "Sine.easeIn",
+      onComplete: () => {
+        const par = pathPar(PATH_ROUNDS);
+        const base = starsForTrades(this.ledger.trades, par);
+        const stars = Math.max(1, base - (this.hintsUsed > 0 ? 1 : 0));
+        completeAlgorithmiaPuzzle(this, {
+          puzzleId: "p0_1",
+          puzzleName: "Follow the Path",
+          concept: "Sequential Processing",
+          returnScene: this.returnScene,
+          startedAt: this.startedAt,
+          stars,
+          hintsUsed: this.hintsUsed,
+          delayMs: 200,
+        });
+      },
+    });
   }
 
   // ── Input handlers ──────────────────────────────────────────────────────────
 
   private pickAt(worldX: number, worldY: number): void {
-    if (!canAcceptStep(this.state) || !this.grid) return;
+    if (!this.grid) return;
     const cell = nearestCell(this.grid, worldX, worldY, HIT_RADIUS);
     if (!cell) return;
+    if (canRoam(this.state)) {
+      this.tryRoamStep({ row: cell.row, col: cell.col });
+      return;
+    }
+    if (!canAcceptStep(this.state)) return;
     this.tryHop({ row: cell.row, col: cell.col });
   }
 
@@ -382,7 +525,27 @@ export class FollowThePathScene extends Phaser.Scene {
   }
 
   private steer(dx: number, dy: number): void {
-    if (!canAcceptStep(this.state) || !this.grid) return;
+    if (!this.grid) return;
+    if (canRoam(this.state)) {
+      if (
+        dy < 0 &&
+        this.playerPos.row === EXIT_CELL.row &&
+        this.playerPos.col === EXIT_CELL.col
+      ) {
+        this.walkOut();
+        return;
+      }
+      const next = steerFrom(
+        this.grid,
+        this.playerPos.row,
+        this.playerPos.col,
+        dx,
+        dy,
+      );
+      if (next) this.tryRoamStep(next);
+      return;
+    }
+    if (!canAcceptStep(this.state)) return;
     const next = steerFrom(
       this.grid,
       this.playerPos.row,
@@ -394,6 +557,29 @@ export class FollowThePathScene extends Phaser.Scene {
   }
 
   // ── Step validation ─────────────────────────────────────────────────────────
+
+  private tryRoamStep(candidate: GridPos): void {
+    if (!this.grid || this.exiting) return;
+    const neighbors = getNeighbors(
+      this.grid,
+      this.playerPos.row,
+      this.playerPos.col,
+    );
+    const isNeighbor = neighbors.some(
+      (n) => n.row === candidate.row && n.col === candidate.col,
+    );
+    if (!isNeighbor) return;
+    const prev = { ...this.playerPos };
+    this.playerPos = { ...candidate };
+    void this.walkPlayerTo(prev, candidate);
+    this.updateCursor();
+    if (
+      candidate.row === LEVER_CELL.row &&
+      candidate.col === LEVER_CELL.col
+    ) {
+      this.pullLever();
+    }
+  }
 
   private tryHop(candidate: GridPos): void {
     if (!this.grid) return;
@@ -416,6 +602,10 @@ export class FollowThePathScene extends Phaser.Scene {
     const { x, y } = cellWorldPos(candidate.row, candidate.col);
     const at = new Phaser.Math.Vector2(x, y);
 
+    // The economy counts every step taken — clean or cracked. The floor
+    // shows the difference; no counter does.
+    this.ledger = recordTrade(this.ledger);
+
     if (candidate.row === expected.row && candidate.col === expected.col) {
       this.onCorrectHop(candidate, at);
     } else {
@@ -423,7 +613,7 @@ export class FollowThePathScene extends Phaser.Scene {
       if (cell) {
         stepMistake(this, cell.base, at, this.reduceMotion);
       }
-      this.onWrongHop(candidate);
+      this.onWrongHop(candidate, at);
     }
   }
 
@@ -437,52 +627,39 @@ export class FollowThePathScene extends Phaser.Scene {
     stepCorrect(this, at);
     this.paintTrace();
     void this.walkPlayerTo(prevPos, pos);
-    this.seqPanel?.update(this.hopIndex);
     this.npcReact("correct");
     // Bit bounces beside the tile the player just landed — earned celebration.
     this.bit?.moveTo(at.x + 18, at.y - 24, 200);
     this.bit?.pulse();
     this.updateCursor();
+    audioManager.playTone(392 + this.hopIndex * 36, 55, "triangle");
+    sparkle(this, at.x, at.y);
 
     // Reset alpha dimming from hover
     this.grid.cells.forEach((c) => c.base.setAlpha(1));
 
-    GAME.bumpCombo();
-    const awarded = GAME.addScore(POINTS.step, "step");
-    this.hud.addScore(awarded);
-    scorePopup(this, at.x, at.y - s(28), `+${awarded}`);
-    sparkle(this, at.x, at.y);
-
-    const milestone = comboMilestone(GAME.combo);
-    if (milestone) {
-      scorePopup(this, at.x, at.y - s(58), milestone.label, {
-        color: milestone.color,
-        size: 17,
-        rise: 38,
-        duration: 980,
-      });
-      sparkle(this, at.x, at.y, {
-        count: 12,
-        color: hexColorToNumber(milestone.color),
-        spread: 36,
-        duration: 700,
-      });
-    }
+    this.cleanStreak += 1;
+    if (this.cleanStreak % 5 === 0) this.cast.onCleanStretch();
 
     if (this.hopIndex >= PATH_ROUNDS[this.wave]!.path.length - 1) {
       void this.finishRound();
     }
   }
 
-  private onWrongHop(pos: GridPos): void {
-    GAME.recordMistake();
-    GAME.losePoints(PENALTIES.p1Miss);
+  private onWrongHop(pos: GridPos, at: Phaser.Math.Vector2): void {
+    // The cost is physical and permanent: the stone cracks where the wrong
+    // step landed, and the mark stays for the whole run (no lives, no
+    // score — failing out belongs to boss escalation, not first contact).
+    this.decals.crackAt(at.x, at.y + 6);
+    this.roundCracks += 1;
+    this.cleanStreak = 0;
     flashCellError(this, pos.row, pos.col);
     this.cameras.main.shake(140, 0.005);
     this.npcReact("wrong");
+    audioManager.playTone(140, 130, "sawtooth");
+    if (this.roundCracks >= 2) this.cast.onSpillStreak();
+    a11yManager.announce("The stone cracks — that rune was not next.", false);
 
-    // No lives here: a wrong hop replays the chant tail and play continues.
-    // Failing out of the room belongs to boss escalation, not first contact.
     void this.afterMistake();
   }
 
@@ -500,22 +677,23 @@ export class FollowThePathScene extends Phaser.Scene {
     this.setState("turn");
   }
 
-  // ── Character sprites ───────────────────────────────────────────────────────
+  // ── Hints (H — the only prompting path) ────────────────────────────────────
 
-  private spawnRuneKeeper(): void {
-    const npcKey = VISUAL_REVAMP_KEYS.RUNE_KEEPER;
-    if (this.textures.exists(npcKey)) {
-      this.runeKeeper = this.add
-        .image(1040, 320, npcKey, 0)
-        .setScale(0.26)
-        .setDepth(48)
-        .setFlipX(true);
-    }
+  private showHint(): void {
+    if (this.state !== "turn" || !this.grid) return;
+    const next = PATH_ROUNDS[this.wave]!.path[this.hopIndex + 1];
+    if (!next) return;
+    this.hintsUsed += 1;
+    flashTileOn(this.grid, next.row, next.col, this, 900);
+    audioManager.playTone(740, 80, "sine");
+    a11yManager.announce("The next rune glows once more.", false);
   }
 
+  // ── Character reactions ─────────────────────────────────────────────────────
+
   private npcReact(emotion: "correct" | "wrong" | "win"): void {
-    if (!this.runeKeeper) return;
-    const npc = this.runeKeeper;
+    const npc = this.cast.sprite;
+    if (!npc) return;
     const baseX = npc.x;
     const baseY = npc.y;
     const baseScale = npc.scaleX;
@@ -688,15 +866,15 @@ export class FollowThePathScene extends Phaser.Scene {
 
   private setState(next: PuzzleState): void {
     this.state = next;
-    this.hud.setState(STATE_LABEL[next] ?? "");
     this.updateCursor();
   }
 
-  /** Redraw the player-cell cursor + legal-neighbour hints (turn phase only). */
+  /** Redraw the player-cell cursor + legal-neighbour hints (turn/roam). */
   private updateCursor(): void {
     if (!this.cursorG || !this.neighborG) return;
     this.neighborG.clear();
-    const active = this.state === "turn" && !!this.grid;
+    const active =
+      (this.state === "turn" || this.state === "roam") && !!this.grid;
     this.cursorG.setVisible(active);
     if (!active || !this.grid) return;
 
@@ -716,38 +894,10 @@ export class FollowThePathScene extends Phaser.Scene {
     }
   }
 
-  private spawnBonusPopups(
-    at: Phaser.Math.Vector2,
-    bonuses: { timeBonus: number; perfectBonus: number; wasPerfect: boolean },
-  ): void {
-    if (bonuses.wasPerfect && bonuses.perfectBonus > 0) {
-      scorePopup(
-        this,
-        at.x,
-        at.y - s(46),
-        `+${bonuses.perfectBonus}  PERFECT!`,
-        {
-          color: "#a3e635",
-          size: 17,
-          rise: 40,
-          duration: 1200,
-        },
-      );
-      sparkle(this, at.x, at.y, {
-        count: 14,
-        color: 0xa3e635,
-        spread: 44,
-        duration: 800,
-      });
-    }
-  }
-
   private tearDown(): void {
     this.traceG.clear();
     if (this.grid) unmountIsoGrid(this.grid);
     this.grid = null;
-    this.seqPanel?.destroy();
-    this.seqPanel = null;
   }
 
   private toggleReduceMotion(): void {

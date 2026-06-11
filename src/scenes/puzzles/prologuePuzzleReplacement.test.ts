@@ -47,8 +47,8 @@ describe("prologue puzzle replacement scenes", () => {
     const p02 = readSource("src/arcadePrologue/puzzles/P0_2/scene.ts");
     const boss = readSource("src/arcadePrologue/puzzles/P0_F/scene.ts");
 
-    // First-contact rooms run untimed rounds; only the boss starts a clock.
-    expect(p01).toContain("GAME.startRound(0)");
+    // First-contact rooms run no clock at all; only the boss starts one.
+    expect(p01).not.toContain("GAME.startRound");
     expect(p02).toContain("GAME.startRound(0)");
     expect(p01).not.toContain("ROUND_TIMERS");
     expect(p02).not.toContain("ROUND_TIMERS");
