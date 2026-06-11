@@ -297,6 +297,19 @@ export const SORTING_MILL_SHEET_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Prologue chamber dressing (P0_1/P0_2/P0_F rune-temple register).
+ * Keys are declared ahead of the art batch — every consumer texture-guards,
+ * so the rooms run art-less until the entries below register real files.
+ */
+export const PROLOGUE_CHAMBER_KEYS = {
+  GATE_DOOR: "prologue-chamber-gate-door",
+  PAR_PLAQUE: "prologue-chamber-par-plaque",
+  LEVER: "prologue-chamber-lever",
+  CRACK_DECALS: "prologue-chamber-crack-decals",
+  SCORCH_DECAL: "prologue-chamber-scorch-decal",
+} as const;
+
 export const GRAIN_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
   {
     key: GRAIN_CHAMBER_KEYS.GRAIN_DECALS,
