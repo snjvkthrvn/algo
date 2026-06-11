@@ -325,6 +325,34 @@ export const GRAIN_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Pairing Grounds (P1_4 rebuild) — see
+ * docs/superpowers/specs/2026-06-11-p1-4-pairing-grounds-design.md.
+ */
+export const PAIRING_GROUNDS_KEYS = {
+  BACKDROP: "pairing-grounds-backdrop",
+  RUNESTONE: "pairing-grounds-runestone",
+  SCALE: "pairing-grounds-scale",
+  CHIP_SHEET: "pairing-grounds-chips",
+} as const;
+
+const PAIRING_GROUNDS_BASE = `${VISUAL_REVAMP_BASE}/pairing_grounds`;
+
+export const PAIRING_GROUNDS_IMAGE_ASSETS: AssetEntry[] = [
+  { key: PAIRING_GROUNDS_KEYS.BACKDROP, path: `${PAIRING_GROUNDS_BASE}/backdrop.png` },
+  { key: PAIRING_GROUNDS_KEYS.RUNESTONE, path: `${PAIRING_GROUNDS_BASE}/runestone.png` },
+  { key: PAIRING_GROUNDS_KEYS.SCALE, path: `${PAIRING_GROUNDS_BASE}/scale.png` },
+];
+
+export const PAIRING_GROUNDS_SHEET_ASSETS: AssetEntry[] = [
+  {
+    key: PAIRING_GROUNDS_KEYS.CHIP_SHEET,
+    path: `${PAIRING_GROUNDS_BASE}/chips.png`,
+    frameWidth: 16,
+    frameHeight: 16,
+  },
+];
+
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.TITLE_BG,
