@@ -272,11 +272,10 @@ export const INDEXING_ROUNDS: ReadonlyArray<IndexingRound> = [
       title: 'Shelf width is free',
       subtitle: 'Round 2 · Twist',
       bullets: [
-        'A wider shelf changes nothing for indexed lookup.',
-        '5 baskets or 80, the cost is the same: one jump.',
-        'Length is the search algorithm\'s enemy, not yours.',
+        'A wider shelf changes nothing for you.',
+        '5 baskets or 80, the trip is the same: one walk.',
+        'Length is the scanner\'s enemy, not yours.',
       ],
-      comparison: 'index  O(1)   ·   linear scan  O(n)',
     },
   },
   // Round 3 (Master): 5 fetches on a 10-basket shelf; labels fade after 2s.
@@ -298,8 +297,8 @@ export const INDEXING_ROUNDS: ReadonlyArray<IndexingRound> = [
       subtitle: 'Round 3 · Master',
       bullets: [
         'The number you read once is the number you remember.',
-        'Indexing relies on the address — not the label still being visible.',
-        'In memory there are no labels at all. Only addresses.',
+        'The address matters — not the label still being visible.',
+        'In the dark there are no labels at all. Only positions.',
       ],
     },
   },
@@ -324,11 +323,10 @@ export const INDEXING_ROUNDS: ReadonlyArray<IndexingRound> = [
       title: 'Address is the data',
       subtitle: 'Round 4 · Master+',
       bullets: [
-        'Labels are a player aid. The algorithm never needed them.',
-        'arr[i] is a memory offset — i is the entire instruction.',
-        'Glitch would scan all 16. You ask the index. One move.',
+        'Labels are a player aid. The cellar never needed them.',
+        'The position alone is the entire instruction.',
+        'Glitch would scan all 16. You take one walk.',
       ],
-      comparison: 'index O(1)  ·  scan O(n) ⇒  ×n speedup',
     },
   },
 ];

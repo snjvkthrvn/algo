@@ -255,6 +255,15 @@ export const CODEX_ENTRIES: CodexEntry[] = [
         content: ['1. Know the index', '2. Jump to that slot', '3. Read or write the value'],
       },
       {
+        type: 'plain_explanation',
+        title: 'The Cost',
+        content: [
+          'Indexed access is O(1): 5 baskets or 80, the lookup is one jump — arr[i] is a memory offset, and i is the entire instruction.',
+          'Scanning for an item without its index is O(n): the scanner checks every basket on the way, and a shelf twice as long costs twice the work.',
+          'Compare: index O(1) · linear scan O(n) ⇒ ×n speedup. That contrast is why arrays are the bedrock of fast lookups.',
+        ],
+      },
+      {
         type: 'real_world',
         title: 'In the Real World',
         content: ['Seat numbers', 'Spreadsheet cells', 'Memory addresses', 'Playlist track positions'],
