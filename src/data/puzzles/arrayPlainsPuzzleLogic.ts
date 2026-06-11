@@ -121,14 +121,13 @@ export const BUBBLE_SORT_ROUNDS: ReadonlyArray<BubbleRound> = [
     targetTimeMs: 45_000,
     optimalSwaps: 28,
     lesson: {
-      title: "Worst case is n(n−1)/2",
+      title: 'The long row',
       subtitle: 'Round 3 · Master',
       bullets: [
-        'A reversed row is the textbook worst case.',
-        'Every pair is an inversion: 8·7/2 = 28 swaps.',
-        'This is why bubble sort is O(n²).',
+        'A fully backwards row is the hardest field there is.',
+        'Every crate must trade past every other one.',
+        'Feel how the work grows much faster than the row does.',
       ],
-      comparison: 'O(n²) bubble  vs  O(n log n) merge / quick',
     },
   },
   // Round 4 (Master+): 10 tiles, *almost* sorted with one inversion at the end.
@@ -146,9 +145,8 @@ export const BUBBLE_SORT_ROUNDS: ReadonlyArray<BubbleRound> = [
       bullets: [
         'Bubble sort terminates when a full pass makes zero swaps.',
         "If you don't check, you keep working a sorted row.",
-        'A near-sorted row is the algorithm\'s best case: O(n) with the early-exit.',
+        'A near-sorted row is the easiest field: one pass and done.',
       ],
-      comparison: 'best case O(n)  ·  average O(n²)  ·  worst O(n²)',
     },
   },
 ];

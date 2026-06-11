@@ -205,6 +205,15 @@ export const CODEX_ENTRIES: CodexEntry[] = [
         ],
       },
       {
+        type: 'plain_explanation',
+        title: 'The Cost',
+        content: [
+          'A reversed row is the textbook worst case: every pair is an inversion, so 8 crates need 8·7/2 = 28 swaps.',
+          'That n(n−1)/2 growth is why bubble sort is called O(n²) — and why faster sorts were invented.',
+          'Compare: O(n²) bubble vs O(n log n) merge / quick. Best case is a nearly-sorted row: one clean pass, O(n) with the early exit.',
+        ],
+      },
+      {
         type: 'real_world',
         title: 'In the Real World',
         content: ['Teaching sorting basics', 'Small ordered lists', 'Understanding why better sorting algorithms matter'],

@@ -26,6 +26,9 @@ export class GrainFx {
   /** Spill from a crate position: arc kernels out, settle them as decals. */
   spill(x: number, y: number): void {
     audioManager.playSFX("grain_spill");
+    // Procedural shaker rattle until foley assets exist (AUDIO_ASSETS is
+    // empty project-wide; playTone is the house sfx pattern).
+    audioManager.playTone(1800 + Math.random() * 400, 50, "sawtooth");
     for (let i = 0; i < KERNELS_PER_SPILL; i++) {
       const targetX = x + Phaser.Math.Between(-34, 34);
       const targetY = y + Phaser.Math.Between(10, 30);

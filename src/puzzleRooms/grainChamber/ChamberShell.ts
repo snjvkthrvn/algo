@@ -9,6 +9,7 @@
 import Phaser from "phaser";
 import { COLORS } from "../../config/constants";
 import { a11yManager } from "../../core/A11yManager";
+import { audioManager } from "../../core/AudioManager";
 import { JuiceSystem } from "../../systems/JuiceSystem";
 import { GRAIN_CHAMBER_KEYS } from "../../config/assets";
 
@@ -48,6 +49,8 @@ export class ChamberShell {
   /** Plank-slam on entry: doors drop in with a camera thump. */
   seal(): void {
     a11yManager.announce("The chamber doors seal behind you.", false);
+    audioManager.playSFX("door_slam");
+    audioManager.playTone(90, 140, "square");
     for (const door of [this.southDoor, this.northDoor]) {
       door.setAlpha(1);
       door.setScale(1, 0.1);
