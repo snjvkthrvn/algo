@@ -434,6 +434,19 @@ export const PROLOGUE_SHEET_SPRITE_ASSETS: AssetEntry[] = [
 ];
 
 /**
+ * Movement Gym (dev-only test region) tileset — 8x3 grid of 32px tiles
+ * generated procedurally via codex exec (art_sources/generate_gym_tileset.py).
+ * Tile-index layout is documented in src/scenes/dev/gymTiles.ts.
+ */
+export const DEV_GYM_KEYS = {
+  TILESET: 'dev-gym-tileset',
+} as const;
+
+export const DEV_GYM_SPRITE_ASSETS: AssetEntry[] = [
+  { key: DEV_GYM_KEYS.TILESET, path: 'assets/dev_gym/gym_tileset_v1.png', frameWidth: 32, frameHeight: 32 },
+];
+
+/**
  * Animated region props (Phase 7). Each entry's frameWidth × frame count
  * must match the on-disk PNG width — codex's generate_props.py validates
  * this on output, so any mismatch here is a registration typo rather than
@@ -530,6 +543,7 @@ export const SPRITE_ASSETS: AssetEntry[] = [
   { key: 'prologue-p01-tiles', path: `${BASE}/p01-tiles/sheet.png`, frameWidth: 704, frameHeight: 512 },
   { key: 'prologue-atmosphere', path: `${BASE}/atmosphere/sheet.png`, frameWidth: 313, frameHeight: 384 },
   ...PROLOGUE_SHEET_SPRITE_ASSETS,
+  ...DEV_GYM_SPRITE_ASSETS,
   ...OVERWORLD_CHARACTER_SPRITE_ASSETS,
   ...REGION_PROP_SPRITE_ASSETS,
 ];

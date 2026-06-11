@@ -6,23 +6,32 @@
  * DebugSelectScene or the dev-only ?scene= warp; never part of progression.
  */
 
-import Phaser from 'phaser';
-import { PROLOGUE_SHEET_KEYS, PROLOGUE_SHEET_SPRITE_ASSETS } from '../../config/assets';
-import { COLORS, SCENE_KEYS } from '../../config/constants';
-import { audioManager } from '../../core/AudioManager';
-import { TransitionManager } from '../../core/TransitionManager';
-import { NPCType } from '../../data/types';
-import { BitCompanion } from '../../entities/BitCompanion';
-import { InteractableObject } from '../../entities/InteractableObject';
-import { NPC } from '../../entities/NPC';
-import { PLAYER_GRID_STEP, Player } from '../../entities/Player';
-import { DialogueSystem } from '../../systems/DialogueSystem';
-import { HUDManager } from '../../systems/HUDManager';
-import { InteractionSystem, type InteractableEntry } from '../../systems/InteractionSystem';
-import { ObjectPool } from '../../utils/ObjectPool';
-import { setupUICamera } from '../../utils/uiCamera';
-import { BaseOverworldScene } from '../BaseOverworldScene';
-import { GymReadout } from './GymReadout';
+import Phaser from "phaser";
+import {
+  DEV_GYM_KEYS,
+  DEV_GYM_SPRITE_ASSETS,
+  PROLOGUE_SHEET_KEYS,
+  PROLOGUE_SHEET_SPRITE_ASSETS,
+} from "../../config/assets";
+import { COLORS, SCENE_KEYS } from "../../config/constants";
+import { audioManager } from "../../core/AudioManager";
+import { TransitionManager } from "../../core/TransitionManager";
+import { NPCType } from "../../data/types";
+import { BitCompanion } from "../../entities/BitCompanion";
+import { InteractableObject } from "../../entities/InteractableObject";
+import { NPC } from "../../entities/NPC";
+import { PLAYER_GRID_STEP, Player } from "../../entities/Player";
+import { DialogueSystem } from "../../systems/DialogueSystem";
+import { HUDManager } from "../../systems/HUDManager";
+import {
+  InteractionSystem,
+  type InteractableEntry,
+} from "../../systems/InteractionSystem";
+import { ObjectPool } from "../../utils/ObjectPool";
+import { setupUICamera } from "../../utils/uiCamera";
+import { BaseOverworldScene } from "../BaseOverworldScene";
+import { GymReadout } from "./GymReadout";
+import { pickGymTile, type GymTilePlan } from "./gymTiles";
 
 const TILE = PLAYER_GRID_STEP; // 32 — one checkerboard square per step
 const WORLD_W = 2560; // ~2x viewport: exercises camera follow + deadzone
@@ -46,15 +55,21 @@ export class MovementGymScene extends BaseOverworldScene {
     super({ key: SCENE_KEYS.MOVEMENT_GYM });
   }
 
-  protected getRegionImageAssets(): ReadonlyArray<{ key: string; path: string }> {
+  protected getRegionImageAssets(): ReadonlyArray<{
+    key: string;
+    path: string;
+  }> {
     return [];
   }
 
-  /** NPC idle sheet — the only non-shared texture the gym needs. */
+  /** NPC idle sheet + the gym tileset. */
   protected override getRegionSpriteSheetAssets() {
-    return PROLOGUE_SHEET_SPRITE_ASSETS.filter(
-      (asset) => asset.key === PROLOGUE_SHEET_KEYS.NPCS,
-    );
+    return [
+      ...PROLOGUE_SHEET_SPRITE_ASSETS.filter(
+        (asset) => asset.key === PROLOGUE_SHEET_KEYS.NPCS,
+      ),
+      ...DEV_GYM_SPRITE_ASSETS,
+    ];
   }
 
   create(): void {
@@ -88,8 +103,8 @@ export class MovementGymScene extends BaseOverworldScene {
     setupUICamera(this);
     this.setupOverworldCamera(WORLD_W, WORLD_H);
     this.playEntranceFade();
-    this.hud.showRegionCard('Movement Gym', 'Dev-only test region.');
-    this.input.keyboard?.on('keydown-ESC', this.onEsc);
+    this.hud.showRegionCard("Movement Gym", "Dev-only test region.");
+    this.input.keyboard?.on("keydown-ESC", this.onEsc);
   }
 
   update(time: number, delta: number): void {
@@ -109,7 +124,7 @@ export class MovementGymScene extends BaseOverworldScene {
       y: pos.y,
       state: this.player.state,
       facing: this.player.getFacingDirection(),
-      animKey: this.player.sprite.anims.currentAnim?.key ?? 'none',
+      animKey: this.player.sprite.anims.currentAnim?.key ?? "none",
       frameIndex: this.player.sprite.anims.currentFrame?.index ?? 0,
       fps: this.game.loop.actualFps,
     });
@@ -129,6 +144,53 @@ export class MovementGymScene extends BaseOverworldScene {
   }
 
   private drawFloorAndWalls(): void {
+    if (this.textures.exists(DEV_GYM_KEYS.TILESET)) {
+      this.bakeTileFloor();
+      return;
+    }
+    this.drawProceduralFloor();
+  }
+
+  /**
+   * Assemble the room from the generated 32px tileset, baked once into a
+   * RenderTexture so 80x45 tiles cost one GameObject instead of 3,600.
+   * Spritesheet-built rooms are the experiment this gym exists to prove out.
+   */
+  private bakeTileFloor(): void {
+    const plan: GymTilePlan = {
+      cols: WORLD_W / TILE,
+      rows: WORLD_H / TILE,
+      spawn: { x: Math.floor(SPAWN.x / TILE), y: Math.floor(SPAWN.y / TILE) },
+      blocks: BLOCKS.map((b) => ({
+        x0: b.x / TILE,
+        y0: b.y / TILE,
+        x1: (b.x + b.width) / TILE - 1,
+        y1: (b.y + b.height) / TILE - 1,
+      })),
+      // Eastern open stretch on the spawn row — the run-speed runway.
+      runway: { y: Math.floor(SPAWN.y / TILE), x0: 44, x1: 70 },
+    };
+
+    const rt = this.add
+      .renderTexture(0, 0, WORLD_W, WORLD_H)
+      .setOrigin(0, 0)
+      .setDepth(0);
+    rt.beginDraw();
+    for (let ty = 0; ty < plan.rows; ty++) {
+      for (let tx = 0; tx < plan.cols; tx++) {
+        rt.batchDrawFrame(
+          DEV_GYM_KEYS.TILESET,
+          pickGymTile(tx, ty, plan),
+          tx * TILE,
+          ty * TILE,
+        );
+      }
+    }
+    rt.endDraw();
+  }
+
+  /** Fallback when the tileset texture is unavailable (minimal test boots). */
+  private drawProceduralFloor(): void {
     const g = this.add.graphics().setDepth(0);
     // 32px checkerboard — each square is exactly one player step, so step
     // distance and grid snapping are visually verifiable.
@@ -149,22 +211,27 @@ export class MovementGymScene extends BaseOverworldScene {
       g.fillStyle(0x101a20, 1);
       g.fillRect(block.x, block.y, block.width, block.height);
       g.lineStyle(1, COLORS.FRAME_BORDER_LIGHT, 0.5);
-      g.strokeRect(block.x + 0.5, block.y + 0.5, block.width - 1, block.height - 1);
+      g.strokeRect(
+        block.x + 0.5,
+        block.y + 0.5,
+        block.width - 1,
+        block.height - 1,
+      );
     }
   }
 
   private createSign(): void {
     this.sign = this.interactablePool.acquire({
-      id: 'gym_sign',
-      type: 'sign',
+      id: "gym_sign",
+      type: "sign",
       x: SPAWN.x - 160,
       y: SPAWN.y,
-      prompt: 'Read',
+      prompt: "Read",
       onInteract: () =>
-        this.showFieldNote('Gym Sign', [
-          'Arrows/WASD walk. SHIFT runs.',
-          'Bump the dark blocks to test collision.',
-          'ESC returns to the debug menu.',
+        this.showFieldNote("Gym Sign", [
+          "Arrows/WASD walk. SHIFT runs.",
+          "Bump the dark blocks to test collision.",
+          "ESC returns to the debug menu.",
         ]),
     });
     this.interactionSystem.addObject(this.sign);
@@ -172,23 +239,23 @@ export class MovementGymScene extends BaseOverworldScene {
 
   private createWanderNPC(): void {
     this.gymNPC = new NPC(this, {
-      id: 'gym_walker',
-      name: 'Test Walker',
+      id: "gym_walker",
+      name: "Test Walker",
       type: NPCType.VILLAGER,
       spriteKey: PROLOGUE_SHEET_KEYS.NPCS,
       defaultPosition: { x: SPAWN.x + 256, y: SPAWN.y - 128 },
       dialogue: {
-        startNodeId: 'hello',
+        startNodeId: "hello",
         nodes: [
           {
-            id: 'hello',
-            speaker: 'Test Walker',
-            text: 'I wander so you can test depth sorting and NPC interaction.',
+            id: "hello",
+            speaker: "Test Walker",
+            text: "I wander so you can test depth sorting and NPC interaction.",
           },
         ],
       },
       movement: {
-        kind: 'wander',
+        kind: "wander",
         leashRadius: 128,
         canWalk: (point) => this.isWalkable(point),
       },
@@ -198,7 +265,7 @@ export class MovementGymScene extends BaseOverworldScene {
 
   /** NPCs open their dialogue; objects keep the base behaviour. */
   protected override handleInteract(entry: InteractableEntry): void {
-    if (entry.type !== 'npc') {
+    if (entry.type !== "npc") {
       super.handleInteract(entry);
       return;
     }
@@ -214,7 +281,7 @@ export class MovementGymScene extends BaseOverworldScene {
 
   private shutdown(): void {
     this.hasShutdown = true;
-    this.input.keyboard?.off('keydown-ESC', this.onEsc);
+    this.input.keyboard?.off("keydown-ESC", this.onEsc);
     this.dialogueSystem?.destroy();
     this.interactionSystem?.destroy();
     this.hud?.destroy();
