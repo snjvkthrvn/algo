@@ -224,6 +224,45 @@ export const GRAIN_CHAMBER_IMAGE_ASSETS: AssetEntry[] = [
   { key: GRAIN_CHAMBER_KEYS.PAR_PLAQUE, path: `${GRAIN_CHAMBER_BASE}/par_plaque.png` },
 ];
 
+/**
+ * Basket Cellar (P1_2 rebuild) — see
+ * docs/superpowers/specs/2026-06-11-p1-2-basket-cellar-design.md.
+ * Same convention as the Grain Chamber: keys declared ahead of the art,
+ * modules guard on textures.exists with procedural fallbacks.
+ */
+export const BASKET_CELLAR_KEYS = {
+  BACKDROP: "basket-cellar-backdrop",
+  BASKET: "basket-cellar-basket",
+  BASKET_OPEN: "basket-cellar-basket-open",
+  ORDER_TAG: "basket-cellar-order-tag",
+  LANTERN_SHEET: "basket-cellar-lantern",
+  TOOL_SHEET: "basket-cellar-tools",
+} as const;
+
+const BASKET_CELLAR_BASE = `${VISUAL_REVAMP_BASE}/basket_cellar`;
+
+export const BASKET_CELLAR_IMAGE_ASSETS: AssetEntry[] = [
+  { key: BASKET_CELLAR_KEYS.BACKDROP, path: `${BASKET_CELLAR_BASE}/backdrop.png` },
+  { key: BASKET_CELLAR_KEYS.BASKET, path: `${BASKET_CELLAR_BASE}/basket.png` },
+  { key: BASKET_CELLAR_KEYS.BASKET_OPEN, path: `${BASKET_CELLAR_BASE}/basket_open.png` },
+  { key: BASKET_CELLAR_KEYS.ORDER_TAG, path: `${BASKET_CELLAR_BASE}/order_tag.png` },
+];
+
+export const BASKET_CELLAR_SHEET_ASSETS: AssetEntry[] = [
+  {
+    key: BASKET_CELLAR_KEYS.LANTERN_SHEET,
+    path: `${BASKET_CELLAR_BASE}/lantern.png`,
+    frameWidth: 24,
+    frameHeight: 24,
+  },
+  {
+    key: BASKET_CELLAR_KEYS.TOOL_SHEET,
+    path: `${BASKET_CELLAR_BASE}/tools.png`,
+    frameWidth: 24,
+    frameHeight: 24,
+  },
+];
+
 export const GRAIN_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
   {
     key: GRAIN_CHAMBER_KEYS.GRAIN_DECALS,
