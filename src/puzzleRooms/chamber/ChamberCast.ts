@@ -21,6 +21,8 @@ function pick(lines: ReadonlyArray<string>): string {
 
 export interface ChamberCastConfig {
   keeperKey?: string;
+  /** Sprite scale for the keeper body (large keeper art needs less). */
+  keeperScale?: number;
   entryLine?: string;
   reactions?: {
     waste: ReadonlyArray<string>;
@@ -29,10 +31,15 @@ export interface ChamberCastConfig {
   };
   /** Verb for the tally line ("trades", "openings"). */
   tallyNoun?: string;
+  /** Post-clear verdict lines (thrifty run / pull-the-lever nudge). */
+  tallyVerdicts?: { thrifty: string; lever: string };
+  /** Speech bubble palette — barn cream/brown by default. */
+  bubble?: { color: string; backgroundColor: string };
 }
 
 const GRAIN_DEFAULTS: Required<ChamberCastConfig> = {
   keeperKey: VISUAL_REVAMP_KEYS.SORTING_FARMER,
+  keeperScale: 0.5,
   entryLine: "The furrows grew out of order. Mind the grain.",
   reactions: {
     waste: [
@@ -46,6 +53,11 @@ const GRAIN_DEFAULTS: Required<ChamberCastConfig> = {
     clear: ["Look at them stand!", "The field remembers that order."],
   },
   tallyNoun: "trades",
+  tallyVerdicts: {
+    thrifty: "Hardly a thing wasted.",
+    lever: "Pull the lever by the door — Bit knows a thriftier way.",
+  },
+  bubble: { color: "#f4e3c1", backgroundColor: "#2e2417" },
 };
 
 export class ChamberCast {
@@ -64,22 +76,26 @@ export class ChamberCast {
     this.scene = scene;
     this.config = {
       keeperKey: config.keeperKey ?? GRAIN_DEFAULTS.keeperKey,
+      keeperScale: config.keeperScale ?? GRAIN_DEFAULTS.keeperScale,
       entryLine: config.entryLine ?? GRAIN_DEFAULTS.entryLine,
       reactions: config.reactions ?? GRAIN_DEFAULTS.reactions,
       tallyNoun: config.tallyNoun ?? GRAIN_DEFAULTS.tallyNoun,
+      tallyVerdicts: config.tallyVerdicts ?? GRAIN_DEFAULTS.tallyVerdicts,
+      bubble: config.bubble ?? GRAIN_DEFAULTS.bubble,
     };
     this.keeper = PuzzleRoom.placeKeeper(
       scene,
       this.config.keeperKey,
       keeperX,
       keeperY,
+      this.config.keeperScale,
     );
     this.speech = scene.add
       .text(keeperX, keeperY - 64, "", {
         fontSize: "9px",
         fontFamily: FONTS.RETRO,
-        color: "#f4e3c1",
-        backgroundColor: "#2e2417",
+        color: this.config.bubble.color,
+        backgroundColor: this.config.bubble.backgroundColor,
         padding: { x: 6, y: 4 },
         wordWrap: { width: 200 },
       })
@@ -116,6 +132,17 @@ export class ChamberCast {
     });
   }
 
+  /** The keeper body, for rooms that drive their own physical reactions. */
+  get sprite(): Phaser.GameObjects.Sprite | null {
+    return this.keeper;
+  }
+
+  /** Scripted character line — bypasses the reaction rate limit. */
+  speak(line: string, holdMs = 2600): void {
+    this.lastReactionAt = -10_000;
+    this.say(line, holdMs);
+  }
+
   /** Entry line — stakes only, no mechanics (VISION §3). */
   entry(): void {
     this.lastReactionAt = -10_000;
@@ -144,8 +171,8 @@ export class ChamberCast {
     const noun = this.config.tallyNoun;
     const verdict =
       count <= par + 1
-        ? "Hardly a thing wasted."
-        : "Pull the lever by the door — Bit knows a thriftier way.";
+        ? this.config.tallyVerdicts.thrifty
+        : this.config.tallyVerdicts.lever;
     this.say(
       `${count} ${noun} to clear the room. Its best is ${par}. ${verdict}`,
       holdMs,

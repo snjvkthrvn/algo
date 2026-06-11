@@ -20,6 +20,8 @@ const DOOR_H = 24;
 export interface ChamberShellTextures {
   doorTexture?: string;
   plaqueTexture?: string;
+  /** Plaque engraving color — wood-brown by default, stone rooms override. */
+  plaqueTextColor?: string;
 }
 
 export class ChamberShell {
@@ -38,6 +40,7 @@ export class ChamberShell {
     this.textures = {
       doorTexture: textures.doorTexture ?? GRAIN_CHAMBER_KEYS.DOOR_PLANKS,
       plaqueTexture: textures.plaqueTexture ?? GRAIN_CHAMBER_KEYS.PAR_PLAQUE,
+      plaqueTextColor: textures.plaqueTextColor ?? "#5b3f1e",
     };
     const { width, height } = scene.cameras.main;
     this.southDoor = this.buildDoor(width / 2, height - DOOR_H / 2);
@@ -63,7 +66,7 @@ export class ChamberShell {
       .text(x, 40, `BEST\n${fieldPar}`, {
         fontSize: "8px",
         fontFamily: FONTS.RETRO,
-        color: "#5b3f1e",
+        color: this.textures.plaqueTextColor,
         align: "center",
       })
       .setOrigin(0.5)

@@ -4,7 +4,8 @@ import { GROUNDS_ROUNDS, groundsPar, hasPartner } from "./groundsPlan";
 
 describe("GROUNDS_ROUNDS", () => {
   it("mirrors the two-sum configs verbatim (values, target, pairs)", () => {
-    expect(GROUNDS_ROUNDS).toHaveLength(3);
+    // All four configs ride along: 5 → 8 → 9 → 9 stones.
+    expect(GROUNDS_ROUNDS).toHaveLength(4);
     GROUNDS_ROUNDS.forEach((round, i) => {
       expect(round.values).toEqual(TWO_SUM_ROUND_CONFIGS[i].values);
       expect(round.target).toBe(TWO_SUM_ROUND_CONFIGS[i].target);
@@ -21,7 +22,7 @@ describe("GROUNDS_ROUNDS", () => {
 
 describe("groundsPar", () => {
   it("is one offer per round", () => {
-    expect(groundsPar()).toBe(3);
+    expect(groundsPar()).toBe(4);
   });
 });
 

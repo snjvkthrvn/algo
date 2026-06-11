@@ -35,18 +35,23 @@ export type Pulse = {
   fireReactive(board: FlowBoard, options: ReactiveOptions): Promise<ReactiveOutcome>;
 };
 
-export function createPulse(scene: Phaser.Scene): Pulse {
+/** Optional dressing — the ghost replay runs a spectral, faded pulse. */
+export type PulseStyle = { color?: number; alpha?: number };
+
+export function createPulse(scene: Phaser.Scene, style: PulseStyle = {}): Pulse {
+  const color = style.color ?? COLORS.accent;
+  const alpha = style.alpha ?? 1;
   async function fireReactive(
     board: FlowBoard,
     options: ReactiveOptions,
   ): Promise<ReactiveOutcome> {
     const start = coordsOf(board, options.sourceKey);
     const dot = scene.add
-      .circle(start.x, start.y, s(6), COLORS.accent, 1)
-      .setStrokeStyle(s(2), COLORS.accent, 0.35)
+      .circle(start.x, start.y, s(6), color, alpha)
+      .setStrokeStyle(s(2), color, 0.35 * alpha)
       .setDepth(11);
     const halo = scene.add
-      .circle(start.x, start.y, s(13), COLORS.accent, 0.18)
+      .circle(start.x, start.y, s(13), color, 0.18 * alpha)
       .setDepth(10);
 
     let waitTween: Phaser.Tweens.Tween | undefined;
