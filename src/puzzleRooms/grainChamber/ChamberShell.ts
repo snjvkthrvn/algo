@@ -20,6 +20,7 @@ export class ChamberShell {
   private scene: Phaser.Scene;
   private southDoor: Phaser.GameObjects.Container;
   private northDoor: Phaser.GameObjects.Container;
+  private plaqueText: Phaser.GameObjects.Text | null = null;
 
   constructor(scene: Phaser.Scene, fieldPar?: number) {
     this.scene = scene;
@@ -43,7 +44,7 @@ export class ChamberShell {
     this.scene.add
       .image(x, 40, GRAIN_CHAMBER_KEYS.PAR_PLAQUE)
       .setDepth(12);
-    this.scene.add
+    this.plaqueText = this.scene.add
       .text(x, 40, `BEST\n${fieldPar}`, {
         fontSize: "8px",
         fontFamily: FONTS.RETRO,
@@ -52,6 +53,11 @@ export class ChamberShell {
       })
       .setOrigin(0.5)
       .setDepth(13);
+  }
+
+  /** Post-clear harvest tally — the plaque flips to your run's numbers. */
+  setPlaqueTally(trades: number, fieldPar: number): void {
+    this.plaqueText?.setText(`YOU ${trades}\nBEST ${fieldPar}`);
   }
 
   private buildDoor(x: number, y: number): Phaser.GameObjects.Container {

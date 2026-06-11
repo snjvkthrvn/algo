@@ -105,6 +105,22 @@ export class ChamberCast {
     this.say(pick(KEEPER_REACTIONS.bloom), 2000);
   }
 
+  /**
+   * Post-clear harvest tally — plain numbers, plain words, after play
+   * (FEEL→NAME safe). Bypasses the reaction rate limit.
+   */
+  tallyLine(trades: number, fieldPar: number, holdMs = 5200): void {
+    this.lastReactionAt = -10_000;
+    const verdict =
+      trades <= fieldPar + 1
+        ? "You traded like the field was glass."
+        : "Pull the lever by the door — Bit knows a thriftier way.";
+    this.say(
+      `${trades} trades to settle the field. Its best is ${fieldPar}. ${verdict}`,
+      holdMs,
+    );
+  }
+
   /** Glitch's loft bark — reuses the existing taunt pool. */
   glitchHeckle(loftX: number, loftY: number): void {
     const bark = this.scene.add

@@ -62,6 +62,7 @@ import { GrainFx } from "../../puzzleRooms/grainChamber/GrainFx";
 import { ChickenFlock } from "../../puzzleRooms/grainChamber/ChickenFlock";
 import { CartDelivery } from "../../puzzleRooms/grainChamber/CartDelivery";
 import { ChamberCast } from "../../puzzleRooms/grainChamber/ChamberCast";
+import { GhostReplay } from "../../puzzleRooms/grainChamber/GhostReplay";
 
 const GRAIN_START = 120;
 
@@ -74,6 +75,12 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   private cleanStreak = 0;
   private resolvingRow = false;
   private laneYPx = 0;
+  private fieldCleared = false;
+  private exiting = false;
+  private leverX = -1;
+  /** The working row as it stood when last (re)built — the replay's input. */
+  private currentRowStart: number[] = [];
+  private roomBounds = { x: 0, y: 0, width: 0, height: 0 };
 
   private room: PuzzleRoom | null = null;
   private lane!: CrateLane;
@@ -82,6 +89,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   private flock!: ChickenFlock;
   private cart!: CartDelivery;
   private cast!: ChamberCast;
+  private ghost!: GhostReplay;
   private gapMarker: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
@@ -132,7 +140,9 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     this.cast = new ChamberCast(this, 96, this.laneYPx - 48);
     new BitCompanion(this, { stage: "byte", x: width - 92, y: 100, depth: 40 });
 
+    this.ghost = new GhostReplay(this);
     this.values = initialRow();
+    this.currentRowStart = [...this.values];
     this.lane.setRow(this.values);
     this.gapMarker = this.add.graphics().setDepth(10);
     this.mountRoom();
@@ -164,15 +174,42 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   private mountRoom(): void {
     const { width, height } = this.cameras.main;
     const laneTop = this.laneYPx + 40;
+    // PuzzleRoom reads this object every canWalk; openExitPath() raises its
+    // top edge after the clear so the player can walk up to the north door.
+    this.roomBounds = {
+      x: 96,
+      y: laneTop,
+      width: width - 192,
+      height: height - laneTop - 64,
+    };
     this.room = new PuzzleRoom(this, {
-      bounds: { x: 96, y: laneTop, width: width - 192, height: height - laneTop - 64 },
+      bounds: this.roomBounds,
       spawn: { x: width / 2, y: height - 96 },
       onAct: () => this.onAct(),
       onStep: (pos) => {
         this.repaintGapMarker(pos.x);
         this.flock.scatterFrom(pos.x, pos.y);
+        this.checkDoorExit(pos);
       },
     });
+  }
+
+  /** After the clear: the walkable floor extends up to the open door. */
+  private openExitPath(): void {
+    const { height } = this.cameras.main;
+    this.roomBounds.y = 56;
+    this.roomBounds.height = height - 56 - 64;
+  }
+
+  private checkDoorExit(pos: { x: number; y: number }): void {
+    if (!this.fieldCleared || this.exiting) return;
+    const { width } = this.cameras.main;
+    if (Math.abs(pos.x - width / 2) < 56 && pos.y < 88) {
+      this.exiting = true;
+      a11yManager.announce("You step out through the open door.", true);
+      const stars = starsForTrades(this.ledger.trades, fieldPar());
+      this.onPuzzleComplete(stars);
+    }
   }
 
   private repaintGapMarker(playerX: number): void {
@@ -189,6 +226,15 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   }
 
   private onAct(): void {
+    if (this.fieldCleared) {
+      // Post-clear the row is settled; acting near the lever replays the
+      // optimal run instead of trading.
+      const pos = this.room?.player.getPosition();
+      if (pos && this.leverX >= 0 && Math.abs(pos.x - this.leverX) < 72 && pos.y < 160) {
+        void this.playGhostReplay();
+      }
+      return;
+    }
     if (this.lane.isAnimating || this.resolvingRow) return;
     const playerX = this.room?.player.getPosition().x ?? -1;
     const gap = gapIndexAtX(playerX, this.lane.geometry());
@@ -241,6 +287,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
       [...this.values].sort((a, b) => a - b),
       delivery,
     );
+    this.currentRowStart = [...this.values];
     this.lane.setRow(this.values);
     this.resolvingRow = false;
     this.lastActionAt = this.time.now;
@@ -249,9 +296,46 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
   private finishField(): void {
     this.shell.unbar(() => {
       this.flock.feast(this.fx.decalPositions());
-      const stars = starsForTrades(this.ledger.trades, fieldPar());
-      this.time.delayedCall(1400, () => this.onPuzzleComplete(stars));
+      // Harvest tally — the room's debrief: plain numbers on the plaque and
+      // from the keeper, then the player chooses: pull the lever to watch
+      // Bit's minimum-trade run, or walk out through the open north door.
+      this.fieldCleared = true;
+      this.openExitPath();
+      this.shell.setPlaqueTally(this.ledger.trades, fieldPar());
+      this.cast.tallyLine(this.ledger.trades, fieldPar());
+      a11yManager.announce(
+        `Field cleared in ${this.ledger.trades} trades; the minimum is ${fieldPar()}. ` +
+          "Pull the lever by the door to watch the perfect run, or walk out through the north door.",
+        true,
+      );
+      this.placeLever();
     });
+  }
+
+  /** The replay lever beside the north door (fallback art: wooden switch). */
+  private placeLever(): void {
+    const { width } = this.cameras.main;
+    const x = width / 2 - 96;
+    this.leverX = x;
+    const base = this.add
+      .rectangle(x, 56, 10, 22, 0x8a6233, 1)
+      .setStrokeStyle(2, 0x5b3f1e, 1)
+      .setDepth(12);
+    const handle = this.add
+      .rectangle(x, 44, 4, 16, 0xd8b35a, 1)
+      .setAngle(-30)
+      .setDepth(13);
+    this.tweens.add({
+      targets: [base, handle],
+      alpha: { from: 0, to: 1 },
+      duration: 400,
+    });
+  }
+
+  private async playGhostReplay(): Promise<void> {
+    if (this.ghost.isPlaying) return;
+    this.cast.onCleanStretch();
+    await this.ghost.play(this.currentRowStart, this.laneYPx - 110);
   }
 
   update(time: number, delta: number): void {
