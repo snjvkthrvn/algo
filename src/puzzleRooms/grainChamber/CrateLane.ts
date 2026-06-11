@@ -79,7 +79,9 @@ export class CrateLane {
     const container = this.scene.add.container(0, this.laneY).setDepth(20);
     if (this.scene.textures.exists(GRAIN_CHAMBER_KEYS.CRATE_SHEET)) {
       container.add(
-        this.scene.add.image(0, 0, GRAIN_CHAMBER_KEYS.CRATE_SHEET, 0),
+        this.scene.add
+          .image(0, 0, GRAIN_CHAMBER_KEYS.CRATE_SHEET)
+          .setDisplaySize(CRATE_W, CRATE_H + 8),
       );
     } else {
       container.add(

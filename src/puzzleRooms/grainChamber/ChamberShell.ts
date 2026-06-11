@@ -7,7 +7,7 @@
  */
 
 import Phaser from "phaser";
-import { COLORS } from "../../config/constants";
+import { COLORS, FONTS } from "../../config/constants";
 import { a11yManager } from "../../core/A11yManager";
 import { audioManager } from "../../core/AudioManager";
 import { JuiceSystem } from "../../systems/JuiceSystem";
@@ -21,7 +21,7 @@ export class ChamberShell {
   private southDoor: Phaser.GameObjects.Container;
   private northDoor: Phaser.GameObjects.Container;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, fieldPar?: number) {
     this.scene = scene;
     const { width, height } = scene.cameras.main;
     this.southDoor = this.buildDoor(width / 2, height - DOOR_H / 2);
@@ -29,6 +29,29 @@ export class ChamberShell {
     // Doors start invisible; seal() slams them in.
     this.southDoor.setAlpha(0);
     this.northDoor.setAlpha(0);
+    if (fieldPar !== undefined) this.placePlaque(fieldPar);
+  }
+
+  /**
+   * The carved par plaque beside the north door — the room's only number,
+   * presented as signage (diegetic replay hook, spec "Move economy").
+   */
+  private placePlaque(fieldPar: number): void {
+    if (!this.scene.textures.exists(GRAIN_CHAMBER_KEYS.PAR_PLAQUE)) return;
+    const { width } = this.scene.cameras.main;
+    const x = width / 2 + 96;
+    this.scene.add
+      .image(x, 40, GRAIN_CHAMBER_KEYS.PAR_PLAQUE)
+      .setDepth(12);
+    this.scene.add
+      .text(x, 40, `BEST\n${fieldPar}`, {
+        fontSize: "8px",
+        fontFamily: FONTS.RETRO,
+        color: "#5b3f1e",
+        align: "center",
+      })
+      .setOrigin(0.5)
+      .setDepth(13);
   }
 
   private buildDoor(x: number, y: number): Phaser.GameObjects.Container {

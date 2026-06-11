@@ -209,6 +209,36 @@ export const GRAIN_CHAMBER_KEYS = {
   PAR_PLAQUE: "grain-chamber-par-plaque",
 } as const;
 
+const GRAIN_CHAMBER_BASE = `${VISUAL_REVAMP_BASE}/grain_chamber`;
+
+/**
+ * Plain images load via IMAGE_ASSETS/getImageAssetPath; the two sprite
+ * sheets (4 even cells per row) carry frame sizes and are loaded with
+ * load.spritesheet by P1_1's preload.
+ */
+export const GRAIN_CHAMBER_IMAGE_ASSETS: AssetEntry[] = [
+  { key: GRAIN_CHAMBER_KEYS.BACKDROP, path: `${GRAIN_CHAMBER_BASE}/backdrop.png` },
+  { key: GRAIN_CHAMBER_KEYS.CRATE_SHEET, path: `${GRAIN_CHAMBER_BASE}/crate.png` },
+  { key: GRAIN_CHAMBER_KEYS.CART, path: `${GRAIN_CHAMBER_BASE}/cart.png` },
+  { key: GRAIN_CHAMBER_KEYS.DOOR_PLANKS, path: `${GRAIN_CHAMBER_BASE}/door_planks.png` },
+  { key: GRAIN_CHAMBER_KEYS.PAR_PLAQUE, path: `${GRAIN_CHAMBER_BASE}/par_plaque.png` },
+];
+
+export const GRAIN_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
+  {
+    key: GRAIN_CHAMBER_KEYS.GRAIN_DECALS,
+    path: `${GRAIN_CHAMBER_BASE}/grain_decals.png`,
+    frameWidth: 16,
+    frameHeight: 16,
+  },
+  {
+    key: GRAIN_CHAMBER_KEYS.CHICKEN_SHEET,
+    path: `${GRAIN_CHAMBER_BASE}/chicken.png`,
+    frameWidth: 24,
+    frameHeight: 24,
+  },
+];
+
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.TITLE_BG,
@@ -1254,6 +1284,7 @@ export const IMAGE_ASSETS: AssetEntry[] = [
   ...ARRAY_PLAINS_IMAGE_ASSETS,
   ...TWIN_RIVERS_IMAGE_ASSETS,
   ...P0_1_PUZZLE_ASSETS,
+  ...GRAIN_CHAMBER_IMAGE_ASSETS,
 ];
 
 export const BOOT_IMAGE_ASSETS: AssetEntry[] = [

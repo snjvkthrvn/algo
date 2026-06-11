@@ -16,7 +16,12 @@
 import Phaser from "phaser";
 import { BasePuzzleScene } from "./BasePuzzleScene";
 import { COLORS, SCENE_KEYS } from "../../config/constants";
-import { VISUAL_REVAMP_KEYS, GRAIN_CHAMBER_KEYS, getImageAssetPath } from "../../config/assets";
+import {
+  VISUAL_REVAMP_KEYS,
+  GRAIN_CHAMBER_KEYS,
+  GRAIN_CHAMBER_IMAGE_ASSETS,
+  GRAIN_CHAMBER_SHEET_ASSETS,
+} from "../../config/assets";
 import { a11yManager } from "../../core/A11yManager";
 import { JuiceSystem } from "../../systems/JuiceSystem";
 import { PuzzleAmbience } from "../../ui/PuzzleAmbience";
@@ -89,10 +94,16 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
 
   preload(): void {
     super.preload();
-    const chamberKeys = Object.values(GRAIN_CHAMBER_KEYS);
-    for (const key of chamberKeys) {
-      const path = getImageAssetPath(key);
-      if (path && !this.textures.exists(key)) this.load.image(key, path);
+    for (const asset of GRAIN_CHAMBER_IMAGE_ASSETS) {
+      if (!this.textures.exists(asset.key))
+        this.load.image(asset.key, asset.path);
+    }
+    for (const asset of GRAIN_CHAMBER_SHEET_ASSETS) {
+      if (!this.textures.exists(asset.key))
+        this.load.spritesheet(asset.key, asset.path, {
+          frameWidth: asset.frameWidth ?? 16,
+          frameHeight: asset.frameHeight ?? 16,
+        });
     }
     PuzzleRoom.preload(this);
     PuzzleRoom.preloadKeeper(this, VISUAL_REVAMP_KEYS.SORTING_FARMER);
@@ -105,7 +116,7 @@ export class P1_1_BubbleSort extends BasePuzzleScene {
     const { width, height } = this.cameras.main;
     this.laneYPx = Math.round((height * 0.52) / 8) * 8;
 
-    this.shell = new ChamberShell(this);
+    this.shell = new ChamberShell(this, fieldPar());
     this.fx = new GrainFx(this, this.prefersReducedMotion());
     this.lane = new CrateLane(this, this.laneYPx);
     this.flock = new ChickenFlock(
