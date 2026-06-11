@@ -18,6 +18,7 @@ type CompletionOptions = {
   returnScene: string;
   startedAt: number;
   stars?: number;
+  hintsUsed?: number;
   delayMs?: number;
 };
 
@@ -34,7 +35,7 @@ export function completeAlgorithmiaPuzzle(scene: Phaser.Scene, options: Completi
     stars,
     time: timeSpent,
     attempts: 0,
-    hintsUsed: 0,
+    hintsUsed: options.hintsUsed ?? 0,
   });
 
   if (scene.scene.isActive(PROLOGUE_RUN_UI_KEY)) {
