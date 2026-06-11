@@ -1,875 +1,376 @@
 /**
- * P1_4_TwoSum — "The Pairing Grounds" (AP_4)
+ * P1_4_TwoSum — "The Pairing Grounds" (AP_4).
  *
- * Overhaul (per puzzles_overhauled.md):
- *   • 3 rounds: TEACH (5 tiles, target 9), TWIST (8 tiles, target 15),
- *     MASTER (12 tiles, target 24, soft time pressure).
- *   • Click-to-toggle selection: first click sets the "anchor" and exposes a
- *     **"Need: target − value"** floating label above it. Second click checks
- *     the pair. Clicking the anchor again deselects.
- *   • **Connecting golden beam** drawn between the two selected tiles while
- *     selection is in progress, and brightens on a valid match.
- *   • Round 3 surfaces a soft per-round timer that affects star rating but
- *     never auto-fails — matches the "no fail-state timer" pillar.
- *   • Multiple valid pairs per round: once one valid pair is locked in, the
- *     remaining tiles can be ignored. Wrong picks deselect and cost stars.
+ * Chamber rollout (spec:
+ * docs/superpowers/specs/2026-06-11-p1-4-pairing-grounds-design.md):
+ *   • Sealed Isaac-style chamber — doors slam on entry, unbar on clear.
+ *   • Numbered runestones stand in the courtyard; the great balance scale
+ *     on the north dais carries the round's target. Pick a stone up (your
+ *     ANCHOR — it follows you), then offer it with another stone: a true
+ *     pair settles the scale level and locks in; a false pair slams the
+ *     beam, CRACKS chips off both stones (persistent rubble — the cost
+ *     economy), and the anchor stays in your hands.
+ *   • Acting on open floor puts the anchor back down — some stones have no
+ *     partner, and discovering that discarding is free while wrong offers
+ *     cost chips is the complement lesson's negative space.
+ *   • The old floating complement label is GONE: holding a stone, you know
+ *     what it needs. Glitch grinds pair after pair at his corner dais —
+ *     and after the clear, HIS scripted NAME_IT line lands (the script's
+ *     hinge where Glitch himself learns the complement).
+ *   • Rounds escalate 5 → 8 → 9 → 9 stones via cart; the old soft timer is
+ *     deleted (VISION §6). Walk out the north door to complete; the lever
+ *     replays anchor-vs-scanner.
  */
 
 import Phaser from "phaser";
 import { BasePuzzleScene } from "./BasePuzzleScene";
-import { COLORS, FONTS, SCENE_KEYS } from "../../config/constants";
-import { VISUAL_REVAMP_KEYS, getImageAssetPath } from "../../config/assets";
-import { audioManager } from "../../core/AudioManager";
+import { COLORS, SCENE_KEYS } from "../../config/constants";
+import {
+  VISUAL_REVAMP_KEYS,
+  PAIRING_GROUNDS_KEYS,
+  PAIRING_GROUNDS_IMAGE_ASSETS,
+  PAIRING_GROUNDS_SHEET_ASSETS,
+} from "../../config/assets";
 import { a11yManager } from "../../core/A11yManager";
 import { JuiceSystem } from "../../systems/JuiceSystem";
-import { drawPanel } from "../../ui/panel";
-import { BitHint } from "../../entities/BitHint";
 import { PuzzleAmbience } from "../../ui/PuzzleAmbience";
-import { showRoundBanner } from "../../ui/RoundBanner";
-import { showLessonCard } from "../../ui/LessonCard";
 import { BitCompanion } from "../../ui/BitCompanion";
-import { GlitchCorner } from "../../ui/GlitchCorner";
-import { ComplexityMeter } from "../../ui/ComplexityMeter";
 import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from "./puzzleTheme";
 import type {
   RegionBackdropId,
   RegionBackdropOptions,
 } from "../../ui/RegionBackdrop";
-import {
-  TWO_SUM_ROUND_CONFIGS,
-  complementOf,
-  isTwoSumPair,
-  starsFromMistakesAndHints,
-  type TwoSumRoundConfig,
-} from "../../data/puzzles/arrayPlainsPuzzleLogic";
 import { numberKeyToIndex } from "../../input/NumberKeyCommand";
-import {
-  BruteForceActor,
-  type BruteForceStrategy,
-} from "../../entities/BruteForceActor";
-import { GLITCH_BANTER } from "../../data/dialogue/glitch_dialogue";
-import { PuzzlePhase } from "../../data/types";
 import { PuzzleRoom } from "../../puzzleRooms/PuzzleRoom";
+import {
+  emptyLedger,
+  recordTrade,
+  starsForTrades,
+  type GrainLedger,
+} from "../../puzzleRooms/grainChamber/grainEconomy";
+import {
+  GROUNDS_ROUNDS,
+  groundsPar,
+} from "../../puzzleRooms/pairingGrounds/groundsPlan";
+import { stoneIndexAt } from "../../puzzleRooms/pairingGrounds/groundsRules";
+import { StoneField } from "../../puzzleRooms/pairingGrounds/StoneField";
+import { BalanceScale } from "../../puzzleRooms/pairingGrounds/BalanceScale";
+import { GlitchPairer } from "../../puzzleRooms/pairingGrounds/GlitchPairer";
+import { GroundsReplay } from "../../puzzleRooms/pairingGrounds/GroundsReplay";
+import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
+import { ChamberCast } from "../../puzzleRooms/chamber/ChamberCast";
+import { ChickenFlock } from "../../puzzleRooms/chamber/ChickenFlock";
+import { CartDelivery } from "../../puzzleRooms/chamber/CartDelivery";
 
-interface NumberTile {
-  index: number;
-  value: number;
-  container: Phaser.GameObjects.Container;
-  box: Phaser.GameObjects.Rectangle;
-  label: Phaser.GameObjects.Text;
-  /** Floating "Need: X" caption above the tile. Hidden by default. */
-  needBadge: Phaser.GameObjects.Container;
-}
+const STONE_REACH = 64;
 
-const TILE_BASE_W = 64;
-const TILE_BASE_H = 64;
+const GROUNDS_CAST = {
+  keeperKey: VISUAL_REVAMP_KEYS.TILE_WORKER,
+  entryLine: "The scale wants its number. Two stones, one weight.",
+  reactions: {
+    waste: [
+      "Chips everywhere — these stones are older than the farm.",
+      "The scale knows. It always knows.",
+    ],
+    clean: [
+      "Level on the first try. The stones approve.",
+      "You held one and KNEW. That's the grounds' way.",
+    ],
+    clear: ["The scale rests level!", "Every weight found its other half."],
+  },
+  tallyNoun: "offers",
+} as const;
 
 export class P1_4_TwoSum extends BasePuzzleScene {
   private roundIndex = 0;
-  private selectedIndices: number[] = [];
-  private mistakesTotal = 0;
-  private isResolving = false;
-  private actionLocked = false;
+  private ledger: GrainLedger = emptyLedger(0);
+  private groundsCleared = false;
+  private exiting = false;
+  private leverX = -1;
+  private fieldYPx = 0;
+  private resolving = false;
+  private roomBounds = { x: 0, y: 0, width: 0, height: 0 };
 
-  private tiles: NumberTile[] = [];
-  private targetText!: Phaser.GameObjects.Text;
-  private roundBadge!: Phaser.GameObjects.Text;
-  private beam!: Phaser.GameObjects.Graphics;
-  private bitHint: BitHint | null = null;
-  private useItCornerMounted = false;
-  /** Brute force pair-check count per round vs the player's click count. */
-  private complexity: ComplexityMeter | null = null;
-  /** Number of pair-checks the player has *consumed* — each anchor-then-target click is one check. */
-  private checksUsed = 0;
-  /** Glitch as visible co-actor during FEEL_IT round 1. Null in USE_IT rounds. */
-  private bruteForce: BruteForceActor | null = null;
-  /** True between FEEL_IT round completion and USE_IT round mount. Guards
-   *  against re-firing the NAME_IT beat on restart. */
-  private namedYet = false;
-  /** The embodiment layer (docs/VISION.md §2): the player walks the stone
-   *  field among the runestones; standing beside one focuses it, SPACE
-   *  anchors/pairs it. */
   private room: PuzzleRoom | null = null;
-  private focusedTile = -1;
+  private field!: StoneField;
+  private balance!: BalanceScale;
+  private shell!: ChamberShell;
+  private flock!: ChickenFlock;
+  private cart!: CartDelivery;
+  private cast!: ChamberCast;
+  private rival!: GlitchPairer;
+  private replay!: GroundsReplay;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_4 });
     this.puzzleId = "ap_4";
     this.puzzleName = "The Pairing Grounds";
     this.puzzleDescription =
-      "Pick two tiles whose values sum to the target. Use complements.";
-  }
-
-  protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG;
-  }
-  protected getPuzzleFrameFillAlpha(): number {
-    return 0;
-  }
-  protected getPuzzleTheme(): PuzzleTheme {
-    return ARRAY_PLAINS_PUZZLE_THEME;
-  }
-  protected getRegionBackdrop(): {
-    id: RegionBackdropId;
-    options?: RegionBackdropOptions;
-  } | null {
-    return { id: "array-plains", options: { intensity: 0.7 } };
+      "The scale wants its number. Find the two stones that make it.";
   }
 
   preload(): void {
     super.preload();
-    // Physical tile bodies: the same wooden-crate sprite P1_1 uses, so the
-    // Pairing Grounds runestones stop reading as white UI chips floating
-    // over the barn art (VISION §2/§5). Guard-preload per the P1_1 pattern.
-    const crateKey = VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE;
-    const cratePath = getImageAssetPath(crateKey);
-    if (cratePath && !this.textures.exists(crateKey)) {
-      this.load.image(crateKey, cratePath);
+    for (const asset of PAIRING_GROUNDS_IMAGE_ASSETS) {
+      if (!this.textures.exists(asset.key))
+        this.load.image(asset.key, asset.path);
+    }
+    for (const asset of PAIRING_GROUNDS_SHEET_ASSETS) {
+      if (!this.textures.exists(asset.key))
+        this.load.spritesheet(asset.key, asset.path, {
+          frameWidth: asset.frameWidth ?? 16,
+          frameHeight: asset.frameHeight ?? 16,
+        });
     }
     PuzzleRoom.preload(this);
     PuzzleRoom.preloadKeeper(this, VISUAL_REVAMP_KEYS.TILE_WORKER);
   }
 
   create(): void {
-    // FEEL_IT first-principles guard: strip "complement" / "two sum" framing
-    // from the title subtitle when round 0 is FEEL_IT. The player should
-    // derive the complement insight, not read about it before playing.
-    if (TWO_SUM_ROUND_CONFIGS[0].lesson.phase === PuzzlePhase.FEEL_IT) {
-      this.puzzleDescription =
-        "Find two runestones that add to the target. A Tile Worker waits.";
-    }
     super.create();
-    new PuzzleAmbience(this, "farmland", { intensity: 0.3 });
+    new PuzzleAmbience(this, "farmland", { intensity: 0.35 });
 
-    const { width } = this.cameras.main;
+    const { width, height } = this.cameras.main;
+    this.fieldYPx = Math.round((height * 0.46) / 8) * 8;
 
-    this.buildRoundBadge(width);
-    this.buildTargetPanel(width);
+    this.shell = new ChamberShell(this, groundsPar());
+    this.balance = new BalanceScale(this, width / 2, 132);
+    this.field = new StoneField(this, this.fieldYPx, this.prefersReducedMotion());
+    this.flock = new ChickenFlock(
+      this,
+      new Phaser.Geom.Rectangle(64, height - 160, width - 360, 120),
+    );
+    this.cart = new CartDelivery(this);
+    this.cast = new ChamberCast(this, 96, this.fieldYPx - 30, GROUNDS_CAST);
+    this.rival = new GlitchPairer(this, width - 250, height - 110);
+    this.replay = new GroundsReplay(this);
     new BitCompanion(this, { stage: "byte", x: width - 92, y: 100, depth: 40 });
 
-    this.beam = this.add.graphics().setDepth(25);
-
-    this.bitHint = new BitHint(this, 100, 280);
-    this.bitHint.showNeutral();
-
+    this.ledger = emptyLedger(0);
+    this.mountRound();
     this.mountRoom();
 
-    this.startRound(0).catch(() => undefined);
+    this.shell.seal();
+    this.cast.entry();
 
+    this.input.keyboard?.on("keydown", this.onNumberKey, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.bitHint?.destroy();
-      this.bitHint = null;
-      this.bruteForce?.destroy();
-      this.bruteForce = null;
-    });
-
-    this.input.keyboard?.on("keydown", (event: KeyboardEvent) => {
-      if (this.isResolving || this.actionLocked) return;
-      const idx = numberKeyToIndex(event.key, this.tiles.length);
-      if (idx !== null) this.chooseTile(idx);
+      this.input.keyboard?.off("keydown", this.onNumberKey, this);
+      this.rival.stop();
     });
   }
 
-  /**
-   * The stone field: the player walks among the runestones; standing
-   * beside one focuses it, SPACE anchors it (first press) or pairs it
-   * (second press). Remembering where the complement STOOD becomes
-   * spatial memory — the hash-set insight, felt (docs/VISION.md §2).
-   */
+  private currentRound() {
+    return GROUNDS_ROUNDS[this.roundIndex] ?? null;
+  }
+
+  private mountRound(): void {
+    const round = this.currentRound();
+    if (!round) return;
+    this.field.setRound(round.values);
+    this.balance.setTarget(round.target);
+    this.rival.setRound(round.values);
+    a11yManager.announce(
+      `The scale asks for ${round.target}. ${round.values.length} stones stand in the grounds.`,
+      true,
+    );
+  }
+
+  private onNumberKey(event: KeyboardEvent): void {
+    const round = this.currentRound();
+    if (!round || !this.room) return;
+    const index = numberKeyToIndex(event.key, round.values.length);
+    if (index === null || this.field.isSpent(index)) return;
+    const center = this.field.stoneCenter(index);
+    if (!center) return;
+    this.room.player.walkTo(center.x, center.y + 44, () => this.onAct());
+  }
+
   private mountRoom(): void {
     const { width, height } = this.cameras.main;
+    const floorTop = this.fieldYPx - 24;
+    this.roomBounds = {
+      x: 80,
+      y: floorTop,
+      width: width - 160,
+      height: height - floorTop - 56,
+    };
     this.room = new PuzzleRoom(this, {
-      bounds: {
-        x: width / 2 - 460,
-        y: height / 2 - 120,
-        width: 920,
-        height: 320,
+      bounds: this.roomBounds,
+      spawn: { x: width / 2, y: height - 96 },
+      onAct: () => this.onAct(),
+      onStep: (pos) => {
+        this.flock.scatterFrom(pos.x, pos.y);
+        this.field.followPlayer(pos.x, pos.y);
+        this.checkDoorExit(pos);
       },
-      spawn: { x: width / 2 - 380, y: height / 2 + 160 },
-      isBlocked: (point) =>
-        this.tiles.some(
-          (t) =>
-            Math.abs(point.x - t.container.x) < TILE_BASE_W / 2 + 4 &&
-            Math.abs(point.y - t.container.y) < TILE_BASE_H / 2 + 4,
-        ),
-      onAct: () => {
-        if (this.focusedTile >= 0) this.chooseTile(this.focusedTile);
-      },
-      onStep: () => this.refreshTileFocus(),
     });
+  }
 
-    // The Tile Worker watches from the field's west edge.
-    PuzzleRoom.placeKeeper(
-      this,
-      VISUAL_REVAMP_KEYS.TILE_WORKER,
-      width / 2 - 470,
-      height / 2 + 140,
+  private openExitPath(): void {
+    const { height } = this.cameras.main;
+    this.roomBounds.y = 56;
+    this.roomBounds.height = height - 56 - 56;
+  }
+
+  private checkDoorExit(pos: { x: number; y: number }): void {
+    if (!this.groundsCleared || this.exiting) return;
+    const { width } = this.cameras.main;
+    if (Math.abs(pos.x - width / 2) < 56 && pos.y < 88) {
+      this.exiting = true;
+      a11yManager.announce("You step out through the open door.", true);
+      this.onPuzzleComplete(starsForTrades(this.ledger.trades, groundsPar()));
+    }
+  }
+
+  private onAct(): void {
+    if (this.groundsCleared) {
+      const pos = this.room?.player.getPosition();
+      if (
+        pos &&
+        this.leverX >= 0 &&
+        Math.abs(pos.x - this.leverX) < 72 &&
+        pos.y < 160
+      ) {
+        void this.playReplay();
+      }
+      return;
+    }
+    if (this.resolving) return;
+    const round = this.currentRound();
+    const pos = this.room?.player.getPosition();
+    if (!round || !pos) return;
+
+    const addressed = stoneIndexAt(
+      pos.x,
+      pos.y - 24,
+      this.field.centers(),
+      STONE_REACH,
     );
+    const carriedIndex = this.field.carriedIndex();
+
+    // Not carrying: act near a stone lifts it as the anchor.
+    if (carriedIndex < 0) {
+      if (addressed >= 0 && this.field.pickUp(addressed)) {
+        const value = this.field.valueOf(addressed);
+        a11yManager.announce(`You lift the ${value} stone.`, false);
+      }
+      return;
+    }
+
+    // Carrying, on open floor: put the anchor back down. Free.
+    if (addressed < 0) {
+      this.field.putDown();
+      a11yManager.announce("You set the stone back down.", false);
+      return;
+    }
+
+    // Carrying, near another stone: offer the pair to the scale.
+    const anchorValue = this.field.valueOf(carriedIndex);
+    const partnerValue = this.field.valueOf(addressed);
+    if (anchorValue === null || partnerValue === null) return;
+    this.resolving = true;
+    this.ledger = recordTrade(this.ledger);
+
+    void this.balance
+      .offer(anchorValue, partnerValue, round.target)
+      .then((settled) => {
+        if (!settled) {
+          const center = this.field.stoneCenter(addressed);
+          if (center) {
+            this.field.crackChip(center.x, center.y);
+            this.emitPuzzleActionPulse(center.x, center.y, "wrong");
+          }
+          this.field.reboundCarried();
+          this.cast.onSpillStreak();
+          a11yManager.announce(
+            "The scale slams sideways — chips fly. The anchor stays in your hands.",
+            false,
+          );
+          this.resolving = false;
+          return;
+        }
+        const { width } = this.cameras.main;
+        this.field.spendPair(carriedIndex, addressed);
+        JuiceSystem.correctBurst(this, width / 2, 150);
+        this.cast.onCleanStretch();
+        a11yManager.announce(
+          "The scale settles level. The pair locks in.",
+          false,
+        );
+        this.roundIndex++;
+        void this.advance();
+      });
+  }
+
+  private async advance(): Promise<void> {
+    if (this.roundIndex >= GROUNDS_ROUNDS.length) {
+      this.finishGrounds();
+      return;
+    }
+    this.cast.onBloom();
+    await this.cart.deliver(this.fieldYPx);
+    this.mountRound();
+    this.resolving = false;
+  }
+
+  private finishGrounds(): void {
+    this.rival.stop();
+    this.shell.unbar(() => {
+      this.groundsCleared = true;
+      this.openExitPath();
+      this.flock.feast(this.field.chipPositions());
+      this.shell.setPlaqueTally(this.ledger.trades, groundsPar());
+      this.cast.tallyLine(this.ledger.trades, groundsPar());
+      a11yManager.announce(
+        `Grounds cleared in ${this.ledger.trades} offers; the minimum is ${groundsPar()}. ` +
+          "Pull the lever by the door to watch the anchored walk, or leave through the north door.",
+        true,
+      );
+      this.placeLever();
+      this.resolving = false;
+    });
+  }
+
+  private placeLever(): void {
+    const { width } = this.cameras.main;
+    const x = width / 2 - 128;
+    this.leverX = x;
+    const base = this.add
+      .rectangle(x, 56, 10, 22, 0x8a6233, 1)
+      .setStrokeStyle(2, 0x5b3f1e, 1)
+      .setDepth(12);
+    const handle = this.add
+      .rectangle(x, 44, 4, 16, 0xd8b35a, 1)
+      .setAngle(-30)
+      .setDepth(13);
+    this.tweens.add({
+      targets: [base, handle],
+      alpha: { from: 0, to: 1 },
+      duration: 400,
+    });
+  }
+
+  private async playReplay(): Promise<void> {
+    if (this.replay.isPlaying) return;
+    const round = GROUNDS_ROUNDS[GROUNDS_ROUNDS.length - 1];
+    const pair = round.validPairs[0];
+    if (!pair) return;
+    await this.replay.play(round.values, pair, this.fieldYPx - 96);
   }
 
   update(time: number, delta: number): void {
     this.room?.update(time, delta);
   }
 
-  /** Standing near a runestone focuses it — proximity is attention. */
-  private refreshTileFocus(): void {
-    if (!this.room) return;
-    const pos = this.room.player.getPosition();
-    let best = -1;
-    let bestDist = Infinity;
-    for (const tile of this.tiles) {
-      const dist = Math.hypot(
-        pos.x - tile.container.x,
-        pos.y - tile.container.y,
-      );
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = tile.index;
-      }
-    }
-    if (bestDist > TILE_BASE_W * 1.3) best = -1;
-    if (best === this.focusedTile) return;
-
-    const prev = this.tiles.find((t) => t.index === this.focusedTile);
-    if (prev)
-      this.tweens.add({ targets: prev.container, scale: 1, duration: 90 });
-    this.focusedTile = best;
-    const next = this.tiles.find((t) => t.index === best);
-    if (next)
-      this.tweens.add({ targets: next.container, scale: 1.07, duration: 90 });
-  }
-
-  /** Freeze the walking layer while the keeper names the concept. */
-  protected async showNameItBeat(beat: {
-    speaker: string;
-    line: string;
-  }): Promise<void> {
-    this.room?.setActive(false);
-    await super.showNameItBeat(beat);
-    this.room?.setActive(true);
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Chrome
-  // ──────────────────────────────────────────────────────────────────
-
-  private buildRoundBadge(width: number): void {
-    // Round-5: same chrome simplification as the other AP puzzles —
-    // float round/index text instead of slabbing a panel under it.
-    const theme = this.getPuzzleTheme();
-    this.roundBadge = this.add
-      .text(width / 2, 152, "", {
-        fontSize: "11px",
-        fontFamily: FONTS.RETRO,
-        color: theme.titleColor,
-        stroke: theme.titleStroke,
-        strokeThickness: 2,
-      })
-      .setOrigin(0.5)
-      .setDepth(20)
-      .setAlpha(0.92);
-  }
-
-  private buildTargetPanel(width: number): void {
-    drawPanel(this, width / 2 - 120, 196, 240, 50, {
-      depth: 12,
-      fill: 0xe0f8d0,
-      frame: COLORS.WARNING,
-      inner: COLORS.GOLD_ACCENT,
-      alpha: 0.96,
-    });
-    this.targetText = this.add
-      .text(width / 2, 221, "", {
-        fontSize: "18px",
-        fontFamily: FONTS.RETRO,
-        color: "#081820",
-      })
-      .setOrigin(0.5)
-      .setDepth(20);
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Phase gating (FEEL_IT vs USE_IT)
-  // ──────────────────────────────────────────────────────────────────
-
-  /** Phase helper — true when the current round is FEEL_IT. Used to gate
-   *  algorithmic hand-holding (NEED badge, trace binding, complement hint)
-   *  that would name the technique before the player has felt it. */
-  private isFeelItRound(): boolean {
-    return (
-      TWO_SUM_ROUND_CONFIGS[this.roundIndex]?.lesson.phase ===
-      PuzzlePhase.FEEL_IT
-    );
-  }
-
-  /** FEEL_IT mounts: only the brute-force co-actor. NO trace, NO complexity
-   *  meter, NO GlitchCorner copy that says "n(n-1)/2 checks" — the player
-   *  must derive the contrast from Glitch's visibly mounting pair count. */
-  private mountFeelItPanels(): void {
-    if (this.bruteForce) return;
-    const { height } = this.cameras.main;
-    this.bruteForce = new BruteForceActor(this, {
-      x: 152,
-      y: height - 92,
-      strategy: makeTwoSumBruteStrategy(),
-      heading: "⚠ GLITCH'S APPROACH",
-      subtitle: "(checking every pair in turn...)",
-      notDoneLabel: "still flailing",
-      doneLabel: "gave up",
-      verbLabel: "pair checks",
-      banter: GLITCH_BANTER.ap_4,
-      depth: 40,
-    });
-  }
-
-  /** USE_IT mounts: the friendly GlitchCorner and the ComplexityMeter.
-   *  The twoSum pseudocode trace and PAIR PREVIEW panel are cut — the
-   *  playable game never shows code (docs/VISION.md §3-4); the deep layer
-   *  lives in the Codex. */
-  private mountUseItPanels(): void {
-    const { width, height } = this.cameras.main;
-    if (!this.useItCornerMounted) {
-      this.useItCornerMounted = true;
-      new GlitchCorner(this, {
-        x: 152,
-        y: height - 92,
-        width: 240,
-        height: 74,
-        variant: "parchment",
-        heading: "Glitch Tries Every Pair",
-        body: "checks every pairing, one by one. You can do better.",
-        depth: 40,
-      });
-    }
-    if (!this.complexity) {
-      const initialBrute = pairCount(
-        TWO_SUM_ROUND_CONFIGS[this.roundIndex].values.length,
-      );
-      this.complexity = new ComplexityMeter(this, {
-        x: width / 2,
-        y: 230,
-        width: 320,
-        bruteLabel: "pair checks",
-        bruteCost: initialBrute,
-        algoLabel: "your picks",
-        algoCost: 0,
-        variant: "parchment",
-        depth: 40,
-      });
-    }
-  }
-
-  // showNameItBeat lifted to BasePuzzleScene.
-
-  // ──────────────────────────────────────────────────────────────────
-  // Round lifecycle
-  // ──────────────────────────────────────────────────────────────────
-
-  private async startRound(idx: number): Promise<void> {
-    this.roundIndex = idx;
-    this.selectedIndices = [];
-    this.checksUsed = 0;
-    this.beam.clear();
-    this.isResolving = true;
-    this.actionLocked = false;
-
-    const round = TWO_SUM_ROUND_CONFIGS[idx];
-    const total = TWO_SUM_ROUND_CONFIGS.length;
-    const isFeelIt = round.lesson.phase === PuzzlePhase.FEEL_IT;
-    // FEEL_IT strips "find any pair that sums to target" — even that phrasing
-    // names the technique. The target panel is enough; the player figures out
-    // "I need two" from the puzzle's name and the brute-force counter.
-    this.roundBadge.setText(
-      isFeelIt
-        ? `ROUND ${idx + 1}/${total}  ·  the Tile Worker waits`
-        : `ROUND ${idx + 1}/${total} · ${round.label} · find any pair that sums to target`,
-    );
-    this.targetText.setText(`TARGET  =  ${round.target}`);
-
-    if (isFeelIt) {
-      this.mountFeelItPanels();
-    } else {
-      this.mountUseItPanels();
-      // Coming from FEEL_IT into USE_IT — fade Glitch out of focus instead of
-      // destroying. Keeping them dim-visible cements that they're still the
-      // worse approach, even after the player has the technique.
-      this.bruteForce?.fadeTo(0.32);
-    }
-
-    this.layoutTiles(round);
-    this.complexity?.reset({
-      bruteCost: pairCount(round.values.length),
-      algoCost: 0,
-      bruteLabel: "pair checks",
-      algoLabel: "your picks",
-    });
-
-    const subtitle =
-      idx >= total - 2
-        ? `${round.label}  ·  target ${round.target}  ·  ${round.values.length} runestones, ${round.seconds}s on the clock`
-        : `${round.label}  ·  target ${round.target}  ·  pick one, find its complement`;
-
-    await showLessonCard(this, round.lesson, "parchment", {
-      dockPosition: "top",
-      width: 760,
-      height: 168,
-      autoDismissMs: 5000,
-    });
-
-    await showRoundBanner(this, {
-      label: `ROUND ${idx + 1} / ${total}`,
-      subtitle,
-      accent: idx >= total - 1 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
-    });
-
-    this.isResolving = false;
-  }
-
-  private layoutTiles(round: TwoSumRoundConfig): void {
-    this.tiles.forEach((t) => t.container.destroy());
-    this.tiles = [];
-    this.focusedTile = -1;
-
-    const { width, height } = this.cameras.main;
-    const n = round.values.length;
-    const perRow = n <= 6 ? n : Math.ceil(n / 2);
-    const rows = Math.ceil(n / perRow);
-
-    // Slightly shrink tiles on rounds with many values so they fit on screen.
-    const scale = n <= 5 ? 1.1 : n <= 8 ? 1.0 : 0.86;
-    const tileW = Math.round(TILE_BASE_W * scale);
-    const tileH = Math.round(TILE_BASE_H * scale);
-    const gap = n <= 8 ? 18 : 10;
-    const rowWidth = perRow * tileW + (perRow - 1) * gap;
-    const startX = width / 2 - rowWidth / 2 + tileW / 2;
-    const startY = height / 2 + 70 - ((rows - 1) * (tileH + 22)) / 2;
-
-    for (let i = 0; i < n; i++) {
-      const row = Math.floor(i / perRow);
-      const col = i % perRow;
-      const x = startX + col * (tileW + gap);
-      const y = startY + row * (tileH + 22);
-      this.tiles.push(this.createTile(i, round.values[i], x, y, tileW, tileH));
-    }
-  }
-
-  private createTile(
-    index: number,
-    value: number,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-  ): NumberTile {
-    const container = this.add.container(x, y).setDepth(30);
-    const hasCrate = this.crateLoaded();
-
-    // Footprint shadow at the crate's base — grounds the object on the
-    // barn floor instead of duplicating the tile silhouette behind it.
-    const shadow = this.add.ellipse(
-      2,
-      h / 2 + 5,
-      w * 1.04,
-      h * 0.2,
-      0x000000,
-      0.34,
-    );
-
-    // Physical body: the wooden-crate sprite (same as P1_1's furrows). The
-    // Rectangle stays as the hit area + state-tint layer — alpha 0 at rest
-    // so the wood grain shows through. Legacy stone-slab path kept as the
-    // fallback when the texture isn't loaded (unit tests).
-    const crate = hasCrate
-      ? this.add
-          .image(0, 0, VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE)
-          .setDisplaySize(w, h)
-      : null;
-    const box = this.add
-      .rectangle(0, 0, w, h, 0xe0f8d0, hasCrate ? 0 : 0.96)
-      .setInteractive({ useHandCursor: true });
-    if (!hasCrate) box.setStrokeStyle(3, 0x346856, 1);
-
-    // Decorative carved-rune frame — slab dressing; the crate's own pixel
-    // detail replaces it when the sprite is present.
-    const decor = this.add.graphics();
-    if (!hasCrate) {
-      decor.lineStyle(1, 0x346856, 0.65);
-      // Inner frame
-      decor.strokeRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8);
-      // Corner chips
-      [
-        [-w / 2 + 2, -h / 2 + 2],
-        [w / 2 - 6, -h / 2 + 2],
-        [-w / 2 + 2, h / 2 - 6],
-        [w / 2 - 6, h / 2 - 6],
-      ].forEach(([cx, cy]) => decor.strokeRect(cx, cy, 4, 4));
-      // Faint carved arc above the numeral (rune flourish).
-      decor.lineStyle(1, 0x346856, 0.35);
-      decor.beginPath();
-      decor.arc(0, -h / 4, w / 3, Math.PI, 0);
-      decor.strokePath();
-    }
-
-    const label = this.add
-      .text(0, 0, `${value}`, {
-        fontSize: "22px",
-        fontFamily: FONTS.RETRO,
-        color: hasCrate ? "#fefce8" : "#081820",
-        stroke: hasCrate ? "#1a1208" : "#e0f8d0",
-        strokeThickness: hasCrate ? 3 : 1,
-      })
-      .setOrigin(0.5);
-    const key = this.add
-      .text(0, h / 2 + 10, index < 9 ? `${index + 1}` : "", {
-        fontSize: "8px",
-        fontFamily: FONTS.RETRO,
-        color: "#346856",
-      })
-      .setOrigin(0.5);
-
-    // Floating "Need: X" pill above the tile (initially hidden).
-    const needBg = this.add
-      .rectangle(0, -h / 2 - 18, 78, 20, 0x06b6d4, 0.96)
-      .setStrokeStyle(1, 0x081820, 1);
-    const needText = this.add
-      .text(0, -h / 2 - 18, "", {
-        fontSize: "11px",
-        fontFamily: FONTS.RETRO,
-        color: "#e0f8d0",
-      })
-      .setOrigin(0.5);
-    const needBadge = this.add.container(0, 0, [needBg, needText]).setAlpha(0);
-    needBadge.setData("text", needText);
-    needBadge.setData("bg", needBg);
-
-    const children: Phaser.GameObjects.GameObject[] = [shadow];
-    if (crate) children.push(crate);
-    children.push(box, decor, label, key, needBadge);
-    container.add(children);
-    box.on("pointerdown", () => this.chooseTile(index));
-    // Hover affordance — the click target lifts slightly and brightens so the
-    // player can scan complements with their eye instead of clicking blind.
-    // We tween scale on the container, not the box, so the decor + label
-    // come along for the ride.
-    box.on("pointerover", () => {
-      if (this.isResolving || this.actionLocked) return;
-      if (this.selectedIndices.includes(index)) return;
-      this.tweens.add({
-        targets: container,
-        scale: 1.06,
-        duration: 90,
-        ease: "Sine.easeOut",
-      });
-      // Over the crate the hover is a light wash, not an opaque repaint.
-      box.setFillStyle(0xfde68a, this.crateLoaded() ? 0.3 : 0.6);
-    });
-    box.on("pointerout", () => {
-      this.tweens.add({
-        targets: container,
-        scale: 1,
-        duration: 110,
-        ease: "Sine.easeIn",
-      });
-      // Restore the appropriate fill — selection state takes precedence over
-      // the hover preview.
-      const tile = this.tiles[index];
-      if (tile) this.styleTile(tile, this.selectedIndices.includes(index));
-    });
-
-    // Entrance: small cascade so the field assembles, not just appears.
-    container.setScale(0.6);
-    container.setAlpha(0);
-    this.tweens.add({
-      targets: container,
-      scale: 1,
-      alpha: 1,
-      duration: 240,
-      delay: index * 40,
-      ease: "Back.easeOut",
-    });
-
-    return { index, value, container, box, label, needBadge };
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Selection logic
-  // ──────────────────────────────────────────────────────────────────
-
-  private chooseTile(index: number): void {
-    if (this.isResolving || this.actionLocked) return;
-    const tile = this.tiles[index];
-    if (!tile) return;
-    const round = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
-
-    // Toggle off if already selected
-    if (this.selectedIndices.includes(index)) {
-      this.selectedIndices = this.selectedIndices.filter((i) => i !== index);
-      this.styleTile(tile, false);
-      this.hideNeedBadge(tile);
-      this.redrawBeam();
-      return;
-    }
-
-    this.selectedIndices.push(index);
-    this.styleTile(tile, true);
-
-    if (this.selectedIndices.length === 1) {
-      const need = complementOf(tile.value, round.target);
-      this.showNeedBadge(tile, need);
-      this.bitHint?.moveTo(tile.container.x, tile.container.y - 90, 280);
-      this.bitHint?.showWarm();
-      this.redrawBeam();
-      // Need badge appears silently — announce the anchor + complement so
-      // screen-reader players know what value to look for next.
-      a11yManager.announce(
-        `Anchored ${tile.value}. Need ${need} to reach target ${round.target}.`,
-        false,
-      );
-      return;
-    }
-
-    // Two tiles selected — evaluate.
-    this.redrawBeam();
-    this.checksUsed++;
-    this.complexity?.setAlgoCost(this.checksUsed);
-    const values = this.selectedIndices.map((i) => this.tiles[i].value);
-    if (isTwoSumPair(round.values, round.target, values)) {
-      this.complexity?.celebrate();
-      this.handleCorrectPair();
-    } else {
-      this.handleWrongPair();
-    }
-  }
-
-  /** True when the wooden-crate sprite backs the tiles (false in unit tests
-   *  or any scene start that skipped preload — fallback is the stone slab). */
-  private crateLoaded(): boolean {
-    return this.textures.exists(VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE);
-  }
-
-  private styleTile(tile: NumberTile, selected: boolean): void {
-    const hasCrate = this.crateLoaded();
-    if (selected) {
-      // Gold wash + cyan frame over the crate; opaque repaint on the slab.
-      tile.box.setFillStyle(COLORS.GOLD_ACCENT, hasCrate ? 0.4 : 0.96);
-      tile.box.setStrokeStyle(3, COLORS.CYAN_GLOW, 0.95);
-    } else if (hasCrate) {
-      tile.box.setFillStyle(0xe0f8d0, 0);
-      tile.box.setStrokeStyle();
-    } else {
-      tile.box.setFillStyle(0xe0f8d0, 0.96);
-      tile.box.setStrokeStyle(3, 0x346856, 1);
-    }
-  }
-
-  private showNeedBadge(tile: NumberTile, need: number): void {
-    // FEEL_IT suppresses the NEED badge entirely — it's a literal printout of
-    // target − v, which IS the complement technique. The whole point of round
-    // 1 is the player computing this in their head.
-    if (this.isFeelItRound()) return;
-    const textObj = tile.needBadge.getData("text") as Phaser.GameObjects.Text;
-    textObj.setText(`NEED ${need}`);
-    tile.needBadge.setAlpha(0);
-    this.tweens.add({
-      targets: tile.needBadge,
-      alpha: 1,
-      y: -2,
-      duration: 200,
-      ease: "Sine.easeOut",
-    });
-  }
-
-  private hideNeedBadge(tile: NumberTile): void {
-    this.tweens.add({
-      targets: tile.needBadge,
-      alpha: 0,
-      duration: 160,
-    });
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Connecting beam
-  // ──────────────────────────────────────────────────────────────────
-
-  private redrawBeam(): void {
-    this.beam.clear();
-    if (this.selectedIndices.length !== 2) return;
-    const a = this.tiles[this.selectedIndices[0]];
-    const b = this.tiles[this.selectedIndices[1]];
-    if (!a || !b) return;
-
-    // Thick gold core + cyan halo
-    this.beam.lineStyle(4, COLORS.GOLD_ACCENT, 0.95);
-    this.beam.beginPath();
-    this.beam.moveTo(a.container.x, a.container.y);
-    this.beam.lineTo(b.container.x, b.container.y);
-    this.beam.strokePath();
-
-    this.beam.lineStyle(1, COLORS.CYAN_GLOW, 0.7);
-    this.beam.beginPath();
-    this.beam.moveTo(a.container.x, a.container.y);
-    this.beam.lineTo(b.container.x, b.container.y);
-    this.beam.strokePath();
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Pair resolution
-  // ──────────────────────────────────────────────────────────────────
-
-  private handleCorrectPair(): void {
-    this.isResolving = true;
-
-    const a = this.tiles[this.selectedIndices[0]];
-    const b = this.tiles[this.selectedIndices[1]];
-
-    [a, b].forEach((tile) => {
-      tile.box.setFillStyle(COLORS.SUCCESS, this.crateLoaded() ? 0.5 : 1);
-      tile.box.setStrokeStyle(3, 0x081820, 1);
-      this.tweens.add({
-        targets: tile.container,
-        y: tile.container.y - 12,
-        duration: 200,
-        yoyo: true,
-        ease: "Quad.easeOut",
-      });
-    });
-
-    audioManager.playCorrectTone();
-    JuiceSystem.correctBurst(
-      this,
-      (a.container.x + b.container.x) / 2,
-      (a.container.y + b.container.y) / 2,
-    );
-
-    // Pulse the beam brighter.
-    this.tweens.addCounter({
-      from: 1,
-      to: 0,
-      duration: 700,
-      ease: "Sine.easeOut",
-      onUpdate: (tw) => {
-        this.beam.clear();
-        const v = tw.getValue() ?? 0;
-        const alpha = 0.4 + 0.6 * v;
-        this.beam.lineStyle(6, COLORS.GOLD_ACCENT, alpha);
-        this.beam.beginPath();
-        this.beam.moveTo(a.container.x, a.container.y);
-        this.beam.lineTo(b.container.x, b.container.y);
-        this.beam.strokePath();
-      },
-      onComplete: () => this.beam.clear(),
-    });
-
-    const isFinal = this.roundIndex >= TWO_SUM_ROUND_CONFIGS.length - 1;
-    this.bitHint?.showWarm();
-    this.showMessage(
-      `${a.value} + ${b.value} = ${a.value + b.value}. Pair locked.`,
-      COLORS.SUCCESS,
-    );
-
-    if (isFinal) {
-      this.bitHint?.celebrate();
-      // Hold the body still through the victory + naming beat.
-      this.room?.setActive(false);
-      this.time.delayedCall(1400, () => {
-        // Serene wonder (docs/VISION.md §6): accuracy + hints decide stars;
-        // no speed pressure on first contact with the concept.
-        const stars = starsFromMistakesAndHints(
-          this.mistakesTotal,
-          this.hintsUsed,
-        );
-        this.onPuzzleComplete(stars);
-      });
-      return;
-    }
-
-    // FEEL_IT completion → fire the NAME_IT script beat once before round 2
-    // starts. This is the moment Glitch (the speaker for AP-4) cracks and
-    // names the technique. Freezing Glitch's brute-force counter lands the
-    // "you won the contrast" beat right before they speak.
-    this.time.delayedCall(1400, async () => {
-      const finishedRound = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
-      if (
-        finishedRound?.lesson.phase === PuzzlePhase.FEEL_IT &&
-        finishedRound.lesson.nameItBeat &&
-        !this.namedYet
-      ) {
-        this.namedYet = true;
-        this.bruteForce?.freeze();
-        await this.showNameItBeat(finishedRound.lesson.nameItBeat);
-      }
-      this.startRound(this.roundIndex + 1).catch(() => undefined);
-    });
-  }
-
-  private handleWrongPair(): void {
-    this.actionLocked = true;
-    const wrongSelection = [...this.selectedIndices];
-    const a = this.tiles[wrongSelection[0]];
-    const b = this.tiles[wrongSelection[1]];
-    if (!a || !b) {
-      this.actionLocked = false;
-      return;
-    }
-    this.attempts++;
-    this.mistakesTotal++;
-
-    audioManager.playWrongTone();
-    JuiceSystem.wrongBurst(
-      this,
-      (a.container.x + b.container.x) / 2,
-      (a.container.y + b.container.y) / 2,
-    );
-    JuiceSystem.cameraShake(this, 50, 0.0015);
-    this.bitHint?.showCold();
-    this.showMessage(
-      `${a.value} + ${b.value} = ${a.value + b.value}. Not the target.`,
-      COLORS.WARNING,
-    );
-
-    // Briefly redden the beam, then clear and reset selection.
-    this.beam.clear();
-    this.beam.lineStyle(4, 0xef4444, 0.9);
-    this.beam.beginPath();
-    this.beam.moveTo(a.container.x, a.container.y);
-    this.beam.lineTo(b.container.x, b.container.y);
-    this.beam.strokePath();
-
-    this.time.delayedCall(500, () => {
-      this.beam.clear();
-      wrongSelection.forEach((i) => {
-        const t = this.tiles[i];
-        if (!t) return;
-        this.styleTile(t, false);
-        this.hideNeedBadge(t);
-      });
-      this.selectedIndices = [];
-      this.actionLocked = false;
-    });
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Hooks
-  // ──────────────────────────────────────────────────────────────────
-
+  /** H-key hints — plain words, never the arithmetic. */
   protected displayHint(hintNumber: number): void {
-    const round = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
-    const firstPair = round.validPairs[0];
-    // FEEL_IT keeps the first hint diegetic — "target minus that value" names
-    // the technique. Hints 2 and 3 give a concrete pair anyway (the player
-    // already triggered the assist), so they're identical across phases.
-    const firstHint = this.isFeelItRound()
-      ? "Pick a runestone. The one that finishes the pair is somewhere in the row."
-      : "Pick one tile, then look for target minus that value.";
     const messages = [
-      firstHint,
-      this.selectedIndices.length === 1
-        ? `You picked ${this.tiles[this.selectedIndices[0]].value}. Look for ${complementOf(this.tiles[this.selectedIndices[0]].value, round.target)}.`
-        : `One valid pair: ${firstPair[0]} and ${firstPair[1]} → ${round.target}.`,
-      `Total valid pairs this round: ${round.validPairs.length}. Any one of them wins.`,
+      "Hold one stone and ask what it still needs — then seek exactly that.",
+      "If no stone answers what yours needs, set it down. Discarding is free.",
     ];
     this.showMessage(
-      messages[hintNumber - 1] ?? messages[0],
+      messages[Math.min(hintNumber, messages.length) - 1],
       COLORS.GOLD_ACCENT,
     );
   }
@@ -877,29 +378,35 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   protected getConceptName(): string {
     return "Two Sum";
   }
-}
 
-/** n(n-1)/2 — the number of unordered pairs in a row of n values. */
-function pairCount(n: number): number {
-  return Math.max(1, (n * (n - 1)) / 2);
-}
+  protected getPuzzleFrameFillAlpha(): number {
+    return 0;
+  }
 
-// ──────────────────────────────────────────────────────────────────────────
-// Brute-force strategy — fed to BruteForceActor during FEEL_IT round 1.
-//
-// Two-sum's brute-force foil is "check every pair (i, j)". The tile field is
-// already visually busy (5+ runestones, target panel, beam, soft timer), so
-// we run BruteForceActor in degenerate-row mode (no tile row); the counter
-// ticks up as Glitch racks up pair checks. The visible chaos is implied —
-// while the player picks one tile and *knows* its complement, Glitch is
-// grinding through every combination.
-// ──────────────────────────────────────────────────────────────────────────
+  protected getPuzzleTheme(): PuzzleTheme {
+    return ARRAY_PLAINS_PUZZLE_THEME;
+  }
 
-function makeTwoSumBruteStrategy(): BruteForceStrategy {
-  return {
-    initialValues: [],
-    nextMove: (vals) => vals,
-    isSolved: () => false,
-    tickIntervalMs: 800,
-  };
+  protected getRegionBackdrop(): {
+    id: RegionBackdropId;
+    options?: RegionBackdropOptions;
+  } | null {
+    if (this.textures.exists(PAIRING_GROUNDS_KEYS.BACKDROP)) return null;
+    return { id: "array-plains", options: { intensity: 1 } };
+  }
+
+  protected getPuzzleBackdropKey(): string | null {
+    if (this.textures.exists(PAIRING_GROUNDS_KEYS.BACKDROP)) {
+      return PAIRING_GROUNDS_KEYS.BACKDROP;
+    }
+    return super.getPuzzleBackdropKey();
+  }
+
+  private prefersReducedMotion(): boolean {
+    return (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
+  }
 }

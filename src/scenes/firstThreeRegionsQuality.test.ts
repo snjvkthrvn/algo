@@ -106,18 +106,24 @@ describe("first three regions quality guards", () => {
     expect(source).not.toMatch(/% bucket|key %/);
   });
 
-  it("locks Two Sum input while a wrong pair is being cleared", () => {
+  it("Pairing Grounds teaches the complement through cost, not labels", () => {
     const source = readSource("src/scenes/puzzles/P1_4_TwoSum.ts");
 
-    expect(source).toContain("private actionLocked = false");
-    expect(source).toContain(
-      "if (this.isResolving || this.actionLocked) return;",
+    // Every offer is allowed and recorded; false pairs crack chips and the
+    // anchor survives (chamber economy). Input locks during resolution.
+    expect(source).toContain("this.ledger = recordTrade(this.ledger);");
+    expect(source).toContain("if (this.resolving) return;");
+    expect(source).toContain("this.field.crackChip(");
+
+    // The complement is computed in the player's head, never printed.
+    expect(source).not.toMatch(/Need:/);
+    // No lecture chrome, no panels, no soft timer, no auto-aim.
+    expect(source).not.toMatch(
+      /showLessonCard|showRoundRecap|showRoundBanner/,
     );
-    expect(source).toContain(
-      "const wrongSelection = [...this.selectedIndices];",
-    );
-    expect(source).toContain("this.actionLocked = true;");
-    expect(source).toContain("this.actionLocked = false;");
+    expect(source).not.toMatch(/ComplexityMeter|GlitchCorner|drawPanel/);
+    expect(source).not.toMatch(/NextMoveHint/);
+    expect(source).not.toMatch(/\bseconds\b/);
   });
 
   it("keeps Two Sum rounds fully reachable by number-key controls", () => {
