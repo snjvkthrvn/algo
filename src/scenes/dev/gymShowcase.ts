@@ -16,15 +16,15 @@ const DROP_BASE = "assets/visual_revamp/imagegen_drop_2026_06_10";
 /**
  * Targets are BODY heights in world px, matched to where each piece will
  * actually live in-game, so the shelf previews true integration size:
- * - keepers: overworld NPC register — 192px frames, ~170px body, scale 0.95
- *   (STATIC_NPC_SCALES) → ~162px body. Keepers deliberately tower over the
- *   64px player; that hierarchy is art direction, not a bug.
+ * - keepers: player-matched — the player displays at 64px (256px frame x
+ *   0.25) with ~71% body fill → ~45px body, and the shelf shows keepers at
+ *   that same body height for a like-for-like comparison.
  * - crate: BruteForceActor tile (54x42).
  * - stones: Twin Rivers overworld index stones (48px squares).
  * Masters are 1254px squares; bodies fill ~80% of the frame (measured),
  * stones ~49% of their 768px frame.
  */
-const KEEPER_BODY_TARGET = 162;
+const KEEPER_BODY_TARGET = 45;
 const KEEPER_BODY_FRACTION = 0.8;
 const CRATE_BODY_TARGET = 42;
 const CRATE_BODY_FRACTION = 0.64;
