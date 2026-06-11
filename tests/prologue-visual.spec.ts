@@ -29,10 +29,10 @@
  * the first two puzzle scenes.
  */
 
-import { test, expect, type Page } from 'playwright/test';
-import { mkdir } from 'fs/promises';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { test, expect, type Page } from "playwright/test";
+import { mkdir } from "fs/promises";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 // â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -58,7 +58,7 @@ type GameWindow = Window & {
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const SHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'screenshots');
+const SHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), "screenshots");
 const runtimeErrorsByPage = new WeakMap<Page, string[]>();
 
 /** Block until Phaser reports the named scene as active. */
@@ -75,8 +75,13 @@ async function waitForP01PlayerTurn(page: Page, timeout = 60_000) {
   await page.waitForFunction(
     () => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
-      return scene?.['state'] === 'turn' || scene?.['puzzleState'] === 'PLAYER_TURN';
+      const scene = game?.scene.getScene("P0_1_FollowThePath") as Record<
+        string,
+        unknown
+      > | null;
+      return (
+        scene?.["state"] === "turn" || scene?.["puzzleState"] === "PLAYER_TURN"
+      );
     },
     undefined,
     { timeout },
@@ -95,18 +100,21 @@ async function pressSequence(page: Page, keys: string[], gapMs = 250) {
 async function prepareP01Round(page: Page, roundIndex: number) {
   await page.evaluate((round) => {
     const game = (window as GameWindow).__PHASER_GAME__;
-    const scene = game?.scene.getScene('P0_1_FollowThePath') as Record<string, unknown> | null;
+    const scene = game?.scene.getScene("P0_1_FollowThePath") as Record<
+      string,
+      unknown
+    > | null;
     if (!scene) return;
-    const time = scene['time'] as { removeAllEvents?: () => void } | undefined;
+    const time = scene["time"] as { removeAllEvents?: () => void } | undefined;
     time?.removeAllEvents?.();
-    scene['currentRound'] = round;
-    const startRound = scene['startRound'];
-    if (typeof startRound === 'function') {
+    scene["currentRound"] = round;
+    const startRound = scene["startRound"];
+    if (typeof startRound === "function") {
       (startRound as () => void).call(scene);
     }
     time?.removeAllEvents?.();
-    scene['playerInputIndex'] = 0;
-    scene['puzzleState'] = 'PLAYER_TURN';
+    scene["playerInputIndex"] = 0;
+    scene["puzzleState"] = "PLAYER_TURN";
   }, roundIndex);
 
   await waitForP01PlayerTurn(page, 5_000);
@@ -118,10 +126,10 @@ async function prepareP01Round(page: Page, roundIndex: number) {
  * scene fades back to the overworld on its own. Space both completes the
  * typewriter and advances lines, so a short press loop covers all states.
  */
-async function advanceNameItBeat(page: Page, returnScene = 'PrologueScene') {
+async function advanceNameItBeat(page: Page, returnScene = "PrologueScene") {
   for (let i = 0; i < 6; i++) {
     await page.waitForTimeout(900);
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
   }
   await waitForScene(page, returnScene, 15_000);
 }
@@ -131,8 +139,8 @@ async function completePuzzleViaInjection(page: Page, sceneKey: string) {
   await page.evaluate((key) => {
     const game = (window as GameWindow).__PHASER_GAME__;
     const scene = game?.scene.getScene(key) as Record<string, unknown> | null;
-    const complete = scene?.['onPuzzleComplete'];
-    if (typeof complete === 'function') {
+    const complete = scene?.["onPuzzleComplete"];
+    if (typeof complete === "function") {
       (complete as (stars: number) => void).call(scene, 3);
     }
   }, sceneKey);
@@ -142,21 +150,36 @@ async function getScenePlayerPosition(page: Page, sceneKey: string) {
   return page.evaluate((key) => {
     const game = (window as GameWindow).__PHASER_GAME__;
     const scene = game?.scene.getScene(key) as Record<string, unknown> | null;
-    const player = scene?.['player'] as { getPosition?: () => { x: number; y: number } } | null;
+    const player = scene?.["player"] as {
+      getPosition?: () => { x: number; y: number };
+    } | null;
     return player?.getPosition?.() ?? null;
   }, sceneKey);
 }
 
-async function setScenePlayerPosition(page: Page, sceneKey: string, x: number, y: number) {
-  await page.evaluate(({ key, x, y }) => {
-    const game = (window as GameWindow).__PHASER_GAME__;
-    const scene = game?.scene.getScene(key) as Record<string, unknown> | null;
-    const player = scene?.['player'] as { setPosition?: (x: number, y: number) => void } | null;
-    player?.setPosition?.(x, y);
-  }, { key: sceneKey, x, y });
+async function setScenePlayerPosition(
+  page: Page,
+  sceneKey: string,
+  x: number,
+  y: number,
+) {
+  await page.evaluate(
+    ({ key, x, y }) => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene(key) as Record<string, unknown> | null;
+      const player = scene?.["player"] as {
+        setPosition?: (x: number, y: number) => void;
+      } | null;
+      player?.setPosition?.(x, y);
+    },
+    { key: sceneKey, x, y },
+  );
 }
 
-async function walkStep(page: Page, key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown') {
+async function walkStep(
+  page: Page,
+  key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
+) {
   await page.keyboard.down(key);
   await page.waitForTimeout(220);
   await page.keyboard.up(key);
@@ -166,29 +189,32 @@ async function walkStep(page: Page, key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' 
 async function clickMenuItem(page: Page, label: string) {
   const menuInfo = await page.waitForFunction((targetLabel) => {
     const game = (window as GameWindow).__PHASER_GAME__;
-    const scene = game?.scene.getScene('MenuScene') as Record<string, unknown> | null;
-    const items = scene?.['menuItems'] as Array<{ text: string }> | undefined;
-    const texts = scene?.['menuTexts'] as Array<{ alpha?: number }> | undefined;
+    const scene = game?.scene.getScene("MenuScene") as Record<
+      string,
+      unknown
+    > | null;
+    const items = scene?.["menuItems"] as Array<{ text: string }> | undefined;
+    const texts = scene?.["menuTexts"] as Array<{ alpha?: number }> | undefined;
     const index = items?.findIndex((item) => item.text === targetLabel) ?? -1;
     const text = index >= 0 ? texts?.[index] : undefined;
     if (index < 0 || !text || (text.alpha ?? 0) < 0.95) return null;
     return {
       index,
       itemCount: items?.length ?? 0,
-      selectedIndex: (scene?.['selectedMenuIndex'] as number | undefined) ?? 0,
+      selectedIndex: (scene?.["selectedMenuIndex"] as number | undefined) ?? 0,
     };
   }, label);
 
   const { index, itemCount, selectedIndex } = await menuInfo.jsonValue();
   const downSteps = (index - selectedIndex + itemCount) % itemCount;
   const upSteps = (selectedIndex - index + itemCount) % itemCount;
-  const key = downSteps <= upSteps ? 'ArrowDown' : 'ArrowUp';
+  const key = downSteps <= upSteps ? "ArrowDown" : "ArrowUp";
   const steps = Math.min(downSteps, upSteps);
   for (let i = 0; i < steps; i++) {
     await page.keyboard.press(key);
     await page.waitForTimeout(120);
   }
-  await page.keyboard.press('Enter');
+  await page.keyboard.press("Enter");
 }
 
 /**
@@ -200,29 +226,32 @@ async function clickMenuItem(page: Page, label: string) {
  */
 async function goToPrologue(page: Page) {
   await page.evaluate(() => {
-    localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-      player: { x: 320, y: 400, region: 'prologue' },
-      companion: { stage: 'spark', mood: 'neutral' },
-      rival: { encountered: false, encounterStage: 0 },
-      shardsCollected: [],
-      puzzleResults: {},
-      codexEntries: [],
-      npcStates: {},
-      flags: {
-        opening_scene_done: true,
-        professor_node_intro_done: true,
-      },
-      settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-      saveVersion: 1,
-      playTime: 0,
-    }));
+    localStorage.setItem(
+      "algorithmia_save_v1",
+      JSON.stringify({
+        player: { x: 320, y: 400, region: "prologue" },
+        companion: { stage: "spark", mood: "neutral" },
+        rival: { encountered: false, encounterStage: 0 },
+        shardsCollected: [],
+        puzzleResults: {},
+        codexEntries: [],
+        npcStates: {},
+        flags: {
+          opening_scene_done: true,
+          professor_node_intro_done: true,
+        },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }),
+    );
   });
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForScene(page, 'MenuScene');
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await waitForScene(page, "MenuScene");
   await page.waitForTimeout(1_000);
-  await clickMenuItem(page, 'CONTINUE');
-  await waitForScene(page, 'PrologueScene', 10_000);
+  await clickMenuItem(page, "CONTINUE");
+  await waitForScene(page, "PrologueScene", 10_000);
   // PrologueScene fade-in runs for 800 ms game-time; swirl + RAF throttle ~1.8Ã—.
   await page.waitForTimeout(1_800);
 }
@@ -230,25 +259,28 @@ async function goToPrologue(page: Page) {
 /** Seed a save in Array Plains and use Continue from the menu (tests SCENE_BY_REGION). */
 async function goToArrayPlainsViaContinue(page: Page) {
   await page.evaluate(() => {
-    localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-      player: { x: 400, y: 448, region: 'array_plains' },
-      companion: { stage: 'spark', mood: 'neutral' },
-      rival: { encountered: false, encounterStage: 0 },
-      shardsCollected: [],
-      puzzleResults: {},
-      codexEntries: [],
-      npcStates: {},
-      flags: { opening_scene_done: true, prologue_visited: true },
-      settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-      saveVersion: 1,
-      playTime: 0,
-    }));
+    localStorage.setItem(
+      "algorithmia_save_v1",
+      JSON.stringify({
+        player: { x: 400, y: 448, region: "array_plains" },
+        companion: { stage: "spark", mood: "neutral" },
+        rival: { encountered: false, encounterStage: 0 },
+        shardsCollected: [],
+        puzzleResults: {},
+        codexEntries: [],
+        npcStates: {},
+        flags: { opening_scene_done: true, prologue_visited: true },
+        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+        saveVersion: 1,
+        playTime: 0,
+      }),
+    );
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForScene(page, 'MenuScene');
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await waitForScene(page, "MenuScene");
   await page.waitForTimeout(1_000);
-  await clickMenuItem(page, 'CONTINUE');
-  await waitForScene(page, 'ArrayPlainsScene', 10_000);
+  await clickMenuItem(page, "CONTINUE");
+  await waitForScene(page, "ArrayPlainsScene", 10_000);
   await page.waitForTimeout(1_800);
 }
 
@@ -256,36 +288,45 @@ async function goToFutureRegionViaContinue(
   page: Page,
   region: string,
   sceneKey: string,
-  puzzleResults: Record<string, { stars: number; time: number; attempts: number; hintsUsed: number }>,
+  puzzleResults: Record<
+    string,
+    { stars: number; time: number; attempts: number; hintsUsed: number }
+  >,
 ) {
   await page.evaluate(
     ([targetRegion, results]) => {
-      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: 192, y: 448, region: targetRegion },
-        companion: { stage: 'graph', mood: 'neutral' },
-        rival: { encountered: true, encounterStage: 5 },
-        shardsCollected: ['array_plains_logic_shard', 'hash_highlands_logic_shard'],
-        puzzleResults: results,
-        codexEntries: [],
-        npcStates: {},
-        flags: {
-          opening_scene_done: true,
-          professor_node_intro_done: true,
-          gateway_open: true,
-          twin_rivers_gateway_open: true,
-        },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-        saveVersion: 1,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v1",
+        JSON.stringify({
+          player: { x: 192, y: 448, region: targetRegion },
+          companion: { stage: "graph", mood: "neutral" },
+          rival: { encountered: true, encounterStage: 5 },
+          shardsCollected: [
+            "array_plains_logic_shard",
+            "hash_highlands_logic_shard",
+          ],
+          puzzleResults: results,
+          codexEntries: [],
+          npcStates: {},
+          flags: {
+            opening_scene_done: true,
+            professor_node_intro_done: true,
+            gateway_open: true,
+            twin_rivers_gateway_open: true,
+          },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+          saveVersion: 1,
+          playTime: 0,
+        }),
+      );
     },
     [region, puzzleResults] as const,
   );
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForScene(page, 'MenuScene');
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await waitForScene(page, "MenuScene");
   await page.waitForTimeout(1_000);
-  await clickMenuItem(page, 'CONTINUE');
+  await clickMenuItem(page, "CONTINUE");
   await waitForScene(page, sceneKey, 10_000);
   await page.waitForTimeout(1_800);
 }
@@ -297,48 +338,59 @@ async function continueToPrologueAt(
 ) {
   await page.evaluate(
     ([p, f]) => {
-      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: p.x, y: p.y, region: 'prologue' },
-        companion: { stage: 'spark', mood: 'neutral' },
-        rival: { encountered: false, encounterStage: 0 },
-        shardsCollected: [],
-        puzzleResults: {},
-        codexEntries: [],
-        npcStates: {},
-        flags: f,
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-        saveVersion: 1,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v1",
+        JSON.stringify({
+          player: { x: p.x, y: p.y, region: "prologue" },
+          companion: { stage: "spark", mood: "neutral" },
+          rival: { encountered: false, encounterStage: 0 },
+          shardsCollected: [],
+          puzzleResults: {},
+          codexEntries: [],
+          npcStates: {},
+          flags: f,
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+          saveVersion: 1,
+          playTime: 0,
+        }),
+      );
     },
     [player, flags] as const,
   );
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForScene(page, 'MenuScene');
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await waitForScene(page, "MenuScene");
   await page.waitForTimeout(1_000);
-  await clickMenuItem(page, 'CONTINUE');
-  await waitForScene(page, 'PrologueScene', 10_000);
+  await clickMenuItem(page, "CONTINUE");
+  await waitForScene(page, "PrologueScene", 10_000);
 }
 
 async function getPrologueRuntimeState(page: Page) {
   return page.evaluate(() => {
     const game = (window as GameWindow).__PHASER_GAME__;
-    const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
-    const dialogueSystem = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
-    const player = scene?.['player'] as { state?: string } | undefined;
+    const scene = game?.scene.getScene("PrologueScene") as Record<
+      string,
+      unknown
+    > | null;
+    const dialogueSystem = scene?.["dialogueSystem"] as
+      | { isDialogueActive?: () => boolean }
+      | undefined;
+    const player = scene?.["player"] as { state?: string } | undefined;
     return {
-      storyBeatActive: scene?.['storyBeatActive'] === true,
+      storyBeatActive: scene?.["storyBeatActive"] === true,
       dialogueActive: dialogueSystem?.isDialogueActive?.() === true,
       playerState: player?.state ?? null,
-      professorNodeIntroDone: (window as GameWindow).__gameState__?.getFlag('professor_node_intro_done') === true,
+      professorNodeIntroDone:
+        (window as GameWindow).__gameState__?.getFlag(
+          "professor_node_intro_done",
+        ) === true,
     };
   });
 }
 
 async function pressThroughDialogue(page: Page, presses: number, gapMs = 350) {
   for (let i = 0; i < presses; i++) {
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await page.waitForTimeout(gapMs);
   }
 }
@@ -347,31 +399,54 @@ async function pressUntilPrologueChoice(page: Page, maxPresses = 10) {
   for (let i = 0; i < maxPresses; i++) {
     const hasChoice = await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
-      const dialogue = scene?.['dialogueSystem'] as Record<string, unknown> | undefined;
-      const choiceContainer = dialogue?.['choiceContainer'] as { visible?: boolean } | null | undefined;
+      const scene = game?.scene.getScene("PrologueScene") as Record<
+        string,
+        unknown
+      > | null;
+      const dialogue = scene?.["dialogueSystem"] as
+        | Record<string, unknown>
+        | undefined;
+      const choiceContainer = dialogue?.["choiceContainer"] as
+        | { visible?: boolean }
+        | null
+        | undefined;
       return choiceContainer?.visible === true;
     });
     if (hasChoice) return;
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await page.waitForTimeout(450);
   }
 
-  await page.waitForFunction(() => {
-    const game = (window as GameWindow).__PHASER_GAME__;
-    const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
-    const dialogue = scene?.['dialogueSystem'] as Record<string, unknown> | undefined;
-    const choiceContainer = dialogue?.['choiceContainer'] as { visible?: boolean } | null | undefined;
-    return choiceContainer?.visible === true;
-  }, { timeout: 5_000 });
+  await page.waitForFunction(
+    () => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("PrologueScene") as Record<
+        string,
+        unknown
+      > | null;
+      const dialogue = scene?.["dialogueSystem"] as
+        | Record<string, unknown>
+        | undefined;
+      const choiceContainer = dialogue?.["choiceContainer"] as
+        | { visible?: boolean }
+        | null
+        | undefined;
+      return choiceContainer?.visible === true;
+    },
+    { timeout: 5_000 },
+  );
 }
 
-async function chooseDialogueOptionAndWaitForScene(page: Page, sceneKey: string) {
+async function chooseDialogueOptionAndWaitForScene(
+  page: Page,
+  sceneKey: string,
+) {
   for (let i = 0; i < 8; i++) {
-    await page.keyboard.press('Enter');
+    await page.keyboard.press("Enter");
     await page.waitForTimeout(500);
-    const isActive = await page.evaluate((key) =>
-      !!(window as GameWindow).__PHASER_GAME__?.scene.isActive(key as string),
+    const isActive = await page.evaluate(
+      (key) =>
+        !!(window as GameWindow).__PHASER_GAME__?.scene.isActive(key as string),
       sceneKey,
     );
     if (isActive) return;
@@ -398,8 +473,8 @@ async function jumpToScene(
       if (!game) return;
       // Stop all running scenes first so their render state doesn't bleed.
       game.scene.scenes
-        .filter(s => s.sys.isActive())
-        .forEach(s => game.scene.stop(s.sys.settings.key));
+        .filter((s) => s.sys.isActive())
+        .forEach((s) => game.scene.stop(s.sys.settings.key));
       game.scene.start(k as string, d as Record<string, unknown>);
     },
     [key, data] as const,
@@ -409,14 +484,14 @@ async function jumpToScene(
 
 /** Save a screenshot of the Phaser canvas to tests/screenshots/<filename>. */
 async function snap(page: Page, filename: string) {
-  const canvas = page.locator('canvas').first();
+  const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible();
   await canvas.screenshot({ path: join(SHOTS_DIR, filename) });
 }
 
 // â”€â”€â”€ Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-test.describe('Prologue region â€“ visual audit', () => {
+test.describe("Prologue region â€“ visual audit", () => {
   test.beforeAll(async () => {
     await mkdir(SHOTS_DIR, { recursive: true });
   });
@@ -425,17 +500,17 @@ test.describe('Prologue region â€“ visual audit', () => {
   test.beforeEach(async ({ page }) => {
     const runtimeErrors: string[] = [];
     runtimeErrorsByPage.set(page, runtimeErrors);
-    page.on('pageerror', (error) => {
+    page.on("pageerror", (error) => {
       runtimeErrors.push(`pageerror: ${error.message}`);
     });
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') {
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
         runtimeErrors.push(`console.error: ${msg.text()}`);
       }
     });
 
-    await page.goto('/');
-    await waitForScene(page, 'MenuScene');
+    await page.goto("/");
+    await waitForScene(page, "MenuScene");
     // Wait for the menu fade-in tween to complete (500 ms game-time â‰ˆ 900 ms real).
     await page.waitForTimeout(1_000);
   });
@@ -446,67 +521,103 @@ test.describe('Prologue region â€“ visual audit', () => {
 
   // â”€â”€ Menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('01 â€“ menu screen', async ({ page }) => {
-    await snap(page, '01-menu.png');
+  test("01 â€“ menu screen", async ({ page }) => {
+    await snap(page, "01-menu.png");
   });
 
-  test('01b - corrupt save is cleared with a title-screen notice', async ({ page }) => {
+  test("01b - corrupt save is cleared with a title-screen notice", async ({
+    page,
+  }) => {
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v1', 'not-json');
+      localStorage.setItem("algorithmia_save_v1", "not-json");
     });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
 
-    const recovery = await page.waitForFunction(() => {
-      const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('MenuScene') as Record<string, unknown> | null;
-      const children = scene?.['children'] as { list?: unknown[] } | undefined;
-      const texts = children?.list
-        ?.map((child) => (child as { text?: unknown }).text)
-        .filter((text): text is string => typeof text === 'string') ?? [];
-      if (!texts.includes('CORRUPT SAVE CLEARED')) return null;
-      return {
-        v1SaveData: localStorage.getItem('algorithmia_save_v1'),
-        v2SaveData: localStorage.getItem('algorithmia_save_v2'),
-        menuItems: (scene?.['menuItems'] as Array<{ text: string }> | undefined)?.map((item) => item.text) ?? [],
-      };
-    }, { timeout: 5_000 });
+    const recovery = await page.waitForFunction(
+      () => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene("MenuScene") as Record<
+          string,
+          unknown
+        > | null;
+        const children = scene?.["children"] as
+          | { list?: unknown[] }
+          | undefined;
+        const texts =
+          children?.list
+            ?.map((child) => (child as { text?: unknown }).text)
+            .filter((text): text is string => typeof text === "string") ?? [];
+        if (!texts.includes("CORRUPT SAVE CLEARED")) return null;
+        return {
+          v1SaveData: localStorage.getItem("algorithmia_save_v1"),
+          v2SaveData: localStorage.getItem("algorithmia_save_v2"),
+          menuItems:
+            (scene?.["menuItems"] as Array<{ text: string }> | undefined)?.map(
+              (item) => item.text,
+            ) ?? [],
+        };
+      },
+      { timeout: 5_000 },
+    );
 
     const result = await recovery.jsonValue();
     expect(result.v1SaveData).toBeNull();
     expect(result.v2SaveData).toBeNull();
-    expect(result.menuItems).not.toContain('CONTINUE');
-    expect(result.menuItems).not.toContain('RESUME');
+    expect(result.menuItems).not.toContain("CONTINUE");
+    expect(result.menuItems).not.toContain("RESUME");
   });
 
   // â”€â”€ Prologue overworld â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('02 â€“ prologue overworld â€“ region card visible', async ({ page }) => {
+  test("02 â€“ prologue overworld â€“ region card visible", async ({
+    page,
+  }) => {
     await goToPrologue(page);
     // After goToPrologue the fade-in is done and the region card is in its
     // 2500 ms hold phase.  Snap immediately â€” the card is fully opaque.
-    await snap(page, '02-prologue-region-card.png');
+    await snap(page, "02-prologue-region-card.png");
   });
 
-  test('03 â€“ prologue overworld â€“ settled atmosphere', async ({ page }) => {
+  test("03 â€“ prologue overworld â€“ settled atmosphere", async ({ page }) => {
     await goToPrologue(page);
     // HUD card total: 500 ms + 2500 ms + 500 ms = 3500 ms game-time â‰ˆ 6300 ms real.
     // goToPrologue already consumed ~1800 ms real (post-scene-active wait).
     // Wait another 5000 ms to clear the remaining ~4500 ms real of card animation.
     await page.waitForTimeout(5_000);
-    await snap(page, '03-prologue-settled.png');
+    await snap(page, "03-prologue-settled.png");
   });
 
-  test('03b - player smooth walk sheet is loaded as 32 isolated frames', async ({ page }) => {
+  test("03b - player smooth walk sheet is loaded as 32 isolated frames", async ({
+    page,
+  }) => {
     await goToPrologue(page);
 
     const sheetInfo = await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
-      const player = scene?.['player'] as { sprite?: { texture?: { key?: string; frames?: Record<string, { width?: number; height?: number }> } } } | null;
-      const animationManager = scene?.['anims'] as { get?: (key: string) => { frames?: Array<{ frame?: { name?: string | number } }> } } | undefined;
+      const scene = game?.scene.getScene("PrologueScene") as Record<
+        string,
+        unknown
+      > | null;
+      const player = scene?.["player"] as {
+        sprite?: {
+          texture?: {
+            key?: string;
+            frames?: Record<string, { width?: number; height?: number }>;
+          };
+        };
+      } | null;
+      const animationManager = scene?.["anims"] as
+        | {
+            get?: (key: string) => {
+              frames?: Array<{ frame?: { name?: string | number } }>;
+            };
+          }
+        | undefined;
       const texture = player?.sprite?.texture;
-      const frameEntries = Object.entries(texture?.frames ?? {}).filter(([key]) => key !== '__BASE');
+      const frameEntries = Object.entries(texture?.frames ?? {}).filter(
+        ([key]) => key !== "__BASE",
+      );
 
       return {
         textureKey: texture?.key ?? null,
@@ -515,12 +626,15 @@ test.describe('Prologue region â€“ visual audit', () => {
           width: frameEntries[0]?.[1].width ?? null,
           height: frameEntries[0]?.[1].height ?? null,
         },
-        walkRightFrames: animationManager?.get?.('player-walk-right')?.frames?.map((entry) => Number(entry.frame?.name)) ?? [],
+        walkRightFrames:
+          animationManager
+            ?.get?.("player-walk-right")
+            ?.frames?.map((entry) => Number(entry.frame?.name)) ?? [],
       };
     });
 
     expect(sheetInfo).toEqual({
-      textureKey: 'prologue-sheet-player-walk',
+      textureKey: "prologue-sheet-player-walk",
       frameCount: 32,
       frameSize: { width: 256, height: 256 },
       walkRightFrames: [16, 17, 18, 19, 20, 21, 22, 23],
@@ -529,64 +643,78 @@ test.describe('Prologue region â€“ visual audit', () => {
 
   // â”€â”€ Puzzle P0-1: Follow the Path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('04 â€“ P0-1 Follow the Path â€“ initial tile layout', async ({ page }) => {
-    await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
+  test("04 â€“ P0-1 Follow the Path â€“ initial tile layout", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P0_1_FollowThePath", {
+      returnScene: "PrologueScene",
+    });
     // Tiles are drawn in create(); 500 ms real is enough for the fade-in to clear.
     await page.waitForTimeout(500);
-    await snap(page, '04-p0-1-layout.png');
+    await snap(page, "04-p0-1-layout.png");
   });
 
-  test('05 â€“ P0-1 Follow the Path â€“ tile glowing mid-sequence', async ({ page }) => {
-    await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
+  test("05 â€“ P0-1 Follow the Path â€“ tile glowing mid-sequence", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P0_1_FollowThePath", {
+      returnScene: "PrologueScene",
+    });
     // waitForScene resolves ~2600 ms after create() (RAF throttle), so by the time
     // waitForTimeout starts the game is already at ~2600 ms.  Adding 2500 ms real time
     // puts us at game-time ~5100 ms â€” inside tile-2's glow window (4600â€“5600 ms).
     await page.waitForTimeout(2_500);
-    await snap(page, '05-p0-1-glow.png');
+    await snap(page, "05-p0-1-glow.png");
   });
 
-  test('06 â€“ P0-1 Follow the Path â€“ player turn', async ({ page }) => {
-    await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
+  test("06 â€“ P0-1 Follow the Path â€“ player turn", async ({ page }) => {
+    await jumpToScene(page, "P0_1_FollowThePath", {
+      returnScene: "PrologueScene",
+    });
     // "Your turn!" fires at game-time 6200 ms (800 intro + 1200 round delay + 3Ã—1300 ms
     // pattern + 300 ms buffer).  waitForScene resolves ~2600 ms after create() due to RAF
     // throttle, so the message window in real-time is roughly waitForScene + 3600â€“5600 ms.
     // 4500 ms lands in the middle; accounting for ~1Ã— RAF render lag it hits the painted
     // frame where the floating text is clearly visible (alpha â‰ˆ 0.7).
     await page.waitForTimeout(4_500);
-    await snap(page, '06-p0-1-player-turn.png');
+    await snap(page, "06-p0-1-player-turn.png");
   });
 
   // â”€â”€ Puzzle P0-2: Flow Consoles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('07 â€“ P0-2 Flow Consoles â€“ initial layout', async ({ page }) => {
-    await jumpToScene(page, 'P0_2_FlowConsoles', { returnScene: 'PrologueScene' });
+  test("07 â€“ P0-2 Flow Consoles â€“ initial layout", async ({ page }) => {
+    await jumpToScene(page, "P0_2_FlowConsoles", {
+      returnScene: "PrologueScene",
+    });
     await page.waitForTimeout(500);
-    await snap(page, '07-p0-2-layout.png');
+    await snap(page, "07-p0-2-layout.png");
   });
 
   // â”€â”€ Array Plains â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  test('08 â€“ Array Plains â€“ Continue from save', async ({ page }) => {
+  test("08 â€“ Array Plains â€“ Continue from save", async ({ page }) => {
     await goToArrayPlainsViaContinue(page);
-    await snap(page, '08-array-plains-continue.png');
+    await snap(page, "08-array-plains-continue.png");
 
-    const pos = await getScenePlayerPosition(page, 'ArrayPlainsScene');
+    const pos = await getScenePlayerPosition(page, "ArrayPlainsScene");
     expect(pos).not.toBeNull();
     expect(pos!.x).toBeCloseTo(400, 0);
     expect(pos!.y).toBeCloseTo(448, 0);
   });
 
-  test('08b - Escape opens pause, Save & Quit returns to title with Resume first', async ({ page }) => {
+  test("08b - Escape opens pause, Save & Quit returns to title with Resume first", async ({
+    page,
+  }) => {
     await goToArrayPlainsViaContinue(page);
 
-    await page.keyboard.press('Escape');
-    await waitForScene(page, 'PauseOverlayScene', 8_000);
+    await page.keyboard.press("Escape");
+    await waitForScene(page, "PauseOverlayScene", 8_000);
 
     const pauseState = await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
       return {
-        overlayActive: game?.scene.isActive('PauseOverlayScene'),
-        arrayPaused: game?.scene.isPaused('ArrayPlainsScene'),
+        overlayActive: game?.scene.isActive("PauseOverlayScene"),
+        arrayPaused: game?.scene.isPaused("ArrayPlainsScene"),
       };
     });
     expect(pauseState.overlayActive).toBe(true);
@@ -594,159 +722,211 @@ test.describe('Prologue region â€“ visual audit', () => {
 
     const pauseOptions = await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('PauseOverlayScene') as Record<string, unknown> | null;
-      const items = scene?.['menuItems'] as Array<{ text: string }> | undefined;
-      return items?.map(item => item.text) ?? [];
+      const scene = game?.scene.getScene("PauseOverlayScene") as Record<
+        string,
+        unknown
+      > | null;
+      const items = scene?.["menuItems"] as Array<{ text: string }> | undefined;
+      return items?.map((item) => item.text) ?? [];
     });
-    expect(pauseOptions).toEqual(['RESUME', 'SETTINGS', 'SAVE & QUIT']);
+    expect(pauseOptions).toEqual(["RESUME", "SETTINGS", "SAVE & QUIT"]);
 
     await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('PauseOverlayScene') as Record<string, unknown> | null;
-      scene!['selectedIndex'] = 2;
-      const activate = scene?.['activate'];
-      if (typeof activate === 'function') {
+      const scene = game?.scene.getScene("PauseOverlayScene") as Record<
+        string,
+        unknown
+      > | null;
+      scene!["selectedIndex"] = 2;
+      const activate = scene?.["activate"];
+      if (typeof activate === "function") {
         (activate as () => void).call(scene);
       }
     });
-    await waitForScene(page, 'MenuScene', 8_000);
+    await waitForScene(page, "MenuScene", 8_000);
 
-    const menuState = await page.waitForFunction(() => {
-      const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('MenuScene') as Record<string, unknown> | null;
-      const items = scene?.['menuItems'] as Array<{ text: string }> | undefined;
-      const texts = scene?.['menuTexts'] as Array<{ alpha?: number }> | undefined;
-      if (!items?.length || !texts?.length || (texts[0].alpha ?? 0) < 0.95) return null;
-      return {
-        items: items.map(item => item.text),
-        selectedIndex: scene?.['selectedMenuIndex'] as number | undefined,
-      };
-    }, { timeout: 8_000 });
+    const menuState = await page.waitForFunction(
+      () => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene("MenuScene") as Record<
+          string,
+          unknown
+        > | null;
+        const items = scene?.["menuItems"] as
+          | Array<{ text: string }>
+          | undefined;
+        const texts = scene?.["menuTexts"] as
+          | Array<{ alpha?: number }>
+          | undefined;
+        if (!items?.length || !texts?.length || (texts[0].alpha ?? 0) < 0.95)
+          return null;
+        return {
+          items: items.map((item) => item.text),
+          selectedIndex: scene?.["selectedMenuIndex"] as number | undefined,
+        };
+      },
+      { timeout: 8_000 },
+    );
 
     const { items, selectedIndex } = await menuState.jsonValue();
-    expect(items[0]).toBe('RESUME');
-    expect(items).toContain('NEW GAME');
+    expect(items[0]).toBe("RESUME");
+    expect(items).toContain("NEW GAME");
     expect(selectedIndex).toBe(0);
 
     const savedRegion = await page.evaluate(() => {
-      const saveData = localStorage.getItem('algorithmia_save_v2') ?? localStorage.getItem('algorithmia_save_v1');
+      const saveData =
+        localStorage.getItem("algorithmia_save_v2") ??
+        localStorage.getItem("algorithmia_save_v1");
       return saveData ? JSON.parse(saveData).player.region : null;
     });
-    expect(savedRegion).toBe('array_plains');
+    expect(savedRegion).toBe("array_plains");
   });
 
-  test('08c - Codex opens from overworld hotkey and returns', async ({ page }) => {
+  test("08c - Codex opens from overworld hotkey and returns", async ({
+    page,
+  }) => {
     await goToArrayPlainsViaContinue(page);
     await page.evaluate(() => {
-      (window as GameWindow).__gameState__?.unlockCodexEntry?.('bubble_sort');
+      (window as GameWindow).__gameState__?.unlockCodexEntry?.("bubble_sort");
     });
 
-    await page.keyboard.press('c');
-    await waitForScene(page, 'CodexScene', 8_000);
+    await page.keyboard.press("c");
+    await waitForScene(page, "CodexScene", 8_000);
     await page.waitForTimeout(700);
-    await snap(page, '08c-codex-hotkey.png');
+    await snap(page, "08c-codex-hotkey.png");
 
-    await page.keyboard.press('c');
-    await waitForScene(page, 'ArrayPlainsScene', 8_000);
-    const pos = await getScenePlayerPosition(page, 'ArrayPlainsScene');
+    await page.keyboard.press("c");
+    await waitForScene(page, "ArrayPlainsScene", 8_000);
+    const pos = await getScenePlayerPosition(page, "ArrayPlainsScene");
     expect(pos).not.toBeNull();
     expect(pos!.x).toBeCloseTo(400, 0);
     expect(pos!.y).toBeCloseTo(448, 0);
   });
 
-  test('09 - Continue with unknown region falls back to Prologue', async ({ page }) => {
+  test("09 - Continue with unknown region falls back to Prologue", async ({
+    page,
+  }) => {
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: 320, y: 400, region: 'unknown_future_region' },
-        companion: { stage: 'spark', mood: 'neutral' },
-        rival: { encountered: false, encounterStage: 0 },
-        shardsCollected: [],
-        puzzleResults: {},
-        codexEntries: [],
-        npcStates: {},
-        flags: { opening_scene_done: true },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-        saveVersion: 1,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v1",
+        JSON.stringify({
+          player: { x: 320, y: 400, region: "unknown_future_region" },
+          companion: { stage: "spark", mood: "neutral" },
+          rival: { encountered: false, encounterStage: 0 },
+          shardsCollected: [],
+          puzzleResults: {},
+          codexEntries: [],
+          npcStates: {},
+          flags: { opening_scene_done: true },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+          saveVersion: 1,
+          playTime: 0,
+        }),
+      );
     });
 
     const warnings: string[] = [];
-    page.on('console', (msg) => {
-      if (msg.type() === 'warning') warnings.push(msg.text());
+    page.on("console", (msg) => {
+      if (msg.type() === "warning") warnings.push(msg.text());
     });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
     await page.waitForTimeout(1_000);
-    await clickMenuItem(page, 'CONTINUE');
+    await clickMenuItem(page, "CONTINUE");
 
-    await waitForScene(page, 'PrologueScene', 10_000);
-    expect(warnings.some((warning) => warning.includes('unknown_future_region'))).toBe(true);
+    await waitForScene(page, "PrologueScene", 10_000);
+    expect(
+      warnings.some((warning) => warning.includes("unknown_future_region")),
+    ).toBe(true);
   });
 
-  test('10 - P0-1 Follow the Path - completes all 4 rounds', async ({ page }) => {
+  test("10 - P0-1 Follow the Path - completes all 4 rounds", async ({
+    page,
+  }) => {
     test.setTimeout(90_000);
 
-    await jumpToScene(page, 'P0_1_FollowThePath', { returnScene: 'PrologueScene' });
+    await jumpToScene(page, "P0_1_FollowThePath", {
+      returnScene: "PrologueScene",
+    });
 
     await waitForP01PlayerTurn(page);
-    await pressSequence(page, ['ArrowUp', 'ArrowUp']);
-
-    await waitForP01PlayerTurn(page);
-    await pressSequence(page, ['ArrowUp', 'ArrowUp', 'ArrowRight', 'ArrowRight']);
-
-    await waitForP01PlayerTurn(page);
-    await pressSequence(page, ['ArrowUp', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowUp']);
+    await pressSequence(page, ["ArrowUp", "ArrowUp"]);
 
     await waitForP01PlayerTurn(page);
     await pressSequence(page, [
-      'ArrowUp',
-      'ArrowUp',
-      'ArrowRight',
-      'ArrowRight',
-      'ArrowLeft',
-      'ArrowUp',
-      'ArrowRight',
-      'ArrowRight',
+      "ArrowUp",
+      "ArrowUp",
+      "ArrowRight",
+      "ArrowRight",
+    ]);
+
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, [
+      "ArrowUp",
+      "ArrowUp",
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowUp",
+    ]);
+
+    await waitForP01PlayerTurn(page);
+    await pressSequence(page, [
+      "ArrowUp",
+      "ArrowUp",
+      "ArrowRight",
+      "ArrowRight",
+      "ArrowLeft",
+      "ArrowUp",
+      "ArrowRight",
+      "ArrowRight",
     ]);
 
     // FEELâ†’NAME: the Rune Keeper names the pattern in-scene, then the
     // puzzle returns straight to the Prologue. No bridge scene.
     await page.waitForTimeout(2_600);
-    await snap(page, '10-p0-1-complete.png');
+    await snap(page, "10-p0-1-complete.png");
     await advanceNameItBeat(page);
 
-    const flagSet = await page.evaluate(() =>
-      !!(window as GameWindow).__gameState__?.getFlag('puzzle_p0_1_complete')
+    const flagSet = await page.evaluate(
+      () =>
+        !!(window as GameWindow).__gameState__?.getFlag("puzzle_p0_1_complete"),
     );
     expect(flagSet).toBe(true);
   });
 
-  test('11 - P0-2 Flow Consoles - completes all 3 shards', async ({ page }) => {
-    await jumpToScene(page, 'P0_2_FlowConsoles', { returnScene: 'PrologueScene' });
+  test("11 - P0-2 Flow Consoles - completes all 3 shards", async ({ page }) => {
+    await jumpToScene(page, "P0_2_FlowConsoles", {
+      returnScene: "PrologueScene",
+    });
     await page.waitForTimeout(1_000);
 
-    await page.keyboard.press('1');
+    await page.keyboard.press("1");
     await page.waitForTimeout(400);
-    await page.keyboard.press('1');
+    await page.keyboard.press("1");
     await page.waitForTimeout(600);
 
-    await page.keyboard.press('2');
+    await page.keyboard.press("2");
     await page.waitForTimeout(400);
-    await page.keyboard.press('2');
+    await page.keyboard.press("2");
     await page.waitForTimeout(600);
 
-    await page.keyboard.press('3');
+    await page.keyboard.press("3");
     await page.waitForTimeout(400);
-    await page.keyboard.press('3');
+    await page.keyboard.press("3");
 
     await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('P0_2_FlowConsoles') as Record<string, unknown> | null;
-      const time = scene?.['time'] as { removeAllEvents?: () => void } | undefined;
-      const complete = scene?.['puzzleComplete'];
-      if (scene && typeof complete === 'function') {
+      const scene = game?.scene.getScene("P0_2_FlowConsoles") as Record<
+        string,
+        unknown
+      > | null;
+      const time = scene?.["time"] as
+        | { removeAllEvents?: () => void }
+        | undefined;
+      const complete = scene?.["puzzleComplete"];
+      if (scene && typeof complete === "function") {
         time?.removeAllEvents?.();
         (complete as () => void).call(scene);
       }
@@ -754,125 +934,160 @@ test.describe('Prologue region â€“ visual audit', () => {
 
     // FEELâ†’NAME: Console Keeper naming beat, then straight back.
     await page.waitForTimeout(2_600);
-    await snap(page, '11-p0-2-complete.png');
+    await snap(page, "11-p0-2-complete.png");
     await advanceNameItBeat(page);
 
-    const flagSet = await page.evaluate(() =>
-      !!(window as GameWindow).__gameState__?.getFlag('puzzle_p0_2_complete')
+    const flagSet = await page.evaluate(
+      () =>
+        !!(window as GameWindow).__gameState__?.getFlag("puzzle_p0_2_complete"),
     );
     expect(flagSet).toBe(true);
   });
 
-  test('12a - Boss Sentinel - litany layout', async ({ page }) => {
-    await jumpToScene(page, 'Boss_Sentinel', { returnScene: 'PrologueScene' });
+  test("12a - Boss Sentinel - litany layout", async ({ page }) => {
+    await jumpToScene(page, "Boss_Sentinel", { returnScene: "PrologueScene" });
     await page.waitForTimeout(3_100);
-    await snap(page, '12a-boss-sentinel-layout.png');
+    await snap(page, "12a-boss-sentinel-layout.png");
   });
 
-  test('12 - Boss Sentinel completes and Array Plains gateway unlocks', async ({ page }) => {
+  test("12 - Boss Sentinel completes and Array Plains gateway unlocks", async ({
+    page,
+  }) => {
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: 320, y: 400, region: 'prologue' },
-        companion: { stage: 'spark', mood: 'neutral' },
-        rival: { encountered: false, encounterStage: 0 },
-        shardsCollected: [],
-        puzzleResults: {
-          p0_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          p0_2: { stars: 3, time: 25, attempts: 0, hintsUsed: 0 },
-        },
-        codexEntries: [],
-        npcStates: {},
-        flags: {
-          opening_scene_done: true,
-          professor_node_intro_done: true,
-          watcher_warning_done: true,
-          glitch_intro_done: true,
-          boss_gate_cutscene_done: true,
-          puzzle_p0_1_complete: true,
-          puzzle_p0_2_complete: true,
-          boss_gate_open: true,
-        },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-        saveVersion: 1,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v1",
+        JSON.stringify({
+          player: { x: 320, y: 400, region: "prologue" },
+          companion: { stage: "spark", mood: "neutral" },
+          rival: { encountered: false, encounterStage: 0 },
+          shardsCollected: [],
+          puzzleResults: {
+            p0_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            p0_2: { stars: 3, time: 25, attempts: 0, hintsUsed: 0 },
+          },
+          codexEntries: [],
+          npcStates: {},
+          flags: {
+            opening_scene_done: true,
+            professor_node_intro_done: true,
+            watcher_warning_done: true,
+            glitch_intro_done: true,
+            boss_gate_cutscene_done: true,
+            puzzle_p0_1_complete: true,
+            puzzle_p0_2_complete: true,
+            boss_gate_open: true,
+          },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+          saveVersion: 1,
+          playTime: 0,
+        }),
+      );
     });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
     await page.waitForTimeout(1_000);
-    await clickMenuItem(page, 'CONTINUE');
-    await waitForScene(page, 'PrologueScene', 10_000);
+    await clickMenuItem(page, "CONTINUE");
+    await waitForScene(page, "PrologueScene", 10_000);
 
-    await jumpToScene(page, 'Boss_Sentinel', { returnScene: 'PrologueScene' });
+    await jumpToScene(page, "Boss_Sentinel", { returnScene: "PrologueScene" });
     await page.waitForTimeout(1_000);
-    await completePuzzleViaInjection(page, 'Boss_Sentinel');
+    await completePuzzleViaInjection(page, "Boss_Sentinel");
 
     // Bosses have no naming beat â€” the completion fades straight back to
     // the overworld (FEELâ†’NAME flow, docs/VISION.md Â§3).
-    await waitForScene(page, 'PrologueScene', 15_000);
+    await waitForScene(page, "PrologueScene", 15_000);
     await page.waitForTimeout(2_000);
-    await snap(page, '12-gateway-unlocked.png');
+    await snap(page, "12-gateway-unlocked.png");
 
-    const gatewayOpen = await page.evaluate(() =>
-      !!(window as GameWindow).__gameState__?.getFlag('gateway_open')
+    const gatewayOpen = await page.evaluate(
+      () => !!(window as GameWindow).__gameState__?.getFlag("gateway_open"),
     );
     expect(gatewayOpen).toBe(true);
   });
 
-  test('13 - Array Plains - walk route, inspect marker, return to Prologue', async ({ page }) => {
+  test("13 - Array Plains - walk route, inspect marker, return to Prologue", async ({
+    page,
+  }) => {
     test.setTimeout(60_000);
 
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        // Living-map coords: main road, two steps west of index marker 0.
-        player: { x: 496, y: 664, region: 'array_plains' },
-        companion: { stage: 'spark', mood: 'neutral' },
-        rival: { encountered: false, encounterStage: 0 },
-        shardsCollected: [],
-        puzzleResults: {},
-        codexEntries: [],
-        npcStates: {},
-        flags: {
-          opening_scene_done: true,
-          professor_node_intro_done: true,
-          watcher_warning_done: true,
-          prologue_visited: true,
-        },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-        saveVersion: 1,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v1",
+        JSON.stringify({
+          // Living-map coords: main road, two steps west of index marker 0.
+          player: { x: 496, y: 664, region: "array_plains" },
+          companion: { stage: "spark", mood: "neutral" },
+          rival: { encountered: false, encounterStage: 0 },
+          shardsCollected: [],
+          puzzleResults: {},
+          codexEntries: [],
+          npcStates: {},
+          flags: {
+            opening_scene_done: true,
+            professor_node_intro_done: true,
+            watcher_warning_done: true,
+            prologue_visited: true,
+          },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+          saveVersion: 1,
+          playTime: 0,
+        }),
+      );
     });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
     await page.waitForTimeout(1_000);
-    await clickMenuItem(page, 'CONTINUE');
-    await waitForScene(page, 'ArrayPlainsScene', 10_000);
+    await clickMenuItem(page, "CONTINUE");
+    await waitForScene(page, "ArrayPlainsScene", 10_000);
     await page.waitForTimeout(1_800);
 
-    await walkStep(page, 'ArrowRight');
-    await walkStep(page, 'ArrowRight');
+    await walkStep(page, "ArrowRight");
+    await walkStep(page, "ArrowRight");
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await page.waitForTimeout(600);
-    await snap(page, '13-array-plains-marker-panel.png');
+    await snap(page, "13-array-plains-marker-panel.png");
 
-    await page.keyboard.press('Space');
-    await page.waitForTimeout(400);
+    // Touching marker 0 opens the Array Guide field note. Under throttled
+    // headless RAF one Space may only complete the typewriter line, so press
+    // until the dialogue actually closes instead of assuming one press.
+    for (let i = 0; i < 8; i++) {
+      const dialogueOpen = await page.evaluate(() => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene("ArrayPlainsScene") as Record<
+          string,
+          unknown
+        > | null;
+        const dialogue = scene?.["dialogueSystem"] as
+          | { isDialogueActive(): boolean }
+          | undefined;
+        return dialogue?.isDialogueActive() ?? false;
+      });
+      if (!dialogueOpen) break;
+      await page.keyboard.press("Space");
+      await page.waitForTimeout(500);
+    }
 
     // Walk to the prologue gateway arch on the living map's west edge â€”
     // within the interaction prompt radius (~40px) of the portal at x=88.
-    await setScenePlayerPosition(page, 'ArrayPlainsScene', 126, 664);
-    await page.waitForTimeout(250);
-    await page.keyboard.press('Space');
+    await setScenePlayerPosition(page, "ArrayPlainsScene", 126, 664);
+    // Throttled headless RAF means the InteractionSystem can take well over
+    // a fixed beat to register the teleported player, so wait for the portal
+    // prompt to reach the aria-live region before pressing Space.
+    await page.waitForFunction(
+      () => document.body.textContent?.includes("[SPACE] Return") ?? false,
+      undefined,
+      { timeout: 15_000 },
+    );
+    await page.keyboard.press("Space");
 
-    await waitForScene(page, 'PrologueScene');
+    await waitForScene(page, "PrologueScene");
     await page.waitForTimeout(1_500);
-    await snap(page, '13b-prologue-return.png');
+    await snap(page, "13b-prologue-return.png");
 
-    const returnPos = await getScenePlayerPosition(page, 'PrologueScene');
+    const returnPos = await getScenePlayerPosition(page, "PrologueScene");
     expect(returnPos).not.toBeNull();
     expect(returnPos!.x).toBeGreaterThanOrEqual(1904);
     expect(returnPos!.x).toBeLessThanOrEqual(2032);
@@ -880,209 +1095,299 @@ test.describe('Prologue region â€“ visual audit', () => {
     expect(returnPos!.y).toBeLessThanOrEqual(459);
   });
 
-  test('13b - Watcher warning completes without frozen story state', async ({ page }) => {
-    await continueToPrologueAt(page, { x: 560, y: 384 }, {
-      opening_scene_done: true,
-      professor_node_intro_done: true,
-      prologue_visited: true,
-    });
+  test("13b - Watcher warning completes without frozen story state", async ({
+    page,
+  }) => {
+    await continueToPrologueAt(
+      page,
+      { x: 560, y: 384 },
+      {
+        opening_scene_done: true,
+        professor_node_intro_done: true,
+        prologue_visited: true,
+      },
+    );
     await page.waitForTimeout(1_800);
 
     await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
-      (window as Window & { __watcherRegressionDone?: boolean }).__watcherRegressionDone = false;
-      (scene?.['beginStoryBeat'] as ((name: string) => void) | undefined)?.call(scene, 'watcher_regression');
-      (scene?.['spawnWatcherFlyby'] as ((scheduleNext: boolean, onComplete: () => void, flyDurationMs: number) => void) | undefined)?.call(
+      const scene = game?.scene.getScene("PrologueScene") as Record<
+        string,
+        unknown
+      > | null;
+      (
+        window as Window & { __watcherRegressionDone?: boolean }
+      ).__watcherRegressionDone = false;
+      (scene?.["beginStoryBeat"] as ((name: string) => void) | undefined)?.call(
+        scene,
+        "watcher_regression",
+      );
+      (
+        scene?.["spawnWatcherFlyby"] as
+          | ((
+              scheduleNext: boolean,
+              onComplete: () => void,
+              flyDurationMs: number,
+            ) => void)
+          | undefined
+      )?.call(
         scene,
         false,
         () => {
-          (scene?.['endStoryBeat'] as ((name: string) => void) | undefined)?.call(scene, 'watcher_regression');
-          (window as Window & { __watcherRegressionDone?: boolean }).__watcherRegressionDone = true;
+          (
+            scene?.["endStoryBeat"] as ((name: string) => void) | undefined
+          )?.call(scene, "watcher_regression");
+          (
+            window as Window & { __watcherRegressionDone?: boolean }
+          ).__watcherRegressionDone = true;
         },
         220,
       );
     });
 
     await page.waitForFunction(
-      () => (window as Window & { __watcherRegressionDone?: boolean }).__watcherRegressionDone === true,
+      () =>
+        (window as Window & { __watcherRegressionDone?: boolean })
+          .__watcherRegressionDone === true,
       { timeout: 6_000 },
     );
     await page.waitForTimeout(1_800);
 
     const state = await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
-      const player = scene?.['player'] as { state?: string } | undefined;
+      const scene = game?.scene.getScene("PrologueScene") as Record<
+        string,
+        unknown
+      > | null;
+      const player = scene?.["player"] as { state?: string } | undefined;
       return {
-        storyBeatActive: scene?.['storyBeatActive'] === true,
+        storyBeatActive: scene?.["storyBeatActive"] === true,
         playerState: player?.state ?? null,
         bitMood: (window as GameWindow).__gameState__?.getBitMood?.() ?? null,
-        hasCleanup: scene?.['cleanupActiveWatcherFlyby'] != null,
+        hasCleanup: scene?.["cleanupActiveWatcherFlyby"] != null,
       };
     });
 
     expect(state).toEqual({
       storyBeatActive: false,
-      playerState: 'idle',
-      bitMood: 'neutral',
+      playerState: "idle",
+      bitMood: "neutral",
       hasCleanup: false,
     });
   });
 
-  test('17 - AP-1 Sorting Shed - region encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P1_1_BubbleSort', { returnScene: 'ArrayPlainsScene' });
-    // FEEL_IT design: the moment-of-truth screen is the playable surface
-    // (player's row vs Glitch's row), not the opening lesson card. Dismiss
-    // the card and let Glitch tick a few times so the brute-force contrast
-    // is captured. ~1.8x RAF throttle applies; ~3000ms of game time covers
-    // 3-4 Glitch ticks at the 850ms tick rate.
-    await page.waitForTimeout(700);
-    await page.keyboard.press('Space');
-    await page.waitForTimeout(700); // wait for RoundBanner to finish.
-    await page.keyboard.press('Space');
-    await page.waitForTimeout(3000);
-    await snap(page, '17-ap1-sorting-shed-layout.png');
+  test("17 - AP-1 Grain Chamber - sealed room layout", async ({ page }) => {
+    await jumpToScene(page, "P1_1_BubbleSort", {
+      returnScene: "ArrayPlainsScene",
+    });
+    // Grain Chamber design: no lesson card / round banner to dismiss — the
+    // room opens straight onto the playable surface. Wait out the door-seal
+    // slam and the transient entry legend's settle (~1.8x RAF throttle).
+    await page.waitForTimeout(3600);
+    await snap(page, "17-ap1-grain-chamber-sealed.png");
   });
 
-  test('18 - AP-2 Indexing Barn - region encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P1_2_BasketIndexing', { returnScene: 'ArrayPlainsScene' });
+  test("17b - AP-1 Grain Chamber - a trade spills grain", async ({ page }) => {
+    await jumpToScene(page, "P1_1_BubbleSort", {
+      returnScene: "ArrayPlainsScene",
+    });
+    await page.waitForTimeout(2200);
+    // Number keys walk the player to the gap and trade on arrival — the
+    // deterministic way to land one trade in headless (gap 1 = crates 2&3).
+    await page.keyboard.press("2");
+    await page.waitForTimeout(2600);
+    // The trade must have spilled grain and swapped crates 2 and 3.
+    const state = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("P1_1_BubbleSort") as Record<
+        string,
+        unknown
+      > | null;
+      const lane = scene?.["lane"] as { values?: () => number[] } | undefined;
+      const fx = scene?.["fx"] as
+        | { decalPositions?: () => unknown[] }
+        | undefined;
+      return {
+        values: lane?.values?.() ?? null,
+        decals: fx?.decalPositions?.()?.length ?? 0,
+      };
+    });
+    expect(state.values).toEqual([3, 4, 1, 2]);
+    expect(state.decals).toBeGreaterThan(0);
+    await snap(page, "17b-ap1-grain-spill.png");
+  });
+
+  test("18 - AP-2 Indexing Barn - region encounter layout", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P1_2_BasketIndexing", {
+      returnScene: "ArrayPlainsScene",
+    });
     // FEEL_IT design: dismiss the lesson card + round banner so the snapshot
     // captures the actual playable surface (basket shelf + Glitch ticking +
     // affordance prompt) rather than the opening copy.
     await page.waitForTimeout(700);
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await page.waitForTimeout(700);
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await page.waitForTimeout(2500);
-    await snap(page, '18-ap2-indexing-barn-layout.png');
+    await snap(page, "18-ap2-indexing-barn-layout.png");
   });
 
-  test('19 - AP-3 Grain Hopper - region encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P1_3_HashHopper', { returnScene: 'ArrayPlainsScene' });
+  test("19 - AP-3 Grain Hopper - region encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P1_3_HashHopper", {
+      returnScene: "ArrayPlainsScene",
+    });
     await page.waitForTimeout(700);
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await page.waitForTimeout(700);
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await page.waitForTimeout(2500);
-    await snap(page, '19-ap3-grain-hopper-layout.png');
+    await snap(page, "19-ap3-grain-hopper-layout.png");
   });
 
-  test('20 - AP-4 Pairing Grounds - region encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P1_4_TwoSum', { returnScene: 'ArrayPlainsScene' });
+  test("20 - AP-4 Pairing Grounds - region encounter layout", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P1_4_TwoSum", { returnScene: "ArrayPlainsScene" });
     await page.waitForTimeout(700);
-    await snap(page, '20-ap4-pairing-grounds-layout.png');
+    await snap(page, "20-ap4-pairing-grounds-layout.png");
   });
 
-  test('21 - Shuffler Domain - boss encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'Boss_Shuffler', { returnScene: 'ArrayPlainsScene' });
+  test("21 - Shuffler Domain - boss encounter layout", async ({ page }) => {
+    await jumpToScene(page, "Boss_Shuffler", {
+      returnScene: "ArrayPlainsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '21-shuffler-domain-layout.png');
+    await snap(page, "21-shuffler-domain-layout.png");
   });
 
-  test('22 - Twin Rivers - Continue from save', async ({ page }) => {
+  test("22 - Twin Rivers - Continue from save", async ({ page }) => {
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: 160, y: 624, region: 'twin_rivers' },
-        companion: { stage: 'frame', mood: 'neutral' },
-        rival: { encountered: true, encounterStage: 2 },
-        shardsCollected: [],
-        puzzleResults: { boss_shuffler: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 } },
-        codexEntries: [],
-        npcStates: {},
-        flags: {
-          opening_scene_done: true,
-          professor_node_intro_done: true,
-          watcher_warning_done: true,
-          prologue_visited: true,
-          gateway_open: true,
-          twin_rivers_gateway_open: true,
-        },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-        saveVersion: 1,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v1",
+        JSON.stringify({
+          player: { x: 160, y: 624, region: "twin_rivers" },
+          companion: { stage: "frame", mood: "neutral" },
+          rival: { encountered: true, encounterStage: 2 },
+          shardsCollected: [],
+          puzzleResults: {
+            boss_shuffler: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          },
+          codexEntries: [],
+          npcStates: {},
+          flags: {
+            opening_scene_done: true,
+            professor_node_intro_done: true,
+            watcher_warning_done: true,
+            prologue_visited: true,
+            gateway_open: true,
+            twin_rivers_gateway_open: true,
+          },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+          saveVersion: 1,
+          playTime: 0,
+        }),
+      );
     });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
     await page.waitForTimeout(1_000);
-    await clickMenuItem(page, 'CONTINUE');
-    await waitForScene(page, 'TwinRiversScene', 10_000);
+    await clickMenuItem(page, "CONTINUE");
+    await waitForScene(page, "TwinRiversScene", 10_000);
     await page.waitForTimeout(1_800);
-    await snap(page, '22-twin-rivers-continue.png');
+    await snap(page, "22-twin-rivers-continue.png");
   });
 
-  test('23 - TR-1 Mirror Walk - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P2_1_MirrorWalk', { returnScene: 'TwinRiversScene' });
+  test("23 - TR-1 Mirror Walk - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P2_1_MirrorWalk", {
+      returnScene: "TwinRiversScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '23-tr1-mirror-walk-layout.png');
+    await snap(page, "23-tr1-mirror-walk-layout.png");
   });
 
-  test('24 - TR-2 Pointer Bridge - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P2_2_PointerBridge', { returnScene: 'TwinRiversScene' });
+  test("24 - TR-2 Pointer Bridge - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P2_2_PointerBridge", {
+      returnScene: "TwinRiversScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '24-tr2-pointer-bridge-layout.png');
+    await snap(page, "24-tr2-pointer-bridge-layout.png");
   });
 
-  test('25 - TR-3 Fixed Window Dock - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P2_3_FixedWindowDock', { returnScene: 'TwinRiversScene' });
+  test("25 - TR-3 Fixed Window Dock - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P2_3_FixedWindowDock", {
+      returnScene: "TwinRiversScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '25-tr3-fixed-window-layout.png');
+    await snap(page, "25-tr3-fixed-window-layout.png");
   });
 
-  test('26 - TR-4 Current Rider - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P2_4_CurrentRider', { returnScene: 'TwinRiversScene' });
+  test("26 - TR-4 Current Rider - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P2_4_CurrentRider", {
+      returnScene: "TwinRiversScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '26-tr4-current-rider-layout.png');
+    await snap(page, "26-tr4-current-rider-layout.png");
   });
 
-  test('27 - Mirror Serpent - boss encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'Boss_MirrorSerpent', { returnScene: 'TwinRiversScene' });
+  test("27 - Mirror Serpent - boss encounter layout", async ({ page }) => {
+    await jumpToScene(page, "Boss_MirrorSerpent", {
+      returnScene: "TwinRiversScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '27-mirror-serpent-layout.png');
+    await snap(page, "27-mirror-serpent-layout.png");
   });
 
-  test('27a - Twin Rivers - Hash Highlands gateway stays locked until Mirror Serpent', async ({ page }) => {
+  test("27a - Twin Rivers - Hash Highlands gateway stays locked until Mirror Serpent", async ({
+    page,
+  }) => {
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v2', JSON.stringify({
-        player: { x: 1700, y: 520, region: 'twin_rivers' },
-        companion: { stage: 'branch', mood: 'neutral' },
-        rival: { encountered: true, encounterStage: 3 },
-        shardsCollected: ['array_plains_logic_shard'],
-        puzzleResults: {
-          tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-        },
-        codexEntries: [],
-        npcStates: {},
-        flags: {
-          opening_scene_done: true,
-          professor_node_intro_done: true,
-          gateway_open: true,
-          twin_rivers_gateway_open: true,
-          mirror_serpent_gate_open: true,
-          beta_warning_seen: true,
-        },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
-        saveVersion: 2,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v2",
+        JSON.stringify({
+          player: { x: 1700, y: 520, region: "twin_rivers" },
+          companion: { stage: "branch", mood: "neutral" },
+          rival: { encountered: true, encounterStage: 3 },
+          shardsCollected: ["array_plains_logic_shard"],
+          puzzleResults: {
+            tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+          },
+          codexEntries: [],
+          npcStates: {},
+          flags: {
+            opening_scene_done: true,
+            professor_node_intro_done: true,
+            gateway_open: true,
+            twin_rivers_gateway_open: true,
+            mirror_serpent_gate_open: true,
+            beta_warning_seen: true,
+          },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
+          saveVersion: 2,
+          playTime: 0,
+        }),
+      );
     });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
     await page.waitForTimeout(1_000);
-    await clickMenuItem(page, 'CONTINUE');
-    await waitForScene(page, 'TwinRiversScene', 10_000);
+    await clickMenuItem(page, "CONTINUE");
+    await waitForScene(page, "TwinRiversScene", 10_000);
 
     await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
-      const enter = scene?.['enterHashHighlands'];
-      if (typeof enter === 'function') {
+      const scene = game?.scene.getScene("TwinRiversScene") as Record<
+        string,
+        unknown
+      > | null;
+      const enter = scene?.["enterHashHighlands"];
+      if (typeof enter === "function") {
         (enter as () => void).call(scene);
       }
     });
@@ -1091,199 +1396,288 @@ test.describe('Prologue region â€“ visual audit', () => {
     const activeScenes = await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
       return {
-        twinRivers: game?.scene.isActive('TwinRiversScene') ?? false,
-        hashHighlands: game?.scene.isActive('HashHighlandsScene') ?? false,
+        twinRivers: game?.scene.isActive("TwinRiversScene") ?? false,
+        hashHighlands: game?.scene.isActive("HashHighlandsScene") ?? false,
       };
     });
     expect(activeScenes.twinRivers).toBe(true);
     expect(activeScenes.hashHighlands).toBe(false);
   });
 
-  test('27b - Twin Rivers - post-Mirror-Serpent closure beat', async ({ page }) => {
+  test("27b - Twin Rivers - post-Mirror-Serpent closure beat", async ({
+    page,
+  }) => {
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v2', JSON.stringify({
-        player: { x: 1700, y: 520, region: 'twin_rivers' },
-        companion: { stage: 'branch', mood: 'neutral' },
-        rival: { encountered: true, encounterStage: 3 },
-        shardsCollected: ['array_plains_logic_shard', 'twin_rivers_logic_shard'],
-        puzzleResults: {
-          tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          boss_mirror_serpent: { stars: 3, time: 55, attempts: 0, hintsUsed: 0 },
-        },
-        codexEntries: [],
-        npcStates: {},
-        flags: {
-          opening_scene_done: true,
-          professor_node_intro_done: true,
-          gateway_open: true,
-          twin_rivers_gateway_open: true,
-          mirror_serpent_gate_open: true,
-          puzzle_boss_mirror_serpent_complete: true,
-          hash_highlands_gateway_open: true,
-          glitch_tr_1_done: true,
-          glitch_tr_3_done: true,
-        },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
-        saveVersion: 2,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v2",
+        JSON.stringify({
+          player: { x: 1700, y: 520, region: "twin_rivers" },
+          companion: { stage: "branch", mood: "neutral" },
+          rival: { encountered: true, encounterStage: 3 },
+          shardsCollected: [
+            "array_plains_logic_shard",
+            "twin_rivers_logic_shard",
+          ],
+          puzzleResults: {
+            tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            boss_mirror_serpent: {
+              stars: 3,
+              time: 55,
+              attempts: 0,
+              hintsUsed: 0,
+            },
+          },
+          codexEntries: [],
+          npcStates: {},
+          flags: {
+            opening_scene_done: true,
+            professor_node_intro_done: true,
+            gateway_open: true,
+            twin_rivers_gateway_open: true,
+            mirror_serpent_gate_open: true,
+            puzzle_boss_mirror_serpent_complete: true,
+            hash_highlands_gateway_open: true,
+            glitch_tr_1_done: true,
+            glitch_tr_3_done: true,
+          },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
+          saveVersion: 2,
+          playTime: 0,
+        }),
+      );
     });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
     await page.waitForTimeout(1_000);
-    await clickMenuItem(page, 'CONTINUE');
-    await waitForScene(page, 'TwinRiversScene', 10_000);
+    await clickMenuItem(page, "CONTINUE");
+    await waitForScene(page, "TwinRiversScene", 10_000);
 
-    const closure = await page.waitForFunction(() => {
-      const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
-      const ds = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
-      const currentNode = ds ? (ds as Record<string, unknown>)['currentNode'] as { speaker?: string; text?: string | string[] } | null : null;
-      if (ds?.isDialogueActive?.() !== true || currentNode?.speaker !== 'River Guide') return null;
-      const text = Array.isArray(currentNode.text) ? currentNode.text.join('\n') : currentNode.text ?? '';
-      if (!text.includes('Twin Rivers is complete')) return null;
-      return {
-        closureDone: (window as GameWindow).__gameState__?.getFlag('twin_rivers_closure_done'),
-        hashGate: (window as GameWindow).__gameState__?.getFlag('hash_highlands_gateway_open'),
-        text,
-      };
-    }, { timeout: 8_000 });
+    const closure = await page.waitForFunction(
+      () => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene("TwinRiversScene") as Record<
+          string,
+          unknown
+        > | null;
+        const ds = scene?.["dialogueSystem"] as
+          | { isDialogueActive?: () => boolean }
+          | undefined;
+        const currentNode = ds
+          ? ((ds as Record<string, unknown>)["currentNode"] as {
+              speaker?: string;
+              text?: string | string[];
+            } | null)
+          : null;
+        if (
+          ds?.isDialogueActive?.() !== true ||
+          currentNode?.speaker !== "River Guide"
+        )
+          return null;
+        const text = Array.isArray(currentNode.text)
+          ? currentNode.text.join("\n")
+          : (currentNode.text ?? "");
+        if (!text.includes("Twin Rivers is complete")) return null;
+        return {
+          closureDone: (window as GameWindow).__gameState__?.getFlag(
+            "twin_rivers_closure_done",
+          ),
+          hashGate: (window as GameWindow).__gameState__?.getFlag(
+            "hash_highlands_gateway_open",
+          ),
+          text,
+        };
+      },
+      { timeout: 8_000 },
+    );
 
     const result = await closure.jsonValue();
     expect(result.closureDone).toBe(false);
     expect(result.hashGate).toBe(true);
-    expect(result.text).toContain('Thanks for playing this demo');
+    expect(result.text).toContain("Thanks for playing this demo");
     await page.waitForTimeout(250);
     const inProgressObjective = await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
-      const hud = scene?.['hud'] as Record<string, unknown> | undefined;
-      return hud?.['objectiveTextCache'] as string | undefined;
+      const scene = game?.scene.getScene("TwinRiversScene") as Record<
+        string,
+        unknown
+      > | null;
+      const hud = scene?.["hud"] as Record<string, unknown> | undefined;
+      return hud?.["objectiveTextCache"] as string | undefined;
     });
-    expect(inProgressObjective).toContain('polished arc ends');
+    expect(inProgressObjective).toContain("polished arc ends");
     await page.waitForTimeout(1_000);
-    await snap(page, '27b-twin-rivers-closure.png');
+    await snap(page, "27b-twin-rivers-closure.png");
 
     for (let i = 0; i < 10; i++) {
-      await page.keyboard.press('Space');
+      await page.keyboard.press("Space");
       await page.waitForTimeout(340);
     }
 
-    await page.waitForFunction(() => {
-      const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
-      const ds = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
-      return ds?.isDialogueActive?.() === false;
-    }, { timeout: 8_000 });
+    await page.waitForFunction(
+      () => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene("TwinRiversScene") as Record<
+          string,
+          unknown
+        > | null;
+        const ds = scene?.["dialogueSystem"] as
+          | { isDialogueActive?: () => boolean }
+          | undefined;
+        return ds?.isDialogueActive?.() === false;
+      },
+      { timeout: 8_000 },
+    );
 
     const objective = await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
-      const hud = scene?.['hud'] as Record<string, unknown> | undefined;
-      return hud?.['objectiveTextCache'] as string | undefined;
+      const scene = game?.scene.getScene("TwinRiversScene") as Record<
+        string,
+        unknown
+      > | null;
+      const hud = scene?.["hud"] as Record<string, unknown> | undefined;
+      return hud?.["objectiveTextCache"] as string | undefined;
     });
-    expect(objective).toContain('Turn back for credits');
-    const closureDone = await page.evaluate(() => (window as GameWindow).__gameState__?.getFlag('twin_rivers_closure_done'));
+    expect(objective).toContain("Turn back for credits");
+    const closureDone = await page.evaluate(() =>
+      (window as GameWindow).__gameState__?.getFlag("twin_rivers_closure_done"),
+    );
     expect(closureDone).toBe(true);
   });
 
-  test('27c - Twin Rivers - closure pan locks player movement', async ({ page }) => {
+  test("27c - Twin Rivers - closure pan locks player movement", async ({
+    page,
+  }) => {
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v2', JSON.stringify({
-        player: { x: 1700, y: 520, region: 'twin_rivers' },
-        companion: { stage: 'branch', mood: 'neutral' },
-        rival: { encountered: true, encounterStage: 3 },
-        shardsCollected: ['array_plains_logic_shard', 'twin_rivers_logic_shard'],
-        puzzleResults: {
-          tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
-          boss_mirror_serpent: { stars: 3, time: 55, attempts: 0, hintsUsed: 0 },
-        },
-        codexEntries: [],
-        npcStates: {},
-        flags: {
-          opening_scene_done: true,
-          professor_node_intro_done: true,
-          gateway_open: true,
-          twin_rivers_gateway_open: true,
-          mirror_serpent_gate_open: true,
-          puzzle_boss_mirror_serpent_complete: true,
-          hash_highlands_gateway_open: true,
-          glitch_tr_1_done: true,
-          glitch_tr_3_done: true,
-        },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
-        saveVersion: 2,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v2",
+        JSON.stringify({
+          player: { x: 1700, y: 520, region: "twin_rivers" },
+          companion: { stage: "branch", mood: "neutral" },
+          rival: { encountered: true, encounterStage: 3 },
+          shardsCollected: [
+            "array_plains_logic_shard",
+            "twin_rivers_logic_shard",
+          ],
+          puzzleResults: {
+            tr_1: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            tr_2: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            tr_3: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            tr_4: { stars: 3, time: 30, attempts: 0, hintsUsed: 0 },
+            boss_mirror_serpent: {
+              stars: 3,
+              time: 55,
+              attempts: 0,
+              hintsUsed: 0,
+            },
+          },
+          codexEntries: [],
+          npcStates: {},
+          flags: {
+            opening_scene_done: true,
+            professor_node_intro_done: true,
+            gateway_open: true,
+            twin_rivers_gateway_open: true,
+            mirror_serpent_gate_open: true,
+            puzzle_boss_mirror_serpent_complete: true,
+            hash_highlands_gateway_open: true,
+            glitch_tr_1_done: true,
+            glitch_tr_3_done: true,
+          },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 300 },
+          saveVersion: 2,
+          playTime: 0,
+        }),
+      );
     });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
     await page.waitForTimeout(1_000);
-    await clickMenuItem(page, 'CONTINUE');
-    await waitForScene(page, 'TwinRiversScene', 10_000);
+    await clickMenuItem(page, "CONTINUE");
+    await waitForScene(page, "TwinRiversScene", 10_000);
 
-    const beforeHandle = await page.waitForFunction(() => {
-      const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('TwinRiversScene') as Record<string, unknown> | null;
-      const ds = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
-      const player = scene?.['player'] as { getPosition?: () => { x: number; y: number } } | undefined;
-      if (scene?.['twinRiversClosureInProgress'] !== true || ds?.isDialogueActive?.() === true) return null;
-      return player?.getPosition?.() ?? null;
-    }, { timeout: 8_000, polling: 50 });
+    const beforeHandle = await page.waitForFunction(
+      () => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene("TwinRiversScene") as Record<
+          string,
+          unknown
+        > | null;
+        const ds = scene?.["dialogueSystem"] as
+          | { isDialogueActive?: () => boolean }
+          | undefined;
+        const player = scene?.["player"] as
+          | { getPosition?: () => { x: number; y: number } }
+          | undefined;
+        if (
+          scene?.["twinRiversClosureInProgress"] !== true ||
+          ds?.isDialogueActive?.() === true
+        )
+          return null;
+        return player?.getPosition?.() ?? null;
+      },
+      { timeout: 8_000, polling: 50 },
+    );
     const before = await beforeHandle.jsonValue();
 
-    await page.keyboard.down('D');
+    await page.keyboard.down("D");
     await page.waitForTimeout(450);
-    await page.keyboard.up('D');
+    await page.keyboard.up("D");
     await page.waitForTimeout(250);
 
-    const after = await getScenePlayerPosition(page, 'TwinRiversScene');
+    const after = await getScenePlayerPosition(page, "TwinRiversScene");
     expect(after).not.toBeNull();
     expect(Math.abs(after!.x - before.x)).toBeLessThan(1);
     expect(Math.abs(after!.y - before.y)).toBeLessThan(1);
   });
 
-  test('28 - Hash Highlands - Continue from save', async ({ page }) => {
+  test("28 - Hash Highlands - Continue from save", async ({ page }) => {
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: 192, y: 448, region: 'hash_highlands' },
-        companion: { stage: 'frame', mood: 'neutral' },
-        rival: { encountered: true, encounterStage: 3 },
-        shardsCollected: ['array_plains_logic_shard'],
-        puzzleResults: { boss_mirror_serpent: { stars: 3, time: 35, attempts: 0, hintsUsed: 0 } },
-        codexEntries: [],
-        npcStates: {},
-        flags: {
-          opening_scene_done: true,
-          professor_node_intro_done: true,
-          gateway_open: true,
-          twin_rivers_gateway_open: true,
-          puzzle_boss_mirror_serpent_complete: true,
-          twin_rivers_closure_done: true,
-        },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-        saveVersion: 1,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v1",
+        JSON.stringify({
+          player: { x: 192, y: 448, region: "hash_highlands" },
+          companion: { stage: "frame", mood: "neutral" },
+          rival: { encountered: true, encounterStage: 3 },
+          shardsCollected: ["array_plains_logic_shard"],
+          puzzleResults: {
+            boss_mirror_serpent: {
+              stars: 3,
+              time: 35,
+              attempts: 0,
+              hintsUsed: 0,
+            },
+          },
+          codexEntries: [],
+          npcStates: {},
+          flags: {
+            opening_scene_done: true,
+            professor_node_intro_done: true,
+            gateway_open: true,
+            twin_rivers_gateway_open: true,
+            puzzle_boss_mirror_serpent_complete: true,
+            twin_rivers_closure_done: true,
+          },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+          saveVersion: 1,
+          playTime: 0,
+        }),
+      );
     });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
     await page.waitForTimeout(1_000);
-    await clickMenuItem(page, 'CONTINUE');
-    await waitForScene(page, 'HashHighlandsScene', 10_000);
+    await clickMenuItem(page, "CONTINUE");
+    await waitForScene(page, "HashHighlandsScene", 10_000);
     await page.waitForTimeout(1_800);
-    await snap(page, '28-hash-highlands-continue.png');
+    await snap(page, "28-hash-highlands-continue.png");
 
-    const pos = await getScenePlayerPosition(page, 'HashHighlandsScene');
+    const pos = await getScenePlayerPosition(page, "HashHighlandsScene");
     expect(pos).not.toBeNull();
     expect(pos!.x).toBeGreaterThanOrEqual(160);
     expect(pos!.x).toBeLessThanOrEqual(224);
@@ -1291,68 +1685,86 @@ test.describe('Prologue region â€“ visual audit', () => {
     expect(pos!.y).toBeLessThanOrEqual(480);
   });
 
-  test('29 - HH-1 Nameplate Gates - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P3_1_NameplateGates', { returnScene: 'HashHighlandsScene' });
+  test("29 - HH-1 Nameplate Gates - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P3_1_NameplateGates", {
+      returnScene: "HashHighlandsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '29-hh1-nameplate-gates-layout.png');
+    await snap(page, "29-hh1-nameplate-gates-layout.png");
   });
 
-  test('30 - HH-2 Frequency Forge - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P3_2_FrequencyForge', { returnScene: 'HashHighlandsScene' });
+  test("30 - HH-2 Frequency Forge - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P3_2_FrequencyForge", {
+      returnScene: "HashHighlandsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '30-hh2-frequency-forge-layout.png');
+    await snap(page, "30-hh2-frequency-forge-layout.png");
   });
 
-  test('31 - HH-3 Anagram Gardens - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P3_3_AnagramGardens', { returnScene: 'HashHighlandsScene' });
+  test("31 - HH-3 Anagram Gardens - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P3_3_AnagramGardens", {
+      returnScene: "HashHighlandsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '31-hh3-anagram-gardens-layout.png');
+    await snap(page, "31-hh3-anagram-gardens-layout.png");
   });
 
-  test('32 - HH-4 Cache Cavern - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P3_4_CacheCavern', { returnScene: 'HashHighlandsScene' });
+  test("32 - HH-4 Cache Cavern - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P3_4_CacheCavern", {
+      returnScene: "HashHighlandsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '32-hh4-cache-cavern-layout.png');
+    await snap(page, "32-hh4-cache-cavern-layout.png");
   });
 
-  test('33 - Archivist - boss encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'Boss_Archivist', { returnScene: 'HashHighlandsScene' });
+  test("33 - Archivist - boss encounter layout", async ({ page }) => {
+    await jumpToScene(page, "Boss_Archivist", {
+      returnScene: "HashHighlandsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '33-archivist-layout.png');
+    await snap(page, "33-archivist-layout.png");
   });
 
-  test('34 - Stack Spires - Continue from save', async ({ page }) => {
+  test("34 - Stack Spires - Continue from save", async ({ page }) => {
     await page.evaluate(() => {
-      localStorage.setItem('algorithmia_save_v1', JSON.stringify({
-        player: { x: 192, y: 448, region: 'stack_spires' },
-        companion: { stage: 'branch', mood: 'neutral' },
-        rival: { encountered: true, encounterStage: 4 },
-        shardsCollected: ['array_plains_logic_shard', 'hash_highlands_logic_shard'],
-        puzzleResults: { boss_archivist: { stars: 3, time: 38, attempts: 0, hintsUsed: 0 } },
-        codexEntries: [],
-        npcStates: {},
-        flags: {
-          opening_scene_done: true,
-          professor_node_intro_done: true,
-          gateway_open: true,
-          twin_rivers_gateway_open: true,
-          puzzle_boss_archivist_complete: true,
-        },
-        settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
-        saveVersion: 1,
-        playTime: 0,
-      }));
+      localStorage.setItem(
+        "algorithmia_save_v1",
+        JSON.stringify({
+          player: { x: 192, y: 448, region: "stack_spires" },
+          companion: { stage: "branch", mood: "neutral" },
+          rival: { encountered: true, encounterStage: 4 },
+          shardsCollected: [
+            "array_plains_logic_shard",
+            "hash_highlands_logic_shard",
+          ],
+          puzzleResults: {
+            boss_archivist: { stars: 3, time: 38, attempts: 0, hintsUsed: 0 },
+          },
+          codexEntries: [],
+          npcStates: {},
+          flags: {
+            opening_scene_done: true,
+            professor_node_intro_done: true,
+            gateway_open: true,
+            twin_rivers_gateway_open: true,
+            puzzle_boss_archivist_complete: true,
+          },
+          settings: { musicVolume: 0.7, sfxVolume: 0.8, textSpeed: 90 },
+          saveVersion: 1,
+          playTime: 0,
+        }),
+      );
     });
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await waitForScene(page, 'MenuScene');
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForScene(page, "MenuScene");
     await page.waitForTimeout(1_000);
-    await clickMenuItem(page, 'CONTINUE');
-    await waitForScene(page, 'StackSpiresScene', 10_000);
+    await clickMenuItem(page, "CONTINUE");
+    await waitForScene(page, "StackSpiresScene", 10_000);
     await page.waitForTimeout(1_800);
-    await snap(page, '34-stack-spires-continue.png');
+    await snap(page, "34-stack-spires-continue.png");
 
-    const pos = await getScenePlayerPosition(page, 'StackSpiresScene');
+    const pos = await getScenePlayerPosition(page, "StackSpiresScene");
     expect(pos).not.toBeNull();
     expect(pos!.x).toBeGreaterThanOrEqual(160);
     expect(pos!.x).toBeLessThanOrEqual(224);
@@ -1360,43 +1772,58 @@ test.describe('Prologue region â€“ visual audit', () => {
     expect(pos!.y).toBeLessThanOrEqual(480);
   });
 
-  test('35 - SS-1 Scroll Stack - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P4_1_ScrollStack', { returnScene: 'StackSpiresScene' });
-    await page.waitForTimeout(700);
-    await snap(page, '35-ss1-scroll-stack-layout.png');
-  });
-
-  test('36 - SS-2 Mirror Staircase - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P4_2_MirrorStaircase', { returnScene: 'StackSpiresScene' });
-    await page.waitForTimeout(700);
-    await snap(page, '36-ss2-mirror-staircase-layout.png');
-  });
-
-  test('37 - SS-3 Maze of Forks - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P4_3_MazeOfForks', { returnScene: 'StackSpiresScene' });
-    await page.waitForTimeout(700);
-    await snap(page, '37-ss3-maze-of-forks-layout.png');
-  });
-
-  test('38 - SS-4 Tower of Memory - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P4_4_TowerOfMemory', { returnScene: 'StackSpiresScene' });
-    await page.waitForTimeout(700);
-    await snap(page, '38-ss4-tower-of-memory-layout.png');
-  });
-
-  test('39 - Recursion - boss encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'Boss_Recursion', { returnScene: 'StackSpiresScene' });
-    await page.waitForTimeout(700);
-    await snap(page, '39-recursion-layout.png');
-  });
-
-  test('40 - Queue Canals - Continue from save', async ({ page }) => {
-    await goToFutureRegionViaContinue(page, 'queue_canals', 'QueueCanalsScene', {
-      boss_recursion: { stars: 3, time: 38, attempts: 0, hintsUsed: 0 },
+  test("35 - SS-1 Scroll Stack - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P4_1_ScrollStack", {
+      returnScene: "StackSpiresScene",
     });
-    await snap(page, '40-queue-canals-continue.png');
+    await page.waitForTimeout(700);
+    await snap(page, "35-ss1-scroll-stack-layout.png");
+  });
 
-    const pos = await getScenePlayerPosition(page, 'QueueCanalsScene');
+  test("36 - SS-2 Mirror Staircase - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P4_2_MirrorStaircase", {
+      returnScene: "StackSpiresScene",
+    });
+    await page.waitForTimeout(700);
+    await snap(page, "36-ss2-mirror-staircase-layout.png");
+  });
+
+  test("37 - SS-3 Maze of Forks - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P4_3_MazeOfForks", {
+      returnScene: "StackSpiresScene",
+    });
+    await page.waitForTimeout(700);
+    await snap(page, "37-ss3-maze-of-forks-layout.png");
+  });
+
+  test("38 - SS-4 Tower of Memory - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P4_4_TowerOfMemory", {
+      returnScene: "StackSpiresScene",
+    });
+    await page.waitForTimeout(700);
+    await snap(page, "38-ss4-tower-of-memory-layout.png");
+  });
+
+  test("39 - Recursion - boss encounter layout", async ({ page }) => {
+    await jumpToScene(page, "Boss_Recursion", {
+      returnScene: "StackSpiresScene",
+    });
+    await page.waitForTimeout(700);
+    await snap(page, "39-recursion-layout.png");
+  });
+
+  test("40 - Queue Canals - Continue from save", async ({ page }) => {
+    await goToFutureRegionViaContinue(
+      page,
+      "queue_canals",
+      "QueueCanalsScene",
+      {
+        boss_recursion: { stars: 3, time: 38, attempts: 0, hintsUsed: 0 },
+      },
+    );
+    await snap(page, "40-queue-canals-continue.png");
+
+    const pos = await getScenePlayerPosition(page, "QueueCanalsScene");
     expect(pos).not.toBeNull();
     expect(pos!.x).toBeGreaterThanOrEqual(160);
     expect(pos!.x).toBeLessThanOrEqual(224);
@@ -1404,43 +1831,53 @@ test.describe('Prologue region â€“ visual audit', () => {
     expect(pos!.y).toBeLessThanOrEqual(480);
   });
 
-  test('41 - QC-1 Ferry Dock - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P5_1_FerryQueue', { returnScene: 'QueueCanalsScene' });
+  test("41 - QC-1 Ferry Dock - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P5_1_FerryQueue", {
+      returnScene: "QueueCanalsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '41-qc1-ferry-dock-layout.png');
+    await snap(page, "41-qc1-ferry-dock-layout.png");
   });
 
-  test('42 - QC-2 Ripple Map - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P5_2_BfsLocks', { returnScene: 'QueueCanalsScene' });
+  test("42 - QC-2 Ripple Map - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P5_2_BfsLocks", {
+      returnScene: "QueueCanalsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '42-qc2-ripple-map-layout.png');
+    await snap(page, "42-qc2-ripple-map-layout.png");
   });
 
-  test('43 - QC-3 Priority Dock - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P5_3_PriorityHarbor', { returnScene: 'QueueCanalsScene' });
+  test("43 - QC-3 Priority Dock - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P5_3_PriorityHarbor", {
+      returnScene: "QueueCanalsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '43-qc3-priority-dock-layout.png');
+    await snap(page, "43-qc3-priority-dock-layout.png");
   });
 
-  test('44 - QC-4 Scheduler Lottery - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P5_4_SchedulerOffice', { returnScene: 'QueueCanalsScene' });
+  test("44 - QC-4 Scheduler Lottery - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P5_4_SchedulerOffice", {
+      returnScene: "QueueCanalsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '44-qc4-scheduler-lottery-layout.png');
+    await snap(page, "44-qc4-scheduler-lottery-layout.png");
   });
 
-  test('45 - Reconciler - boss encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'Boss_Reconciler', { returnScene: 'QueueCanalsScene' });
+  test("45 - Reconciler - boss encounter layout", async ({ page }) => {
+    await jumpToScene(page, "Boss_Reconciler", {
+      returnScene: "QueueCanalsScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '45-reconciler-layout.png');
+    await snap(page, "45-reconciler-layout.png");
   });
 
-  test('46 - Tree Canopy - Continue from save', async ({ page }) => {
-    await goToFutureRegionViaContinue(page, 'tree_canopy', 'TreeCanopyScene', {
+  test("46 - Tree Canopy - Continue from save", async ({ page }) => {
+    await goToFutureRegionViaContinue(page, "tree_canopy", "TreeCanopyScene", {
       boss_reconciler: { stars: 3, time: 40, attempts: 0, hintsUsed: 0 },
     });
-    await snap(page, '46-tree-canopy-continue.png');
+    await snap(page, "46-tree-canopy-continue.png");
 
-    const pos = await getScenePlayerPosition(page, 'TreeCanopyScene');
+    const pos = await getScenePlayerPosition(page, "TreeCanopyScene");
     expect(pos).not.toBeNull();
     expect(pos!.x).toBeGreaterThanOrEqual(160);
     expect(pos!.x).toBeLessThanOrEqual(224);
@@ -1448,43 +1885,51 @@ test.describe('Prologue region â€“ visual audit', () => {
     expect(pos!.y).toBeLessThanOrEqual(480);
   });
 
-  test('47 - TC-1 First Fork - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P6_1_RootWalk', { returnScene: 'TreeCanopyScene' });
+  test("47 - TC-1 First Fork - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P6_1_RootWalk", {
+      returnScene: "TreeCanopyScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '47-tc1-first-fork-layout.png');
+    await snap(page, "47-tc1-first-fork-layout.png");
   });
 
-  test('48 - TC-2 Sorted Grove - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P6_2_BstGrove', { returnScene: 'TreeCanopyScene' });
+  test("48 - TC-2 Sorted Grove - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P6_2_BstGrove", {
+      returnScene: "TreeCanopyScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '48-tc2-sorted-grove-layout.png');
+    await snap(page, "48-tc2-sorted-grove-layout.png");
   });
 
-  test('49 - TC-3 Deep Root - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P6_3_DfsBranches', { returnScene: 'TreeCanopyScene' });
+  test("49 - TC-3 Deep Root - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P6_3_DfsBranches", {
+      returnScene: "TreeCanopyScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '49-tc3-deep-root-layout.png');
+    await snap(page, "49-tc3-deep-root-layout.png");
   });
 
-  test('50 - TC-4 Bent Bough - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P6_4_BalanceCanopy', { returnScene: 'TreeCanopyScene' });
+  test("50 - TC-4 Bent Bough - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P6_4_BalanceCanopy", {
+      returnScene: "TreeCanopyScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '50-tc4-bent-bough-layout.png');
+    await snap(page, "50-tc4-bent-bough-layout.png");
   });
 
-  test('51 - Pattern - boss encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'Boss_Pattern', { returnScene: 'TreeCanopyScene' });
+  test("51 - Pattern - boss encounter layout", async ({ page }) => {
+    await jumpToScene(page, "Boss_Pattern", { returnScene: "TreeCanopyScene" });
     await page.waitForTimeout(700);
-    await snap(page, '51-pattern-layout.png');
+    await snap(page, "51-pattern-layout.png");
   });
 
-  test('52 - Graph Nexus - Continue from save', async ({ page }) => {
-    await goToFutureRegionViaContinue(page, 'graph_nexus', 'GraphNexusScene', {
+  test("52 - Graph Nexus - Continue from save", async ({ page }) => {
+    await goToFutureRegionViaContinue(page, "graph_nexus", "GraphNexusScene", {
       boss_pattern: { stars: 3, time: 42, attempts: 0, hintsUsed: 0 },
     });
-    await snap(page, '52-graph-nexus-continue.png');
+    await snap(page, "52-graph-nexus-continue.png");
 
-    const pos = await getScenePlayerPosition(page, 'GraphNexusScene');
+    const pos = await getScenePlayerPosition(page, "GraphNexusScene");
     expect(pos).not.toBeNull();
     expect(pos!.x).toBeGreaterThanOrEqual(160);
     expect(pos!.x).toBeLessThanOrEqual(224);
@@ -1492,43 +1937,51 @@ test.describe('Prologue region â€“ visual audit', () => {
     expect(pos!.y).toBeLessThanOrEqual(480);
   });
 
-  test('53 - GN-1 Bridge Map - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P7_1_NodeLinks', { returnScene: 'GraphNexusScene' });
+  test("53 - GN-1 Bridge Map - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P7_1_NodeLinks", {
+      returnScene: "GraphNexusScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '53-gn1-bridge-map-layout.png');
+    await snap(page, "53-gn1-bridge-map-layout.png");
   });
 
-  test('54 - GN-2 Courier Dilemma - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P7_2_ShortestPath', { returnScene: 'GraphNexusScene' });
+  test("54 - GN-2 Courier Dilemma - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P7_2_ShortestPath", {
+      returnScene: "GraphNexusScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '54-gn2-courier-dilemma-layout.png');
+    await snap(page, "54-gn2-courier-dilemma-layout.png");
   });
 
-  test('55 - GN-3 Cycle Bazaar - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P7_3_CycleCourt', { returnScene: 'GraphNexusScene' });
+  test("55 - GN-3 Cycle Bazaar - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P7_3_CycleCourt", {
+      returnScene: "GraphNexusScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '55-gn3-cycle-bazaar-layout.png');
+    await snap(page, "55-gn3-cycle-bazaar-layout.png");
   });
 
-  test('56 - GN-4 Island Census - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P7_4_ComponentFields', { returnScene: 'GraphNexusScene' });
+  test("56 - GN-4 Island Census - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P7_4_ComponentFields", {
+      returnScene: "GraphNexusScene",
+    });
     await page.waitForTimeout(700);
-    await snap(page, '56-gn4-island-census-layout.png');
+    await snap(page, "56-gn4-island-census-layout.png");
   });
 
-  test('57 - Echo - boss encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'Boss_Echo', { returnScene: 'GraphNexusScene' });
+  test("57 - Echo - boss encounter layout", async ({ page }) => {
+    await jumpToScene(page, "Boss_Echo", { returnScene: "GraphNexusScene" });
     await page.waitForTimeout(700);
-    await snap(page, '57-echo-layout.png');
+    await snap(page, "57-echo-layout.png");
   });
 
-  test('58 - The Core - Continue from save', async ({ page }) => {
-    await goToFutureRegionViaContinue(page, 'core', 'CoreScene', {
+  test("58 - The Core - Continue from save", async ({ page }) => {
+    await goToFutureRegionViaContinue(page, "core", "CoreScene", {
       boss_echo: { stars: 3, time: 44, attempts: 0, hintsUsed: 0 },
     });
-    await snap(page, '58-core-continue.png');
+    await snap(page, "58-core-continue.png");
 
-    const pos = await getScenePlayerPosition(page, 'CoreScene');
+    const pos = await getScenePlayerPosition(page, "CoreScene");
     expect(pos).not.toBeNull();
     expect(pos!.x).toBeGreaterThanOrEqual(160);
     expect(pos!.x).toBeLessThanOrEqual(224);
@@ -1536,66 +1989,91 @@ test.describe('Prologue region â€“ visual audit', () => {
     expect(pos!.y).toBeLessThanOrEqual(480);
   });
 
-  test('59 - CORE-1 Echo Chamber - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P8_1_EchoChamber', { returnScene: 'CoreScene' });
+  test("59 - CORE-1 Echo Chamber - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P8_1_EchoChamber", { returnScene: "CoreScene" });
     await page.waitForTimeout(700);
-    await snap(page, '59-core1-echo-chamber-layout.png');
+    await snap(page, "59-core1-echo-chamber-layout.png");
   });
 
-  test('60 - CORE-2 Weighted Staircase - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P8_2_WeightedStaircase', { returnScene: 'CoreScene' });
-    await page.waitForTimeout(700);
-    await snap(page, '60-core2-weighted-staircase-layout.png');
-  });
-
-  test('61 - CORE-3 Grand Archive - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P8_3_GrandArchive', { returnScene: 'CoreScene' });
-    await page.waitForTimeout(700);
-    await snap(page, '61-core3-grand-archive-layout.png');
-  });
-
-  test('62 - CORE-4 Hall of Patterns - encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'P8_4_HallOfPatterns', { returnScene: 'CoreScene' });
-    await page.waitForTimeout(700);
-    await snap(page, '62-core4-hall-of-patterns-layout.png');
-  });
-
-  test('63 - Protocol Omega - final boss encounter layout', async ({ page }) => {
-    await jumpToScene(page, 'Boss_ProtocolOmega', { returnScene: 'CoreScene' });
-    await page.waitForTimeout(700);
-    await snap(page, '63-protocol-omega-layout.png');
-  });
-
-  test('14 - Professor Node intro cannot open overlapping NPC dialogue', async ({ page }) => {
-    await continueToPrologueAt(page, { x: 860, y: 395 }, {
-      opening_scene_done: true,
-      prologue_visited: true,
+  test("60 - CORE-2 Weighted Staircase - encounter layout", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P8_2_WeightedStaircase", {
+      returnScene: "CoreScene",
     });
+    await page.waitForTimeout(700);
+    await snap(page, "60-core2-weighted-staircase-layout.png");
+  });
 
-    await page.waitForFunction(() => {
-      const game = (window as GameWindow).__PHASER_GAME__;
-      const scene = game?.scene.getScene('PrologueScene') as Record<string, unknown> | null;
-      const ds = scene?.['dialogueSystem'] as { isDialogueActive?: () => boolean } | undefined;
-      return ds?.isDialogueActive?.() === true;
-    }, { timeout: 15_000 });
+  test("61 - CORE-3 Grand Archive - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P8_3_GrandArchive", { returnScene: "CoreScene" });
+    await page.waitForTimeout(700);
+    await snap(page, "61-core3-grand-archive-layout.png");
+  });
+
+  test("62 - CORE-4 Hall of Patterns - encounter layout", async ({ page }) => {
+    await jumpToScene(page, "P8_4_HallOfPatterns", {
+      returnScene: "CoreScene",
+    });
+    await page.waitForTimeout(700);
+    await snap(page, "62-core4-hall-of-patterns-layout.png");
+  });
+
+  test("63 - Protocol Omega - final boss encounter layout", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "Boss_ProtocolOmega", { returnScene: "CoreScene" });
+    await page.waitForTimeout(700);
+    await snap(page, "63-protocol-omega-layout.png");
+  });
+
+  test("14 - Professor Node intro cannot open overlapping NPC dialogue", async ({
+    page,
+  }) => {
+    await continueToPrologueAt(
+      page,
+      { x: 860, y: 395 },
+      {
+        opening_scene_done: true,
+        prologue_visited: true,
+      },
+    );
+
+    await page.waitForFunction(
+      () => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene("PrologueScene") as Record<
+          string,
+          unknown
+        > | null;
+        const ds = scene?.["dialogueSystem"] as
+          | { isDialogueActive?: () => boolean }
+          | undefined;
+        return ds?.isDialogueActive?.() === true;
+      },
+      { timeout: 15_000 },
+    );
 
     await page.waitForTimeout(150);
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await page.waitForTimeout(250);
 
     const midIntro = await getPrologueRuntimeState(page);
     expect(midIntro.storyBeatActive).toBe(false);
     expect(midIntro.dialogueActive).toBe(true);
-    expect(midIntro.playerState).toBe('interacting');
+    expect(midIntro.playerState).toBe("interacting");
 
-    await snap(page, '14-professor-node-intro-clean.png');
+    await snap(page, "14-professor-node-intro-clean.png");
 
     for (let i = 0; i < 40; i++) {
       const done = await page.evaluate(
-        () => (window as GameWindow).__gameState__?.getFlag('professor_node_intro_done') === true,
+        () =>
+          (window as GameWindow).__gameState__?.getFlag(
+            "professor_node_intro_done",
+          ) === true,
       );
       if (done) break;
-      await page.keyboard.press('Space');
+      await page.keyboard.press("Space");
       await page.waitForTimeout(250);
     }
     await page.waitForTimeout(700);
@@ -1604,39 +2082,50 @@ test.describe('Prologue region â€“ visual audit', () => {
     expect(afterIntro.professorNodeIntroDone).toBe(true);
     expect(afterIntro.storyBeatActive).toBe(false);
     expect(afterIntro.dialogueActive).toBe(false);
-    expect(afterIntro.playerState).toBe('idle');
+    expect(afterIntro.playerState).toBe("idle");
   });
 
-  test('15 - Rune Keeper keyboard choice starts Follow the Path', async ({ page }) => {
-    await continueToPrologueAt(page, { x: 900, y: 197 }, {
-      opening_scene_done: true,
-      professor_node_intro_done: true,
-      watcher_warning_done: true,
-      prologue_visited: true,
-    });
+  test("15 - Rune Keeper keyboard choice starts Follow the Path", async ({
+    page,
+  }) => {
+    await continueToPrologueAt(
+      page,
+      { x: 900, y: 197 },
+      {
+        opening_scene_done: true,
+        professor_node_intro_done: true,
+        watcher_warning_done: true,
+        prologue_visited: true,
+      },
+    );
     await page.waitForTimeout(1_800);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await pressUntilPrologueChoice(page);
-    await snap(page, '15-rune-keeper-choice-ui.png');
-    await chooseDialogueOptionAndWaitForScene(page, 'P0_1_FollowThePath');
-    await snap(page, '15-rune-keeper-puzzle-start.png');
+    await snap(page, "15-rune-keeper-choice-ui.png");
+    await chooseDialogueOptionAndWaitForScene(page, "P0_1_FollowThePath");
+    await snap(page, "15-rune-keeper-puzzle-start.png");
   });
 
-  test('16 - Console Keeper keyboard choice starts Flow Consoles', async ({ page }) => {
-    await continueToPrologueAt(page, { x: 900, y: 593 }, {
-      opening_scene_done: true,
-      professor_node_intro_done: true,
-      watcher_warning_done: true,
-      prologue_visited: true,
-    });
+  test("16 - Console Keeper keyboard choice starts Flow Consoles", async ({
+    page,
+  }) => {
+    await continueToPrologueAt(
+      page,
+      { x: 900, y: 593 },
+      {
+        opening_scene_done: true,
+        professor_node_intro_done: true,
+        watcher_warning_done: true,
+        prologue_visited: true,
+      },
+    );
     await page.waitForTimeout(1_800);
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press("Space");
     await pressUntilPrologueChoice(page);
-    await snap(page, '16-console-keeper-choice-ui.png');
-    await chooseDialogueOptionAndWaitForScene(page, 'P0_2_FlowConsoles');
-    await snap(page, '16-console-keeper-puzzle-start.png');
+    await snap(page, "16-console-keeper-choice-ui.png");
+    await chooseDialogueOptionAndWaitForScene(page, "P0_2_FlowConsoles");
+    await snap(page, "16-console-keeper-puzzle-start.png");
   });
 });
-
