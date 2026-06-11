@@ -15,38 +15,41 @@
  *     remaining tiles can be ignored. Wrong picks deselect and cost stars.
  */
 
-import Phaser from 'phaser';
-import { BasePuzzleScene } from './BasePuzzleScene';
-import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
-import { audioManager } from '../../core/AudioManager';
-import { a11yManager } from '../../core/A11yManager';
-import { JuiceSystem } from '../../systems/JuiceSystem';
-import { drawPanel } from '../../ui/panel';
-import { BitHint } from '../../entities/BitHint';
-import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
-import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
-import { showRoundBanner } from '../../ui/RoundBanner';
-import { showLessonCard } from '../../ui/LessonCard';
-import { BitCompanion } from '../../ui/BitCompanion';
-import { GlitchCorner } from '../../ui/GlitchCorner';
-import { ComplexityMeter } from '../../ui/ComplexityMeter';
-import { AlgorithmTrace } from '../../ui/AlgorithmTrace';
-import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
-import type { RegionBackdropId, RegionBackdropOptions } from '../../ui/RegionBackdrop';
+import Phaser from "phaser";
+import { BasePuzzleScene } from "./BasePuzzleScene";
+import { COLORS, FONTS, SCENE_KEYS } from "../../config/constants";
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from "../../config/assets";
+import { audioManager } from "../../core/AudioManager";
+import { a11yManager } from "../../core/A11yManager";
+import { JuiceSystem } from "../../systems/JuiceSystem";
+import { drawPanel } from "../../ui/panel";
+import { BitHint } from "../../entities/BitHint";
+import { PuzzleAmbience } from "../../ui/PuzzleAmbience";
+import { showRoundBanner } from "../../ui/RoundBanner";
+import { showLessonCard } from "../../ui/LessonCard";
+import { BitCompanion } from "../../ui/BitCompanion";
+import { GlitchCorner } from "../../ui/GlitchCorner";
+import { ComplexityMeter } from "../../ui/ComplexityMeter";
+import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from "./puzzleTheme";
+import type {
+  RegionBackdropId,
+  RegionBackdropOptions,
+} from "../../ui/RegionBackdrop";
 import {
   TWO_SUM_ROUND_CONFIGS,
   complementOf,
   isTwoSumPair,
   starsFromMistakesAndHints,
   type TwoSumRoundConfig,
-} from '../../data/puzzles/arrayPlainsPuzzleLogic';
-import { buildTwoSumPreview } from '../../data/puzzles/puzzlePreviewLogic';
-import { numberKeyToIndex } from '../../input/NumberKeyCommand';
-import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
-import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
-import { PuzzlePhase } from '../../data/types';
-import { PuzzleRoom } from '../../puzzleRooms/PuzzleRoom';
+} from "../../data/puzzles/arrayPlainsPuzzleLogic";
+import { numberKeyToIndex } from "../../input/NumberKeyCommand";
+import {
+  BruteForceActor,
+  type BruteForceStrategy,
+} from "../../entities/BruteForceActor";
+import { GLITCH_BANTER } from "../../data/dialogue/glitch_dialogue";
+import { PuzzlePhase } from "../../data/types";
+import { PuzzleRoom } from "../../puzzleRooms/PuzzleRoom";
 
 interface NumberTile {
   index: number;
@@ -73,20 +76,11 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private roundBadge!: Phaser.GameObjects.Text;
   private beam!: Phaser.GameObjects.Graphics;
   private bitHint: BitHint | null = null;
-  private preview: PuzzlePreviewSidePanel | null = null;
+  private useItCornerMounted = false;
   /** Brute force pair-check count per round vs the player's click count. */
   private complexity: ComplexityMeter | null = null;
   /** Number of pair-checks the player has *consumed* — each anchor-then-target click is one check. */
   private checksUsed = 0;
-  /**
-   * Live trace of the hash-set two-sum algorithm. The player sees `need`
-   * computed from their anchor pick and `seen` accumulating tiles they've
-   * tried — turning "I clicked a tile" into "I just executed step 3 of the
-   * algorithm".
-   */
-  private trace: AlgorithmTrace | null = null;
-  /** Values the player has anchored at least once this round (the algorithm's `seen` set). */
-  private seenValues: number[] = [];
   /** Glitch as visible co-actor during FEEL_IT round 1. Null in USE_IT rounds. */
   private bruteForce: BruteForceActor | null = null;
   /** True between FEEL_IT round completion and USE_IT round mount. Guards
@@ -100,9 +94,10 @@ export class P1_4_TwoSum extends BasePuzzleScene {
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_4 });
-    this.puzzleId = 'ap_4';
-    this.puzzleName = 'The Pairing Grounds';
-    this.puzzleDescription = 'Pick two tiles whose values sum to the target. Use complements.';
+    this.puzzleId = "ap_4";
+    this.puzzleName = "The Pairing Grounds";
+    this.puzzleDescription =
+      "Pick two tiles whose values sum to the target. Use complements.";
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -114,12 +109,23 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   protected getPuzzleTheme(): PuzzleTheme {
     return ARRAY_PLAINS_PUZZLE_THEME;
   }
-  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
-    return { id: 'array-plains', options: { intensity: 0.7 } };
+  protected getRegionBackdrop(): {
+    id: RegionBackdropId;
+    options?: RegionBackdropOptions;
+  } | null {
+    return { id: "array-plains", options: { intensity: 0.7 } };
   }
 
   preload(): void {
     super.preload();
+    // Physical tile bodies: the same wooden-crate sprite P1_1 uses, so the
+    // Pairing Grounds runestones stop reading as white UI chips floating
+    // over the barn art (VISION §2/§5). Guard-preload per the P1_1 pattern.
+    const crateKey = VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE;
+    const cratePath = getImageAssetPath(crateKey);
+    if (cratePath && !this.textures.exists(crateKey)) {
+      this.load.image(crateKey, cratePath);
+    }
     PuzzleRoom.preload(this);
     PuzzleRoom.preloadKeeper(this, VISUAL_REVAMP_KEYS.TILE_WORKER);
   }
@@ -129,16 +135,17 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     // from the title subtitle when round 0 is FEEL_IT. The player should
     // derive the complement insight, not read about it before playing.
     if (TWO_SUM_ROUND_CONFIGS[0].lesson.phase === PuzzlePhase.FEEL_IT) {
-      this.puzzleDescription = 'Find two runestones that add to the target. A Tile Worker waits.';
+      this.puzzleDescription =
+        "Find two runestones that add to the target. A Tile Worker waits.";
     }
     super.create();
-    new PuzzleAmbience(this, 'farmland', { intensity: 0.30 });
+    new PuzzleAmbience(this, "farmland", { intensity: 0.3 });
 
     const { width } = this.cameras.main;
 
     this.buildRoundBadge(width);
     this.buildTargetPanel(width);
-    new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40 });
+    new BitCompanion(this, { stage: "byte", x: width - 92, y: 100, depth: 40 });
 
     this.beam = this.add.graphics().setDepth(25);
 
@@ -152,13 +159,11 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.bitHint?.destroy();
       this.bitHint = null;
-      this.preview?.destroy();
-      this.preview = null;
       this.bruteForce?.destroy();
       this.bruteForce = null;
     });
 
-    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+    this.input.keyboard?.on("keydown", (event: KeyboardEvent) => {
       if (this.isResolving || this.actionLocked) return;
       const idx = numberKeyToIndex(event.key, this.tiles.length);
       if (idx !== null) this.chooseTile(idx);
@@ -174,7 +179,12 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   private mountRoom(): void {
     const { width, height } = this.cameras.main;
     this.room = new PuzzleRoom(this, {
-      bounds: { x: width / 2 - 460, y: height / 2 - 120, width: 920, height: 320 },
+      bounds: {
+        x: width / 2 - 460,
+        y: height / 2 - 120,
+        width: 920,
+        height: 320,
+      },
       spawn: { x: width / 2 - 380, y: height / 2 + 160 },
       isBlocked: (point) =>
         this.tiles.some(
@@ -189,7 +199,12 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     });
 
     // The Tile Worker watches from the field's west edge.
-    PuzzleRoom.placeKeeper(this, VISUAL_REVAMP_KEYS.TILE_WORKER, width / 2 - 470, height / 2 + 140);
+    PuzzleRoom.placeKeeper(
+      this,
+      VISUAL_REVAMP_KEYS.TILE_WORKER,
+      width / 2 - 470,
+      height / 2 + 140,
+    );
   }
 
   update(time: number, delta: number): void {
@@ -203,7 +218,10 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     let best = -1;
     let bestDist = Infinity;
     for (const tile of this.tiles) {
-      const dist = Math.hypot(pos.x - tile.container.x, pos.y - tile.container.y);
+      const dist = Math.hypot(
+        pos.x - tile.container.x,
+        pos.y - tile.container.y,
+      );
       if (dist < bestDist) {
         bestDist = dist;
         best = tile.index;
@@ -213,14 +231,19 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     if (best === this.focusedTile) return;
 
     const prev = this.tiles.find((t) => t.index === this.focusedTile);
-    if (prev) this.tweens.add({ targets: prev.container, scale: 1, duration: 90 });
+    if (prev)
+      this.tweens.add({ targets: prev.container, scale: 1, duration: 90 });
     this.focusedTile = best;
     const next = this.tiles.find((t) => t.index === best);
-    if (next) this.tweens.add({ targets: next.container, scale: 1.07, duration: 90 });
+    if (next)
+      this.tweens.add({ targets: next.container, scale: 1.07, duration: 90 });
   }
 
   /** Freeze the walking layer while the keeper names the concept. */
-  protected async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
+  protected async showNameItBeat(beat: {
+    speaker: string;
+    line: string;
+  }): Promise<void> {
     this.room?.setActive(false);
     await super.showNameItBeat(beat);
     this.room?.setActive(true);
@@ -234,24 +257,35 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     // Round-5: same chrome simplification as the other AP puzzles —
     // float round/index text instead of slabbing a panel under it.
     const theme = this.getPuzzleTheme();
-    this.roundBadge = this.add.text(width / 2, 152, '', {
-      fontSize: '11px',
-      fontFamily: FONTS.RETRO,
-      color: theme.titleColor,
-      stroke: theme.titleStroke,
-      strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(20).setAlpha(0.92);
+    this.roundBadge = this.add
+      .text(width / 2, 152, "", {
+        fontSize: "11px",
+        fontFamily: FONTS.RETRO,
+        color: theme.titleColor,
+        stroke: theme.titleStroke,
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5)
+      .setDepth(20)
+      .setAlpha(0.92);
   }
 
   private buildTargetPanel(width: number): void {
     drawPanel(this, width / 2 - 120, 196, 240, 50, {
-      depth: 12, fill: 0xe0f8d0, frame: COLORS.WARNING, inner: COLORS.GOLD_ACCENT, alpha: 0.96,
+      depth: 12,
+      fill: 0xe0f8d0,
+      frame: COLORS.WARNING,
+      inner: COLORS.GOLD_ACCENT,
+      alpha: 0.96,
     });
-    this.targetText = this.add.text(width / 2, 221, '', {
-      fontSize: '18px',
-      fontFamily: FONTS.RETRO,
-      color: '#081820',
-    }).setOrigin(0.5).setDepth(20);
+    this.targetText = this.add
+      .text(width / 2, 221, "", {
+        fontSize: "18px",
+        fontFamily: FONTS.RETRO,
+        color: "#081820",
+      })
+      .setOrigin(0.5)
+      .setDepth(20);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -262,7 +296,10 @@ export class P1_4_TwoSum extends BasePuzzleScene {
    *  algorithmic hand-holding (NEED badge, trace binding, complement hint)
    *  that would name the technique before the player has felt it. */
   private isFeelItRound(): boolean {
-    return TWO_SUM_ROUND_CONFIGS[this.roundIndex]?.lesson.phase === PuzzlePhase.FEEL_IT;
+    return (
+      TWO_SUM_ROUND_CONFIGS[this.roundIndex]?.lesson.phase ===
+      PuzzlePhase.FEEL_IT
+    );
   }
 
   /** FEEL_IT mounts: only the brute-force co-actor. NO trace, NO complexity
@@ -272,63 +309,51 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     if (this.bruteForce) return;
     const { height } = this.cameras.main;
     this.bruteForce = new BruteForceActor(this, {
-      x: 152, y: height - 92,
+      x: 152,
+      y: height - 92,
       strategy: makeTwoSumBruteStrategy(),
       heading: "⚠ GLITCH'S APPROACH",
-      subtitle: '(checking every pair in turn...)',
-      notDoneLabel: 'still flailing',
-      doneLabel: 'gave up',
-      verbLabel: 'pair checks',
+      subtitle: "(checking every pair in turn...)",
+      notDoneLabel: "still flailing",
+      doneLabel: "gave up",
+      verbLabel: "pair checks",
       banter: GLITCH_BANTER.ap_4,
       depth: 40,
     });
   }
 
-  /** USE_IT mounts: the full teaching toolkit. Idempotent — safe to call on
-   *  every round-2-onward start. Holds the AlgorithmTrace, ComplexityMeter,
-   *  GlitchCorner ("n × (n−1) / 2 checks") and the pair-preview panel that
-   *  used to mount unconditionally in create(). */
+  /** USE_IT mounts: the friendly GlitchCorner and the ComplexityMeter.
+   *  The twoSum pseudocode trace and PAIR PREVIEW panel are cut — the
+   *  playable game never shows code (docs/VISION.md §3-4); the deep layer
+   *  lives in the Codex. */
   private mountUseItPanels(): void {
     const { width, height } = this.cameras.main;
-    if (!this.preview) {
-      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
-      this.preview.setTitle('PAIR PREVIEW');
-      this.preview.show();
-    }
-    if (!this.trace) {
+    if (!this.useItCornerMounted) {
+      this.useItCornerMounted = true;
       new GlitchCorner(this, {
-        x: 152, y: height - 92,
-        width: 240, height: 74,
-        variant: 'parchment',
-        heading: 'Glitch Tries Every Pair',
-        body: 'n × (n−1) / 2 checks. You can do better.',
+        x: 152,
+        y: height - 92,
+        width: 240,
+        height: 74,
+        variant: "parchment",
+        heading: "Glitch Tries Every Pair",
+        body: "checks every pairing, one by one. You can do better.",
         depth: 40,
-      });
-
-      this.trace = new AlgorithmTrace(this, {
-        x: 64, y: 270, width: 240,
-        title: 'twoSum(arr, target)',
-        lines: [
-          'seen = {}',
-          'for v in arr:',
-          '  need = target - v',
-          '  v = {v}, need = {need}',
-          '  if need in seen: return',
-          '  seen.add(v)',
-          'seen = {seen}',
-        ],
       });
     }
     if (!this.complexity) {
-      const initialBrute = pairCount(TWO_SUM_ROUND_CONFIGS[this.roundIndex].values.length);
+      const initialBrute = pairCount(
+        TWO_SUM_ROUND_CONFIGS[this.roundIndex].values.length,
+      );
       this.complexity = new ComplexityMeter(this, {
-        x: width / 2, y: 230,
+        x: width / 2,
+        y: 230,
         width: 320,
-        bruteLabel: 'pair checks',
+        bruteLabel: "pair checks",
         bruteCost: initialBrute,
-        algoLabel: 'your picks',
+        algoLabel: "your picks",
         algoCost: 0,
-        variant: 'parchment',
+        variant: "parchment",
         depth: 40,
       });
     }
@@ -344,7 +369,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.roundIndex = idx;
     this.selectedIndices = [];
     this.checksUsed = 0;
-    this.seenValues = [];
     this.beam.clear();
     this.isResolving = true;
     this.actionLocked = false;
@@ -358,7 +382,7 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.roundBadge.setText(
       isFeelIt
         ? `ROUND ${idx + 1}/${total}  ·  the Tile Worker waits`
-        : `ROUND ${idx + 1}/${total} · ${round.label} · find any pair that sums to target`
+        : `ROUND ${idx + 1}/${total} · ${round.label} · find any pair that sums to target`,
     );
     this.targetText.setText(`TARGET  =  ${round.target}`);
 
@@ -373,22 +397,20 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     }
 
     this.layoutTiles(round);
-    this.refreshPreview();
-    this.bindTraceState();
-    this.trace?.highlightLine(0); // seen = {}
     this.complexity?.reset({
       bruteCost: pairCount(round.values.length),
       algoCost: 0,
-      bruteLabel: 'pair checks',
-      algoLabel: 'your picks',
+      bruteLabel: "pair checks",
+      algoLabel: "your picks",
     });
 
-    const subtitle = idx >= total - 2
-      ? `${round.label}  ·  target ${round.target}  ·  ${round.values.length} runestones, ${round.seconds}s on the clock`
-      : `${round.label}  ·  target ${round.target}  ·  pick one, find its complement`;
+    const subtitle =
+      idx >= total - 2
+        ? `${round.label}  ·  target ${round.target}  ·  ${round.values.length} runestones, ${round.seconds}s on the clock`
+        : `${round.label}  ·  target ${round.target}  ·  pick one, find its complement`;
 
-    await showLessonCard(this, round.lesson, 'parchment', {
-      dockPosition: 'top',
+    await showLessonCard(this, round.lesson, "parchment", {
+      dockPosition: "top",
       width: 760,
       height: 168,
       autoDismissMs: 5000,
@@ -431,88 +453,139 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     }
   }
 
-  private createTile(index: number, value: number, x: number, y: number, w: number, h: number): NumberTile {
+  private createTile(
+    index: number,
+    value: number,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): NumberTile {
     const container = this.add.container(x, y).setDepth(30);
+    const hasCrate = this.crateLoaded();
 
-    const shadow = this.add.rectangle(3, 5, w, h, 0x000000, 0.32);
-    // Stone slab base — kept as Rectangle so existing setFillStyle calls work.
-    const box = this.add.rectangle(0, 0, w, h, 0xe0f8d0, 0.96)
-      .setStrokeStyle(3, 0x346856, 1)
+    // Footprint shadow at the crate's base — grounds the object on the
+    // barn floor instead of duplicating the tile silhouette behind it.
+    const shadow = this.add.ellipse(
+      2,
+      h / 2 + 5,
+      w * 1.04,
+      h * 0.2,
+      0x000000,
+      0.34,
+    );
+
+    // Physical body: the wooden-crate sprite (same as P1_1's furrows). The
+    // Rectangle stays as the hit area + state-tint layer — alpha 0 at rest
+    // so the wood grain shows through. Legacy stone-slab path kept as the
+    // fallback when the texture isn't loaded (unit tests).
+    const crate = hasCrate
+      ? this.add
+          .image(0, 0, VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE)
+          .setDisplaySize(w, h)
+      : null;
+    const box = this.add
+      .rectangle(0, 0, w, h, 0xe0f8d0, hasCrate ? 0 : 0.96)
       .setInteractive({ useHandCursor: true });
+    if (!hasCrate) box.setStrokeStyle(3, 0x346856, 1);
 
-    // Decorative carved-rune frame and corner notches.
+    // Decorative carved-rune frame — slab dressing; the crate's own pixel
+    // detail replaces it when the sprite is present.
     const decor = this.add.graphics();
-    decor.lineStyle(1, 0x346856, 0.65);
-    // Inner frame
-    decor.strokeRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8);
-    // Corner chips
-    [
-      [-w / 2 + 2, -h / 2 + 2], [w / 2 - 6, -h / 2 + 2],
-      [-w / 2 + 2, h / 2 - 6], [w / 2 - 6, h / 2 - 6],
-    ].forEach(([cx, cy]) => decor.strokeRect(cx, cy, 4, 4));
-    // Faint carved arc above the numeral (rune flourish).
-    decor.lineStyle(1, 0x346856, 0.35);
-    decor.beginPath();
-    decor.arc(0, -h / 4, w / 3, Math.PI, 0);
-    decor.strokePath();
+    if (!hasCrate) {
+      decor.lineStyle(1, 0x346856, 0.65);
+      // Inner frame
+      decor.strokeRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8);
+      // Corner chips
+      [
+        [-w / 2 + 2, -h / 2 + 2],
+        [w / 2 - 6, -h / 2 + 2],
+        [-w / 2 + 2, h / 2 - 6],
+        [w / 2 - 6, h / 2 - 6],
+      ].forEach(([cx, cy]) => decor.strokeRect(cx, cy, 4, 4));
+      // Faint carved arc above the numeral (rune flourish).
+      decor.lineStyle(1, 0x346856, 0.35);
+      decor.beginPath();
+      decor.arc(0, -h / 4, w / 3, Math.PI, 0);
+      decor.strokePath();
+    }
 
-    const label = this.add.text(0, 0, `${value}`, {
-      fontSize: '22px',
-      fontFamily: FONTS.RETRO,
-      color: '#081820',
-      stroke: '#e0f8d0',
-      strokeThickness: 1,
-    }).setOrigin(0.5);
-    const key = this.add.text(0, h / 2 + 10, index < 9 ? `${index + 1}` : '', {
-      fontSize: '8px',
-      fontFamily: FONTS.RETRO,
-      color: '#346856',
-    }).setOrigin(0.5);
+    const label = this.add
+      .text(0, 0, `${value}`, {
+        fontSize: "22px",
+        fontFamily: FONTS.RETRO,
+        color: hasCrate ? "#fefce8" : "#081820",
+        stroke: hasCrate ? "#1a1208" : "#e0f8d0",
+        strokeThickness: hasCrate ? 3 : 1,
+      })
+      .setOrigin(0.5);
+    const key = this.add
+      .text(0, h / 2 + 10, index < 9 ? `${index + 1}` : "", {
+        fontSize: "8px",
+        fontFamily: FONTS.RETRO,
+        color: "#346856",
+      })
+      .setOrigin(0.5);
 
     // Floating "Need: X" pill above the tile (initially hidden).
-    const needBg = this.add.rectangle(0, -h / 2 - 18, 78, 20, 0x06b6d4, 0.96)
+    const needBg = this.add
+      .rectangle(0, -h / 2 - 18, 78, 20, 0x06b6d4, 0.96)
       .setStrokeStyle(1, 0x081820, 1);
-    const needText = this.add.text(0, -h / 2 - 18, '', {
-      fontSize: '11px',
-      fontFamily: FONTS.RETRO,
-      color: '#e0f8d0',
-    }).setOrigin(0.5);
+    const needText = this.add
+      .text(0, -h / 2 - 18, "", {
+        fontSize: "11px",
+        fontFamily: FONTS.RETRO,
+        color: "#e0f8d0",
+      })
+      .setOrigin(0.5);
     const needBadge = this.add.container(0, 0, [needBg, needText]).setAlpha(0);
-    needBadge.setData('text', needText);
-    needBadge.setData('bg', needBg);
+    needBadge.setData("text", needText);
+    needBadge.setData("bg", needBg);
 
-    container.add([shadow, box, decor, label, key, needBadge]);
-    box.on('pointerdown', () => this.chooseTile(index));
+    const children: Phaser.GameObjects.GameObject[] = [shadow];
+    if (crate) children.push(crate);
+    children.push(box, decor, label, key, needBadge);
+    container.add(children);
+    box.on("pointerdown", () => this.chooseTile(index));
     // Hover affordance — the click target lifts slightly and brightens so the
     // player can scan complements with their eye instead of clicking blind.
     // We tween scale on the container, not the box, so the decor + label
     // come along for the ride.
-    box.on('pointerover', () => {
+    box.on("pointerover", () => {
       if (this.isResolving || this.actionLocked) return;
       if (this.selectedIndices.includes(index)) return;
-      this.tweens.add({ targets: container, scale: 1.06, duration: 90, ease: 'Sine.easeOut' });
-      box.setFillStyle(0xfde68a, 0.6);
+      this.tweens.add({
+        targets: container,
+        scale: 1.06,
+        duration: 90,
+        ease: "Sine.easeOut",
+      });
+      // Over the crate the hover is a light wash, not an opaque repaint.
+      box.setFillStyle(0xfde68a, this.crateLoaded() ? 0.3 : 0.6);
     });
-    box.on('pointerout', () => {
-      this.tweens.add({ targets: container, scale: 1, duration: 110, ease: 'Sine.easeIn' });
+    box.on("pointerout", () => {
+      this.tweens.add({
+        targets: container,
+        scale: 1,
+        duration: 110,
+        ease: "Sine.easeIn",
+      });
       // Restore the appropriate fill — selection state takes precedence over
       // the hover preview.
-      if (this.selectedIndices.includes(index)) {
-        box.setFillStyle(COLORS.GOLD_ACCENT, 0.96);
-        box.setStrokeStyle(3, COLORS.CYAN_GLOW, 0.95);
-      } else {
-        box.setFillStyle(0xe0f8d0, 0.96);
-        box.setStrokeStyle(3, 0x346856, 1);
-      }
+      const tile = this.tiles[index];
+      if (tile) this.styleTile(tile, this.selectedIndices.includes(index));
     });
 
     // Entrance: small cascade so the field assembles, not just appears.
     container.setScale(0.6);
     container.setAlpha(0);
     this.tweens.add({
-      targets: container, scale: 1, alpha: 1,
-      duration: 240, delay: index * 40,
-      ease: 'Back.easeOut',
+      targets: container,
+      scale: 1,
+      alpha: 1,
+      duration: 240,
+      delay: index * 40,
+      ease: "Back.easeOut",
     });
 
     return { index, value, container, box, label, needBadge };
@@ -534,17 +607,11 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.styleTile(tile, false);
       this.hideNeedBadge(tile);
       this.redrawBeam();
-      this.refreshPreview();
-      this.bindTraceState();
       return;
     }
 
     this.selectedIndices.push(index);
     this.styleTile(tile, true);
-    // The picked value joins the algorithm's `seen` set on first selection.
-    if (!this.seenValues.includes(tile.value)) {
-      this.seenValues.push(tile.value);
-    }
 
     if (this.selectedIndices.length === 1) {
       const need = complementOf(tile.value, round.target);
@@ -552,62 +619,43 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.bitHint?.moveTo(tile.container.x, tile.container.y - 90, 280);
       this.bitHint?.showWarm();
       this.redrawBeam();
-      this.refreshPreview();
-      this.bindTraceState();
-      // Highlight the "compute need" line — the player is at step 3 of the algo.
-      this.trace?.highlightLines(3, 2);
       // Need badge appears silently — announce the anchor + complement so
       // screen-reader players know what value to look for next.
-      a11yManager.announce(`Anchored ${tile.value}. Need ${need} to reach target ${round.target}.`, false);
+      a11yManager.announce(
+        `Anchored ${tile.value}. Need ${need} to reach target ${round.target}.`,
+        false,
+      );
       return;
     }
 
     // Two tiles selected — evaluate.
     this.redrawBeam();
-    this.refreshPreview();
     this.checksUsed++;
     this.complexity?.setAlgoCost(this.checksUsed);
-    if (!this.seenValues.includes(tile.value)) {
-      this.seenValues.push(tile.value);
-    }
-    this.bindTraceState();
     const values = this.selectedIndices.map((i) => this.tiles[i].value);
     if (isTwoSumPair(round.values, round.target, values)) {
-      // The algorithm found target − v in `seen`: line 4 fires.
-      this.trace?.highlightLine(4);
       this.complexity?.celebrate();
       this.handleCorrectPair();
     } else {
-      // Algorithm path didn't terminate yet — line 5 (seen.add) fires, then
-      // we'd loop back to line 1 in a real implementation. The wrong-pair
-      // visual shake makes the "no match" reading clear.
-      this.trace?.highlightLine(5);
       this.handleWrongPair();
     }
   }
 
-  /** Push current scene state into the trace so {v}, {need}, {seen} update live. */
-  private bindTraceState(): void {
-    // FEEL_IT has no trace mounted (and shouldn't — `seen = {}` and
-    // `need = target - v` are pure algorithm vocabulary). Guard against both
-    // the unmounted-trace case and the per-round bail-out.
-    if (this.isFeelItRound() || !this.trace) return;
-    const round = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
-    const anchorIdx = this.selectedIndices[0];
-    const anchor = anchorIdx !== undefined ? this.tiles[anchorIdx]?.value ?? null : null;
-    const need = anchor !== null ? complementOf(anchor, round.target) : null;
-    this.trace.bindState({
-      target: round.target,
-      v: anchor,
-      need,
-      seen: this.seenValues.length ? `{${this.seenValues.join(', ')}}` : '{}',
-    });
+  /** True when the wooden-crate sprite backs the tiles (false in unit tests
+   *  or any scene start that skipped preload — fallback is the stone slab). */
+  private crateLoaded(): boolean {
+    return this.textures.exists(VISUAL_REVAMP_KEYS.AP_WOODEN_CRATE);
   }
 
   private styleTile(tile: NumberTile, selected: boolean): void {
+    const hasCrate = this.crateLoaded();
     if (selected) {
-      tile.box.setFillStyle(COLORS.GOLD_ACCENT, 0.96);
+      // Gold wash + cyan frame over the crate; opaque repaint on the slab.
+      tile.box.setFillStyle(COLORS.GOLD_ACCENT, hasCrate ? 0.4 : 0.96);
       tile.box.setStrokeStyle(3, COLORS.CYAN_GLOW, 0.95);
+    } else if (hasCrate) {
+      tile.box.setFillStyle(0xe0f8d0, 0);
+      tile.box.setStrokeStyle();
     } else {
       tile.box.setFillStyle(0xe0f8d0, 0.96);
       tile.box.setStrokeStyle(3, 0x346856, 1);
@@ -619,18 +667,22 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     // target − v, which IS the complement technique. The whole point of round
     // 1 is the player computing this in their head.
     if (this.isFeelItRound()) return;
-    const textObj = tile.needBadge.getData('text') as Phaser.GameObjects.Text;
+    const textObj = tile.needBadge.getData("text") as Phaser.GameObjects.Text;
     textObj.setText(`NEED ${need}`);
     tile.needBadge.setAlpha(0);
     this.tweens.add({
-      targets: tile.needBadge, alpha: 1, y: -2,
-      duration: 200, ease: 'Sine.easeOut',
+      targets: tile.needBadge,
+      alpha: 1,
+      y: -2,
+      duration: 200,
+      ease: "Sine.easeOut",
     });
   }
 
   private hideNeedBadge(tile: NumberTile): void {
     this.tweens.add({
-      targets: tile.needBadge, alpha: 0,
+      targets: tile.needBadge,
+      alpha: 0,
       duration: 160,
     });
   }
@@ -664,21 +716,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
   // Pair resolution
   // ──────────────────────────────────────────────────────────────────
 
-  private refreshPreview(): void {
-    if (!this.preview) return;
-    const round = TWO_SUM_ROUND_CONFIGS[this.roundIndex];
-    const selectedValues = this.selectedIndices
-      .map((index) => this.tiles[index]?.value)
-      .filter((value): value is number => value !== undefined);
-    const preview = buildTwoSumPreview({
-      values: round.values,
-      target: round.target,
-      selectedValues,
-    });
-    this.preview.setState(preview.state);
-    this.preview.setNextAction(preview.next);
-  }
-
   private handleCorrectPair(): void {
     this.isResolving = true;
 
@@ -686,20 +723,30 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     const b = this.tiles[this.selectedIndices[1]];
 
     [a, b].forEach((tile) => {
-      tile.box.setFillStyle(COLORS.SUCCESS, 1);
+      tile.box.setFillStyle(COLORS.SUCCESS, this.crateLoaded() ? 0.5 : 1);
       tile.box.setStrokeStyle(3, 0x081820, 1);
       this.tweens.add({
-        targets: tile.container, y: tile.container.y - 12,
-        duration: 200, yoyo: true, ease: 'Quad.easeOut',
+        targets: tile.container,
+        y: tile.container.y - 12,
+        duration: 200,
+        yoyo: true,
+        ease: "Quad.easeOut",
       });
     });
 
     audioManager.playCorrectTone();
-    JuiceSystem.correctBurst(this, (a.container.x + b.container.x) / 2, (a.container.y + b.container.y) / 2);
+    JuiceSystem.correctBurst(
+      this,
+      (a.container.x + b.container.x) / 2,
+      (a.container.y + b.container.y) / 2,
+    );
 
     // Pulse the beam brighter.
     this.tweens.addCounter({
-      from: 1, to: 0, duration: 700, ease: 'Sine.easeOut',
+      from: 1,
+      to: 0,
+      duration: 700,
+      ease: "Sine.easeOut",
       onUpdate: (tw) => {
         this.beam.clear();
         const v = tw.getValue() ?? 0;
@@ -715,7 +762,10 @@ export class P1_4_TwoSum extends BasePuzzleScene {
 
     const isFinal = this.roundIndex >= TWO_SUM_ROUND_CONFIGS.length - 1;
     this.bitHint?.showWarm();
-    this.showMessage(`${a.value} + ${b.value} = ${a.value + b.value}. Pair locked.`, COLORS.SUCCESS);
+    this.showMessage(
+      `${a.value} + ${b.value} = ${a.value + b.value}. Pair locked.`,
+      COLORS.SUCCESS,
+    );
 
     if (isFinal) {
       this.bitHint?.celebrate();
@@ -724,7 +774,10 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       this.time.delayedCall(1400, () => {
         // Serene wonder (docs/VISION.md §6): accuracy + hints decide stars;
         // no speed pressure on first contact with the concept.
-        const stars = starsFromMistakesAndHints(this.mistakesTotal, this.hintsUsed);
+        const stars = starsFromMistakesAndHints(
+          this.mistakesTotal,
+          this.hintsUsed,
+        );
         this.onPuzzleComplete(stars);
       });
       return;
@@ -762,10 +815,17 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     this.mistakesTotal++;
 
     audioManager.playWrongTone();
-    JuiceSystem.wrongBurst(this, (a.container.x + b.container.x) / 2, (a.container.y + b.container.y) / 2);
+    JuiceSystem.wrongBurst(
+      this,
+      (a.container.x + b.container.x) / 2,
+      (a.container.y + b.container.y) / 2,
+    );
     JuiceSystem.cameraShake(this, 50, 0.0015);
     this.bitHint?.showCold();
-    this.showMessage(`${a.value} + ${b.value} = ${a.value + b.value}. Not the target.`, COLORS.WARNING);
+    this.showMessage(
+      `${a.value} + ${b.value} = ${a.value + b.value}. Not the target.`,
+      COLORS.WARNING,
+    );
 
     // Briefly redden the beam, then clear and reset selection.
     this.beam.clear();
@@ -785,7 +845,6 @@ export class P1_4_TwoSum extends BasePuzzleScene {
       });
       this.selectedIndices = [];
       this.actionLocked = false;
-      this.refreshPreview();
     });
   }
 
@@ -800,8 +859,8 @@ export class P1_4_TwoSum extends BasePuzzleScene {
     // the technique. Hints 2 and 3 give a concrete pair anyway (the player
     // already triggered the assist), so they're identical across phases.
     const firstHint = this.isFeelItRound()
-      ? 'Pick a runestone. The one that finishes the pair is somewhere in the row.'
-      : 'Pick one tile, then look for target minus that value.';
+      ? "Pick a runestone. The one that finishes the pair is somewhere in the row."
+      : "Pick one tile, then look for target minus that value.";
     const messages = [
       firstHint,
       this.selectedIndices.length === 1
@@ -809,11 +868,14 @@ export class P1_4_TwoSum extends BasePuzzleScene {
         : `One valid pair: ${firstPair[0]} and ${firstPair[1]} → ${round.target}.`,
       `Total valid pairs this round: ${round.validPairs.length}. Any one of them wins.`,
     ];
-    this.showMessage(messages[hintNumber - 1] ?? messages[0], COLORS.GOLD_ACCENT);
+    this.showMessage(
+      messages[hintNumber - 1] ?? messages[0],
+      COLORS.GOLD_ACCENT,
+    );
   }
 
   protected getConceptName(): string {
-    return 'Two Sum';
+    return "Two Sum";
   }
 }
 

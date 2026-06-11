@@ -1,4 +1,4 @@
-import type { GridPos } from './isogrid';
+import type { GridPos } from "./isogrid";
 
 export type PathRound = {
   title: string;
@@ -51,34 +51,37 @@ const r4Path: GridPos[] = [
 
 export const PATH_ROUNDS: PathRound[] = [
   {
-    title: 'I. Trace',
-    principle: 'A sequence is order, not a set.',
-    teach: 'Watch the rune path, then echo it - one step at a time.',
-    npcLine: 'Follow the glowing path in order.',
+    title: "I. Trace",
+    // FEEL→NAME (docs/VISION.md §3): principles speak in chant language, not
+    // concept-lecture language — the player names "sequence" after feeling it.
+    principle: "The runes remember what came first.",
+    teach: "Watch the rune path, then echo it - one step at a time.",
+    npcLine: "Follow the glowing path in order.",
     field: ARENA_FIELD,
     path: r1Path,
   },
   {
-    title: 'II. Branch',
-    principle: 'Adjacency is not order - only one neighbor is next in the chant.',
-    teach: 'When the path forks, remember which arm was lit.',
-    npcLine: 'Some runes lead astray. Only the sequence knows the way.',
+    title: "II. Branch",
+    principle: "Many runes sit close. Only one is next in the chant.",
+    teach: "When the path forks, remember which arm was lit.",
+    npcLine: "Some runes lead astray. Only the sequence knows the way.",
     field: ARENA_FIELD,
     path: r2Path,
   },
   {
-    title: 'III. Revisit',
-    principle: 'Sequences are not sets - the same rune may appear twice.',
-    teach: 'If the chant returns to a rune, return to it too.',
-    npcLine: 'The path may cross itself. Trust the sequence, not the tile.',
+    title: "III. Revisit",
+    principle: "A rune the chant has touched may call you back again.",
+    teach: "If the chant returns to a rune, return to it too.",
+    npcLine: "The path may cross itself. Trust the sequence, not the tile.",
     field: ARENA_FIELD,
     path: r3Path,
   },
   {
-    title: 'IV. Long Walk',
-    principle: 'The chant crosses itself. The picture cannot help - only the order.',
-    teach: 'Hold the sequence in your mind, not in the runes.',
-    npcLine: 'Longer chants are still only one step after another.',
+    title: "IV. Long Walk",
+    principle:
+      "The chant crosses itself. The picture cannot help - only the order.",
+    teach: "Hold the sequence in your mind, not in the runes.",
+    npcLine: "Longer chants are still only one step after another.",
     field: ARENA_FIELD,
     path: r4Path,
   },

@@ -19,10 +19,16 @@
  * Cleanup is wired to SHUTDOWN. The widget never blocks input.
  */
 
-import Phaser from 'phaser';
-import { gameState } from '../core/GameStateManager';
+import Phaser from "phaser";
+import { gameState } from "../core/GameStateManager";
 
-const DEPTH_LOW = -8;
+// Near-camera atmosphere renders ABOVE the world art: overworld tilemaps and
+// backdrops paint at depth 0-5 (MenuScene's backdrop at -4), so the old -8
+// put every mote behind an opaque background — the layer was invisible in
+// all three regions, which the idle-motion audit measured as a near-still
+// world (docs/VISION.md §5 wound #4). 60 clears world content and region
+// props (≤5) while staying under MenuScene UI (200) and HUD chrome (3000).
+const DEPTH_LOW = 60;
 const DEPTH_HIGH = 90;
 
 /**
@@ -34,7 +40,12 @@ const DEPTH_HIGH = 90;
  */
 const motionReduced = (): boolean => gameState.getSettings().reduceMotion;
 
-export type AmbientFlavour = 'cosmic' | 'farmland' | 'river' | 'meadow' | 'menu';
+export type AmbientFlavour =
+  | "cosmic"
+  | "farmland"
+  | "river"
+  | "meadow"
+  | "menu";
 
 export interface OverworldAmbienceOptions {
   /** Particle density multiplier. Default 1. */
@@ -53,14 +64,28 @@ export class OverworldAmbience {
   private readonly tweens: Phaser.Tweens.Tween[] = [];
   private readonly timers: Phaser.Time.TimerEvent[] = [];
 
-  constructor(scene: Phaser.Scene, flavour: AmbientFlavour, options: OverworldAmbienceOptions = {}) {
+  constructor(
+    scene: Phaser.Scene,
+    flavour: AmbientFlavour,
+    options: OverworldAmbienceOptions = {},
+  ) {
     this.scene = scene;
     switch (flavour) {
-      case 'cosmic':   this.buildCosmic(options);   break;
-      case 'farmland': this.buildFarmland(options); break;
-      case 'river':    this.buildRiver(options);    break;
-      case 'meadow':   this.buildMeadow(options);   break;
-      case 'menu':     this.buildMenu(options);     break;
+      case "cosmic":
+        this.buildCosmic(options);
+        break;
+      case "farmland":
+        this.buildFarmland(options);
+        break;
+      case "river":
+        this.buildRiver(options);
+        break;
+      case "meadow":
+        this.buildMeadow(options);
+        break;
+      case "menu":
+        this.buildMenu(options);
+        break;
     }
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
@@ -84,32 +109,42 @@ export class OverworldAmbience {
     const yMin = opts.yMin ?? 0;
     const yMax = opts.yMax ?? height;
 
-    // Drifting stars — three hues, varied speeds.
+    // Drifting stars — three hues, varied speeds. 2-3px at 0.85 alpha:
+    // the idle-motion audit showed 1px/0.7-alpha motes disappear against
+    // the dark chamber art, leaving the Prologue reading as a still image.
     const count = Math.floor(60 * intensity);
     for (let i = 0; i < count; i++) {
       const r = Math.random();
       const hue = r > 0.7 ? 0xa78bfa : r > 0.4 ? 0x22d3ee : 0xffffff;
-      const size = 1 + Math.floor(Math.random() * 2);
-      const star = this.scene.add.rectangle(
-        Math.random() * width,
-        yMin + Math.random() * (yMax - yMin),
-        size, size, hue, 0.7,
-      ).setDepth(DEPTH_LOW).setScrollFactor(0);
+      const size = 2 + Math.floor(Math.random() * 2);
+      const star = this.scene.add
+        .rectangle(
+          Math.random() * width,
+          yMin + Math.random() * (yMax - yMin),
+          size,
+          size,
+          hue,
+          0.85,
+        )
+        .setDepth(DEPTH_LOW)
+        .setScrollFactor(0);
       this.children.push(star);
       if (motionReduced()) continue;
       const dur = 7000 + Math.random() * 8000;
-      this.tweens.push(this.scene.tweens.add({
-        targets: star,
-        y: yMin - 6,
-        alpha: { from: 0.7, to: 0 },
-        duration: dur,
-        delay: Math.random() * 5000,
-        repeat: -1,
-        onRepeat: () => {
-          star.setPosition(Math.random() * width, yMax + 6);
-          star.setAlpha(0.7);
-        },
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: star,
+          y: yMin - 6,
+          alpha: { from: 0.85, to: 0 },
+          duration: dur,
+          delay: Math.random() * 5000,
+          repeat: -1,
+          onRepeat: () => {
+            star.setPosition(Math.random() * width, yMax + 6);
+            star.setAlpha(0.7);
+          },
+        }),
+      );
     }
 
     // Mandala pulse — three nested cyan rings in the center of the screen
@@ -123,23 +158,26 @@ export class OverworldAmbience {
       { radius: 124, alpha: 0.05, delay: 2400 },
     ];
     for (const def of ringDefs) {
-      const ring = this.scene.add.circle(cx, cy, def.radius, 0x22d3ee, def.alpha)
+      const ring = this.scene.add
+        .circle(cx, cy, def.radius, 0x22d3ee, def.alpha)
         .setDepth(DEPTH_LOW)
         .setScrollFactor(0)
         .setStrokeStyle(1, 0x67e8f9, def.alpha * 1.5);
       ring.setFillStyle(); // outline only — fill would dim the foreground
       this.children.push(ring);
       if (motionReduced()) continue;
-      this.tweens.push(this.scene.tweens.add({
-        targets: ring,
-        scale: { from: 1, to: 1.08 },
-        alpha: { from: def.alpha * 1.5, to: def.alpha * 0.5 },
-        duration: 5400,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        delay: def.delay,
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: ring,
+          scale: { from: 1, to: 1.08 },
+          alpha: { from: def.alpha * 1.5, to: def.alpha * 0.5 },
+          duration: 5400,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+          delay: def.delay,
+        }),
+      );
     }
   }
 
@@ -153,65 +191,86 @@ export class OverworldAmbience {
     const motes = Math.floor(28 * intensity);
     for (let i = 0; i < motes; i++) {
       const warm = Math.random() < 0.35;
-      const mote = this.scene.add.rectangle(
-        Math.random() * width,
-        yMin + Math.random() * (yMax - yMin),
-        2, 2,
-        warm ? 0xfde68a : 0xfffbe0,
-        0.55,
-      ).setDepth(DEPTH_LOW).setScrollFactor(0);
+      const mote = this.scene.add
+        .rectangle(
+          Math.random() * width,
+          yMin + Math.random() * (yMax - yMin),
+          2,
+          2,
+          warm ? 0xfde68a : 0xfffbe0,
+          0.55,
+        )
+        .setDepth(DEPTH_LOW)
+        .setScrollFactor(0);
       this.children.push(mote);
       if (motionReduced()) continue;
-      this.tweens.push(this.scene.tweens.add({
-        targets: mote,
-        x: mote.x + (Math.random() - 0.5) * 80,
-        y: mote.y - 80 - Math.random() * 70,
-        alpha: 0,
-        duration: 8000 + Math.random() * 5000,
-        repeat: -1,
-        delay: Math.random() * 4000,
-        onRepeat: () => {
-          mote.setPosition(Math.random() * width, yMax - Math.random() * 80);
-          mote.setAlpha(0.55);
-        },
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: mote,
+          x: mote.x + (Math.random() - 0.5) * 80,
+          y: mote.y - 80 - Math.random() * 70,
+          alpha: 0,
+          duration: 8000 + Math.random() * 5000,
+          repeat: -1,
+          delay: Math.random() * 4000,
+          onRepeat: () => {
+            mote.setPosition(Math.random() * width, yMax - Math.random() * 80);
+            mote.setAlpha(0.55);
+          },
+        }),
+      );
     }
 
     // Occasional butterflies — small sprites that bob in a wandering path.
     // Skipped entirely under reduceMotion: a butterfly that isn't flapping
     // looks like a bug carcass on the lawn, which is the wrong vibe.
-    const butterflies = motionReduced() ? 0 : Math.max(2, Math.floor(3 * intensity));
+    const butterflies = motionReduced()
+      ? 0
+      : Math.max(2, Math.floor(3 * intensity));
     for (let i = 0; i < butterflies; i++) {
       const colors = [0xf97316, 0xfbbf24, 0xa78bfa, 0xef4444];
       const color = colors[i % colors.length];
-      const b = this.scene.add.rectangle(
-        Math.random() * width,
-        yMin + Math.random() * (yMax - yMin),
-        4, 3, color, 0.85,
-      ).setDepth(DEPTH_LOW + 1).setScrollFactor(0);
+      const b = this.scene.add
+        .rectangle(
+          Math.random() * width,
+          yMin + Math.random() * (yMax - yMin),
+          4,
+          3,
+          color,
+          0.85,
+        )
+        .setDepth(DEPTH_LOW + 1)
+        .setScrollFactor(0);
       this.children.push(b);
       // Wandering path: long horizontal sweep + small vertical bob.
       const goingRight = Math.random() < 0.5;
       const sweep = goingRight ? width + 20 : -20;
-      this.tweens.push(this.scene.tweens.add({
-        targets: b,
-        x: sweep,
-        duration: 14000 + Math.random() * 6000,
-        repeat: -1,
-        delay: i * 2200,
-        ease: 'Sine.easeInOut',
-        onRepeat: () => {
-          b.setPosition(goingRight ? -20 : width + 20, yMin + Math.random() * (yMax - yMin));
-        },
-      }));
-      this.tweens.push(this.scene.tweens.add({
-        targets: b,
-        y: '+=20',
-        duration: 700 + Math.random() * 400,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: b,
+          x: sweep,
+          duration: 14000 + Math.random() * 6000,
+          repeat: -1,
+          delay: i * 2200,
+          ease: "Sine.easeInOut",
+          onRepeat: () => {
+            b.setPosition(
+              goingRight ? -20 : width + 20,
+              yMin + Math.random() * (yMax - yMin),
+            );
+          },
+        }),
+      );
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: b,
+          y: "+=20",
+          duration: 700 + Math.random() * 400,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        }),
+      );
     }
 
     // Wheat sway — a row of thin vertical stalks along the bottom screen
@@ -223,24 +282,28 @@ export class OverworldAmbience {
     const stalkBaseY = height - 8;
     for (let i = 0; i < stalkCount; i++) {
       const stalkColor = 0xb8d96b;
-      const stalkX = (width / stalkCount) * i + Math.random() * (width / stalkCount);
+      const stalkX =
+        (width / stalkCount) * i + Math.random() * (width / stalkCount);
       const stalkHeight = 10 + Math.random() * 6;
-      const stalk = this.scene.add.rectangle(
-        stalkX, stalkBaseY, 1.5, stalkHeight, stalkColor, 0.7,
-      ).setDepth(DEPTH_LOW + 2).setScrollFactor(0);
+      const stalk = this.scene.add
+        .rectangle(stalkX, stalkBaseY, 1.5, stalkHeight, stalkColor, 0.7)
+        .setDepth(DEPTH_LOW + 2)
+        .setScrollFactor(0);
       // Pivot at the base so the rotation reads as sway, not tumble.
       stalk.setOrigin(0.5, 1);
       this.children.push(stalk);
       if (motionReduced()) continue;
-      this.tweens.push(this.scene.tweens.add({
-        targets: stalk,
-        angle: { from: -6, to: 6 },
-        duration: 1600 + Math.random() * 800,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        delay: Math.random() * 1200,
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: stalk,
+          angle: { from: -6, to: 6 },
+          duration: 1600 + Math.random() * 800,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+          delay: Math.random() * 1200,
+        }),
+      );
     }
   }
 
@@ -254,27 +317,38 @@ export class OverworldAmbience {
     const flecks = Math.floor(18 * intensity);
     for (let i = 0; i < flecks; i++) {
       const goingRight = Math.random() < 0.5;
-      const fleck = this.scene.add.rectangle(
-        goingRight ? -8 : width + 8,
-        yMin + Math.random() * (yMax - yMin),
-        3, 1.5, 0xffffff, 0.7,
-      ).setDepth(DEPTH_LOW).setScrollFactor(0);
+      const fleck = this.scene.add
+        .rectangle(
+          goingRight ? -8 : width + 8,
+          yMin + Math.random() * (yMax - yMin),
+          3,
+          1.5,
+          0xffffff,
+          0.7,
+        )
+        .setDepth(DEPTH_LOW)
+        .setScrollFactor(0);
       this.children.push(fleck);
       if (motionReduced()) continue;
       const dur = 6000 + Math.random() * 3500;
-      this.tweens.push(this.scene.tweens.add({
-        targets: fleck,
-        x: goingRight ? width + 8 : -8,
-        alpha: { from: 0.7, to: 0.2 },
-        duration: dur,
-        repeat: -1,
-        delay: Math.random() * dur,
-        ease: 'Linear',
-        onRepeat: () => {
-          fleck.setPosition(goingRight ? -8 : width + 8, yMin + Math.random() * (yMax - yMin));
-          fleck.setAlpha(0.7);
-        },
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: fleck,
+          x: goingRight ? width + 8 : -8,
+          alpha: { from: 0.7, to: 0.2 },
+          duration: dur,
+          repeat: -1,
+          delay: Math.random() * dur,
+          ease: "Linear",
+          onRepeat: () => {
+            fleck.setPosition(
+              goingRight ? -8 : width + 8,
+              yMin + Math.random() * (yMax - yMin),
+            );
+            fleck.setAlpha(0.7);
+          },
+        }),
+      );
     }
 
     // Drifting leaves — skipped under reduceMotion (a leaf that isn't
@@ -283,21 +357,24 @@ export class OverworldAmbience {
     for (let i = 0; i < leaves; i++) {
       const palette = [0x6cb060, 0xf5b06a, 0xd97a3a, 0x4a8a3a];
       const color = palette[i % palette.length];
-      const leaf = this.scene.add.rectangle(
-        -10, yMin + Math.random() * (yMax - yMin),
-        6, 3, color, 0.85,
-      ).setDepth(DEPTH_LOW + 1).setScrollFactor(0);
+      const leaf = this.scene.add
+        .rectangle(-10, yMin + Math.random() * (yMax - yMin), 6, 3, color, 0.85)
+        .setDepth(DEPTH_LOW + 1)
+        .setScrollFactor(0);
       this.children.push(leaf);
-      this.tweens.push(this.scene.tweens.add({
-        targets: leaf,
-        x: width + 10,
-        angle: 360,
-        duration: 16000 + Math.random() * 6000,
-        delay: i * 2400,
-        repeat: -1,
-        ease: 'Linear',
-        onRepeat: () => leaf.setPosition(-10, yMin + Math.random() * (yMax - yMin)),
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: leaf,
+          x: width + 10,
+          angle: 360,
+          duration: 16000 + Math.random() * 6000,
+          delay: i * 2400,
+          repeat: -1,
+          ease: "Linear",
+          onRepeat: () =>
+            leaf.setPosition(-10, yMin + Math.random() * (yMax - yMin)),
+        }),
+      );
     }
 
     // Water shimmer — short horizontal light bands that fade in then drift
@@ -308,30 +385,32 @@ export class OverworldAmbience {
     for (let i = 0; i < shimmerCount; i++) {
       const startY = yMin + Math.random() * (yMax - yMin);
       const startX = Math.random() * width;
-      const band = this.scene.add.rectangle(
-        startX, startY,
-        18 + Math.random() * 14, 1,
-        0xeaf6ff, 0,
-      ).setDepth(DEPTH_LOW + 2).setScrollFactor(0);
+      const band = this.scene.add
+        .rectangle(startX, startY, 18 + Math.random() * 14, 1, 0xeaf6ff, 0)
+        .setDepth(DEPTH_LOW + 2)
+        .setScrollFactor(0);
       this.children.push(band);
       // Each band cycles: fade in, drift sideways, fade out, jump to a new
       // random position, repeat. Yoyo gives the fade-in/out for free; the
       // x tween provides the drift; onRepeat re-randomizes position so the
       // pattern never settles into a visible cycle.
-      this.tweens.push(this.scene.tweens.add({
-        targets: band,
-        alpha: { from: 0, to: 0.55 },
-        x: '+=28',
-        duration: 1500 + Math.random() * 1200,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        delay: Math.random() * 3500,
-        onRepeat: () => band.setPosition(
-          Math.random() * width,
-          yMin + Math.random() * (yMax - yMin),
-        ),
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: band,
+          alpha: { from: 0, to: 0.55 },
+          x: "+=28",
+          duration: 1500 + Math.random() * 1200,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+          delay: Math.random() * 3500,
+          onRepeat: () =>
+            band.setPosition(
+              Math.random() * width,
+              yMin + Math.random() * (yMax - yMin),
+            ),
+        }),
+      );
     }
   }
 
@@ -344,30 +423,39 @@ export class OverworldAmbience {
     // Fireflies — small glowing dots that pulse + wander.
     const flies = Math.floor(20 * intensity);
     for (let i = 0; i < flies; i++) {
-      const fly = this.scene.add.circle(
-        Math.random() * width,
-        yMin + Math.random() * (yMax - yMin),
-        1.6, 0x86efac, 0.85,
-      ).setDepth(DEPTH_LOW + 1).setScrollFactor(0);
+      const fly = this.scene.add
+        .circle(
+          Math.random() * width,
+          yMin + Math.random() * (yMax - yMin),
+          1.6,
+          0x86efac,
+          0.85,
+        )
+        .setDepth(DEPTH_LOW + 1)
+        .setScrollFactor(0);
       this.children.push(fly);
-      this.tweens.push(this.scene.tweens.add({
-        targets: fly,
-        alpha: { from: 0.85, to: 0.15 },
-        duration: 900 + Math.random() * 600,
-        yoyo: true,
-        repeat: -1,
-        delay: Math.random() * 800,
-        ease: 'Sine.easeInOut',
-      }));
-      this.tweens.push(this.scene.tweens.add({
-        targets: fly,
-        x: fly.x + (Math.random() - 0.5) * 80,
-        y: fly.y + (Math.random() - 0.5) * 40,
-        duration: 4000 + Math.random() * 2500,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: fly,
+          alpha: { from: 0.85, to: 0.15 },
+          duration: 900 + Math.random() * 600,
+          yoyo: true,
+          repeat: -1,
+          delay: Math.random() * 800,
+          ease: "Sine.easeInOut",
+        }),
+      );
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: fly,
+          x: fly.x + (Math.random() - 0.5) * 80,
+          y: fly.y + (Math.random() - 0.5) * 40,
+          duration: 4000 + Math.random() * 2500,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        }),
+      );
     }
   }
 
@@ -386,63 +474,83 @@ export class OverworldAmbience {
       const r = Math.random();
       const hue = r > 0.7 ? 0xa78bfa : r > 0.4 ? 0x22d3ee : 0xffffff;
       const size = 1 + (Math.random() < 0.2 ? 1 : 0);
-      const star = this.scene.add.rectangle(
-        Math.random() * width,
-        Math.random() * height,
-        size, size, hue, 0.55,
-      ).setDepth(DEPTH_LOW).setScrollFactor(0);
+      const star = this.scene.add
+        .rectangle(
+          Math.random() * width,
+          Math.random() * height,
+          size,
+          size,
+          hue,
+          0.55,
+        )
+        .setDepth(DEPTH_LOW)
+        .setScrollFactor(0);
       this.children.push(star);
       // Long slow upward drift + twinkle.
-      this.tweens.push(this.scene.tweens.add({
-        targets: star,
-        alpha: { from: 0.55, to: 0.15 },
-        duration: 1500 + Math.random() * 2000,
-        yoyo: true,
-        repeat: -1,
-        delay: Math.random() * 2000,
-      }));
-      this.tweens.push(this.scene.tweens.add({
-        targets: star,
-        y: '-=20',
-        duration: 12000 + Math.random() * 8000,
-        repeat: -1,
-        ease: 'Linear',
-        onRepeat: () => star.setPosition(Math.random() * width, height + 5),
-      }));
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: star,
+          alpha: { from: 0.55, to: 0.15 },
+          duration: 1500 + Math.random() * 2000,
+          yoyo: true,
+          repeat: -1,
+          delay: Math.random() * 2000,
+        }),
+      );
+      this.tweens.push(
+        this.scene.tweens.add({
+          targets: star,
+          y: "-=20",
+          duration: 12000 + Math.random() * 8000,
+          repeat: -1,
+          ease: "Linear",
+          onRepeat: () => star.setPosition(Math.random() * width, height + 5),
+        }),
+      );
     }
 
     // Bit-spark — single drifting glow with a small particle trail.
-    const bitContainer = this.scene.add.container(-40, height * 0.4).setDepth(DEPTH_HIGH).setScrollFactor(0);
+    const bitContainer = this.scene.add
+      .container(-40, height * 0.4)
+      .setDepth(DEPTH_HIGH)
+      .setScrollFactor(0);
     const halo = this.scene.add.circle(0, 0, 12, 0x22d3ee, 0.22);
     const core = this.scene.add.circle(0, 0, 4, 0xffffff, 1);
     const mid = this.scene.add.circle(0, 0, 7, 0x22d3ee, 0.6);
     bitContainer.add([halo, mid, core]);
     this.children.push(bitContainer);
-    this.tweens.push(this.scene.tweens.add({
-      targets: [halo, mid],
-      scale: { from: 1, to: 1.4 },
-      alpha: { from: 0.6, to: 0.20 },
-      duration: 1400,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    }));
+    this.tweens.push(
+      this.scene.tweens.add({
+        targets: [halo, mid],
+        scale: { from: 1, to: 1.4 },
+        alpha: { from: 0.6, to: 0.2 },
+        duration: 1400,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      }),
+    );
     // Diagonal drift across the title area; gentle vertical bob meantime.
-    this.tweens.push(this.scene.tweens.add({
-      targets: bitContainer,
-      x: width + 40,
-      duration: 28000,
-      repeat: -1,
-      ease: 'Linear',
-      onRepeat: () => bitContainer.setPosition(-40, 80 + Math.random() * (height * 0.5)),
-    }));
-    this.tweens.push(this.scene.tweens.add({
-      targets: bitContainer,
-      y: '+=18',
-      duration: 2200,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    }));
+    this.tweens.push(
+      this.scene.tweens.add({
+        targets: bitContainer,
+        x: width + 40,
+        duration: 28000,
+        repeat: -1,
+        ease: "Linear",
+        onRepeat: () =>
+          bitContainer.setPosition(-40, 80 + Math.random() * (height * 0.5)),
+      }),
+    );
+    this.tweens.push(
+      this.scene.tweens.add({
+        targets: bitContainer,
+        y: "+=18",
+        duration: 2200,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      }),
+    );
   }
 }

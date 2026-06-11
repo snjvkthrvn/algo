@@ -21,11 +21,11 @@ const DROP_BASE = "assets/visual_revamp/imagegen_drop_2026_06_10";
  *   that same body height for a like-for-like comparison.
  * - crate: BruteForceActor tile (54x42).
  * - stones: Twin Rivers overworld index stones (48px squares).
- * Masters are 1254px squares; bodies fill ~80% of the frame (measured),
- * stones ~49% of their 768px frame.
+ * Character masters are 1024px regen squares (~78% body fill); crate and
+ * stone masters are 1254px/768px with ~64%/49% fill respectively.
  */
 const KEEPER_BODY_TARGET = 45;
-const KEEPER_BODY_FRACTION = 0.8;
+const KEEPER_BODY_FRACTION = 0.78;
 const CRATE_BODY_TARGET = 42;
 const CRATE_BODY_FRACTION = 0.64;
 const STONE_FRAME = { width: 512, height: 768 };
@@ -39,47 +39,47 @@ const DROP_CHARACTERS: ReadonlyArray<{
 }> = [
   {
     key: "drop-sorting-farmer",
-    file: "characters/sorting_farmer.png",
+    file: "characters_regen4_small/sorting_farmer.png",
     label: "sorting farmer",
   },
   {
     key: "drop-basket-keeper",
-    file: "characters/basket_keeper.png",
+    file: "characters_regen4_small/basket_keeper.png",
     label: "basket keeper",
   },
   {
     key: "drop-crop-sorter",
-    file: "characters/crop_sorter.png",
+    file: "characters_regen4_small/crop_sorter.png",
     label: "crop sorter",
   },
   {
     key: "drop-tile-worker",
-    file: "characters/tile_worker.png",
+    file: "characters_regen4_small/tile_worker.png",
     label: "tile worker",
   },
   {
     key: "drop-mirror-walker",
-    file: "characters/mirror_walker.png",
+    file: "characters_regen4_small/mirror_walker.png",
     label: "mirror walker",
   },
   {
     key: "drop-bridge-keeper",
-    file: "characters/bridge_keeper.png",
+    file: "characters_regen4_small/bridge_keeper.png",
     label: "bridge keeper",
   },
   {
     key: "drop-window-fisher",
-    file: "characters/window_fisher.png",
+    file: "characters_regen4_small/window_fisher.png",
     label: "window fisher",
   },
   {
     key: "drop-current-rider",
-    file: "characters/current_rider.png",
+    file: "characters_regen4_small/current_rider.png",
     label: "current rider",
   },
   {
     key: "drop-hash-keeper",
-    file: "characters/hash_keeper.png",
+    file: "characters_regen4_small/hash_keeper.png",
     label: "hash keeper",
   },
 ];

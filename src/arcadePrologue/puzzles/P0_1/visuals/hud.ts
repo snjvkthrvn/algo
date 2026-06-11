@@ -1,5 +1,6 @@
-import Phaser from 'phaser';
-import { COLORS, px, s, SPACING, STAGE, TYPE } from '../tokens';
+import Phaser from "phaser";
+import { LEGEND_HOLD_MS } from "../../../../ui/transientLegend";
+import { COLORS, px, s, SPACING, STAGE, TYPE } from "../tokens";
 
 /**
  * Heads-up display — shared between puzzles.
@@ -9,10 +10,13 @@ import { COLORS, px, s, SPACING, STAGE, TYPE } from '../tokens';
  *  - title         current round title
  *  - principle     short philosophical line (the *idea* of the round)
  *  - teach         short instructional line (the *verb* of the round)
- *  - state chip    bottom-center, swaps based on caller-provided label
- *  - hint          muted footer hint with keys
+ *  - state chip    bottom-center, announces each phase then dissolves
+ *  - hint          muted footer hint with keys, dissolves after entry
  *
  * The HUD does not own the state machine; it just renders strings.
+ * Footer hint and state chip are transient (docs/VISION.md §5 — legends and
+ * banners fade after entry); the same hold as src/ui/transientLegend.ts keeps
+ * the fade register uniform across the first three regions.
  */
 
 export type HudConfig = {
@@ -42,22 +46,22 @@ export function buildHud(scene: Phaser.Scene, config: HudConfig): Hud {
     .setAlpha(0.85);
 
   const title = scene.add
-    .text(STAGE.width / 2, SPACING.lg + s(6), '', {
+    .text(STAGE.width / 2, SPACING.lg + s(6), "", {
       ...TYPE.display,
       fontSize: px(15),
       wordWrap: { width: STAGE.width - SPACING.xxxl * 4 },
-      align: 'center',
+      align: "center",
     })
     .setOrigin(0.5, 0)
     .setDepth(22)
-    .setShadow(0, s(2), '#0b1020', s(8), true, true);
+    .setShadow(0, s(2), "#0b1020", s(8), true, true);
 
   const principle = scene.add
-    .text(STAGE.width / 2, SPACING.lg + s(34), '', {
+    .text(STAGE.width / 2, SPACING.lg + s(34), "", {
       ...TYPE.body,
       fontSize: px(9),
       color: COLORS.text.primary,
-      align: 'center',
+      align: "center",
       wordWrap: { width: STAGE.width - SPACING.xxxl * 4 },
     })
     .setOrigin(0.5, 0)
@@ -65,10 +69,10 @@ export function buildHud(scene: Phaser.Scene, config: HudConfig): Hud {
     .setAlpha(0);
 
   const teach = scene.add
-    .text(STAGE.width / 2, SPACING.lg + s(56), '', {
+    .text(STAGE.width / 2, SPACING.lg + s(56), "", {
       ...TYPE.body,
       fontSize: px(9),
-      align: 'center',
+      align: "center",
       wordWrap: { width: STAGE.width - SPACING.xxxl * 4 },
     })
     .setOrigin(0.5, 0)
@@ -76,22 +80,51 @@ export function buildHud(scene: Phaser.Scene, config: HudConfig): Hud {
     .setAlpha(0);
 
   const chipY = STAGE.height - SPACING.xxxl;
-  const chip = scene.add.container(STAGE.width / 2, chipY).setDepth(22).setAlpha(0);
+  const chip = scene.add
+    .container(STAGE.width / 2, chipY)
+    .setDepth(22)
+    .setAlpha(0);
   const chipBg = scene.add.graphics();
   paintChipBg(chipBg, s(180), s(26));
   const chipText = scene.add
-    .text(0, 0, '', { ...TYPE.eyebrow, color: COLORS.text.primary, letterSpacing: s(2) })
+    .text(0, 0, "", {
+      ...TYPE.eyebrow,
+      color: COLORS.text.primary,
+      letterSpacing: s(2),
+    })
     .setOrigin(0.5);
   chip.add([chipBg, chipText]);
 
   const footer = scene.add
-    .text(STAGE.width / 2, STAGE.height - SPACING.md - s(2), config.footerHint, TYPE.micro)
+    .text(
+      STAGE.width / 2,
+      STAGE.height - SPACING.md - s(2),
+      config.footerHint,
+      TYPE.micro,
+    )
     .setOrigin(0.5, 1)
     .setDepth(22)
     .setColor(COLORS.text.primary)
     .setAlpha(0.84);
   const footerBg = scene.add.graphics().setDepth(21).setAlpha(0.82);
   paintFooterBg(footerBg, s(650), s(28));
+
+  // The key hint dissolves once the player has had a moment to read it;
+  // showPromptNext re-lights the footer for the end-of-room prompt.
+  scene.time.delayedCall(LEGEND_HOLD_MS, () => {
+    if (!footer.active) return;
+    scene.tweens.add({
+      targets: [footer, footerBg],
+      alpha: 0,
+      duration: 600,
+      ease: "Sine.easeIn",
+    });
+  });
+
+  // The state pill announces a phase change, holds long enough to read,
+  // then dissolves — it is a beat, not a pinned HUD element.
+  const CHIP_HOLD_MS = 3200;
+  let chipFade: Phaser.Time.TimerEvent | undefined;
 
   function setRound(t: string, p: string, te: string): void {
     scene.tweens.killTweensOf([principle, teach]);
@@ -102,18 +135,29 @@ export function buildHud(scene: Phaser.Scene, config: HudConfig): Hud {
       targets: [principle, teach],
       alpha: { from: 0, to: 1 },
       duration: 360,
-      ease: 'Sine.easeOut',
+      ease: "Sine.easeOut",
     });
   }
 
   function setState(label: string): void {
     scene.tweens.killTweensOf(chip);
+    chipFade?.remove();
+    chipFade = undefined;
     chipText.setText(label.toUpperCase());
     scene.tweens.add({
       targets: chip,
       alpha: label ? 1 : 0,
       duration: 240,
-      ease: 'Sine.easeInOut',
+      ease: "Sine.easeInOut",
+    });
+    if (!label) return;
+    chipFade = scene.time.delayedCall(CHIP_HOLD_MS, () => {
+      scene.tweens.add({
+        targets: chip,
+        alpha: 0,
+        duration: 600,
+        ease: "Sine.easeIn",
+      });
     });
   }
 
@@ -124,33 +168,47 @@ export function buildHud(scene: Phaser.Scene, config: HudConfig): Hud {
       targets: teach,
       alpha: { from: 0.4, to: 1 },
       duration: 360,
-      ease: 'Sine.easeOut',
+      ease: "Sine.easeOut",
     });
   }
 
   function showPromptNext(text: string): void {
-    scene.tweens.killTweensOf(footer);
+    scene.tweens.killTweensOf([footer, footerBg]);
     footer.setText(text);
     footer.setColor(COLORS.text.accent);
     scene.tweens.add({
       targets: footer,
       alpha: { from: 0.2, to: 0.95 },
       duration: 360,
-      ease: 'Sine.easeOut',
+      ease: "Sine.easeOut",
+    });
+    scene.tweens.add({
+      targets: footerBg,
+      alpha: 0.82,
+      duration: 360,
+      ease: "Sine.easeOut",
     });
   }
 
   return { setRound, setState, showSummary, showPromptNext };
 }
 
-function paintChipBg(g: Phaser.GameObjects.Graphics, w: number, h: number): void {
+function paintChipBg(
+  g: Phaser.GameObjects.Graphics,
+  w: number,
+  h: number,
+): void {
   g.fillStyle(COLORS.surface.glass, 0.7);
   g.fillRoundedRect(-w / 2, -h / 2, w, h, s(13));
   g.lineStyle(s(1), COLORS.accent, 0.35);
   g.strokeRoundedRect(-w / 2, -h / 2, w, h, s(13));
 }
 
-function paintFooterBg(g: Phaser.GameObjects.Graphics, w: number, h: number): void {
+function paintFooterBg(
+  g: Phaser.GameObjects.Graphics,
+  w: number,
+  h: number,
+): void {
   const x = STAGE.width / 2 - w / 2;
   const y = STAGE.height - SPACING.md - h;
   g.fillStyle(COLORS.surface.glass, 0.78);
@@ -159,7 +217,11 @@ function paintFooterBg(g: Phaser.GameObjects.Graphics, w: number, h: number): vo
   g.strokeRoundedRect(x, y, w, h, s(10));
 }
 
-function paintHeaderBg(g: Phaser.GameObjects.Graphics, w: number, h: number): void {
+function paintHeaderBg(
+  g: Phaser.GameObjects.Graphics,
+  w: number,
+  h: number,
+): void {
   const x = STAGE.width / 2 - w / 2;
   const y = SPACING.xs;
   g.fillStyle(COLORS.surface.glass, 0.78);

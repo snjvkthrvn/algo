@@ -1,12 +1,15 @@
-import Phaser from 'phaser';
-import { COLORS, s } from './tokens';
-import { TIMING } from './motion';
-import { paintAtmosphere } from './visuals/atmosphere';
-import { paintPlatform, paintEdgeVignette } from './visuals/platform';
-import { ensureTileTextures } from './visuals/runeTile';
-import { buildPrologueHud, type PrologueHud } from './visuals/prologueHud';
-import { createDialogueBox, type DialogueBox } from './visuals/dialogueBox';
-import { createSequencePanel, type SequencePanel } from './visuals/sequencePanel';
+import Phaser from "phaser";
+import { COLORS, s } from "./tokens";
+import { TIMING } from "./motion";
+import { paintAtmosphere } from "./visuals/atmosphere";
+import { paintPlatform, paintEdgeVignette } from "./visuals/platform";
+import { ensureTileTextures } from "./visuals/runeTile";
+import { buildPrologueHud, type PrologueHud } from "./visuals/prologueHud";
+import { createDialogueBox, type DialogueBox } from "./visuals/dialogueBox";
+import {
+  createSequencePanel,
+  type SequencePanel,
+} from "./visuals/sequencePanel";
 import {
   cellKey,
   cellWorldPos,
@@ -23,40 +26,46 @@ import {
   TILE_W,
   unmountIsoGrid,
   type GridPos,
-} from './isogrid';
-import { PATH_ROUNDS } from './pathRounds';
-import { bindInput } from './input';
-import { canAcceptStep, STATE_LABEL, type PuzzleState } from './state';
-import { readReduceMotion, writeReduceMotion } from './prefs';
-import { chantRing, stepCorrect, stepMistake, winCascade } from './feedback';
-import { GAME, PENALTIES, POINTS } from '../../game/state';
+} from "./isogrid";
+import { PATH_ROUNDS } from "./pathRounds";
+import { bindInput } from "./input";
+import { canAcceptStep, STATE_LABEL, type PuzzleState } from "./state";
+import { readReduceMotion, writeReduceMotion } from "./prefs";
+import { chantRing, stepCorrect, stepMistake, winCascade } from "./feedback";
+import { GAME, PENALTIES, POINTS } from "../../game/state";
 import {
   completeAlgorithmiaPuzzle,
   PROLOGUE_RUN_UI_KEY,
   resolveReturnScene,
-} from '../../game/algorithmiaIntegration';
-import { scorePopup } from '../../ui/popups';
-import { hexColorToNumber, sparkle } from '../../ui/particles';
-import { BitCompanion } from '../../../ui/BitCompanion';
-import { comboMilestone } from '../../game/milestone';
+} from "../../game/algorithmiaIntegration";
+import { scorePopup } from "../../ui/popups";
+import { hexColorToNumber, sparkle } from "../../ui/particles";
+import { BitCompanion } from "../../../ui/BitCompanion";
+import { comboMilestone } from "../../game/milestone";
 import {
   getImageAssetPath,
   OVERWORLD_PLAYER_SPRITE_ASSETS,
   P0_1_PUZZLE_ASSETS,
   PROLOGUE_SHEET_KEYS,
   VISUAL_REVAMP_KEYS,
-} from '../../../config/assets';
-import { MOTION } from './motion';
-import { SCENE_KEYS } from '../../../config/constants';
+} from "../../../config/assets";
+import { MOTION } from "./motion";
+import { SCENE_KEYS } from "../../../config/constants";
 
 const HIT_RADIUS = Math.max(TILE_W, TILE_H) * 0.72;
 
-const ROUND_TIMERS = [22000, 28000, 35000, 40000];
-const TIME_BONUS_MAX = [200, 240, 280, 320];
+// First-contact rooms run untimed and unkillable (docs/VISION.md §6 — serene
+// wonder; urgency belongs to bosses). Only the clean-round bonus survives: it
+// rewards care without ever pressuring the clock.
 const PERFECT_BONUS = [250, 280, 320, 360];
 
 /** Trace an isometric diamond path on a Graphics, centred at (cx, cy). */
-function diamondPath(g: Phaser.GameObjects.Graphics, cx: number, cy: number, k = 1): void {
+function diamondPath(
+  g: Phaser.GameObjects.Graphics,
+  cx: number,
+  cy: number,
+  k = 1,
+): void {
   const hw = (TILE_W / 2) * k;
   const hh = (TILE_H / 2) * k;
   g.beginPath();
@@ -67,12 +76,22 @@ function diamondPath(g: Phaser.GameObjects.Graphics, cx: number, cy: number, k =
   g.closePath();
 }
 
-function strokeDiamond(g: Phaser.GameObjects.Graphics, cx: number, cy: number, k = 1): void {
+function strokeDiamond(
+  g: Phaser.GameObjects.Graphics,
+  cx: number,
+  cy: number,
+  k = 1,
+): void {
   diamondPath(g, cx, cy, k);
   g.strokePath();
 }
 
-function fillDiamond(g: Phaser.GameObjects.Graphics, cx: number, cy: number, k = 1): void {
+function fillDiamond(
+  g: Phaser.GameObjects.Graphics,
+  cx: number,
+  cy: number,
+  k = 1,
+): void {
   diamondPath(g, cx, cy, k);
   g.fillPath();
 }
@@ -90,12 +109,11 @@ export class FollowThePathScene extends Phaser.Scene {
   private cursorG!: Phaser.GameObjects.Graphics;
   private neighborG!: Phaser.GameObjects.Graphics;
 
-  private state: PuzzleState = 'idle';
+  private state: PuzzleState = "idle";
   private wave = 0;
   private hopIndex = 0;
   private playerPos: GridPos = { row: 5, col: 2 };
 
-  private hasArenaArt = false;
   private reduceMotion = false;
   private unbindInput?: () => void;
   private returnScene: string = SCENE_KEYS.PROLOGUE;
@@ -131,9 +149,17 @@ export class FollowThePathScene extends Phaser.Scene {
       }
     }
 
-    const arenaPath = getImageAssetPath(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG);
-    if (arenaPath && !this.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)) {
-      this.load.image(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG, arenaPath);
+    const arenaPath = getImageAssetPath(
+      VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
+    );
+    if (
+      arenaPath &&
+      !this.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)
+    ) {
+      this.load.image(
+        VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
+        arenaPath,
+      );
     }
   }
 
@@ -144,15 +170,17 @@ export class FollowThePathScene extends Phaser.Scene {
 
     GAME.reset();
     GAME.setCurrentPuzzle(this.scene.key);
-    if (!this.scene.isActive(PROLOGUE_RUN_UI_KEY)) this.scene.launch(PROLOGUE_RUN_UI_KEY);
+    if (!this.scene.isActive(PROLOGUE_RUN_UI_KEY))
+      this.scene.launch(PROLOGUE_RUN_UI_KEY);
     this.scene.bringToTop(PROLOGUE_RUN_UI_KEY);
 
     // ── Visual layers ────────────────────────────────────────────────────────
-    // paintPlatform returns true when the stone_arena art is used — in that case
-    // the baked-in space background makes procedural atmosphere / edge fog redundant.
-    this.hasArenaArt = paintPlatform(this);
-    if (!this.hasArenaArt) {
-      paintAtmosphere(this);
+    // paintAtmosphere paints the warm arena backdrop and wires PuzzleKinetics
+    // (emitPuzzleActionPulse); paintPlatform seats the grid on that floor. The
+    // cosmic edge vignette belongs to the procedural fallback floor only.
+    paintAtmosphere(this);
+    const onArenaArt = paintPlatform(this);
+    if (!onArenaArt) {
       paintEdgeVignette(this);
     }
     ensureTileTextures(this);
@@ -166,7 +194,7 @@ export class FollowThePathScene extends Phaser.Scene {
     const start0 = PATH_ROUNDS[0]!.path[0]!;
     const bitStart = cellWorldPos(start0.row, start0.col);
     this.bit = new BitCompanion(this, {
-      stage: 'spark',
+      stage: "spark",
       x: bitStart.x + 22,
       y: bitStart.y - 26,
       depth: 60,
@@ -187,7 +215,7 @@ export class FollowThePathScene extends Phaser.Scene {
       duration: 640,
       yoyo: true,
       repeat: -1,
-      ease: 'Sine.easeInOut',
+      ease: "Sine.easeInOut",
     });
 
     this.hud = buildPrologueHud(this);
@@ -203,7 +231,7 @@ export class FollowThePathScene extends Phaser.Scene {
     });
 
     const esc = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-    esc?.on('down', this.exitScene, this);
+    esc?.on("down", this.exitScene, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       esc?.removeAllListeners();
@@ -220,7 +248,7 @@ export class FollowThePathScene extends Phaser.Scene {
     this.tearDown();
 
     const round = PATH_ROUNDS[index]!;
-    this.grid = mountIsoGrid(this, round.field, round.path, this.hasArenaArt);
+    this.grid = mountIsoGrid(this, round.field, round.path);
     this.playerPos = { ...round.path[0]! };
     this.hopIndex = 0;
 
@@ -229,21 +257,21 @@ export class FollowThePathScene extends Phaser.Scene {
 
     this.hud.setRound(index + 1, PATH_ROUNDS.length);
     this.hud.showRoundTitle(round.principle);
-    this.dialogue.show('Rune Keeper', round.npcLine);
+    this.dialogue.show("Rune Keeper", round.npcLine);
 
     this.positionPlayer(this.playerPos);
 
     // Start dark — flashTileOn in chantStep lights one tile at a time
     dimPathTiles(this.grid, this);
-    this.setState('preview');
+    this.setState("preview");
     await this.runPreview();
     this.positionPlayer(this.playerPos); // reset sprite to start after preview walk
     // Bring Bit back beside the player for their turn.
     const bitHome = cellWorldPos(this.playerPos.row, this.playerPos.col);
     this.bit?.moveTo(bitHome.x + 22, bitHome.y - 26, 300);
     // Tiles are already dark — flashTileOn faded them individually
-    this.setState('turn');
-    GAME.startRound(ROUND_TIMERS[index] ?? 28000);
+    this.setState("turn");
+    GAME.startRound(0); // untimed — tracks mistakes for the clean-round bonus
   }
 
   private async runPreview(): Promise<void> {
@@ -258,7 +286,8 @@ export class FollowThePathScene extends Phaser.Scene {
     const { x, y } = cellWorldPos(pos.row, pos.col);
     chantRing(this, new Phaser.Math.Vector2(x, y));
     // Sequential tile reveal — light this tile briefly then fade back out
-    if (this.grid) flashTileOn(this.grid, pos.row, pos.col, this, TIMING.chantStep - 100);
+    if (this.grid)
+      flashTileOn(this.grid, pos.row, pos.col, this, TIMING.chantStep - 100);
     // Bit hovers to each glowing tile in turn, helping the player track order.
     this.bit?.moveTo(x + 18, y - 24, Math.min(280, TIMING.chantStep * 0.6));
     if (prevPos) void this.walkPlayerTo(prevPos, pos);
@@ -268,26 +297,23 @@ export class FollowThePathScene extends Phaser.Scene {
   }
 
   private async replay(): Promise<void> {
-    if (this.state !== 'turn' || !this.grid) return;
+    if (this.state !== "turn" || !this.grid) return;
     this.hopIndex = 0;
     this.playerPos = { ...PATH_ROUNDS[this.wave]!.path[0]! };
     this.positionPlayer(this.playerPos);
     this.traceG.clear();
     dimPathTiles(this.grid, this);
-    this.setState('preview');
+    this.setState("preview");
     await this.runPreview();
-    this.setState('turn');
+    this.setState("turn");
   }
 
   private async finishRound(): Promise<void> {
     if (!this.grid) return;
-    this.setState('cleared');
+    this.setState("cleared");
 
     const path = PATH_ROUNDS[this.wave]!.path;
-    const bonuses = GAME.endRound(
-      TIME_BONUS_MAX[this.wave] ?? 240,
-      PERFECT_BONUS[this.wave] ?? 280,
-    );
+    const bonuses = GAME.endRound(0, PERFECT_BONUS[this.wave] ?? 280);
 
     const lastPos = path[path.length - 1]!;
     const lastAt = new Phaser.Math.Vector2(
@@ -300,7 +326,7 @@ export class FollowThePathScene extends Phaser.Scene {
       const w = cellWorldPos(p.row, p.col);
       return new Phaser.Math.Vector2(w.x, w.y);
     });
-    this.npcReact('win');
+    this.npcReact("win");
     await winCascade(this, pathPoints, this.reduceMotion);
     await this.wait(TIMING.winHold);
 
@@ -310,14 +336,14 @@ export class FollowThePathScene extends Phaser.Scene {
     }
 
     this.dialogue.hide();
-    this.hud.showSummary('Sequencing learned. The chant is yours.');
-    this.hud.showPromptNext('Return to the Chamber');
+    this.hud.showSummary("Sequencing learned. The chant is yours.");
+    this.hud.showPromptNext("Return to the Chamber");
 
     this.time.delayedCall(1700, () =>
       completeAlgorithmiaPuzzle(this, {
-        puzzleId: 'p0_1',
-        puzzleName: 'Follow the Path',
-        concept: 'Sequential Processing',
+        puzzleId: "p0_1",
+        puzzleName: "Follow the Path",
+        concept: "Sequential Processing",
         returnScene: this.returnScene,
         startedAt: this.startedAt,
       }),
@@ -341,7 +367,8 @@ export class FollowThePathScene extends Phaser.Scene {
       ),
     );
     this.grid.cells.forEach((cell, key) => {
-      const isCurrentPos = cell.row === this.playerPos.row && cell.col === this.playerPos.col;
+      const isCurrentPos =
+        cell.row === this.playerPos.row && cell.col === this.playerPos.col;
       const isLegal = legal.has(key);
       if (isCurrentPos) {
         cell.base.setAlpha(1);
@@ -356,7 +383,13 @@ export class FollowThePathScene extends Phaser.Scene {
 
   private steer(dx: number, dy: number): void {
     if (!canAcceptStep(this.state) || !this.grid) return;
-    const next = steerFrom(this.grid, this.playerPos.row, this.playerPos.col, dx, dy);
+    const next = steerFrom(
+      this.grid,
+      this.playerPos.row,
+      this.playerPos.col,
+      dx,
+      dy,
+    );
     if (next) this.tryHop(next);
   }
 
@@ -366,7 +399,11 @@ export class FollowThePathScene extends Phaser.Scene {
     if (!this.grid) return;
 
     // Must be a neighbor of the current position
-    const neighbors = getNeighbors(this.grid, this.playerPos.row, this.playerPos.col);
+    const neighbors = getNeighbors(
+      this.grid,
+      this.playerPos.row,
+      this.playerPos.col,
+    );
     const isNeighbor = neighbors.some(
       (n) => n.row === candidate.row && n.col === candidate.col,
     );
@@ -401,7 +438,7 @@ export class FollowThePathScene extends Phaser.Scene {
     this.paintTrace();
     void this.walkPlayerTo(prevPos, pos);
     this.seqPanel?.update(this.hopIndex);
-    this.npcReact('correct');
+    this.npcReact("correct");
     // Bit bounces beside the tile the player just landed — earned celebration.
     this.bit?.moveTo(at.x + 18, at.y - 24, 200);
     this.bit?.pulse();
@@ -411,7 +448,7 @@ export class FollowThePathScene extends Phaser.Scene {
     this.grid.cells.forEach((c) => c.base.setAlpha(1));
 
     GAME.bumpCombo();
-    const awarded = GAME.addScore(POINTS.step, 'step');
+    const awarded = GAME.addScore(POINTS.step, "step");
     this.hud.addScore(awarded);
     scorePopup(this, at.x, at.y - s(28), `+${awarded}`);
     sparkle(this, at.x, at.y);
@@ -442,24 +479,17 @@ export class FollowThePathScene extends Phaser.Scene {
     GAME.losePoints(PENALTIES.p1Miss);
     flashCellError(this, pos.row, pos.col);
     this.cameras.main.shake(140, 0.005);
-    this.npcReact('wrong');
+    this.npcReact("wrong");
 
-    const dead = GAME.loseLife();
-    if (dead) {
-      this.time.delayedCall(380, () => {
-        GAME.reset();
-        this.scene.restart({ returnScene: this.returnScene });
-      });
-      return;
-    }
-
+    // No lives here: a wrong hop replays the chant tail and play continues.
+    // Failing out of the room belongs to boss escalation, not first contact.
     void this.afterMistake();
   }
 
   private async afterMistake(): Promise<void> {
     if (!this.grid) return;
     const TAIL = 3;
-    this.setState('preview');
+    this.setState("preview");
     const path = PATH_ROUNDS[this.wave]!.path;
     const start = Math.max(0, this.hopIndex + 1 - TAIL);
     const end = Math.min(path.length - 1, this.hopIndex + 1);
@@ -467,7 +497,7 @@ export class FollowThePathScene extends Phaser.Scene {
     for (let i = start; i <= end; i++) {
       await this.chantStep(path[i]!);
     }
-    this.setState('turn');
+    this.setState("turn");
   }
 
   // ── Character sprites ───────────────────────────────────────────────────────
@@ -483,7 +513,7 @@ export class FollowThePathScene extends Phaser.Scene {
     }
   }
 
-  private npcReact(emotion: 'correct' | 'wrong' | 'win'): void {
+  private npcReact(emotion: "correct" | "wrong" | "win"): void {
     if (!this.runeKeeper) return;
     const npc = this.runeKeeper;
     const baseX = npc.x;
@@ -491,17 +521,17 @@ export class FollowThePathScene extends Phaser.Scene {
     const baseScale = npc.scaleX;
     this.tweens.killTweensOf(npc);
 
-    if (emotion === 'wrong') {
+    if (emotion === "wrong") {
       this.tweens.add({
         targets: npc,
         x: { from: baseX - 7, to: baseX + 7 },
         duration: 55,
         yoyo: true,
         repeat: 2,
-        ease: 'Sine.easeInOut',
+        ease: "Sine.easeInOut",
         onComplete: () => npc.setX(baseX),
       });
-    } else if (emotion === 'correct') {
+    } else if (emotion === "correct") {
       this.tweens.add({
         targets: npc,
         y: baseY - 9,
@@ -509,7 +539,7 @@ export class FollowThePathScene extends Phaser.Scene {
         scaleY: baseScale * 1.07,
         duration: 110,
         yoyo: true,
-        ease: 'Quad.easeOut',
+        ease: "Quad.easeOut",
         onComplete: () => npc.setY(baseY).setScale(baseScale),
       });
     } else {
@@ -520,7 +550,7 @@ export class FollowThePathScene extends Phaser.Scene {
         scaleY: baseScale * 1.18,
         duration: 280,
         yoyo: true,
-        ease: 'Back.easeOut',
+        ease: "Back.easeOut",
         repeat: 1,
         onComplete: () => npc.setY(baseY).setScale(baseScale),
       });
@@ -532,7 +562,9 @@ export class FollowThePathScene extends Phaser.Scene {
     const { x, y } = cellWorldPos(startPos.row, startPos.col);
 
     // Soft position glow under the character
-    this.playerGlow = this.add.circle(x, y, 24, COLORS.accent, 0.22).setDepth(49);
+    this.playerGlow = this.add
+      .circle(x, y, 24, COLORS.accent, 0.22)
+      .setDepth(49);
     this.tweens.add({
       targets: this.playerGlow,
       alpha: 0.06,
@@ -541,7 +573,7 @@ export class FollowThePathScene extends Phaser.Scene {
       duration: 900,
       yoyo: true,
       repeat: -1,
-      ease: 'Sine.easeInOut',
+      ease: "Sine.easeInOut",
     });
 
     const playerKey = PROLOGUE_SHEET_KEYS.PLAYER;
@@ -551,13 +583,33 @@ export class FollowThePathScene extends Phaser.Scene {
       .setScale(0.25)
       .setDepth(50);
 
-    if (!this.anims.exists('p0-walk-down')) {
+    if (!this.anims.exists("p0-walk-down")) {
       const gen = (start: number, end: number) =>
         this.anims.generateFrameNumbers(playerKey, { start, end });
-      this.anims.create({ key: 'p0-walk-down',  frames: gen(0,  7),  frameRate: 10, repeat: -1 });
-      this.anims.create({ key: 'p0-walk-left',  frames: gen(8,  15), frameRate: 10, repeat: -1 });
-      this.anims.create({ key: 'p0-walk-right', frames: gen(16, 23), frameRate: 10, repeat: -1 });
-      this.anims.create({ key: 'p0-walk-up',    frames: gen(24, 31), frameRate: 10, repeat: -1 });
+      this.anims.create({
+        key: "p0-walk-down",
+        frames: gen(0, 7),
+        frameRate: 10,
+        repeat: -1,
+      });
+      this.anims.create({
+        key: "p0-walk-left",
+        frames: gen(8, 15),
+        frameRate: 10,
+        repeat: -1,
+      });
+      this.anims.create({
+        key: "p0-walk-right",
+        frames: gen(16, 23),
+        frameRate: 10,
+        repeat: -1,
+      });
+      this.anims.create({
+        key: "p0-walk-up",
+        frames: gen(24, 31),
+        frameRate: 10,
+        repeat: -1,
+      });
     }
   }
 
@@ -572,10 +624,10 @@ export class FollowThePathScene extends Phaser.Scene {
   private walkPlayerTo(from: GridPos, to: GridPos): Promise<void> {
     const dCol = to.col - from.col;
     const dRow = to.row - from.row;
-    let animKey = 'p0-walk-down';
-    if (dCol > 0)      animKey = 'p0-walk-right';
-    else if (dCol < 0) animKey = 'p0-walk-left';
-    else if (dRow < 0) animKey = 'p0-walk-up';
+    let animKey = "p0-walk-down";
+    if (dCol > 0) animKey = "p0-walk-right";
+    else if (dCol < 0) animKey = "p0-walk-left";
+    else if (dRow < 0) animKey = "p0-walk-up";
 
     this.playerSprite.play(animKey, true);
 
@@ -585,7 +637,8 @@ export class FollowThePathScene extends Phaser.Scene {
     return new Promise<void>((resolve) => {
       this.tweens.add({
         targets: this.playerSprite,
-        x, y,
+        x,
+        y,
         duration: dur,
         ease: MOTION.settle.ease,
         onComplete: () => {
@@ -593,7 +646,13 @@ export class FollowThePathScene extends Phaser.Scene {
           resolve();
         },
       });
-      this.tweens.add({ targets: this.playerGlow, x, y, duration: dur, ease: MOTION.settle.ease });
+      this.tweens.add({
+        targets: this.playerGlow,
+        x,
+        y,
+        duration: dur,
+        ease: MOTION.settle.ease,
+      });
     });
   }
 
@@ -622,12 +681,14 @@ export class FollowThePathScene extends Phaser.Scene {
   // ── Utilities ───────────────────────────────────────────────────────────────
 
   private wait(ms: number): Promise<void> {
-    return new Promise<void>((resolve) => this.time.delayedCall(ms, () => resolve()));
+    return new Promise<void>((resolve) =>
+      this.time.delayedCall(ms, () => resolve()),
+    );
   }
 
   private setState(next: PuzzleState): void {
     this.state = next;
-    this.hud.setState(STATE_LABEL[next] ?? '');
+    this.hud.setState(STATE_LABEL[next] ?? "");
     this.updateCursor();
   }
 
@@ -635,14 +696,18 @@ export class FollowThePathScene extends Phaser.Scene {
   private updateCursor(): void {
     if (!this.cursorG || !this.neighborG) return;
     this.neighborG.clear();
-    const active = this.state === 'turn' && !!this.grid;
+    const active = this.state === "turn" && !!this.grid;
     this.cursorG.setVisible(active);
     if (!active || !this.grid) return;
 
     const here = cellWorldPos(this.playerPos.row, this.playerPos.col);
     this.cursorG.setPosition(here.x, here.y);
 
-    for (const n of getNeighbors(this.grid, this.playerPos.row, this.playerPos.col)) {
+    for (const n of getNeighbors(
+      this.grid,
+      this.playerPos.row,
+      this.playerPos.col,
+    )) {
       const w = cellWorldPos(n.row, n.col);
       this.neighborG.fillStyle(0x3ce6ff, 0.12);
       fillDiamond(this.neighborG, w.x, w.y, 0.82);
@@ -655,24 +720,25 @@ export class FollowThePathScene extends Phaser.Scene {
     at: Phaser.Math.Vector2,
     bonuses: { timeBonus: number; perfectBonus: number; wasPerfect: boolean },
   ): void {
-    let yOffset = 0;
-    if (bonuses.timeBonus > 0) {
-      scorePopup(this, at.x, at.y - s(46), `+${bonuses.timeBonus}  TIME`, {
-        color: '#fde68a',
-        size: 16,
-        rise: 36,
-        duration: 1100,
-      });
-      yOffset += s(26);
-    }
     if (bonuses.wasPerfect && bonuses.perfectBonus > 0) {
-      scorePopup(this, at.x, at.y - s(46) - yOffset, `+${bonuses.perfectBonus}  PERFECT!`, {
-        color: '#a3e635',
-        size: 17,
-        rise: 40,
-        duration: 1200,
+      scorePopup(
+        this,
+        at.x,
+        at.y - s(46),
+        `+${bonuses.perfectBonus}  PERFECT!`,
+        {
+          color: "#a3e635",
+          size: 17,
+          rise: 40,
+          duration: 1200,
+        },
+      );
+      sparkle(this, at.x, at.y, {
+        count: 14,
+        color: 0xa3e635,
+        spread: 44,
+        duration: 800,
       });
-      sparkle(this, at.x, at.y, { count: 14, color: 0xa3e635, spread: 44, duration: 800 });
     }
   }
 
@@ -690,7 +756,8 @@ export class FollowThePathScene extends Phaser.Scene {
   }
 
   private exitScene(): void {
-    if (this.scene.isActive(PROLOGUE_RUN_UI_KEY)) this.scene.stop(PROLOGUE_RUN_UI_KEY);
+    if (this.scene.isActive(PROLOGUE_RUN_UI_KEY))
+      this.scene.stop(PROLOGUE_RUN_UI_KEY);
     GAME.reset();
     this.scene.start(this.returnScene);
   }
@@ -698,9 +765,9 @@ export class FollowThePathScene extends Phaser.Scene {
   /** Public hook for test injection (used by Playwright). */
   puzzleComplete(): void {
     completeAlgorithmiaPuzzle(this, {
-      puzzleId: 'p0_1',
-      puzzleName: 'Follow the Path',
-      concept: 'Sequential Processing',
+      puzzleId: "p0_1",
+      puzzleName: "Follow the Path",
+      concept: "Sequential Processing",
       returnScene: this.returnScene,
       startedAt: this.startedAt,
       delayMs: 0,

@@ -2,37 +2,32 @@
  * Twin Rivers - first-principles two-pointer / sliding-window puzzles.
  *
  * Every puzzle here is interactive: the player physically operates pointers and
- * windows on a row of values, performing the algorithm by hand. Each scene
- * pairs a side-panel pseudocode trace with the action so the symbolic step
- * lights up at the same moment the visible step happens.
+ * windows on a row of values, performing the algorithm by hand. No pseudocode
+ * or state panels mount during play (docs/VISION.md §3-4) — the deep layer
+ * lives in the Codex.
  *
  * Filename retained from the previous (multiple-choice) implementation so that
  * gameConfig scene registration and FutureRegionScene wiring remain unchanged.
  */
 
-import Phaser from 'phaser';
-import { BasePuzzleScene } from './BasePuzzleScene';
-import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../../config/assets';
-import { audioManager } from '../../core/AudioManager';
-import { JuiceSystem } from '../../systems/JuiceSystem';
-import { RiverRow } from '../../ui/RiverRow';
-import { AlgorithmTrace } from '../../ui/AlgorithmTrace';
-import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
-import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
-import { BitCompanion } from '../../ui/BitCompanion';
-import { GlitchCorner } from '../../ui/GlitchCorner';
-import { ComplexityMeter } from '../../ui/ComplexityMeter';
-import { NextMoveHint } from '../../ui/NextMoveHint';
-import { TWIN_RIVERS_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
-import type { RegionBackdropId, RegionBackdropOptions } from '../../ui/RegionBackdrop';
-import { showLessonCard } from '../../ui/LessonCard';
-import {
-  buildCurrentRiderPreview,
-  buildFixedWindowPreview,
-  buildMirrorSerpentPreview,
-  buildPointerBridgePreview,
-} from '../../data/puzzles/puzzlePreviewLogic';
+import Phaser from "phaser";
+import { BasePuzzleScene } from "./BasePuzzleScene";
+import { COLORS, FONTS, SCENE_KEYS } from "../../config/constants";
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from "../../config/assets";
+import { audioManager } from "../../core/AudioManager";
+import { JuiceSystem } from "../../systems/JuiceSystem";
+import { RiverRow } from "../../ui/RiverRow";
+import { PuzzleAmbience } from "../../ui/PuzzleAmbience";
+import { BitCompanion } from "../../ui/BitCompanion";
+import { GlitchCorner } from "../../ui/GlitchCorner";
+import { ComplexityMeter } from "../../ui/ComplexityMeter";
+import { NextMoveHint } from "../../ui/NextMoveHint";
+import { TWIN_RIVERS_PUZZLE_THEME, type PuzzleTheme } from "./puzzleTheme";
+import type {
+  RegionBackdropId,
+  RegionBackdropOptions,
+} from "../../ui/RegionBackdrop";
+import { showLessonCard } from "../../ui/LessonCard";
 import {
   MIRROR_WALK_ROUNDS,
   POINTER_BRIDGE_ROUNDS,
@@ -47,17 +42,35 @@ import {
   longestUniqueWindowLength,
   type FixedWindowRound,
   type PointerBridgeRound,
-} from '../../data/puzzles/twinRiversPuzzleLogic';
-import { BruteForceActor, type BruteForceStrategy } from '../../entities/BruteForceActor';
-import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
-import { PuzzlePhase } from '../../data/types';
-import { playBossPhaseTransition } from '../../ui/BossPhaseTransition';
-import { playBossEntryBanner } from '../../ui/BossEntryBanner';
-import { GamepadActionBridge } from '../../input/GamepadActionBridge';
+} from "../../data/puzzles/twinRiversPuzzleLogic";
+import {
+  BruteForceActor,
+  type BruteForceStrategy,
+} from "../../entities/BruteForceActor";
+import { GLITCH_BANTER } from "../../data/dialogue/glitch_dialogue";
+import { PuzzlePhase } from "../../data/types";
+import { playBossPhaseTransition } from "../../ui/BossPhaseTransition";
+import { playBossEntryBanner } from "../../ui/BossEntryBanner";
+import { GamepadActionBridge } from "../../input/GamepadActionBridge";
+import { mountTransientLegend } from "../../ui/transientLegend";
 
 const BLUE_BANK = 0x5ab7d4;
 const ORANGE_BANK = 0xf97316;
 const GOLD = 0xfbbf24;
+
+/**
+ * Guard-preload the dock-crate sprite RiverRow uses as its physical tile
+ * body. BasePuzzleScene.preload only loads the backdrop + frame; without
+ * this opt-in (P1_1 pattern) a direct scene start would silently fall back
+ * to the flat-slab tile path.
+ */
+function preloadRiverRowProps(scene: BasePuzzleScene): void {
+  const key = VISUAL_REVAMP_KEYS.TR_DOCK_CRATE;
+  const path = getImageAssetPath(key);
+  if (path && !scene.textures.exists(key)) {
+    scene.load.image(key, path);
+  }
+}
 
 // ============================================================================
 // P2_1 - Mirror Walk: in-place reverse via two converging pointers
@@ -71,13 +84,8 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   private roundIndex = 0;
   private mistakes = 0;
   private row!: RiverRow;
-  /** Algorithm trace panel. Null in FEEL_IT round 1 — gated to USE_IT only,
-   *  since the pseudocode names "reverse(arr)" and the two-pointer loop. */
-  private trace: AlgorithmTrace | null = null;
   private statusText!: Phaser.GameObjects.Text;
-  /** Reverse-preview side panel. Null in FEEL_IT — algorithm-named ("REVERSE
-   *  PREVIEW") and shows `goal = [...]` which leaks the target shape. */
-  private preview: PuzzlePreviewSidePanel | null = null;
+  private useItCornerMounted = false;
   private actionLocked = false;
   private roundCompleting = false;
   private swappedThisPair = false;
@@ -93,9 +101,10 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_TR_1 });
-    this.puzzleId = 'tr_1';
-    this.puzzleName = 'Mirror Walk';
-    this.puzzleDescription = 'Two pointers walk inward and swap. Reverse the river.';
+    this.puzzleId = "tr_1";
+    this.puzzleName = "Mirror Walk";
+    this.puzzleDescription =
+      "Two pointers walk inward and swap. Reverse the river.";
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -107,11 +116,22 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   protected getPuzzleTheme(): PuzzleTheme {
     return TWIN_RIVERS_PUZZLE_THEME;
   }
-  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
-    return { id: 'twin-rivers', options: { riverMode: 'dual', intensity: 0.9 } };
+  protected getRegionBackdrop(): {
+    id: RegionBackdropId;
+    options?: RegionBackdropOptions;
+  } | null {
+    return {
+      id: "twin-rivers",
+      options: { riverMode: "dual", intensity: 0.9 },
+    };
   }
   protected getConceptName(): string {
-    return 'Two-Pointer Reverse';
+    return "Two-Pointer Reverse";
+  }
+
+  preload(): void {
+    super.preload();
+    preloadRiverRowProps(this);
   }
 
   create(): void {
@@ -119,12 +139,18 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     // swap" from the title subtitle. The player should derive the
     // two-pointer mechanic from the diegetic prompt and Glitch's contrast.
     if (MIRROR_WALK_ROUNDS[0]?.lesson?.phase === PuzzlePhase.FEEL_IT) {
-      this.puzzleDescription = 'The river runs backwards. Reverse the current.';
+      this.puzzleDescription = "The river runs backwards. Reverse the current.";
     }
     super.create();
-    new PuzzleAmbience(this, 'river', { intensity: 0.35 });
+    new PuzzleAmbience(this, "river", { intensity: 0.35 });
     const { width, height } = this.cameras.main;
-    new BitCompanion(this, { stage: 'frame', frameMode: 'split', x: width - 108, y: 100, depth: 40 });
+    new BitCompanion(this, {
+      stage: "frame",
+      frameMode: "split",
+      x: width - 108,
+      y: 100,
+      depth: 40,
+    });
     // GlitchCorner removed — replaced by phase-gated BruteForceActor in
     // mountFeelItPanels (degenerate-row mode: heading + ticking counter).
 
@@ -136,29 +162,26 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     // right-hand finger on J for the R-pointer). Now the label says that.
     // Arrow keys are also wired below as aliases and called out so players
     // who reach for them know they work.
-    this.add.text(width / 2, height - 92,
-      '[SPACE] swap   •   [D] / [→] L pointer   •   [J] / [←] R pointer',
-      {
-        fontSize: '10px',
-        fontFamily: FONTS.RETRO,
-        color: '#88c070',
-      },
-    ).setOrigin(0.5).setDepth(20);
+    mountTransientLegend(
+      this,
+      height - 92,
+      "[SPACE] swap   •   [D] / [→] L pointer   •   [J] / [←] R pointer",
+    );
 
-    this.input.keyboard?.on('keydown-SPACE', this.onSwap);
-    this.input.keyboard?.on('keydown-ENTER', this.onSwap);
-    this.input.keyboard?.on('keydown-D', () => this.tryMoveLeft());
-    this.input.keyboard?.on('keydown-J', () => this.tryMoveRight());
+    this.input.keyboard?.on("keydown-SPACE", this.onSwap);
+    this.input.keyboard?.on("keydown-ENTER", this.onSwap);
+    this.input.keyboard?.on("keydown-D", () => this.tryMoveLeft());
+    this.input.keyboard?.on("keydown-J", () => this.tryMoveRight());
     // Arrow-key aliases — RIGHT advances L (inward), LEFT retreats R (inward).
-    this.input.keyboard?.on('keydown-RIGHT', () => this.tryMoveLeft());
-    this.input.keyboard?.on('keydown-LEFT', () => this.tryMoveRight());
+    this.input.keyboard?.on("keydown-RIGHT", () => this.tryMoveLeft());
+    this.input.keyboard?.on("keydown-LEFT", () => this.tryMoveRight());
     new GamepadActionBridge(this, {
       action: this.onSwap,
       right: () => this.tryMoveLeft(),
       left: () => this.tryMoveRight(),
     });
 
-    this.hint = new NextMoveHint(this, { tone: 'gold', depth: 45 });
+    this.hint = new NextMoveHint(this, { tone: "gold", depth: 45 });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.bruteForce?.destroy();
@@ -176,43 +199,9 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = MIRROR_WALK_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'riverside', { dockPosition: 'top' });
+    if (lesson)
+      await showLessonCard(this, lesson, "riverside", { dockPosition: "top" });
     this.startRound(index);
-  }
-
-  /** Compute and push the predicted outcome of the next available key press. */
-  private refreshPreview(): void {
-    if (!this.preview) return;
-
-    const valuesStr = `[${this.values.join(', ')}]`;
-    const target = `[${this.targetValues.join(', ')}]`;
-    const stateLines = [
-      `arr   = ${valuesStr}`,
-      `goal  = ${target}`,
-      `L = ${this.leftIndex}  →  ${this.values[this.leftIndex] ?? '—'}`,
-      `R = ${this.rightIndex}  →  ${this.values[this.rightIndex] ?? '—'}`,
-    ];
-    this.preview.setState(stateLines);
-
-    let next: string;
-    if (this.roundCompleting || this.leftIndex >= this.rightIndex) {
-      next = 'Loop exits.\nRound complete — advance to next river.';
-    } else if (this.swappedThisPair && this.leftAdvancedThisPair && !this.rightRetreatedThisPair) {
-      const newR = this.rightIndex - 1;
-      next = `J  →  R = ${newR} (value: ${this.values[newR] ?? '—'})`;
-    } else if (!this.swappedThisPair) {
-      // Preview the swap: predict the row state after SPACE
-      const predicted = [...this.values];
-      [predicted[this.leftIndex], predicted[this.rightIndex]] =
-        [predicted[this.rightIndex], predicted[this.leftIndex]];
-      next = `SPACE  →  arr = [${predicted.join(', ')}]`;
-    } else if (!this.leftAdvancedThisPair) {
-      const newL = this.leftIndex + 1;
-      next = `D  →  L = ${newL} (value: ${this.values[newL] ?? '—'})`;
-    } else {
-      next = 'Check while condition.';
-    }
-    this.preview.setNextAction(next);
   }
 
   private readonly onSwap = () => {
@@ -239,66 +228,51 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   // Phase gating (FEEL_IT vs USE_IT)
   // ──────────────────────────────────────────────────────────────────
 
-  /** Phase helper — true when the current round is FEEL_IT. Gates the trace
-   *  panel, the reverse-preview side panel (algorithm-named), and any hint
+  /** Phase helper — true when the current round is FEEL_IT. Gates any hint
    *  copy that would name "Two Pointers" before the player has felt it. */
   private isFeelItRound(): boolean {
-    return MIRROR_WALK_ROUNDS[this.roundIndex]?.lesson?.phase === PuzzlePhase.FEEL_IT;
+    return (
+      MIRROR_WALK_ROUNDS[this.roundIndex]?.lesson?.phase === PuzzlePhase.FEEL_IT
+    );
   }
 
-  /** FEEL_IT mounts: only the brute-force co-actor. NO trace, NO preview.
-   *  Glitch ticks a "random swaps" counter that never converges — the
-   *  contrast IS the teaching. */
+  /** FEEL_IT mounts: only the brute-force co-actor — no algorithm-named
+   *  chrome. Glitch ticks a "random swaps" counter that never converges —
+   *  the contrast IS the teaching. */
   private mountFeelItPanels(): void {
     if (this.bruteForce) return;
     const { height } = this.cameras.main;
     this.bruteForce = new BruteForceActor(this, {
-      x: 152, y: height - 92,
+      x: 152,
+      y: height - 92,
       strategy: makeReverseBruteStrategy(),
       heading: "⚠ GLITCH'S APPROACH",
-      subtitle: '(splashing at random tiles...)',
-      notDoneLabel: 'still flailing',
-      doneLabel: 'gave up',
-      verbLabel: 'random swaps',
+      subtitle: "(splashing at random tiles...)",
+      notDoneLabel: "still flailing",
+      doneLabel: "gave up",
+      verbLabel: "random swaps",
       banter: GLITCH_BANTER.tr_1,
       depth: 40,
     });
   }
 
-  /** USE_IT mounts: the full teaching toolkit. Idempotent — safe to call on
-   *  every round-2-onward start. Holds the reverse(arr) pseudocode trace,
-   *  the REVERSE PREVIEW side panel, and the friendly GlitchCorner. */
+  /** USE_IT mounts: the friendly GlitchCorner only. No pseudocode or state
+   *  panels — the playable game never shows code (docs/VISION.md §3-4); the
+   *  deep layer lives in the Codex. */
   private mountUseItPanels(): void {
     const { height } = this.cameras.main;
-    if (!this.trace) {
+    if (!this.useItCornerMounted) {
+      this.useItCornerMounted = true;
       new GlitchCorner(this, {
-        x: 152, y: height - 92,
-        width: 240, height: 74,
-        variant: 'riverside',
-        heading: 'Nearby · Glitch (in the river)',
+        x: 152,
+        y: height - 92,
+        width: 240,
+        height: 74,
+        variant: "riverside",
+        heading: "Nearby · Glitch (in the river)",
         body: '"The water tastes like ink!"',
         depth: 40,
       });
-      this.trace = new AlgorithmTrace(this, {
-        x: 64,
-        y: 220,
-        width: 240,
-        title: 'reverse(arr)',
-        lines: [
-          'L = 0',
-          'R = arr.length - 1',
-          'while L < R:',
-          '  swap(arr[L], arr[R])',
-          '  L = L + 1',
-          '  R = R - 1',
-          'done',
-        ],
-      });
-    }
-    if (!this.preview) {
-      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -16 });
-      this.preview.setTitle('REVERSE PREVIEW');
-      this.preview.show();
     }
   }
 
@@ -326,8 +300,18 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       gap: 10,
       onTilePress: () => this.performMirrorWalkBoardStep(),
     });
-    this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: this.leftIndex, side: 'top' });
-    this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.rightIndex, side: 'top' });
+    this.row.setCursor("L", {
+      label: "L",
+      color: BLUE_BANK,
+      index: this.leftIndex,
+      side: "top",
+    });
+    this.row.setCursor("R", {
+      label: "R",
+      color: ORANGE_BANK,
+      index: this.rightIndex,
+      side: "top",
+    });
 
     if (this.isFeelItRound()) {
       this.mountFeelItPanels();
@@ -339,41 +323,51 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     }
 
     this.refreshStatus();
-    this.trace?.highlightLine(2); // while L < R
   }
 
   private refreshStatus(): void {
     const stage = this.roundIndex + 1;
     const total = MIRROR_WALK_ROUNDS.length;
     const needsRightRetreat =
-      this.swappedThisPair && this.leftAdvancedThisPair && !this.rightRetreatedThisPair;
+      this.swappedThisPair &&
+      this.leftAdvancedThisPair &&
+      !this.rightRetreatedThisPair;
     // FEEL_IT strips array-index vocabulary ("arr[L]", "L = L + 1") from the
     // status line. The player still gets a next-action prompt, but in
     // riverbed terms — they shouldn't be reading pseudocode yet.
     const feelIt = this.isFeelItRound();
     const nextStep = feelIt
-      ? (this.roundCompleting ? 'the river reverses'
-        : needsRightRetreat ? 'J: step the right avatar inward'
-          : this.leftIndex >= this.rightIndex ? 'the river reverses'
-            : !this.swappedThisPair ? 'SPACE: trade the ends'
-              : !this.leftAdvancedThisPair ? 'D: step the left avatar inward'
-                : 'continue')
-      : (this.roundCompleting ? 'loop exits'
-        : needsRightRetreat ? 'J: R = R - 1'
-          : this.leftIndex >= this.rightIndex ? 'loop exits'
-            : !this.swappedThisPair ? 'SPACE: swap arr[L] and arr[R]'
-              : !this.leftAdvancedThisPair ? 'D: L = L + 1'
-                : 'check while condition');
+      ? this.roundCompleting
+        ? "the river reverses"
+        : needsRightRetreat
+          ? "J: step the right avatar inward"
+          : this.leftIndex >= this.rightIndex
+            ? "the river reverses"
+            : !this.swappedThisPair
+              ? "SPACE: trade the ends"
+              : !this.leftAdvancedThisPair
+                ? "D: step the left avatar inward"
+                : "continue"
+      : this.roundCompleting
+        ? "loop exits"
+        : needsRightRetreat
+          ? "J: R = R - 1"
+          : this.leftIndex >= this.rightIndex
+            ? "loop exits"
+            : !this.swappedThisPair
+              ? "SPACE: swap arr[L] and arr[R]"
+              : !this.leftAdvancedThisPair
+                ? "D: L = L + 1"
+                : "check while condition";
     this.statusText.setText(
-      `RIVER ${stage}/${total}   -   L=${this.leftIndex}   R=${this.rightIndex}   -   ${nextStep}`
+      `RIVER ${stage}/${total}   -   L=${this.leftIndex}   R=${this.rightIndex}   -   ${nextStep}`,
     );
-    this.refreshPreview();
     this.refreshHint();
   }
 
   /**
    * Position the NextMoveHint marker so the algorithm's forced action is
-   * visible on the board itself, not just in the side trace:
+   * visible on the board itself:
    *   • Pre-swap → swap-pair arrows spanning L and R.
    *   • Post-swap, pre-advance → pulse-ring on L tile (next action: D).
    *   • Post-advance, pre-retreat → pulse-ring on R tile (next action: J).
@@ -394,21 +388,25 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     const above = lCenter.y - this.row.tileSize / 2;
     if (!this.swappedThisPair) {
       this.hint.setTarget({
-        kind: 'swap-pair',
-        x: lCenter.x, x2: rCenter.x, y: above,
-        label: 'swap',
+        kind: "swap-pair",
+        x: lCenter.x,
+        x2: rCenter.x,
+        y: above,
+        label: "swap",
       });
     } else if (!this.leftAdvancedThisPair) {
       this.hint.setTarget({
-        kind: 'pulse-ring',
-        x: lCenter.x, y: above - 12,
-        label: 'L→',
+        kind: "pulse-ring",
+        x: lCenter.x,
+        y: above - 12,
+        label: "L→",
       });
     } else if (!this.rightRetreatedThisPair) {
       this.hint.setTarget({
-        kind: 'pulse-ring',
-        x: rCenter.x, y: above - 12,
-        label: '←R',
+        kind: "pulse-ring",
+        x: rCenter.x,
+        y: above - 12,
+        label: "←R",
       });
     } else {
       this.hint.clear();
@@ -417,8 +415,12 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
 
   private async trySwap(): Promise<void> {
     if (this.roundCompleting) return;
-    if (this.swappedThisPair && this.leftAdvancedThisPair && !this.rightRetreatedThisPair) {
-      this.flashWrong('Retreat R before checking the loop again.');
+    if (
+      this.swappedThisPair &&
+      this.leftAdvancedThisPair &&
+      !this.rightRetreatedThisPair
+    ) {
+      this.flashWrong("Retreat R before checking the loop again.");
       return;
     }
     if (this.leftIndex >= this.rightIndex) {
@@ -426,31 +428,35 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       return;
     }
     if (this.swappedThisPair) {
-      this.flashWrong('Move L and R inward before swapping again.');
+      this.flashWrong("Move L and R inward before swapping again.");
       return;
     }
 
     this.actionLocked = true;
-    this.trace?.highlightLine(3); // swap
-    audioManager.playTone(420, 90, 'sine');
+    audioManager.playTone(420, 90, "sine");
     await this.row.animateSwap(this.leftIndex, this.rightIndex);
 
-    [this.values[this.leftIndex], this.values[this.rightIndex]] =
-      [this.values[this.rightIndex], this.values[this.leftIndex]];
+    [this.values[this.leftIndex], this.values[this.rightIndex]] = [
+      this.values[this.rightIndex],
+      this.values[this.leftIndex],
+    ];
 
     this.swappedThisPair = true;
     this.leftAdvancedThisPair = false;
     this.rightRetreatedThisPair = false;
     this.actionLocked = false;
-    this.trace?.highlightLine(4); // L = L + 1
     this.refreshStatus();
   }
 
   private tryMoveLeft(): void {
     if (this.actionLocked) return;
     if (this.roundCompleting) return;
-    if (this.swappedThisPair && this.leftAdvancedThisPair && !this.rightRetreatedThisPair) {
-      this.flashWrong('R must retreat before L can move again.');
+    if (
+      this.swappedThisPair &&
+      this.leftAdvancedThisPair &&
+      !this.rightRetreatedThisPair
+    ) {
+      this.flashWrong("R must retreat before L can move again.");
       return;
     }
     if (this.leftIndex >= this.rightIndex) {
@@ -458,25 +464,23 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       return;
     }
     if (!this.swappedThisPair) {
-      this.flashWrong('Swap the mirrored values first.');
+      this.flashWrong("Swap the mirrored values first.");
       return;
     }
     if (this.leftAdvancedThisPair) {
-      this.flashWrong('R must retreat before L can move again.');
+      this.flashWrong("R must retreat before L can move again.");
       return;
     }
 
     this.actionLocked = true;
-    this.trace?.highlightLine(4); // L = L + 1
     this.leftIndex++;
     this.leftAdvancedThisPair = true;
-    this.row.moveCursor('L', this.leftIndex);
-    audioManager.playTone(420, 60, 'sine');
+    this.row.moveCursor("L", this.leftIndex);
+    audioManager.playTone(420, 60, "sine");
     this.refreshStatus();
 
     this.time.delayedCall(240, () => {
       this.actionLocked = false;
-      this.trace?.highlightLine(5); // R = R - 1
       this.refreshStatus();
     });
   }
@@ -489,24 +493,23 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
         this.checkRoundComplete();
         return;
       }
-      this.flashWrong('Swap the mirrored values first.');
+      this.flashWrong("Swap the mirrored values first.");
       return;
     }
     if (!this.leftAdvancedThisPair) {
-      this.flashWrong('Advance L before retreating R.');
+      this.flashWrong("Advance L before retreating R.");
       return;
     }
     if (this.rightRetreatedThisPair) {
-      this.flashWrong('Return to the while line before moving again.');
+      this.flashWrong("Return to the while line before moving again.");
       return;
     }
 
     this.actionLocked = true;
-    this.trace?.highlightLine(5); // R = R - 1
     this.rightIndex--;
     this.rightRetreatedThisPair = true;
-    this.row.moveCursor('R', this.rightIndex);
-    audioManager.playTone(360, 60, 'sine');
+    this.row.moveCursor("R", this.rightIndex);
+    audioManager.playTone(360, 60, "sine");
     this.refreshStatus();
 
     this.time.delayedCall(240, () => {
@@ -516,19 +519,20 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   }
 
   private finishPointerPair(): void {
-    if (!this.swappedThisPair || !this.leftAdvancedThisPair || !this.rightRetreatedThisPair) return;
+    if (
+      !this.swappedThisPair ||
+      !this.leftAdvancedThisPair ||
+      !this.rightRetreatedThisPair
+    )
+      return;
     this.swappedThisPair = false;
     this.leftAdvancedThisPair = false;
     this.rightRetreatedThisPair = false;
     this.refreshStatus();
 
     if (this.leftIndex >= this.rightIndex) {
-      this.trace?.highlightLine(6); // done
       this.checkRoundComplete();
-      return;
     }
-
-    this.trace?.highlightLine(2); // while L < R
   }
 
   private checkRoundComplete(): void {
@@ -540,14 +544,22 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     if (!arrayEquals(this.values, this.targetValues)) {
       // Should be unreachable given the mechanic, but guard anyway.
       this.mistakes++;
-      JuiceSystem.wrongBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2);
+      JuiceSystem.wrongBurst(
+        this,
+        this.cameras.main.width / 2,
+        this.cameras.main.height / 2,
+      );
       this.roundCompleting = false;
       this.actionLocked = false;
       return;
     }
 
     audioManager.playCorrectTone();
-    JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2);
+    JuiceSystem.correctBurst(
+      this,
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2,
+    );
 
     if (this.roundIndex + 1 >= MIRROR_WALK_ROUNDS.length) {
       this.time.delayedCall(900, () => this.completePuzzle());
@@ -580,8 +592,12 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
   }
 
   private completePuzzle(): void {
-    const stars = this.mistakes === 0 && this.hintsUsed === 0 ? 3
-      : this.mistakes <= 1 && this.hintsUsed <= 1 ? 2 : 1;
+    const stars =
+      this.mistakes === 0 && this.hintsUsed === 0
+        ? 3
+        : this.mistakes <= 1 && this.hintsUsed <= 1
+          ? 2
+          : 1;
     this.onPuzzleComplete(stars);
   }
 
@@ -591,15 +607,15 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     // riverbed framing.
     const hints = this.isFeelItRound()
       ? [
-        'Try the ends. Trade them. Then step inward on both banks.',
-        'Each round you act on one pair: trade with SPACE, then step both avatars inward.',
-        'When the two avatars meet, the current has reversed.',
-      ]
+          "Try the ends. Trade them. Then step inward on both banks.",
+          "Each round you act on one pair: trade with SPACE, then step both avatars inward.",
+          "When the two avatars meet, the current has reversed.",
+        ]
       : [
-        'A reverse loop has three visible steps: swap the mirrored values, move L right, then move R left.',
-        'Follow the trace in order: SPACE, D, J. Only after both pointers move does the loop check again.',
-        'A reverse over n values takes exactly floor(n/2) swaps.',
-      ];
+          "A reverse loop has three visible steps: swap the mirrored values, move L right, then move R left.",
+          "Follow the order: SPACE, D, J. Only after both pointers move does the loop check again.",
+          "A reverse over n values takes exactly floor(n/2) swaps.",
+        ];
     this.showMessage(hints[hintNumber - 1] ?? hints[0], COLORS.GOLD_ACCENT);
   }
 }
@@ -615,14 +631,9 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   private leftIndex = 0;
   private rightIndex = 0;
   private row!: RiverRow;
-  /** Algorithm trace panel. Null in FEEL_IT round 1 — the twoSum(arr, target)
-   *  pseudocode is the entire technique; mounting it would defeat the contract. */
-  private trace: AlgorithmTrace | null = null;
   private sumText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
-  /** Pointer preview side panel. Null in FEEL_IT — "POINTER PREVIEW" names
-   *  the technique by chrome alone. */
-  private preview: PuzzlePreviewSidePanel | null = null;
+  private useItCornerMounted = false;
   private actionLocked = false;
   /** Pair-checks (brute) vs walk steps (algo). */
   private complexity: ComplexityMeter | null = null;
@@ -636,9 +647,10 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_TR_2 });
-    this.puzzleId = 'tr_2';
-    this.puzzleName = 'Pointer Bridge';
-    this.puzzleDescription = 'On a sorted row, raise the low side or lower the high side until the pair sums match.';
+    this.puzzleId = "tr_2";
+    this.puzzleName = "Pointer Bridge";
+    this.puzzleDescription =
+      "On a sorted row, raise the low side or lower the high side until the pair sums match.";
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -650,13 +662,24 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   protected getPuzzleTheme(): PuzzleTheme {
     return TWIN_RIVERS_PUZZLE_THEME;
   }
-  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
+  protected getRegionBackdrop(): {
+    id: RegionBackdropId;
+    options?: RegionBackdropOptions;
+  } | null {
     // Pointer Bridge crosses the converged river — one wide blue ribbon flowing
     // downstream, so the bridge becomes the natural stage spine.
-    return { id: 'twin-rivers', options: { riverMode: 'converged', intensity: 0.9 } };
+    return {
+      id: "twin-rivers",
+      options: { riverMode: "converged", intensity: 0.9 },
+    };
   }
   protected getConceptName(): string {
-    return 'Sorted Two-Sum';
+    return "Sorted Two-Sum";
+  }
+
+  preload(): void {
+    super.preload();
+    preloadRiverRowProps(this);
   }
 
   create(): void {
@@ -664,38 +687,48 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     // from the title subtitle. The player should derive that the sortedness
     // makes one direction always correct.
     if (POINTER_BRIDGE_ROUNDS[0]?.lesson?.phase === PuzzlePhase.FEEL_IT) {
-      this.puzzleDescription = 'Find two stones whose values sum to the target. The Bridge Keeper watches.';
+      this.puzzleDescription =
+        "Find two stones whose values sum to the target. The Bridge Keeper watches.";
     }
     super.create();
-    new PuzzleAmbience(this, 'river', { intensity: 0.35 });
+    new PuzzleAmbience(this, "river", { intensity: 0.35 });
     const { width, height } = this.cameras.main;
-    new BitCompanion(this, { stage: 'frame', frameMode: 'split', x: width - 108, y: 100, depth: 40 });
-    // GlitchCorner, ComplexityMeter, AlgorithmTrace, PuzzlePreviewSidePanel
-    // all moved into mountUseItPanels — the round-1 FEEL_IT mount has only
-    // the brute-force counter, no algorithm-named chrome.
+    new BitCompanion(this, {
+      stage: "frame",
+      frameMode: "split",
+      x: width - 108,
+      y: 100,
+      depth: 40,
+    });
+    // GlitchCorner and ComplexityMeter mount via mountUseItPanels — the
+    // round-1 FEEL_IT mount has only the brute-force counter, no
+    // algorithm-named chrome.
 
     this.statusText = this.createStatusReadout(width / 2, 174);
 
-    this.sumText = this.add.text(width / 2, 218, '', {
-      fontSize: '18px',
-      fontFamily: FONTS.RETRO,
-      color: '#fbbf24',
-      stroke: '#081820',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(20);
+    this.sumText = this.add
+      .text(width / 2, 218, "", {
+        fontSize: "18px",
+        fontFamily: FONTS.RETRO,
+        color: "#fbbf24",
+        stroke: "#081820",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(20);
 
-    this.add.text(width / 2, height - 92, '[A]/[D] move left avatar  -  [J]/[L] move right avatar  -  [ENTER] lock pair', {
-      fontSize: '10px',
-      fontFamily: FONTS.RETRO,
-      color: '#88c070',
-    }).setOrigin(0.5).setDepth(20);
+    mountTransientLegend(
+      this,
+      height - 92,
+      "[A]/[D] move left avatar  -  [J]/[L] move right avatar  -  [ENTER] lock pair",
+    );
 
-    this.input.keyboard?.on('keydown-A', () => this.tryMoveLeft(-1));
-    this.input.keyboard?.on('keydown-D', () => this.tryMoveLeft(1));
-    this.input.keyboard?.on('keydown-J', () => this.tryMoveRight(-1));
-    this.input.keyboard?.on('keydown-L', () => this.tryMoveRight(1));
-    this.input.keyboard?.on('keydown-ENTER', () => this.tryLock());
-    this.input.keyboard?.on('keydown-SPACE', () => this.tryLock());
+    this.input.keyboard?.on("keydown-A", () => this.tryMoveLeft(-1));
+    this.input.keyboard?.on("keydown-D", () => this.tryMoveLeft(1));
+    this.input.keyboard?.on("keydown-J", () => this.tryMoveRight(-1));
+    this.input.keyboard?.on("keydown-L", () => this.tryMoveRight(1));
+    this.input.keyboard?.on("keydown-ENTER", () => this.tryLock());
+    this.input.keyboard?.on("keydown-SPACE", () => this.tryLock());
     new GamepadActionBridge(this, {
       left: () => this.tryMoveLeft(-1),
       right: () => this.tryMoveLeft(1),
@@ -719,73 +752,63 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   // ──────────────────────────────────────────────────────────────────
 
   private isFeelItRound(): boolean {
-    return POINTER_BRIDGE_ROUNDS[this.roundIndex]?.lesson?.phase === PuzzlePhase.FEEL_IT;
+    return (
+      POINTER_BRIDGE_ROUNDS[this.roundIndex]?.lesson?.phase ===
+      PuzzlePhase.FEEL_IT
+    );
   }
 
-  /** FEEL_IT mounts: only the brute-force pair-check counter. NO trace, NO
-   *  preview, NO complexity meter. The two-pointer technique should be the
-   *  player's discovery, not the screen's announcement. */
+  /** FEEL_IT mounts: only the brute-force pair-check counter — no complexity
+   *  meter or other algorithm-named chrome. The two-pointer technique should
+   *  be the player's discovery, not the screen's announcement. */
   private mountFeelItPanels(): void {
     if (this.bruteForce) return;
     const { height } = this.cameras.main;
     this.bruteForce = new BruteForceActor(this, {
-      x: 152, y: height - 92,
+      x: 152,
+      y: height - 92,
       strategy: makeSortedPairsBruteStrategy(),
       heading: "⚠ GLITCH'S APPROACH",
-      subtitle: '(checking every pair at random...)',
-      notDoneLabel: 'still flailing',
-      doneLabel: 'gave up',
-      verbLabel: 'pair checks',
+      subtitle: "(checking every pair at random...)",
+      notDoneLabel: "still flailing",
+      doneLabel: "gave up",
+      verbLabel: "pair checks",
       banter: GLITCH_BANTER.tr_2,
       depth: 40,
     });
   }
 
-  /** USE_IT mounts: the full teaching toolkit. Idempotent — safe to call on
-   *  every round-2-onward start. Holds the twoSum(arr, target) pseudocode
-   *  trace, the POINTER PREVIEW side panel, the pair-checks-vs-walk-steps
-   *  complexity meter, and the friendly GlitchCorner. */
+  /** USE_IT mounts: the friendly GlitchCorner and the pair-checks-vs-walk-
+   *  steps complexity meter. No pseudocode or state panels — the playable
+   *  game never shows code (docs/VISION.md §3-4); the deep layer lives in
+   *  the Codex. */
   private mountUseItPanels(): void {
     const { width, height } = this.cameras.main;
-    if (!this.trace) {
+    if (!this.useItCornerMounted) {
+      this.useItCornerMounted = true;
       new GlitchCorner(this, {
-        x: 152, y: height - 92,
-        width: 240, height: 74,
-        variant: 'riverside',
+        x: 152,
+        y: height - 92,
+        width: 240,
+        height: 74,
+        variant: "riverside",
         heading: "Glitch's Approach",
-        body: 'check every pair: n(n−1)/2 · the walk: ≤ n steps.',
+        body: "checks every pair, one by one. You just walk inward.",
         depth: 40,
       });
-      this.trace = new AlgorithmTrace(this, {
-        x: 64,
-        y: 244,
-        width: 248,
-        title: 'twoSum(arr, target)',
-        lines: [
-          'L = 0',
-          'R = arr.length - 1',
-          'while L < R:',
-          '  s = arr[L] + arr[R]',
-          '  if s == target: return L,R',
-          '  if s <  target: L++',
-          '  if s >  target: R--',
-        ],
-      });
-    }
-    if (!this.preview) {
-      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -16 });
-      this.preview.setTitle('POINTER PREVIEW');
-      this.preview.show();
     }
     if (!this.complexity) {
       this.complexity = new ComplexityMeter(this, {
-        x: width / 2, y: 246,
+        x: width / 2,
+        y: 246,
         width: 320,
-        bruteLabel: 'pair checks',
-        bruteCost: pairCount(POINTER_BRIDGE_ROUNDS[this.roundIndex].values.length),
-        algoLabel: 'walk steps',
+        bruteLabel: "pair checks",
+        bruteCost: pairCount(
+          POINTER_BRIDGE_ROUNDS[this.roundIndex].values.length,
+        ),
+        algoLabel: "walk steps",
         algoCost: 0,
-        variant: 'riverside',
+        variant: "riverside",
         depth: 40,
       });
     }
@@ -794,7 +817,8 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = POINTER_BRIDGE_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'riverside', { dockPosition: 'top' });
+    if (lesson)
+      await showLessonCard(this, lesson, "riverside", { dockPosition: "top" });
     this.startRound(index);
   }
 
@@ -814,8 +838,18 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
       gap: 8,
       onTilePress: () => this.performPointerBridgeBoardStep(),
     });
-    this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: this.leftIndex, side: 'top' });
-    this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.rightIndex, side: 'top' });
+    this.row.setCursor("L", {
+      label: "L",
+      color: BLUE_BANK,
+      index: this.leftIndex,
+      side: "top",
+    });
+    this.row.setCursor("R", {
+      label: "R",
+      color: ORANGE_BANK,
+      index: this.rightIndex,
+      side: "top",
+    });
 
     if (this.isFeelItRound()) {
       this.mountFeelItPanels();
@@ -829,81 +863,71 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     this.complexity?.reset({
       bruteCost: pairCount(this.round.values.length),
       algoCost: 0,
-      bruteLabel: 'pair checks',
-      algoLabel: 'walk steps',
+      bruteLabel: "pair checks",
+      algoLabel: "walk steps",
     });
 
     this.refreshDisplay();
   }
 
   private currentSum(): number {
-    return this.round.values[this.leftIndex] + this.round.values[this.rightIndex];
+    return (
+      this.round.values[this.leftIndex] + this.round.values[this.rightIndex]
+    );
   }
 
   private refreshDisplay(): void {
     const stage = this.roundIndex + 1;
     const total = POINTER_BRIDGE_ROUNDS.length;
-    this.statusText.setText(`BRIDGE ${stage}/${total}   -   target = ${this.round.target}`);
+    this.statusText.setText(
+      `BRIDGE ${stage}/${total}   -   target = ${this.round.target}`,
+    );
 
     const sum = this.currentSum();
     const diff = sum - this.round.target;
-    const sign = diff === 0 ? '=' : diff > 0 ? '>' : '<';
-    this.sumText.setText(`${this.round.values[this.leftIndex]} + ${this.round.values[this.rightIndex]} = ${sum}  ${sign}  ${this.round.target}`);
-    this.sumText.setColor(diff === 0 ? '#88c070' : '#fbbf24');
-
-    const directive = pointerDirective(sum, this.round.target);
-    this.trace?.highlightLine(directive === 'lock' ? 4 : directive === 'advance_left' ? 5 : 6);
-    this.refreshPreview();
-  }
-
-  private refreshPreview(): void {
-    if (!this.preview) return;
-    const preview = buildPointerBridgePreview({
-      values: this.round.values,
-      target: this.round.target,
-      left: this.leftIndex,
-      right: this.rightIndex,
-    });
-    this.preview.setState(preview.state);
-    this.preview.setNextAction(preview.next);
+    const sign = diff === 0 ? "=" : diff > 0 ? ">" : "<";
+    this.sumText.setText(
+      `${this.round.values[this.leftIndex]} + ${this.round.values[this.rightIndex]} = ${sum}  ${sign}  ${this.round.target}`,
+    );
+    this.sumText.setColor(diff === 0 ? "#88c070" : "#fbbf24");
   }
 
   private tryMoveLeft(direction: -1 | 1): void {
     if (this.actionLocked) return;
     const directive = pointerDirective(this.currentSum(), this.round.target);
-    if (direction !== 1 || directive !== 'advance_left') {
-      this.flashWrong('The algorithm forces a different move. Watch the trace.');
+    if (direction !== 1 || directive !== "advance_left") {
+      this.flashWrong("The algorithm forces a different move. Read the sum.");
       return;
     }
     if (this.leftIndex + 1 >= this.rightIndex) return;
     this.leftIndex++;
     this.walkSteps++;
     this.complexity?.setAlgoCost(this.walkSteps);
-    this.row.moveCursor('L', this.leftIndex);
-    audioManager.playTone(420, 60, 'sine');
+    this.row.moveCursor("L", this.leftIndex);
+    audioManager.playTone(420, 60, "sine");
     this.refreshDisplay();
   }
 
   private tryMoveRight(direction: -1 | 1): void {
     if (this.actionLocked) return;
     const directive = pointerDirective(this.currentSum(), this.round.target);
-    if (direction !== -1 || directive !== 'retreat_right') {
-      this.flashWrong('The algorithm forces a different move. Watch the trace.');
+    if (direction !== -1 || directive !== "retreat_right") {
+      this.flashWrong("The algorithm forces a different move. Read the sum.");
       return;
     }
     if (this.rightIndex - 1 <= this.leftIndex) return;
     this.rightIndex--;
     this.walkSteps++;
     this.complexity?.setAlgoCost(this.walkSteps);
-    this.row.moveCursor('R', this.rightIndex);
-    audioManager.playTone(360, 60, 'sine');
+    this.row.moveCursor("R", this.rightIndex);
+    audioManager.playTone(360, 60, "sine");
     this.refreshDisplay();
   }
 
   private tryLock(): void {
     if (this.actionLocked) return;
     if (this.currentSum() !== this.round.target) {
-      this.flashWrong('That pair does not match the target.');
+      this.flashWrong("That pair does not match the target.");
       return;
     }
     this.actionLocked = true;
@@ -911,7 +935,11 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     audioManager.playCorrectTone();
     this.row.pulseTile(this.leftIndex, COLORS.SUCCESS);
     this.row.pulseTile(this.rightIndex, COLORS.SUCCESS);
-    JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2);
+    JuiceSystem.correctBurst(
+      this,
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2,
+    );
 
     // FEEL_IT completion → fire the Bridge Keeper's NAME_IT beat once before
     // round 2 starts. Freezing Glitch's pair-check counter lands the
@@ -939,9 +967,9 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   private performPointerBridgeBoardStep(): void {
     if (this.actionLocked) return;
     const directive = pointerDirective(this.currentSum(), this.round.target);
-    if (directive === 'lock') {
+    if (directive === "lock") {
       this.tryLock();
-    } else if (directive === 'advance_left') {
+    } else if (directive === "advance_left") {
       this.tryMoveLeft(1);
     } else {
       this.tryMoveRight(-1);
@@ -958,25 +986,29 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
   private completePuzzle(): void {
     // Tightened scoring: 3 stars only for flawless; 2 stars allows one mistake
     // and one hint.
-    const stars = this.mistakes === 0 && this.hintsUsed === 0 ? 3
-      : this.mistakes <= 1 && this.hintsUsed <= 1 ? 2 : 1;
+    const stars =
+      this.mistakes === 0 && this.hintsUsed === 0
+        ? 3
+        : this.mistakes <= 1 && this.hintsUsed <= 1
+          ? 2
+          : 1;
     this.onPuzzleComplete(stars);
   }
 
   protected displayHint(hintNumber: number): void {
-    // FEEL_IT hints stay diegetic — no "pointer" vocabulary, no trace
-    // references. The riverbed framing carries the same affordance.
+    // FEEL_IT hints stay diegetic — no "pointer" vocabulary. The riverbed
+    // framing carries the same affordance.
     const hints = this.isFeelItRound()
       ? [
-        'Sum too small? Move the left avatar higher (D). Sum too big? Move the right avatar lower (J).',
-        'The stones are in order. The sum tells you which way to step — you never have to guess.',
-        'Watch Glitch test every pair. Walking from the ends is much faster.',
-      ]
+          "Sum too small? Move the left avatar higher (D). Sum too big? Move the right avatar lower (J).",
+          "The stones are in order. The sum tells you which way to step — you never have to guess.",
+          "Watch Glitch test every pair. Walking from the ends is much faster.",
+        ]
       : [
-        'Sum too small? Raise the left pointer (D). Sum too big? Lower the right pointer (J).',
-        'A sorted row makes the right move forced — only one direction can fix the gap.',
-        `The trace shows the only legal move for this state. Match the highlighted line.`,
-      ];
+          "Sum too small? Raise the left pointer (D). Sum too big? Lower the right pointer (J).",
+          "A sorted row makes the right move forced — only one direction can fix the gap.",
+          "The sum readout tells you the only legal move — compare it to the target.",
+        ];
     this.showMessage(hints[hintNumber - 1] ?? hints[0], COLORS.GOLD_ACCENT);
   }
 }
@@ -992,13 +1024,9 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   private windowStart = 0;
   private bestSeenSum = 0;
   private row!: RiverRow;
-  /** maxFixedWindow pseudocode trace. Null in FEEL_IT — the pseudocode IS
-   *  the technique; mounting it would defeat the contract. */
-  private trace: AlgorithmTrace | null = null;
   private statusText!: Phaser.GameObjects.Text;
   private sumText!: Phaser.GameObjects.Text;
-  /** Window preview side panel. Null in FEEL_IT. */
-  private preview: PuzzlePreviewSidePanel | null = null;
+  private useItCornerMounted = false;
   private actionLocked = false;
   /** Brute (recompute every window: (n-k+1)·k) vs algo (n-k+1 slides). */
   private complexity: ComplexityMeter | null = null;
@@ -1011,9 +1039,10 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_TR_3 });
-    this.puzzleId = 'tr_3';
-    this.puzzleName = 'Fixed Window Dock';
-    this.puzzleDescription = 'Slide a fixed window along the dock. Find the heaviest catch.';
+    this.puzzleId = "tr_3";
+    this.puzzleName = "Fixed Window Dock";
+    this.puzzleDescription =
+      "Slide a fixed window along the dock. Find the heaviest catch.";
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -1025,11 +1054,22 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   protected getPuzzleTheme(): PuzzleTheme {
     return TWIN_RIVERS_PUZZLE_THEME;
   }
-  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
-    return { id: 'twin-rivers', options: { riverMode: 'converged', intensity: 0.9 } };
+  protected getRegionBackdrop(): {
+    id: RegionBackdropId;
+    options?: RegionBackdropOptions;
+  } | null {
+    return {
+      id: "twin-rivers",
+      options: { riverMode: "converged", intensity: 0.9 },
+    };
   }
   protected getConceptName(): string {
-    return 'Fixed Sliding Window';
+    return "Fixed Sliding Window";
+  }
+
+  preload(): void {
+    super.preload();
+    preloadRiverRowProps(this);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -1037,75 +1077,63 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   // ──────────────────────────────────────────────────────────────────
 
   private isFeelItRound(): boolean {
-    return FIXED_WINDOW_ROUNDS[this.roundIndex]?.lesson?.phase === PuzzlePhase.FEEL_IT;
+    return (
+      FIXED_WINDOW_ROUNDS[this.roundIndex]?.lesson?.phase ===
+      PuzzlePhase.FEEL_IT
+    );
   }
 
-  /** FEEL_IT mounts: only the brute-force window-rescan counter. NO trace,
-   *  NO preview, NO complexity meter. The sliding-window technique should be
-   *  the player's discovery from watching the EDGES, not the screen's
-   *  announcement. */
+  /** FEEL_IT mounts: only the brute-force window-rescan counter — no
+   *  complexity meter or other algorithm-named chrome. The sliding-window
+   *  technique should be the player's discovery from watching the EDGES,
+   *  not the screen's announcement. */
   private mountFeelItPanels(): void {
     if (this.bruteForce) return;
     const { height } = this.cameras.main;
     this.bruteForce = new BruteForceActor(this, {
-      x: 152, y: height - 92,
+      x: 152,
+      y: height - 92,
       strategy: makeWindowSlideBruteStrategy(),
       heading: "⚠ GLITCH'S APPROACH",
-      subtitle: '(recounting every slat from scratch...)',
-      notDoneLabel: 'still counting',
-      doneLabel: 'gave up',
-      verbLabel: 'window rescans',
+      subtitle: "(recounting every slat from scratch...)",
+      notDoneLabel: "still counting",
+      doneLabel: "gave up",
+      verbLabel: "window rescans",
       banter: GLITCH_BANTER.tr_3,
       depth: 40,
     });
   }
 
-  /** USE_IT mounts: the full teaching toolkit. Idempotent — safe to call on
-   *  every round-2-onward start. Holds the maxFixedWindow trace, the WINDOW
-   *  PREVIEW side panel, the recompute-vs-slide complexity meter, and the
-   *  friendly GlitchCorner. */
+  /** USE_IT mounts: the friendly GlitchCorner and the recompute-vs-slide
+   *  complexity meter. No pseudocode or state panels — the playable game
+   *  never shows code (docs/VISION.md §3-4); the deep layer lives in the
+   *  Codex. */
   private mountUseItPanels(): void {
     const { width, height } = this.cameras.main;
-    if (!this.trace) {
+    if (!this.useItCornerMounted) {
+      this.useItCornerMounted = true;
       new GlitchCorner(this, {
-        x: 152, y: height - 92,
-        width: 240, height: 74,
-        variant: 'riverside',
-        heading: 'Glitch Re-Adds Each Window',
-        body: 'recount every step: O(n·k). Slide: O(n).',
+        x: 152,
+        y: height - 92,
+        width: 240,
+        height: 74,
+        variant: "riverside",
+        heading: "Glitch Re-Adds Each Window",
+        body: "recounts the whole net every step. You only trade the edges.",
         depth: 40,
       });
-      this.trace = new AlgorithmTrace(this, {
-        x: 64,
-        y: 244,
-        width: 252,
-        title: 'maxFixedWindow(arr,k)',
-        lines: [
-          's = sum(arr[0..k-1])',
-          'best = s',
-          'for i in 1..n-k:',
-          '  s += arr[i+k-1]',
-          '  s -= arr[i-1]',
-          '  best = max(best, s)',
-          'lock at best',
-        ],
-      });
-    }
-    if (!this.preview) {
-      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -16 });
-      this.preview.setTitle('WINDOW PREVIEW');
-      this.preview.show();
     }
     if (!this.complexity) {
       const r0 = FIXED_WINDOW_ROUNDS[this.roundIndex];
       this.complexity = new ComplexityMeter(this, {
-        x: width / 2, y: 246,
+        x: width / 2,
+        y: 246,
         width: 320,
-        bruteLabel: 'recompute cost',
+        bruteLabel: "recompute cost",
         bruteCost: bruteWindowCost(r0.values.length, r0.windowSize),
-        algoLabel: 'your slides',
+        algoLabel: "your slides",
         algoCost: 0,
-        variant: 'riverside',
+        variant: "riverside",
         depth: 40,
       });
     }
@@ -1116,48 +1144,55 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     // title subtitle. The player should derive the window-edge insight from
     // watching what enters and leaves the net.
     if (FIXED_WINDOW_ROUNDS[0]?.lesson?.phase === PuzzlePhase.FEEL_IT) {
-      this.puzzleDescription = 'Slide your net along the dock. Find the heaviest catch.';
+      this.puzzleDescription =
+        "Slide your net along the dock. Find the heaviest catch.";
     }
     super.create();
-    new PuzzleAmbience(this, 'river', { intensity: 0.35 });
+    new PuzzleAmbience(this, "river", { intensity: 0.35 });
     const { width, height } = this.cameras.main;
     // Frame mode (not split) — Bit's frame BECOMES the sliding window.
-    new BitCompanion(this, { stage: 'frame', frameMode: 'frame', x: width - 108, y: 100, depth: 40 });
-    // GlitchCorner, ComplexityMeter, AlgorithmTrace, PuzzlePreviewSidePanel
-    // all moved into mountUseItPanels — FEEL_IT round 1 carries only the
-    // BruteForceActor counter, no algorithm-named chrome.
+    new BitCompanion(this, {
+      stage: "frame",
+      frameMode: "frame",
+      x: width - 108,
+      y: 100,
+      depth: 40,
+    });
+    // GlitchCorner and ComplexityMeter mount via mountUseItPanels — FEEL_IT
+    // round 1 carries only the BruteForceActor counter, no algorithm-named
+    // chrome.
 
     this.statusText = this.createStatusReadout(width / 2, 174);
 
-    this.sumText = this.add.text(width / 2, 218, '', {
-      fontSize: '16px',
-      fontFamily: FONTS.RETRO,
-      color: '#fbbf24',
-      stroke: '#081820',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(20);
+    this.sumText = this.add
+      .text(width / 2, 218, "", {
+        fontSize: "16px",
+        fontFamily: FONTS.RETRO,
+        color: "#fbbf24",
+        stroke: "#081820",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(20);
 
     // Keyboard hint switches "window" → "net" in FEEL_IT to stay diegetic.
-    const keyboardHint = FIXED_WINDOW_ROUNDS[0]?.lesson?.phase === PuzzlePhase.FEEL_IT
-      ? '[<-]/[->] slide net  -  [SPACE] lock at current position'
-      : '[<-]/[->] slide window  -  [SPACE] lock at current position';
-    this.add.text(width / 2, height - 92, keyboardHint, {
-      fontSize: '10px',
-      fontFamily: FONTS.RETRO,
-      color: '#88c070',
-    }).setOrigin(0.5).setDepth(20);
+    const keyboardHint =
+      FIXED_WINDOW_ROUNDS[0]?.lesson?.phase === PuzzlePhase.FEEL_IT
+        ? "[<-]/[->] slide net  -  [SPACE] lock at current position"
+        : "[<-]/[->] slide window  -  [SPACE] lock at current position";
+    mountTransientLegend(this, height - 92, keyboardHint);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.bruteForce?.destroy();
       this.bruteForce = null;
     });
 
-    this.input.keyboard?.on('keydown-LEFT', () => this.slide(-1));
-    this.input.keyboard?.on('keydown-RIGHT', () => this.slide(1));
-    this.input.keyboard?.on('keydown-A', () => this.slide(-1));
-    this.input.keyboard?.on('keydown-D', () => this.slide(1));
-    this.input.keyboard?.on('keydown-SPACE', () => this.tryLock());
-    this.input.keyboard?.on('keydown-ENTER', () => this.tryLock());
+    this.input.keyboard?.on("keydown-LEFT", () => this.slide(-1));
+    this.input.keyboard?.on("keydown-RIGHT", () => this.slide(1));
+    this.input.keyboard?.on("keydown-A", () => this.slide(-1));
+    this.input.keyboard?.on("keydown-D", () => this.slide(1));
+    this.input.keyboard?.on("keydown-SPACE", () => this.tryLock());
+    this.input.keyboard?.on("keydown-ENTER", () => this.tryLock());
     new GamepadActionBridge(this, {
       left: () => this.slide(-1),
       right: () => this.slide(1),
@@ -1170,7 +1205,8 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = FIXED_WINDOW_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'riverside', { dockPosition: 'top' });
+    if (lesson)
+      await showLessonCard(this, lesson, "riverside", { dockPosition: "top" });
     this.startRound(index);
   }
 
@@ -1201,10 +1237,13 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     }
 
     this.complexity?.reset({
-      bruteCost: bruteWindowCost(this.round.values.length, this.round.windowSize),
+      bruteCost: bruteWindowCost(
+        this.round.values.length,
+        this.round.windowSize,
+      ),
       algoCost: 0,
-      bruteLabel: 'recompute cost',
-      algoLabel: 'your slides',
+      bruteLabel: "recompute cost",
+      algoLabel: "your slides",
     });
 
     this.refreshDisplay();
@@ -1215,7 +1254,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     const total = FIXED_WINDOW_ROUNDS.length;
     const k = this.round.windowSize;
     this.statusText.setText(
-      `DOCK ${stage}/${total}   -   window size = ${k}   -   slide to the heaviest catch`
+      `DOCK ${stage}/${total}   -   window size = ${k}   -   slide to the heaviest catch`,
     );
 
     const left = this.windowStart;
@@ -1227,33 +1266,17 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
       this.bestSeenSum = sum;
     }
     this.sumText.setText(`SUM = ${sum}   -   BEST SEEN = ${this.bestSeenSum}`);
-
-    // Light up the appropriate line in the trace.
-    if (this.windowStart === 0) this.trace?.highlightLine(0);
-    else this.trace?.highlightLine(5); // best = max(best, s)
-    this.refreshPreview();
-  }
-
-  private refreshPreview(): void {
-    if (!this.preview) return;
-    const preview = buildFixedWindowPreview({
-      values: this.round.values,
-      windowSize: this.round.windowSize,
-      start: this.windowStart,
-      bestSeen: this.bestSeenSum,
-    });
-    this.preview.setState(preview.state);
-    this.preview.setNextAction(preview.next);
   }
 
   private slide(direction: -1 | 1): void {
     if (this.actionLocked) return;
     const next = this.windowStart + direction;
-    if (next < 0 || next + this.round.windowSize > this.round.values.length) return;
+    if (next < 0 || next + this.round.windowSize > this.round.values.length)
+      return;
     this.windowStart = next;
     this.slideCount++;
     this.complexity?.setAlgoCost(this.slideCount);
-    audioManager.playTone(direction === 1 ? 540 : 420, 50, 'sine');
+    audioManager.playTone(direction === 1 ? 540 : 420, 50, "sine");
     this.refreshDisplay();
   }
 
@@ -1268,14 +1291,21 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
       this.mistakes++;
       JuiceSystem.cameraShake(this, 80, 0.002);
       audioManager.playWrongTone();
-      this.showMessage(`Sum here is ${here}; the maximum is higher. Keep sliding.`, COLORS.WARNING);
+      this.showMessage(
+        `Sum here is ${here}; the maximum is higher. Keep sliding.`,
+        COLORS.WARNING,
+      );
       return;
     }
 
     this.actionLocked = true;
     this.complexity?.celebrate();
     audioManager.playCorrectTone();
-    JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2);
+    JuiceSystem.correctBurst(
+      this,
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2,
+    );
     for (let i = this.windowStart; i < this.windowStart + k; i++) {
       this.row.pulseTile(i, COLORS.SUCCESS);
     }
@@ -1319,8 +1349,12 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     // Tightened scoring: 3 stars only for a flawless run, and the optimal
     // window must be reached on the first lock per round (mistakes counts
     // every wrong lock).
-    const stars = this.mistakes === 0 && this.hintsUsed === 0 ? 3
-      : this.mistakes <= 1 && this.hintsUsed <= 1 ? 2 : 1;
+    const stars =
+      this.mistakes === 0 && this.hintsUsed === 0
+        ? 3
+        : this.mistakes <= 1 && this.hintsUsed <= 1
+          ? 2
+          : 1;
     this.onPuzzleComplete(stars);
   }
 
@@ -1329,15 +1363,15 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     // vocabulary. The dock + net + catch framing carries the same affordance.
     const hints = this.isFeelItRound()
       ? [
-        'Watch what enters your net and what leaves it. The middle stays the same.',
-        'Keep track of the heaviest catch you have seen so far.',
-        `The best spot starts at slat ${bestFixedWindowStart(this.round.values, this.round.windowSize)}.`,
-      ]
+          "Watch what enters your net and what leaves it. The middle stays the same.",
+          "Keep track of the heaviest catch you have seen so far.",
+          `The best spot starts at slat ${bestFixedWindowStart(this.round.values, this.round.windowSize)}.`,
+        ]
       : [
-        'Each step changes the sum by only two values: one enters on the right, one leaves on the left.',
-        'BEST SEEN updates whenever you slide past a richer slice — keep an eye on it.',
-        `The maximum window starts at index ${bestFixedWindowStart(this.round.values, this.round.windowSize)}.`,
-      ];
+          "Each step changes the sum by only two values: one enters on the right, one leaves on the left.",
+          "BEST SEEN updates whenever you slide past a richer slice — keep an eye on it.",
+          `The maximum window starts at index ${bestFixedWindowStart(this.round.values, this.round.windowSize)}.`,
+        ];
     this.showMessage(hints[hintNumber - 1] ?? hints[0], COLORS.GOLD_ACCENT);
   }
 }
@@ -1355,12 +1389,9 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   private bestLength = 0;
   private optimal = 0;
   private row!: RiverRow;
-  /** longestUnique(s) pseudocode trace. Null in FEEL_IT. */
-  private trace: AlgorithmTrace | null = null;
   private statusText!: Phaser.GameObjects.Text;
   private metricsText!: Phaser.GameObjects.Text;
-  /** Current preview side panel. Null in FEEL_IT. */
-  private preview: PuzzlePreviewSidePanel | null = null;
+  private useItCornerMounted = false;
   private actionLocked = false;
   /** Glitch as visible co-actor during FEEL_IT round 1. */
   private bruteForce: BruteForceActor | null = null;
@@ -1369,9 +1400,10 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_TR_4 });
-    this.puzzleId = 'tr_4';
-    this.puzzleName = 'Current Rider';
-    this.puzzleDescription = 'Stretch the window when safe. Shrink it when the river repeats.';
+    this.puzzleId = "tr_4";
+    this.puzzleName = "Current Rider";
+    this.puzzleDescription =
+      "Stretch the window when safe. Shrink it when the river repeats.";
   }
 
   protected getPuzzleBackdropKey(): string | null {
@@ -1383,11 +1415,22 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   protected getPuzzleTheme(): PuzzleTheme {
     return TWIN_RIVERS_PUZZLE_THEME;
   }
-  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
-    return { id: 'twin-rivers', options: { riverMode: 'converged', intensity: 0.9 } };
+  protected getRegionBackdrop(): {
+    id: RegionBackdropId;
+    options?: RegionBackdropOptions;
+  } | null {
+    return {
+      id: "twin-rivers",
+      options: { riverMode: "converged", intensity: 0.9 },
+    };
   }
   protected getConceptName(): string {
-    return 'Variable Sliding Window';
+    return "Variable Sliding Window";
+  }
+
+  preload(): void {
+    super.preload();
+    preloadRiverRowProps(this);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -1395,59 +1438,50 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   // ──────────────────────────────────────────────────────────────────
 
   private isFeelItRound(): boolean {
-    return CURRENT_RIDER_ROUNDS[this.roundIndex]?.lesson?.phase === PuzzlePhase.FEEL_IT;
+    return (
+      CURRENT_RIDER_ROUNDS[this.roundIndex]?.lesson?.phase ===
+      PuzzlePhase.FEEL_IT
+    );
   }
 
-  /** FEEL_IT mounts: only the brute-force substring-checks counter. NO trace,
-   *  NO preview. The expand-and-shrink rhythm should be the player's
-   *  discovery from listening to the river, not the screen's announcement. */
+  /** FEEL_IT mounts: only the brute-force substring-checks counter — no
+   *  algorithm-named chrome. The expand-and-shrink rhythm should be the
+   *  player's discovery from listening to the river, not the screen's
+   *  announcement. */
   private mountFeelItPanels(): void {
     if (this.bruteForce) return;
     const { height } = this.cameras.main;
     this.bruteForce = new BruteForceActor(this, {
-      x: 152, y: height - 92,
+      x: 152,
+      y: height - 92,
       strategy: makeVariableWindowBruteStrategy(),
       heading: "⚠ GLITCH'S APPROACH",
-      subtitle: '(trying every single substring...)',
-      notDoneLabel: 'still checking',
-      doneLabel: 'gave up',
-      verbLabel: 'substring checks',
+      subtitle: "(trying every single substring...)",
+      notDoneLabel: "still checking",
+      doneLabel: "gave up",
+      verbLabel: "substring checks",
       banter: GLITCH_BANTER.tr_4,
       depth: 40,
     });
   }
 
-  /** USE_IT mounts: the full teaching toolkit. Idempotent. */
+  /** USE_IT mounts: the friendly GlitchCorner only. No pseudocode or state
+   *  panels — the playable game never shows code (docs/VISION.md §3-4); the
+   *  deep layer lives in the Codex. */
   private mountUseItPanels(): void {
     const { height } = this.cameras.main;
-    if (!this.trace) {
+    if (!this.useItCornerMounted) {
+      this.useItCornerMounted = true;
       new GlitchCorner(this, {
-        x: 152, y: height - 92,
-        width: 240, height: 74,
-        variant: 'riverside',
-        heading: 'Glitch Rechecks Every Substring',
-        body: 'all substrings: O(n²). Two pointers: O(n).',
+        x: 152,
+        y: height - 92,
+        width: 240,
+        height: 74,
+        variant: "riverside",
+        heading: "Glitch Rechecks Every Substring",
+        body: "rereads the whole current each step. You only move the ends.",
         depth: 40,
       });
-      this.trace = new AlgorithmTrace(this, {
-        x: 64,
-        y: 244,
-        width: 252,
-        title: 'longestUnique(s)',
-        lines: [
-          'L = 0',
-          'best = 0',
-          'for R in 0..n-1:',
-          '  while dup(s[L..R]):',
-          '    L = L + 1',
-          '  best = max(best, R-L+1)',
-        ],
-      });
-    }
-    if (!this.preview) {
-      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -16 });
-      this.preview.setTitle('CURRENT PREVIEW');
-      this.preview.show();
     }
   }
 
@@ -1456,51 +1490,58 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     // the title subtitle. The player should derive the listen-to-the-river
     // rhythm from the catch quality, not a written rule.
     if (CURRENT_RIDER_ROUNDS[0]?.lesson?.phase === PuzzlePhase.FEEL_IT) {
-      this.puzzleDescription = 'Keep the good. Kick out the bad. Make the net whatever size it needs to be.';
+      this.puzzleDescription =
+        "Keep the good. Kick out the bad. Make the net whatever size it needs to be.";
     }
     super.create();
-    new PuzzleAmbience(this, 'river', { intensity: 0.35 });
+    new PuzzleAmbience(this, "river", { intensity: 0.35 });
     const { width, height } = this.cameras.main;
-    new BitCompanion(this, { stage: 'frame', frameMode: 'frame', x: width - 108, y: 100, depth: 40 });
-    // GlitchCorner, AlgorithmTrace, PuzzlePreviewSidePanel all moved into
-    // mountUseItPanels — FEEL_IT round 1 carries only the brute-force counter.
+    new BitCompanion(this, {
+      stage: "frame",
+      frameMode: "frame",
+      x: width - 108,
+      y: 100,
+      depth: 40,
+    });
+    // GlitchCorner mounts via mountUseItPanels — FEEL_IT round 1 carries
+    // only the brute-force counter.
 
     this.statusText = this.createStatusReadout(width / 2, 174);
 
-    this.metricsText = this.add.text(width / 2, 218, '', {
-      fontSize: '16px',
-      fontFamily: FONTS.RETRO,
-      color: '#fbbf24',
-      stroke: '#081820',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(20);
+    this.metricsText = this.add
+      .text(width / 2, 218, "", {
+        fontSize: "16px",
+        fontFamily: FONTS.RETRO,
+        color: "#fbbf24",
+        stroke: "#081820",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(20);
 
     // Keyboard hint switches "R++" / "L++" / "BEST" to plain action verbs
     // in FEEL_IT to stay diegetic.
-    const keyboardHint = CURRENT_RIDER_ROUNDS[0]?.lesson?.phase === PuzzlePhase.FEEL_IT
-      ? '[E] extend net  -  [Q] shrink net  -  [SPACE] submit best catch'
-      : '[E] extend right (R++)  -  [Q] shrink left (L++)  -  [SPACE] submit when BEST is correct';
-    this.add.text(width / 2, height - 92, keyboardHint, {
-      fontSize: '10px',
-      fontFamily: FONTS.RETRO,
-      color: '#88c070',
-    }).setOrigin(0.5).setDepth(20);
+    const keyboardHint =
+      CURRENT_RIDER_ROUNDS[0]?.lesson?.phase === PuzzlePhase.FEEL_IT
+        ? "[E] extend net  -  [Q] shrink net  -  [SPACE] submit best catch"
+        : "[E] extend right (R++)  -  [Q] shrink left (L++)  -  [SPACE] submit when BEST is correct";
+    mountTransientLegend(this, height - 92, keyboardHint);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.bruteForce?.destroy();
       this.bruteForce = null;
     });
 
-    this.input.keyboard?.on('keydown-E', () => this.extendRight());
-    this.input.keyboard?.on('keydown-Q', () => this.shrinkLeft());
-    this.input.keyboard?.on('keydown-D', () => this.extendRight());
-    this.input.keyboard?.on('keydown-A', () => this.shrinkLeft());
+    this.input.keyboard?.on("keydown-E", () => this.extendRight());
+    this.input.keyboard?.on("keydown-Q", () => this.shrinkLeft());
+    this.input.keyboard?.on("keydown-D", () => this.extendRight());
+    this.input.keyboard?.on("keydown-A", () => this.shrinkLeft());
     // Arrow-key aliases — matches the player's intuition that the window
     // grows rightward (RIGHT extends) and shrinks from the left (LEFT shrinks).
-    this.input.keyboard?.on('keydown-RIGHT', () => this.extendRight());
-    this.input.keyboard?.on('keydown-LEFT', () => this.shrinkLeft());
-    this.input.keyboard?.on('keydown-SPACE', () => this.trySubmit());
-    this.input.keyboard?.on('keydown-ENTER', () => this.trySubmit());
+    this.input.keyboard?.on("keydown-RIGHT", () => this.extendRight());
+    this.input.keyboard?.on("keydown-LEFT", () => this.shrinkLeft());
+    this.input.keyboard?.on("keydown-SPACE", () => this.trySubmit());
+    this.input.keyboard?.on("keydown-ENTER", () => this.trySubmit());
     new GamepadActionBridge(this, {
       left: () => this.shrinkLeft(),
       right: () => this.extendRight(),
@@ -1515,7 +1556,8 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   private async beginRound(index: number): Promise<void> {
     this.actionLocked = true;
     const lesson = CURRENT_RIDER_ROUNDS[index]?.lesson;
-    if (lesson) await showLessonCard(this, lesson, 'riverside', { dockPosition: 'top' });
+    if (lesson)
+      await showLessonCard(this, lesson, "riverside", { dockPosition: "top" });
     this.startRound(index);
   }
 
@@ -1536,8 +1578,18 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
       gap: 6,
       onTilePress: () => this.performCurrentRiderBoardStep(),
     });
-    this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: 0, side: 'top' });
-    this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: 0, side: 'bottom' });
+    this.row.setCursor("L", {
+      label: "L",
+      color: BLUE_BANK,
+      index: 0,
+      side: "top",
+    });
+    this.row.setCursor("R", {
+      label: "R",
+      color: ORANGE_BANK,
+      index: 0,
+      side: "bottom",
+    });
 
     if (this.isFeelItRound()) {
       this.mountFeelItPanels();
@@ -1554,10 +1606,15 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
   private refreshDisplay(): void {
     const stage = this.roundIndex + 1;
     const total = CURRENT_RIDER_ROUNDS.length;
-    this.statusText.setText(`CURRENT ${stage}/${total}   -   find the longest run with no repeats`);
+    this.statusText.setText(
+      `CURRENT ${stage}/${total}   -   find the longest run with no repeats`,
+    );
 
     this.row.setWindow(this.leftIndex, this.rightIndex, COLORS.CYAN_GLOW);
-    const hasDup = this.row.markDuplicatesInWindow(this.leftIndex, this.rightIndex);
+    const hasDup = this.row.markDuplicatesInWindow(
+      this.leftIndex,
+      this.rightIndex,
+    );
     if (!hasDup) {
       const len = this.rightIndex - this.leftIndex + 1;
       if (len > this.bestLength) this.bestLength = len;
@@ -1565,26 +1622,9 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
 
     const length = this.rightIndex - this.leftIndex + 1;
     this.metricsText.setText(
-      `LENGTH = ${length}${hasDup ? '  REPEAT!' : ''}   -   BEST = ${this.bestLength}`
+      `LENGTH = ${length}${hasDup ? "  REPEAT!" : ""}   -   BEST = ${this.bestLength}`,
     );
-    this.metricsText.setColor(hasDup ? '#ef4444' : '#fbbf24');
-
-    if (hasDup) this.trace?.highlightLine(3); // L = L + 1
-    else if (this.rightIndex >= this.round.letters.length - 1) this.trace?.highlightLine(5);
-    else this.trace?.highlightLine(2); // for R
-    this.refreshPreview();
-  }
-
-  private refreshPreview(): void {
-    if (!this.preview) return;
-    const preview = buildCurrentRiderPreview({
-      letters: this.round.letters,
-      left: this.leftIndex,
-      right: this.rightIndex,
-      bestLength: this.bestLength,
-    });
-    this.preview.setState(preview.state);
-    this.preview.setNextAction(preview.next);
+    this.metricsText.setColor(hasDup ? "#ef4444" : "#fbbf24");
   }
 
   private extendRight(): void {
@@ -1594,12 +1634,15 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
       this.mistakes++;
       JuiceSystem.cameraShake(this, 80, 0.002);
       audioManager.playWrongTone();
-      this.showMessage('Shrink left before extending a window with repeats.', COLORS.WARNING);
+      this.showMessage(
+        "Shrink left before extending a window with repeats.",
+        COLORS.WARNING,
+      );
       return;
     }
     this.rightIndex++;
-    this.row.moveCursor('R', this.rightIndex);
-    audioManager.playTone(540, 50, 'sine');
+    this.row.moveCursor("R", this.rightIndex);
+    audioManager.playTone(540, 50, "sine");
     this.refreshDisplay();
   }
 
@@ -1607,8 +1650,8 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     if (this.actionLocked) return;
     if (this.leftIndex + 1 > this.rightIndex) return;
     this.leftIndex++;
-    this.row.moveCursor('L', this.leftIndex);
-    audioManager.playTone(420, 50, 'sine');
+    this.row.moveCursor("L", this.leftIndex);
+    audioManager.playTone(420, 50, "sine");
     this.refreshDisplay();
   }
 
@@ -1618,13 +1661,20 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
       this.mistakes++;
       JuiceSystem.cameraShake(this, 80, 0.002);
       audioManager.playWrongTone();
-      this.showMessage(`Best so far is ${this.bestLength}. Keep exploring.`, COLORS.WARNING);
+      this.showMessage(
+        `Best so far is ${this.bestLength}. Keep exploring.`,
+        COLORS.WARNING,
+      );
       return;
     }
 
     this.actionLocked = true;
     audioManager.playCorrectTone();
-    JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2);
+    JuiceSystem.correctBurst(
+      this,
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2,
+    );
 
     // FEEL_IT completion → fire the Current Rider's NAME_IT beat once before
     // round 2 starts. Freezing Glitch's substring-checks counter lands the
@@ -1662,8 +1712,12 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
 
   private completePuzzle(): void {
     // Tightened scoring: 3 stars requires a flawless run.
-    const stars = this.mistakes === 0 && this.hintsUsed === 0 ? 3
-      : this.mistakes <= 1 && this.hintsUsed <= 1 ? 2 : 1;
+    const stars =
+      this.mistakes === 0 && this.hintsUsed === 0
+        ? 3
+        : this.mistakes <= 1 && this.hintsUsed <= 1
+          ? 2
+          : 1;
     this.onPuzzleComplete(stars);
   }
 
@@ -1672,15 +1726,15 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     // vocab; use net/catch framing.
     const hints = this.isFeelItRound()
       ? [
-        'Push the right stake further while the catch is good.',
-        'When you catch something twice, pull the left stake in until the catch is clear again.',
-        `For this river the best catch is ${this.optimal} wide. Keep adjusting the net.`,
-      ]
+          "Push the right stake further while the catch is good.",
+          "When you catch something twice, pull the left stake in until the catch is clear again.",
+          `For this river the best catch is ${this.optimal} wide. Keep adjusting the net.`,
+        ]
       : [
-        'Extend right whenever the window is still unique. Shrink left only when you spot a duplicate.',
-        'BEST tracks the longest unique window you have ever held. It only goes up.',
-        `For this river the optimal length is ${this.optimal}. Walk the cursors to find it.`,
-      ];
+          "Extend right whenever the window is still unique. Shrink left only when you spot a duplicate.",
+          "BEST tracks the longest unique window you have ever held. It only goes up.",
+          `For this river the optimal length is ${this.optimal}. Walk the cursors to find it.`,
+        ];
     this.showMessage(hints[hintNumber - 1] ?? hints[0], COLORS.GOLD_ACCENT);
   }
 }
@@ -1689,16 +1743,15 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
 // Boss_MirrorSerpent - three phases: reverse, two-sum, fixed window
 // ============================================================================
 
-type SerpentPhase = 'reverse' | 'twoSum' | 'fixedWindow' | 'won';
+type SerpentPhase = "reverse" | "twoSum" | "fixedWindow" | "won";
 
 export class Boss_MirrorSerpent extends BasePuzzleScene {
-  private phase: SerpentPhase = 'reverse';
+  private phase: SerpentPhase = "reverse";
   private mistakes = 0;
   private row!: RiverRow;
   private statusText!: Phaser.GameObjects.Text;
   private detailText!: Phaser.GameObjects.Text;
   private serpentBanner!: Phaser.GameObjects.Text;
-  private preview!: PuzzlePreviewSidePanel;
   private actionLocked = false;
   private reverseCompleting = false;
 
@@ -1719,9 +1772,10 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
 
   constructor() {
     super({ key: SCENE_KEYS.BOSS_MIRROR_SERPENT });
-    this.puzzleId = 'boss_mirror_serpent';
-    this.puzzleName = 'Mirror Serpent';
-    this.puzzleDescription = 'Three currents. One serpent. Reverse, pair, slide.';
+    this.puzzleId = "boss_mirror_serpent";
+    this.puzzleName = "Mirror Serpent";
+    this.puzzleDescription =
+      "Three currents. One serpent. Reverse, pair, slide.";
     this.maxHints = 2;
   }
 
@@ -1732,12 +1786,12 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     return 0.03;
   }
   protected getConceptName(): string {
-    return 'Two-Pointer Mastery';
+    return "Two-Pointer Mastery";
   }
   // Pairs with the entry banner to maintain "this is the boss" for the
   // whole encounter, not just the 2.6s reveal.
   protected getModuleLabel(): string {
-    return 'BOSS  •  RIVERSIDE';
+    return "BOSS  •  RIVERSIDE";
   }
 
   // Preload the coiled-serpent figure (Phase 16). BasePuzzleScene only
@@ -1751,11 +1805,12 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     if (path && !this.textures.exists(key)) {
       this.load.image(key, path);
     }
+    preloadRiverRowProps(this);
   }
 
   create(): void {
     super.create();
-    new PuzzleAmbience(this, 'river', { intensity: 1.1 });
+    new PuzzleAmbience(this, "river", { intensity: 1.1 });
     const { width, height } = this.cameras.main;
     this.instructionText.setVisible(false);
 
@@ -1764,9 +1819,9 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     // the Serpent's 3-phase mechanic (reverse → twoSum → fixedWindow) mounts
     // underneath and is ready by the time the banner clears.
     playBossEntryBanner(this, {
-      bossName: 'Mirror Serpent',
-      regionTag: 'Twin Rivers finale',
-      thesis: 'The river bends three ways. Read it all at once.',
+      bossName: "Mirror Serpent",
+      regionTag: "Twin Rivers finale",
+      thesis: "The river bends three ways. Read it all at once.",
       accentColor: 0x22d3ee,
       onComplete: () => {},
     });
@@ -1775,7 +1830,8 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     // play area. The 3-segment S-curve mirrors the boss's own 3-phase
     // structure (reverse → twoSum → fixedWindow). Slow vertical hover +
     // very-slow horizontal drift simulates the serpent breathing.
-    const serpentFigure = this.add.image(width / 2, 128, VISUAL_REVAMP_KEYS.BOSS_MIRROR_SERPENT_FIGURE)
+    const serpentFigure = this.add
+      .image(width / 2, 128, VISUAL_REVAMP_KEYS.BOSS_MIRROR_SERPENT_FIGURE)
       .setOrigin(0.5, 0.5)
       .setScale(0.5)
       .setAlpha(0.72)
@@ -1787,7 +1843,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       duration: 2200,
       yoyo: true,
       repeat: -1,
-      ease: 'Sine.easeInOut',
+      ease: "Sine.easeInOut",
     });
     this.tweens.add({
       targets: serpentFigure,
@@ -1795,55 +1851,47 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       duration: 5400,
       yoyo: true,
       repeat: -1,
-      ease: 'Sine.easeInOut',
+      ease: "Sine.easeInOut",
     });
 
-    this.serpentBanner = this.add.text(width / 2, 160, '', {
-      fontSize: '13px',
-      fontFamily: FONTS.RETRO,
-      color: '#e0f8d0',
-      backgroundColor: '#081820',
-      padding: { x: 10, y: 6 },
-      stroke: '#06b6d4',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(21);
+    this.serpentBanner = this.add
+      .text(width / 2, 160, "", {
+        fontSize: "13px",
+        fontFamily: FONTS.RETRO,
+        color: "#e0f8d0",
+        backgroundColor: "#081820",
+        padding: { x: 10, y: 6 },
+        stroke: "#06b6d4",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5)
+      .setDepth(21);
 
-    this.statusText = this.createStatusReadout(width / 2, 190, { fontSize: 11 });
-
-    this.detailText = this.add.text(width / 2, 224, '', {
-      fontSize: '11px',
-      fontFamily: FONTS.RETRO,
-      color: '#fbbf24',
-      stroke: '#081820',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(20);
-
-    this.add.text(width / 2, height - 76, this.controlsHelpText(), {
-      fontSize: '10px',
-      fontFamily: FONTS.RETRO,
-      color: '#88c070',
-      align: 'center',
-    }).setOrigin(0.5).setDepth(20);
-
-    // Teal accent — Mirror Serpent matches the water/river palette and the
-    // boss figure's coiled-teal silhouette behind the play area.
-    this.preview = new PuzzlePreviewSidePanel(this, {
-      side: 'right', yOffset: 42,
-      width: 280,
-      height: 304,
-      accentColor: 0x22d3ee, accentColorHex: '#22d3ee',
+    this.statusText = this.createStatusReadout(width / 2, 190, {
+      fontSize: 11,
     });
-    this.preview.setTitle('SERPENT PREVIEW');
-    this.preview.show();
 
-    this.input.keyboard?.on('keydown-SPACE', () => this.handleSpace());
-    this.input.keyboard?.on('keydown-ENTER', () => this.handleSpace());
-    this.input.keyboard?.on('keydown-A', () => this.handleA());
-    this.input.keyboard?.on('keydown-D', () => this.handleD());
-    this.input.keyboard?.on('keydown-J', () => this.handleJ());
-    this.input.keyboard?.on('keydown-L', () => this.handleL());
-    this.input.keyboard?.on('keydown-LEFT', () => this.handleA());
-    this.input.keyboard?.on('keydown-RIGHT', () => this.handleD());
+    this.detailText = this.add
+      .text(width / 2, 224, "", {
+        fontSize: "11px",
+        fontFamily: FONTS.RETRO,
+        color: "#fbbf24",
+        stroke: "#081820",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5)
+      .setDepth(20);
+
+    mountTransientLegend(this, height - 76, this.controlsHelpText());
+
+    this.input.keyboard?.on("keydown-SPACE", () => this.handleSpace());
+    this.input.keyboard?.on("keydown-ENTER", () => this.handleSpace());
+    this.input.keyboard?.on("keydown-A", () => this.handleA());
+    this.input.keyboard?.on("keydown-D", () => this.handleD());
+    this.input.keyboard?.on("keydown-J", () => this.handleJ());
+    this.input.keyboard?.on("keydown-L", () => this.handleL());
+    this.input.keyboard?.on("keydown-LEFT", () => this.handleA());
+    this.input.keyboard?.on("keydown-RIGHT", () => this.handleD());
     new GamepadActionBridge(this, {
       left: () => this.handleA(),
       right: () => this.handleD(),
@@ -1858,13 +1906,13 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
   }
 
   private controlsHelpText(): string {
-    return 'SPACE/ENTER act   A/D move L   J/L move R   arrows slide';
+    return "SPACE/ENTER act   A/D move L   J/L move R   arrows slide";
   }
 
   // ---- Phase 1: reverse ----
 
   private startReversePhase(): void {
-    this.phase = 'reverse';
+    this.phase = "reverse";
     this.actionLocked = false;
     this.reverseCompleting = false;
     this.reverseValues = [...MIRROR_SERPENT_PHASES.reverse.values];
@@ -1872,77 +1920,75 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.reverseLeft = 0;
     this.reverseRight = this.reverseValues.length - 1;
 
-    this.serpentBanner.setText('PHASE I  -  REVERSE');
-    this.statusText.setText('Run the river backward.');
-    this.detailText.setText('swap the ends, then converge');
+    this.serpentBanner.setText("PHASE I  -  REVERSE");
+    this.statusText.setText("Run the river backward.");
+    this.detailText.setText("swap the ends, then converge");
     this.cycleRow(this.reverseValues);
-    this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: 0, side: 'top' });
-    this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.reverseRight, side: 'top' });
-    this.refreshSerpentPreview();
+    this.row.setCursor("L", {
+      label: "L",
+      color: BLUE_BANK,
+      index: 0,
+      side: "top",
+    });
+    this.row.setCursor("R", {
+      label: "R",
+      color: ORANGE_BANK,
+      index: this.reverseRight,
+      side: "top",
+    });
   }
 
   // ---- Phase 2: two-sum ----
 
   private startTwoSumPhase(): void {
-    this.phase = 'twoSum';
+    this.phase = "twoSum";
     this.actionLocked = false;
     this.reverseCompleting = false;
     this.twoSumLeft = 0;
     this.twoSumRight = MIRROR_SERPENT_PHASES.twoSum.values.length - 1;
 
-    this.serpentBanner.setText('PHASE II  -  PAIR');
-    this.statusText.setText(`Find a pair that sums to ${MIRROR_SERPENT_PHASES.twoSum.target}.`);
+    this.serpentBanner.setText("PHASE II  -  PAIR");
+    this.statusText.setText(
+      `Find a pair that sums to ${MIRROR_SERPENT_PHASES.twoSum.target}.`,
+    );
     this.cycleRow(MIRROR_SERPENT_PHASES.twoSum.values);
-    this.row.setCursor('L', { label: 'L', color: BLUE_BANK, index: 0, side: 'top' });
-    this.row.setCursor('R', { label: 'R', color: ORANGE_BANK, index: this.twoSumRight, side: 'top' });
+    this.row.setCursor("L", {
+      label: "L",
+      color: BLUE_BANK,
+      index: 0,
+      side: "top",
+    });
+    this.row.setCursor("R", {
+      label: "R",
+      color: ORANGE_BANK,
+      index: this.twoSumRight,
+      side: "top",
+    });
     this.refreshTwoSumDetail();
   }
 
   // ---- Phase 3: fixed window ----
 
   private startFixedWindowPhase(): void {
-    this.phase = 'fixedWindow';
+    this.phase = "fixedWindow";
     const round = MIRROR_SERPENT_PHASES.fixedWindow;
     this.windowStart = 0;
-    this.windowOptimalStart = bestFixedWindowStart(round.values, round.windowSize);
-    this.windowOptimalSum = windowSumAt(round.values, this.windowOptimalStart, round.windowSize);
+    this.windowOptimalStart = bestFixedWindowStart(
+      round.values,
+      round.windowSize,
+    );
+    this.windowOptimalSum = windowSumAt(
+      round.values,
+      this.windowOptimalStart,
+      round.windowSize,
+    );
 
-    this.serpentBanner.setText('PHASE III  -  WINDOW');
-    this.statusText.setText(`Lock the window of size ${round.windowSize} on its heaviest catch.`);
+    this.serpentBanner.setText("PHASE III  -  WINDOW");
+    this.statusText.setText(
+      `Lock the window of size ${round.windowSize} on its heaviest catch.`,
+    );
     this.cycleRow(round.values);
     this.refreshFixedWindowDetail();
-  }
-
-  private refreshSerpentPreview(): void {
-    if (!this.preview) return;
-    const preview = this.phase === 'reverse'
-      ? buildMirrorSerpentPreview({
-        phase: 'reverse',
-        values: this.reverseValues,
-        target: this.reverseTarget,
-        left: this.reverseLeft,
-        right: this.reverseRight,
-      })
-      : this.phase === 'twoSum'
-        ? buildMirrorSerpentPreview({
-          phase: 'twoSum',
-          values: MIRROR_SERPENT_PHASES.twoSum.values,
-          target: MIRROR_SERPENT_PHASES.twoSum.target,
-          left: this.twoSumLeft,
-          right: this.twoSumRight,
-        })
-        : this.phase === 'fixedWindow'
-          ? buildMirrorSerpentPreview({
-            phase: 'fixedWindow',
-            values: MIRROR_SERPENT_PHASES.fixedWindow.values,
-            windowSize: MIRROR_SERPENT_PHASES.fixedWindow.windowSize,
-            start: this.windowStart,
-            optimalStart: this.windowOptimalStart,
-            optimalSum: this.windowOptimalSum,
-          })
-          : buildMirrorSerpentPreview({ phase: 'won' });
-    this.preview.setState(preview.state);
-    this.preview.setNextAction(preview.next);
   }
 
   private cycleRow(values: ReadonlyArray<string | number>): void {
@@ -1965,20 +2011,23 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
   private handleSerpentRowPress(index: number): void {
     if (this.actionLocked) return;
 
-    if (this.phase === 'reverse') {
+    if (this.phase === "reverse") {
       void this.reverseStep();
       return;
     }
 
-    if (this.phase === 'twoSum') {
-      const directive = pointerDirective(this.currentTwoSum(), MIRROR_SERPENT_PHASES.twoSum.target);
-      if (directive === 'lock') this.tryLockTwoSum();
-      else if (directive === 'advance_left') this.advanceTwoSumLeft(1);
+    if (this.phase === "twoSum") {
+      const directive = pointerDirective(
+        this.currentTwoSum(),
+        MIRROR_SERPENT_PHASES.twoSum.target,
+      );
+      if (directive === "lock") this.tryLockTwoSum();
+      else if (directive === "advance_left") this.advanceTwoSumLeft(1);
       else this.retreatTwoSumRight(-1);
       return;
     }
 
-    if (this.phase === 'fixedWindow') {
+    if (this.phase === "fixedWindow") {
       const round = MIRROR_SERPENT_PHASES.fixedWindow;
       const left = this.windowStart;
       const right = left + round.windowSize - 1;
@@ -1990,31 +2039,31 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
 
   private handleSpace(): void {
     if (this.actionLocked) return;
-    if (this.phase === 'reverse') void this.reverseStep();
-    else if (this.phase === 'twoSum') this.tryLockTwoSum();
-    else if (this.phase === 'fixedWindow') this.tryLockFixedWindow();
+    if (this.phase === "reverse") void this.reverseStep();
+    else if (this.phase === "twoSum") this.tryLockTwoSum();
+    else if (this.phase === "fixedWindow") this.tryLockFixedWindow();
   }
 
   private handleA(): void {
     if (this.actionLocked) return;
-    if (this.phase === 'twoSum') this.advanceTwoSumLeft(-1);
-    else if (this.phase === 'fixedWindow') this.slideWindow(-1);
+    if (this.phase === "twoSum") this.advanceTwoSumLeft(-1);
+    else if (this.phase === "fixedWindow") this.slideWindow(-1);
   }
 
   private handleD(): void {
     if (this.actionLocked) return;
-    if (this.phase === 'fixedWindow') this.slideWindow(1);
-    else if (this.phase === 'twoSum') this.advanceTwoSumLeft(1);
+    if (this.phase === "fixedWindow") this.slideWindow(1);
+    else if (this.phase === "twoSum") this.advanceTwoSumLeft(1);
   }
 
   private handleJ(): void {
     if (this.actionLocked) return;
-    if (this.phase === 'twoSum') this.retreatTwoSumRight(-1);
+    if (this.phase === "twoSum") this.retreatTwoSumRight(-1);
   }
 
   private handleL(): void {
     if (this.actionLocked) return;
-    if (this.phase === 'twoSum') this.retreatTwoSumRight(1);
+    if (this.phase === "twoSum") this.retreatTwoSumRight(1);
   }
 
   // ---- Reverse phase logic ----
@@ -2026,15 +2075,19 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
       return;
     }
     this.actionLocked = true;
-    audioManager.playTone(440, 90, 'sine');
+    audioManager.playTone(440, 90, "sine");
     await this.row.animateSwap(this.reverseLeft, this.reverseRight);
-    [this.reverseValues[this.reverseLeft], this.reverseValues[this.reverseRight]] =
-      [this.reverseValues[this.reverseRight], this.reverseValues[this.reverseLeft]];
+    [
+      this.reverseValues[this.reverseLeft],
+      this.reverseValues[this.reverseRight],
+    ] = [
+      this.reverseValues[this.reverseRight],
+      this.reverseValues[this.reverseLeft],
+    ];
     this.reverseLeft++;
     this.reverseRight--;
-    this.row.moveCursor('L', this.reverseLeft);
-    this.row.moveCursor('R', this.reverseRight);
-    this.refreshSerpentPreview();
+    this.row.moveCursor("L", this.reverseLeft);
+    this.row.moveCursor("R", this.reverseRight);
     this.time.delayedCall(160, () => {
       if (this.reverseLeft >= this.reverseRight) {
         this.completeReversePhase();
@@ -2045,18 +2098,22 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
   }
 
   private completeReversePhase(): void {
-    if (this.reverseCompleting || this.phase !== 'reverse') return;
+    if (this.reverseCompleting || this.phase !== "reverse") return;
     if (!arrayEquals(this.reverseValues, this.reverseTarget)) return;
     this.reverseCompleting = true;
     this.actionLocked = true;
     audioManager.playCorrectTone();
-    JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2 + 64);
+    JuiceSystem.correctBurst(
+      this,
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2 + 64,
+    );
     // Phase transition — the Serpent shifts from reversal to pair-finding.
     // Teal accent foreshadows the converging-pointers UI from the Bridge.
     playBossPhaseTransition(this, {
-      phaseNumber: 'II',
-      phaseName: 'PAIR THE SHORES',
-      patternHint: 'Two stones, one target weight. Walk inward.',
+      phaseNumber: "II",
+      phaseName: "PAIR THE SHORES",
+      patternHint: "Two stones, one target weight. Walk inward.",
       accentColor: 0x22d3ee,
       onComplete: () => this.startTwoSumPhase(),
     });
@@ -2073,56 +2130,65 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     const v = MIRROR_SERPENT_PHASES.twoSum.values;
     const sum = this.currentTwoSum();
     const target = MIRROR_SERPENT_PHASES.twoSum.target;
-    const sign = sum === target ? '=' : sum < target ? '<' : '>';
+    const sign = sum === target ? "=" : sum < target ? "<" : ">";
     this.detailText.setText(
-      `${v[this.twoSumLeft]} + ${v[this.twoSumRight]} = ${sum}  ${sign}  ${target}`
+      `${v[this.twoSumLeft]} + ${v[this.twoSumRight]} = ${sum}  ${sign}  ${target}`,
     );
-    this.detailText.setColor(sum === target ? '#88c070' : '#fbbf24');
-    this.refreshSerpentPreview();
+    this.detailText.setColor(sum === target ? "#88c070" : "#fbbf24");
   }
 
   private advanceTwoSumLeft(direction: -1 | 1): void {
-    const directive = pointerDirective(this.currentTwoSum(), MIRROR_SERPENT_PHASES.twoSum.target);
-    if (direction !== 1 || directive !== 'advance_left') {
-      this.flashWrong('The trace forces a different move.');
+    const directive = pointerDirective(
+      this.currentTwoSum(),
+      MIRROR_SERPENT_PHASES.twoSum.target,
+    );
+    if (direction !== 1 || directive !== "advance_left") {
+      this.flashWrong("The sum forces a different move.");
       return;
     }
     if (this.twoSumLeft + 1 >= this.twoSumRight) return;
     this.twoSumLeft++;
-    this.row.moveCursor('L', this.twoSumLeft);
-    audioManager.playTone(420, 50, 'sine');
+    this.row.moveCursor("L", this.twoSumLeft);
+    audioManager.playTone(420, 50, "sine");
     this.refreshTwoSumDetail();
   }
 
   private retreatTwoSumRight(direction: -1 | 1): void {
-    const directive = pointerDirective(this.currentTwoSum(), MIRROR_SERPENT_PHASES.twoSum.target);
-    if (direction !== -1 || directive !== 'retreat_right') {
-      this.flashWrong('The trace forces a different move.');
+    const directive = pointerDirective(
+      this.currentTwoSum(),
+      MIRROR_SERPENT_PHASES.twoSum.target,
+    );
+    if (direction !== -1 || directive !== "retreat_right") {
+      this.flashWrong("The sum forces a different move.");
       return;
     }
     if (this.twoSumRight - 1 <= this.twoSumLeft) return;
     this.twoSumRight--;
-    this.row.moveCursor('R', this.twoSumRight);
-    audioManager.playTone(360, 50, 'sine');
+    this.row.moveCursor("R", this.twoSumRight);
+    audioManager.playTone(360, 50, "sine");
     this.refreshTwoSumDetail();
   }
 
   private tryLockTwoSum(): void {
     if (this.currentTwoSum() !== MIRROR_SERPENT_PHASES.twoSum.target) {
-      this.flashWrong('The pair does not sum to the target.');
+      this.flashWrong("The pair does not sum to the target.");
       return;
     }
     this.actionLocked = true;
     audioManager.playCorrectTone();
     this.row.pulseTile(this.twoSumLeft, COLORS.SUCCESS);
     this.row.pulseTile(this.twoSumRight, COLORS.SUCCESS);
-    JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2 + 64);
+    JuiceSystem.correctBurst(
+      this,
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2 + 64,
+    );
     // Final phase shift — the sliding-window mechanic. Pale-gold accent
     // matches the "sun on water" shimmer used in the Window Fisher puzzle.
     playBossPhaseTransition(this, {
-      phaseNumber: 'III',
-      phaseName: 'RIDE THE CURRENT',
-      patternHint: 'Slide the window. Heaviest catch wins.',
+      phaseNumber: "III",
+      phaseName: "RIDE THE CURRENT",
+      patternHint: "Slide the window. Heaviest catch wins.",
       accentColor: 0xeaf6ff,
       onComplete: () => {
         this.actionLocked = false;
@@ -2139,9 +2205,12 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     const right = left + round.windowSize - 1;
     this.row.setWindow(left, right, GOLD);
     const sum = windowSumAt(round.values, left, round.windowSize);
-    this.detailText.setText(`SUM = ${sum}   -   TARGET = ${this.windowOptimalSum} (heaviest)`);
-    this.detailText.setColor(sum === this.windowOptimalSum ? '#88c070' : '#fbbf24');
-    this.refreshSerpentPreview();
+    this.detailText.setText(
+      `SUM = ${sum}   -   TARGET = ${this.windowOptimalSum} (heaviest)`,
+    );
+    this.detailText.setColor(
+      sum === this.windowOptimalSum ? "#88c070" : "#fbbf24",
+    );
   }
 
   private slideWindow(direction: -1 | 1): void {
@@ -2149,7 +2218,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     const next = this.windowStart + direction;
     if (next < 0 || next + round.windowSize > round.values.length) return;
     this.windowStart = next;
-    audioManager.playTone(direction === 1 ? 540 : 420, 50, 'sine');
+    audioManager.playTone(direction === 1 ? 540 : 420, 50, "sine");
     this.refreshFixedWindowDetail();
   }
 
@@ -2157,18 +2226,25 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     const round = MIRROR_SERPENT_PHASES.fixedWindow;
     const sum = windowSumAt(round.values, this.windowStart, round.windowSize);
     if (sum !== this.windowOptimalSum) {
-      this.flashWrong('Not the heaviest catch yet.');
+      this.flashWrong("Not the heaviest catch yet.");
       return;
     }
     this.actionLocked = true;
     audioManager.playCorrectTone();
-    JuiceSystem.correctBurst(this, this.cameras.main.width / 2, this.cameras.main.height / 2 + 64);
-    for (let i = this.windowStart; i < this.windowStart + round.windowSize; i++) {
+    JuiceSystem.correctBurst(
+      this,
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2 + 64,
+    );
+    for (
+      let i = this.windowStart;
+      i < this.windowStart + round.windowSize;
+      i++
+    ) {
       this.row.pulseTile(i, COLORS.SUCCESS);
     }
     this.time.delayedCall(1100, () => {
-      this.phase = 'won';
-      this.refreshSerpentPreview();
+      this.phase = "won";
       this.completeBoss();
     });
   }
@@ -2187,19 +2263,30 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
   }
 
   protected displayHint(hintNumber: number): void {
-    if (this.phase === 'reverse') {
-      this.showMessage('Press SPACE to swap-and-step. Run the river backward.', COLORS.GOLD_ACCENT);
+    if (this.phase === "reverse") {
+      this.showMessage(
+        "Press SPACE to swap-and-step. Run the river backward.",
+        COLORS.GOLD_ACCENT,
+      );
       return;
     }
-    if (this.phase === 'twoSum') {
+    if (this.phase === "twoSum") {
       const sum = this.currentTwoSum();
       const target = MIRROR_SERPENT_PHASES.twoSum.target;
-      const tip = sum < target ? 'Sum too small - press D.' : sum > target ? 'Sum too big - press J.' : 'On target. Press ENTER.';
+      const tip =
+        sum < target
+          ? "Sum too small - press D."
+          : sum > target
+            ? "Sum too big - press J."
+            : "On target. Press ENTER.";
       this.showMessage(`Hint ${hintNumber}: ${tip}`, COLORS.GOLD_ACCENT);
       return;
     }
-    if (this.phase === 'fixedWindow') {
-      this.showMessage(`Hint ${hintNumber}: lock at index ${this.windowOptimalStart}.`, COLORS.GOLD_ACCENT);
+    if (this.phase === "fixedWindow") {
+      this.showMessage(
+        `Hint ${hintNumber}: lock at index ${this.windowOptimalStart}.`,
+        COLORS.GOLD_ACCENT,
+      );
     }
   }
 }

@@ -1,42 +1,53 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
 
-const scenePath = resolve(dirname(fileURLToPath(import.meta.url)), 'TwinRiversChoiceScenes.ts');
+const scenePath = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "TwinRiversChoiceScenes.ts",
+);
 
-describe('Mirror Walk controls', () => {
-  it('requires explicit swap, left advance, and right retreat actions', () => {
-    const source = readFileSync(scenePath, 'utf8');
+describe("Mirror Walk controls", () => {
+  it("requires explicit swap, left advance, and right retreat actions", () => {
+    const source = readFileSync(scenePath, "utf8");
 
     // Keybinding label rewritten to clarify that D and J each control one of
     // two pointers (left-hand-on-D / right-hand-on-J), not "D goes left".
     // The arrow-key aliases are also called out in the label now.
-    expect(source).toContain('[D] / [→] L pointer');
-    expect(source).toContain('[J] / [←] R pointer');
-    expect(source).toContain('private swappedThisPair = false;');
-    expect(source).toContain('private leftAdvancedThisPair = false;');
-    expect(source).toContain('private rightRetreatedThisPair = false;');
-    expect(source).toContain('private roundCompleting = false;');
-    expect(source).toContain('private readonly onSwap');
-    expect(source).toContain('private tryMoveLeft(): void');
-    expect(source).toContain('private tryMoveRight(): void');
-    expect(source).toContain('Swap the mirrored values first.');
-    expect(source).toContain("needsRightRetreat ? 'J: R = R - 1'");
-    expect(source).toContain("this.flashWrong('Retreat R before checking the loop again.')");
-    expect(source).not.toContain('private async tryStep()');
-    expect(source).not.toContain('Just press SPACE.');
+    expect(source).toContain("[D] / [→] L pointer");
+    expect(source).toContain("[J] / [←] R pointer");
+    expect(source).toContain("private swappedThisPair = false;");
+    expect(source).toContain("private leftAdvancedThisPair = false;");
+    expect(source).toContain("private rightRetreatedThisPair = false;");
+    expect(source).toContain("private roundCompleting = false;");
+    expect(source).toContain("private readonly onSwap");
+    expect(source).toContain("private tryMoveLeft(): void");
+    expect(source).toContain("private tryMoveRight(): void");
+    expect(source).toContain("Swap the mirrored values first.");
+    // Quote-style agnostic: the formatter hook may flip the scene file
+    // between single and double quotes.
+    expect(source).toContain("J: R = R - 1");
+    expect(source).toContain("Retreat R before checking the loop again.");
+    expect(source).not.toContain("private async tryStep()");
+    expect(source).not.toContain("Just press SPACE.");
   });
 });
 
-describe('Mirror Serpent controls', () => {
-  it('maps the displayed D/J two-sum controls to the forced pointer moves', () => {
-    const source = readFileSync(scenePath, 'utf8');
+describe("Mirror Serpent controls", () => {
+  it("maps the displayed D/J two-sum controls to the forced pointer moves", () => {
+    const source = readFileSync(scenePath, "utf8");
 
-    expect(source).toMatch(/private handleD\(\): void \{[\s\S]*this\.advanceTwoSumLeft\(1\)/);
-    expect(source).toMatch(/private handleJ\(\): void \{[\s\S]*this\.retreatTwoSumRight\(-1\)/);
-    expect(source).toContain("const tip = sum < target ? 'Sum too small - press D.'");
-    expect(source).toContain('private reverseCompleting = false;');
-    expect(source).toContain("if (this.reverseCompleting || this.phase !== 'reverse') return;");
+    expect(source).toMatch(
+      /private handleD\(\): void \{[\s\S]*this\.advanceTwoSumLeft\(1\)/,
+    );
+    expect(source).toMatch(
+      /private handleJ\(\): void \{[\s\S]*this\.retreatTwoSumRight\(-1\)/,
+    );
+    expect(source).toContain("Sum too small - press D.");
+    expect(source).toContain("private reverseCompleting = false;");
+    expect(source).toMatch(
+      /if \(this\.reverseCompleting \|\| this\.phase !== ['"]reverse['"]\) return;/,
+    );
   });
 });

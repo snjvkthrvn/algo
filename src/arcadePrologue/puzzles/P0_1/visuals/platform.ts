@@ -1,15 +1,14 @@
-import Phaser from 'phaser';
-import { STAGE } from '../tokens';
+import Phaser from "phaser";
+import { VISUAL_REVAMP_KEYS } from "../../../../config/assets";
+import { STAGE } from "../tokens";
 
 /**
- * Procedural circular stone arena — painted once at scene create.
- * Uses Graphics (no external assets) so the look is fully self-contained.
+ * Floor treatment under the diamond grid — painted once at scene create.
  *
  * Layer stack (all low depths so grid tiles render on top):
- *   depth 1  outer shadow blob
- *   depth 2  platform fill
- *   depth 3  surface grid-line haze + perimeter ring
- *   depth 4  edge vignette fades
+ *   depth 4  shadow blob (grounding)
+ *   depth 5  platform fill (cosmic fallback only)
+ *   depth 6  surface haze + perimeter ring (cosmic fallback only)
  */
 
 const CX = STAGE.width / 2;
@@ -18,23 +17,39 @@ const RX = 404; // horizontal radius — sized to contain the 6×8 diamond grid
 const RY = 216; // vertical radius
 
 /**
- * Procedural stone arena that grounds the diamond grid.
+ * Grounds the diamond grid on the floor.
  *
- * Always returns false so the caller (a) keeps the logical diamond tiles
- * VISIBLE and (b) runs paintAtmosphere — which paints the cosmic_void backdrop
- * AND wires emitPuzzleActionPulse (PuzzleKinetics).
+ * When the warm action-arena art is loaded, the room already has a floor —
+ * only a soft contact shadow is painted so the tiles sit IN the room instead
+ * of floating over it. The full procedural stone disc (ring, portal) is the
+ * fallback for when the art is missing.
  *
- * The previous `stone_arena.png` path baked an oval floor that never aligned
- * with the logical diamond lattice, so the playfield was hidden and unreadable.
- * The procedural disc + tessellating diamond tiles are self-consistent: what
- * you see is exactly where you can step.
+ * Returns true when the arena art is in use. Either way the logical diamond
+ * tiles stay visible: the old `stone_arena.png` path that hid them baked an
+ * oval floor that never aligned with the lattice, making the playfield
+ * unreadable. What you see must be exactly where you can step.
  */
 export function paintPlatform(scene: Phaser.Scene): boolean {
+  if (
+    scene.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)
+  ) {
+    paintContactShadow(scene);
+    return true;
+  }
   paintShadow(scene);
   paintSurface(scene);
   paintPerimeterRing(scene);
   paintPortal(scene);
   return false;
+}
+
+/** Soft stacked shadow that seats the grid on the arena-art floor. */
+function paintContactShadow(scene: Phaser.Scene): void {
+  const g = scene.add.graphics().setDepth(4);
+  for (let i = 3; i >= 1; i -= 1) {
+    g.fillStyle(0x000000, 0.07);
+    g.fillEllipse(CX, CY + 10, (RX - i * 26) * 2, (RY - i * 14) * 2);
+  }
 }
 
 export function paintEdgeVignette(scene: Phaser.Scene): void {
@@ -122,8 +137,10 @@ function paintPerimeterRing(scene: Phaser.Scene): void {
     const len = 5;
     // Small cross at each inner point
     g.beginPath();
-    g.moveTo(rx - len, ry); g.lineTo(rx + len, ry);
-    g.moveTo(rx, ry - len); g.lineTo(rx, ry + len);
+    g.moveTo(rx - len, ry);
+    g.lineTo(rx + len, ry);
+    g.moveTo(rx, ry - len);
+    g.lineTo(rx, ry + len);
     g.strokePath();
   }
 }

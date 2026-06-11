@@ -11,11 +11,16 @@
  * round progression), and RiverRow owns the *how it looks*.
  */
 
-import Phaser from 'phaser';
-import { COLORS, COLOR_HEX, FONTS } from '../config/constants';
+import Phaser from "phaser";
+import { COLORS, COLOR_HEX, FONTS } from "../config/constants";
+import { VISUAL_REVAMP_KEYS } from "../config/assets";
 
 type PuzzlePulseScene = Phaser.Scene & {
-  emitPuzzleActionPulse?: (x: number, y: number, kind?: 'neutral' | 'correct' | 'wrong' | 'hint' | 'complete') => void;
+  emitPuzzleActionPulse?: (
+    x: number,
+    y: number,
+    kind?: "neutral" | "correct" | "wrong" | "hint" | "complete",
+  ) => void;
 };
 
 export interface RiverRowOptions {
@@ -40,13 +45,16 @@ export interface RiverCursorOptions {
   color: number;
   index: number;
   /** Vertical offset from the row baseline; +ve = below the row, -ve = above. */
-  side: 'top' | 'bottom';
+  side: "top" | "bottom";
 }
 
 interface TileVisual {
   container: Phaser.GameObjects.Container;
   box: Phaser.GameObjects.Rectangle;
   label: Phaser.GameObjects.Text;
+  /** Anchored footprint shadow — lives outside the container so a lifted
+   *  crate visibly rises off the ground during swaps. */
+  groundShadow: Phaser.GameObjects.Ellipse;
   index: number;
   x: number;
   y: number;
@@ -57,7 +65,7 @@ interface CursorVisual {
   arrow: Phaser.GameObjects.Triangle;
   pillar: Phaser.GameObjects.Rectangle;
   labelText: Phaser.GameObjects.Text;
-  side: 'top' | 'bottom';
+  side: "top" | "bottom";
   baseY: number;
   color: number;
   index: number;
@@ -65,7 +73,9 @@ interface CursorVisual {
 
 export class RiverRow {
   private readonly scene: Phaser.Scene;
-  private readonly options: Required<Omit<RiverRowOptions, 'showIndices' | 'onTilePress' | 'allowPuzzleCursor'>> & {
+  private readonly options: Required<
+    Omit<RiverRowOptions, "showIndices" | "onTilePress" | "allowPuzzleCursor">
+  > & {
     showIndices: boolean;
     onTilePress?: (index: number) => void;
     allowPuzzleCursor: boolean;
@@ -74,6 +84,14 @@ export class RiverRow {
   private readonly cursors: Map<string, CursorVisual> = new Map();
   private windowHighlight: Phaser.GameObjects.Rectangle | null = null;
   private duplicateBadges: Phaser.GameObjects.Text[] = [];
+  /** True when the dock-crate sprite is loaded and tiles render as physical
+   *  crates. The box rectangle then carries only hit-area + tint flashes
+   *  (alpha 0 at rest) so the pixel art shows through. Falls back to the
+   *  legacy flat-slab path when the texture isn't loaded (unit tests, scenes
+   *  that skip preload). */
+  private readonly hasCrateBody: boolean;
+  /** Box fill alpha at rest — 0 over a crate, opaque on the fallback slab. */
+  private readonly idleBoxAlpha: number;
 
   constructor(scene: Phaser.Scene, options: RiverRowOptions) {
     this.scene = scene;
@@ -87,6 +105,8 @@ export class RiverRow {
       onTilePress: options.onTilePress,
       allowPuzzleCursor: options.allowPuzzleCursor ?? false,
     };
+    this.hasCrateBody = scene.textures.exists(VISUAL_REVAMP_KEYS.TR_DOCK_CRATE);
+    this.idleBoxAlpha = this.hasCrateBody ? 0 : 0.96;
     this.renderTiles();
   }
 
@@ -98,62 +118,98 @@ export class RiverRow {
 
     values.forEach((value, i) => {
       const x = startX + i * stride;
+      // Footprint shadow anchored to the ground (not the container) so a
+      // crate lifted mid-swap visibly rises off it.
+      const groundShadow = this.scene.add
+        .ellipse(
+          x + 2,
+          y + tileSize / 2 + 5,
+          tileSize * 1.04,
+          tileSize * 0.2,
+          COLORS.PURE_BLACK,
+          0.34,
+        )
+        .setDepth(19);
       const container = this.scene.add.container(x, y).setDepth(20);
-      const shadow = this.scene.add.rectangle(4, 5, tileSize, tileSize, COLORS.PURE_BLACK, 0.32);
-      const box = this.scene.add.rectangle(0, 0, tileSize, tileSize, COLORS.ERROR, 0.96)
-        .setStrokeStyle(3, COLORS.FRAME_BORDER_LIGHT, 1);
-      const label = this.scene.add.text(0, 0, String(value), {
-        fontSize: '24px',
-        fontFamily: FONTS.RETRO,
-        color: COLOR_HEX.TEXT_LIGHT,
-      }).setOrigin(0.5);
+      const crate = this.hasCrateBody
+        ? this.scene.add
+            .image(0, 0, VISUAL_REVAMP_KEYS.TR_DOCK_CRATE)
+            .setDisplaySize(tileSize, tileSize)
+        : null;
+      // Over a crate the box is invisible at rest — it carries the hit area
+      // and the pulse/flash tint washes. Without the sprite it IS the tile.
+      const box = this.scene.add.rectangle(
+        0,
+        0,
+        tileSize,
+        tileSize,
+        COLORS.ERROR,
+        this.idleBoxAlpha,
+      );
+      if (!this.hasCrateBody) {
+        box.setStrokeStyle(3, COLORS.FRAME_BORDER_LIGHT, 1);
+      }
+      const label = this.scene.add
+        .text(0, 0, String(value), {
+          fontSize: "24px",
+          fontFamily: FONTS.RETRO,
+          color: COLOR_HEX.TEXT_LIGHT,
+          stroke: "#10202c",
+          strokeThickness: 3,
+        })
+        .setOrigin(0.5);
 
-      container.add([shadow, box, label]);
+      const children: Phaser.GameObjects.GameObject[] = [];
+      if (crate) children.push(crate);
+      children.push(box, label);
+      container.add(children);
 
       if (this.options.onTilePress) {
         box.setInteractive({ useHandCursor: true });
         if (!this.options.allowPuzzleCursor) {
-          box.setData('puzzleCursorIgnore', true);
+          box.setData("puzzleCursorIgnore", true);
         }
-        box.on('pointerdown', () => {
+        box.on("pointerdown", () => {
           this.emitTilePressPulse(i);
           this.options.onTilePress?.(i);
         });
-        box.on('pointerover', () => {
+        box.on("pointerover", () => {
           this.scene.tweens.add({
             targets: container,
             scale: 1.04,
             duration: 80,
-            ease: 'Sine.easeOut',
+            ease: "Sine.easeOut",
           });
         });
-        box.on('pointerout', () => {
+        box.on("pointerout", () => {
           this.scene.tweens.add({
             targets: container,
             scale: 1,
             duration: 100,
-            ease: 'Sine.easeIn',
+            ease: "Sine.easeIn",
           });
         });
       }
 
       if (showIndices) {
-        const idxText = this.scene.add.text(0, tileSize / 2 + 14, String(i), {
-          fontSize: '8px',
-          fontFamily: FONTS.RETRO,
-          color: COLOR_HEX.TEXT_MUTED,
-        }).setOrigin(0.5);
+        const idxText = this.scene.add
+          .text(0, tileSize / 2 + 14, String(i), {
+            fontSize: "8px",
+            fontFamily: FONTS.RETRO,
+            color: COLOR_HEX.TEXT_MUTED,
+          })
+          .setOrigin(0.5);
         container.add(idxText);
       }
 
-      this.tiles.push({ container, box, label, index: i, x, y });
+      this.tiles.push({ container, box, label, groundShadow, index: i, x, y });
     });
   }
 
   setValues(values: ReadonlyArray<string | number>): void {
     if (values.length !== this.tiles.length) {
       throw new Error(
-        `RiverRow.setValues: expected ${this.tiles.length} values, got ${values.length}`
+        `RiverRow.setValues: expected ${this.tiles.length} values, got ${values.length}`,
       );
     }
     values.forEach((v, i) => this.tiles[i].label.setText(String(v)));
@@ -197,36 +253,53 @@ export class RiverRow {
     this.options.onTilePress(index);
   }
 
-  /** Animate a swap of two indices. Returns when the tween completes. */
+  /**
+   * Animate a swap of two indices. Returns when the tween completes.
+   *
+   * The whole crate travels: each container lifts off its ground shadow,
+   * carries its value to the other slot (at different heights so they pass
+   * each other readably), and lands. On landing the containers snap back to
+   * their home slots with labels exchanged — visually identical to where the
+   * travel ended, so the physical "objects moved" read costs no extra state.
+   */
   animateSwap(i: number, j: number, durationMs = 280): Promise<void> {
     if (i === j) return Promise.resolve();
     const a = this.tiles[i];
     const b = this.tiles[j];
     const aLabel = a.label.text;
     const bLabel = b.label.text;
+    const settle = () => {
+      a.container.setPosition(a.x, a.y);
+      b.container.setPosition(b.x, b.y);
+      a.label.setText(bLabel);
+      b.label.setText(aLabel);
+    };
     return new Promise((resolve) => {
-      // Lift each tile, swap labels, settle. Using container.y for the arc.
-      const liftA = this.scene.tweens.add({
-        targets: a.container,
-        y: a.y - 24,
-        duration: durationMs / 2,
-        ease: 'Sine.easeOut',
-        yoyo: true,
-        onYoyo: () => a.label.setText(bLabel),
-      });
-      const liftB = this.scene.tweens.add({
-        targets: b.container,
-        y: b.y - 24,
-        duration: durationMs / 2,
-        ease: 'Sine.easeOut',
-        yoyo: true,
-        onYoyo: () => b.label.setText(aLabel),
-      });
-      liftA.on('complete', () => {
-        if (!liftB.isPlaying()) resolve();
-      });
-      liftB.on('complete', () => {
-        if (!liftA.isPlaying()) resolve();
+      let pending = 2;
+      const done = () => {
+        pending -= 1;
+        if (pending > 0) return;
+        settle();
+        resolve();
+      };
+      [
+        { tile: a, dest: b, lift: 26 },
+        { tile: b, dest: a, lift: 12 },
+      ].forEach(({ tile, dest, lift }) => {
+        this.scene.tweens.add({
+          targets: tile.container,
+          x: dest.x,
+          duration: durationMs,
+          ease: "Sine.easeInOut",
+          onComplete: done,
+        });
+        this.scene.tweens.add({
+          targets: tile.container,
+          y: tile.y - lift,
+          duration: durationMs / 2,
+          ease: "Sine.easeOut",
+          yoyo: true,
+        });
       });
     });
   }
@@ -235,14 +308,17 @@ export class RiverRow {
     const tile = this.tiles[index];
     if (!tile) return;
     const orig = tile.box.fillColor;
-    tile.box.setFillStyle(color, 0.85);
+    // Over a crate sprite the pulse is a translucent wash so the wood still
+    // reads beneath the state colour; the fallback slab keeps the old opaque
+    // repaint.
+    tile.box.setFillStyle(color, this.hasCrateBody ? 0.45 : 0.85);
     this.scene.tweens.add({
       targets: tile.container,
       scale: 1.08,
       duration: 140,
       yoyo: true,
-      ease: 'Back.easeOut',
-      onComplete: () => tile.box.setFillStyle(orig, 0.96),
+      ease: "Back.easeOut",
+      onComplete: () => tile.box.setFillStyle(orig, this.idleBoxAlpha),
     });
   }
 
@@ -250,7 +326,11 @@ export class RiverRow {
     const tile = this.tiles[index];
     if (!tile) return;
 
-    (this.scene as PuzzlePulseScene).emitPuzzleActionPulse?.(tile.x, tile.y, 'neutral');
+    (this.scene as PuzzlePulseScene).emitPuzzleActionPulse?.(
+      tile.x,
+      tile.y,
+      "neutral",
+    );
 
     const rowCenterX = this.options.centerX;
     const color = COLORS.CYAN_GLOW;
@@ -263,7 +343,7 @@ export class RiverRow {
       scale: 1.45,
       alpha: 0,
       duration: 220,
-      ease: 'Sine.easeOut',
+      ease: "Sine.easeOut",
       onComplete: () => ring.destroy(),
     });
 
@@ -277,7 +357,7 @@ export class RiverRow {
       targets: line,
       alpha: 0,
       duration: 220,
-      ease: 'Quad.easeOut',
+      ease: "Quad.easeOut",
       onComplete: () => line.destroy(),
     });
   }
@@ -286,7 +366,7 @@ export class RiverRow {
     const tile = this.tiles[index];
     if (!tile) return;
     const orig = tile.box.fillColor;
-    tile.box.setFillStyle(color, 0.95);
+    tile.box.setFillStyle(color, this.hasCrateBody ? 0.5 : 0.95);
     this.scene.tweens.add({
       targets: tile.container,
       x: { from: tile.x - 4, to: tile.x + 4 },
@@ -295,7 +375,7 @@ export class RiverRow {
       repeat: 3,
       onComplete: () => {
         tile.container.setX(tile.x);
-        tile.box.setFillStyle(orig, 0.96);
+        tile.box.setFillStyle(orig, this.idleBoxAlpha);
       },
     });
   }
@@ -310,23 +390,27 @@ export class RiverRow {
     const tile = this.tiles[options.index];
     if (!tile) return;
 
-    const baseY = options.side === 'top'
-      ? tile.y - this.options.tileSize / 2 - 28
-      : tile.y + this.options.tileSize / 2 + 28;
-    const arrowDir = options.side === 'top' ? 1 : -1;
+    const baseY =
+      options.side === "top"
+        ? tile.y - this.options.tileSize / 2 - 28
+        : tile.y + this.options.tileSize / 2 + 28;
+    const arrowDir = options.side === "top" ? 1 : -1;
 
     const container = this.scene.add.container(tile.x, baseY).setDepth(22);
     const pillar = this.scene.add.rectangle(0, 0, 4, 22, options.color, 0.8);
-    const arrow = options.side === 'top'
-      ? this.scene.add.triangle(0, 14, -8, -6, 8, -6, 0, 8, options.color, 1)
-      : this.scene.add.triangle(0, -14, -8, 6, 8, 6, 0, -8, options.color, 1);
-    const labelText = this.scene.add.text(0, arrowDir > 0 ? -18 : 18, options.label, {
-      fontSize: '9px',
-      fontFamily: FONTS.RETRO,
-      color: COLOR_HEX.TEXT_LIGHT,
-      backgroundColor: COLOR_HEX.TEXT_DARK,
-      padding: { x: 4, y: 2 },
-    }).setOrigin(0.5);
+    const arrow =
+      options.side === "top"
+        ? this.scene.add.triangle(0, 14, -8, -6, 8, -6, 0, 8, options.color, 1)
+        : this.scene.add.triangle(0, -14, -8, 6, 8, 6, 0, -8, options.color, 1);
+    const labelText = this.scene.add
+      .text(0, arrowDir > 0 ? -18 : 18, options.label, {
+        fontSize: "9px",
+        fontFamily: FONTS.RETRO,
+        color: COLOR_HEX.TEXT_LIGHT,
+        backgroundColor: COLOR_HEX.TEXT_DARK,
+        padding: { x: 4, y: 2 },
+      })
+      .setOrigin(0.5);
 
     container.add([pillar, arrow, labelText]);
     this.cursors.set(id, {
@@ -343,11 +427,11 @@ export class RiverRow {
     if (this.scene.tweens) {
       this.scene.tweens.add({
         targets: container,
-        y: baseY + (options.side === 'top' ? -3 : 3),
+        y: baseY + (options.side === "top" ? -3 : 3),
         duration: 700,
         yoyo: true,
         repeat: -1,
-        ease: 'Sine.easeInOut',
+        ease: "Sine.easeInOut",
       });
     }
   }
@@ -362,7 +446,7 @@ export class RiverRow {
       targets: cursor.container,
       x: tile.x,
       duration: 220,
-      ease: 'Sine.easeInOut',
+      ease: "Sine.easeInOut",
     });
   }
 
@@ -375,7 +459,11 @@ export class RiverRow {
   }
 
   /** Highlight the inclusive range [left, right] with a translucent panel. */
-  setWindow(left: number, right: number, color: number = COLORS.CYAN_GLOW): void {
+  setWindow(
+    left: number,
+    right: number,
+    color: number = COLORS.CYAN_GLOW,
+  ): void {
     if (left > right) {
       this.clearWindow();
       return;
@@ -387,7 +475,15 @@ export class RiverRow {
     const x = (tileLeft.x + tileRight.x) / 2;
     const span = tileRight.x - tileLeft.x + this.options.tileSize + 8;
     if (!this.windowHighlight) {
-      this.windowHighlight = this.scene.add.rectangle(x, this.options.y, span, this.options.tileSize + 16, color, 0.18)
+      this.windowHighlight = this.scene.add
+        .rectangle(
+          x,
+          this.options.y,
+          span,
+          this.options.tileSize + 16,
+          color,
+          0.18,
+        )
         .setStrokeStyle(2, color, 0.7)
         .setDepth(15);
     } else {
@@ -420,13 +516,16 @@ export class RiverRow {
       hasDuplicate = true;
       indices.forEach((i) => {
         const tile = this.tiles[i];
-        const badge = this.scene.add.text(tile.x, tile.y - this.options.tileSize / 2 - 12, '!', {
-          fontSize: '12px',
-          fontFamily: FONTS.RETRO,
-          color: COLOR_HEX.TEXT_LIGHT,
-          backgroundColor: COLOR_HEX.BRIDGE_WRONG,
-          padding: { x: 5, y: 2 },
-        }).setOrigin(0.5).setDepth(25);
+        const badge = this.scene.add
+          .text(tile.x, tile.y - this.options.tileSize / 2 - 12, "!", {
+            fontSize: "12px",
+            fontFamily: FONTS.RETRO,
+            color: COLOR_HEX.TEXT_LIGHT,
+            backgroundColor: COLOR_HEX.BRIDGE_WRONG,
+            padding: { x: 5, y: 2 },
+          })
+          .setOrigin(0.5)
+          .setDepth(25);
         this.duplicateBadges.push(badge);
       });
     });
@@ -439,7 +538,7 @@ export class RiverRow {
   }
 
   getValueAt(index: number): string {
-    return this.tiles[index]?.label.text ?? '';
+    return this.tiles[index]?.label.text ?? "";
   }
 
   size(): number {
@@ -447,7 +546,10 @@ export class RiverRow {
   }
 
   destroy(): void {
-    for (const tile of this.tiles) tile.container.destroy();
+    for (const tile of this.tiles) {
+      tile.groundShadow.destroy();
+      tile.container.destroy();
+    }
     this.tiles.length = 0;
     this.cursors.forEach((c) => {
       this.scene.tweens.killTweensOf(c.container);

@@ -1,7 +1,7 @@
-import Phaser from 'phaser';
-import { COLORS, px, s, SPACING, STAGE, TYPE } from '../puzzles/P0_1/tokens';
-import { GAME, type ScoreEvent } from '../game/state';
-import { PROLOGUE_RUN_UI_KEY } from '../game/algorithmiaIntegration';
+import Phaser from "phaser";
+import { COLORS, px, s, SPACING, STAGE, TYPE } from "../puzzles/P0_1/tokens";
+import { GAME, type ScoreEvent } from "../game/state";
+import { PROLOGUE_RUN_UI_KEY } from "../game/algorithmiaIntegration";
 
 /**
  * Persistent HUD overlay.
@@ -39,7 +39,10 @@ export class UIScene extends Phaser.Scene {
 
   create(): void {
     // ── Top-right HUD panel ────────────────────────────────────────────────────
-    const panelBg = this.add.graphics().setDepth(39);
+    // Hidden like the score/combo readouts: no first-contact event loses a
+    // life anymore, so a hearts meter is dead arcade chrome in the serene
+    // opening register (docs/VISION.md §5-6).
+    const panelBg = this.add.graphics().setDepth(39).setVisible(false);
     panelBg.fillStyle(0x0c1024, 0.78);
     panelBg.fillRoundedRect(GEM_X, GEM_Y, GEM_W, GEM_H, s(12));
     panelBg.lineStyle(s(1), 0x2a3a6f, 0.45);
@@ -53,40 +56,55 @@ export class UIScene extends Phaser.Scene {
       heart.x = startX + i * s(20);
       heart.y = GEM_Y + s(20);
       heart.setDepth(40);
+      heart.setVisible(false);
       this.paintHeart(heart, i < GAME.lives);
       this.hearts.push(heart);
     }
 
+    // Score keeps accumulating in GAME (it feeds the end-of-run rank), but
+    // the live readout stays hidden: a SCORE counter is arcade chrome and
+    // the opening register is serene wonder (docs/VISION.md §5-6).
     this.scoreText = this.add
       .text(GEM_X + GEM_W / 2, GEM_Y + s(44), this.formatScore(GAME.score), {
         fontFamily: (TYPE.display as { fontFamily: string }).fontFamily,
-        fontSize: s(13) + 'px',
-        fontStyle: 'bold',
-        color: '#e6ecff',
+        fontSize: s(13) + "px",
+        fontStyle: "bold",
+        color: "#e6ecff",
       })
       .setOrigin(0.5)
-      .setDepth(40);
+      .setDepth(40)
+      .setVisible(false);
 
-    this.comboChip = this.add.container(STAGE.width - PAD_X - s(100), PAD_Y + s(56)).setDepth(40);
+    this.comboChip = this.add
+      .container(STAGE.width - PAD_X - s(100), PAD_Y + s(56))
+      .setDepth(40);
     const chipBg = this.add.graphics();
     chipBg.fillStyle(0xfca5a5, 0.16);
     chipBg.fillRoundedRect(0, 0, s(100), s(22), s(11));
     chipBg.lineStyle(s(1), 0xfca5a5, 0.55);
     chipBg.strokeRoundedRect(0, 0, s(100), s(22), s(11));
     this.comboText = this.add
-      .text(s(50), s(11), 'COMBO \u00d70', {
+      .text(s(50), s(11), "COMBO \u00d70", {
         ...TYPE.eyebrow,
-        color: '#fde68a',
+        color: "#fde68a",
         letterSpacing: s(1.5),
         fontSize: px(11),
       })
       .setOrigin(0.5);
     this.comboChip.add([chipBg, this.comboText]);
     this.comboChip.setAlpha(0);
+    // COMBO ×n is the same arcade chrome as the score readout — hidden.
+    this.comboChip.setVisible(false);
 
     this.timeBarBg = this.add.graphics().setDepth(40).setAlpha(0);
     this.timeBarBg.fillStyle(COLORS.surface.line, 0.4);
-    this.timeBarBg.fillRoundedRect(STAGE.width / 2 - TB_W / 2, TB_Y, TB_W, TB_H, s(2));
+    this.timeBarBg.fillRoundedRect(
+      STAGE.width / 2 - TB_W / 2,
+      TB_Y,
+      TB_W,
+      TB_H,
+      s(2),
+    );
     this.timeBarFill = this.add.graphics().setDepth(41).setAlpha(0);
     this.repaintTimeBar();
 
@@ -96,21 +114,21 @@ export class UIScene extends Phaser.Scene {
   }
 
   private subscribe(): void {
-    GAME.emitter.on('score', this.onScore, this);
-    GAME.emitter.on('lives', this.onLives, this);
-    GAME.emitter.on('combo', this.onCombo, this);
-    GAME.emitter.on('reset', this.refresh, this);
-    GAME.emitter.on('roundStart', this.onRoundStart, this);
-    GAME.emitter.on('roundEnd', this.onRoundEnd, this);
+    GAME.emitter.on("score", this.onScore, this);
+    GAME.emitter.on("lives", this.onLives, this);
+    GAME.emitter.on("combo", this.onCombo, this);
+    GAME.emitter.on("reset", this.refresh, this);
+    GAME.emitter.on("roundStart", this.onRoundStart, this);
+    GAME.emitter.on("roundEnd", this.onRoundEnd, this);
   }
 
   private unsubscribe(): void {
-    GAME.emitter.off('score', this.onScore, this);
-    GAME.emitter.off('lives', this.onLives, this);
-    GAME.emitter.off('combo', this.onCombo, this);
-    GAME.emitter.off('reset', this.refresh, this);
-    GAME.emitter.off('roundStart', this.onRoundStart, this);
-    GAME.emitter.off('roundEnd', this.onRoundEnd, this);
+    GAME.emitter.off("score", this.onScore, this);
+    GAME.emitter.off("lives", this.onLives, this);
+    GAME.emitter.off("combo", this.onCombo, this);
+    GAME.emitter.off("reset", this.refresh, this);
+    GAME.emitter.off("roundStart", this.onRoundStart, this);
+    GAME.emitter.off("roundEnd", this.onRoundEnd, this);
   }
 
   private refresh(): void {
@@ -126,7 +144,7 @@ export class UIScene extends Phaser.Scene {
       targets: this.scoreText,
       scale: { from: 1.18, to: 1 },
       duration: 260,
-      ease: 'Quad.easeOut',
+      ease: "Quad.easeOut",
     });
   }
 
@@ -139,7 +157,7 @@ export class UIScene extends Phaser.Scene {
       targets: lost,
       scale: { from: 1.35, to: 1 },
       duration: 400,
-      ease: 'Back.easeOut',
+      ease: "Back.easeOut",
     });
   }
 
@@ -155,20 +173,20 @@ export class UIScene extends Phaser.Scene {
         targets: this.comboChip,
         alpha: 1,
         duration: 220,
-        ease: 'Sine.easeOut',
+        ease: "Sine.easeOut",
       });
       this.tweens.add({
         targets: this.comboChip,
         scale: { from: 1.12, to: 1 },
         duration: 240,
-        ease: 'Quad.easeOut',
+        ease: "Quad.easeOut",
       });
     } else {
       this.tweens.add({
         targets: this.comboChip,
         alpha: 0,
         duration: 320,
-        ease: 'Sine.easeIn',
+        ease: "Sine.easeIn",
       });
     }
   }
@@ -184,10 +202,13 @@ export class UIScene extends Phaser.Scene {
   }
 
   private formatScore(v: number): string {
-    return `SCORE  ${v.toLocaleString('en-US')}`;
+    return `SCORE  ${v.toLocaleString("en-US")}`;
   }
 
   private onRoundStart(duration: number): void {
+    // Untimed rounds (first-contact rooms) never show the pressure bar —
+    // it only appears for the boss's real clock.
+    if (duration <= 0) return;
     this.timeBarTween?.stop();
     this.timeBarRatio = 1;
     this.repaintTimeBar();
@@ -195,13 +216,13 @@ export class UIScene extends Phaser.Scene {
       targets: [this.timeBarBg, this.timeBarFill],
       alpha: 1,
       duration: 260,
-      ease: 'Sine.easeOut',
+      ease: "Sine.easeOut",
     });
     this.timeBarTween = this.tweens.addCounter({
       from: 1,
       to: 0,
       duration,
-      ease: 'Linear',
+      ease: "Linear",
       onUpdate: (t) => {
         this.timeBarRatio = t.getValue() as number;
         this.repaintTimeBar();
@@ -216,7 +237,7 @@ export class UIScene extends Phaser.Scene {
       targets: [this.timeBarBg, this.timeBarFill],
       alpha: 0,
       duration: 360,
-      ease: 'Sine.easeIn',
+      ease: "Sine.easeIn",
     });
   }
 
@@ -229,6 +250,12 @@ export class UIScene extends Phaser.Scene {
     else if (ratio > 0.25) color = 0xfde68a;
     else color = 0xf87171;
     this.timeBarFill.fillStyle(color, 0.9);
-    this.timeBarFill.fillRoundedRect(STAGE.width / 2 - TB_W / 2, TB_Y, w, TB_H, s(2));
+    this.timeBarFill.fillRoundedRect(
+      STAGE.width / 2 - TB_W / 2,
+      TB_Y,
+      w,
+      TB_H,
+      s(2),
+    );
   }
 }

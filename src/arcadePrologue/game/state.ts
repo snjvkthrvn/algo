@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import Phaser from "phaser";
 
 /**
  * Mini-game state singleton.
@@ -8,19 +8,22 @@ import Phaser from 'phaser';
  * from score without going negative. Score events always emit through the
  * shared emitter; the UI scene listens.
  *
- * Combo math: multiplier = 1 + floor(combo / 3). Combo only breaks on a P0_1
- * wrong hop (which is also the only life-losing event). Dead-end pulses in
- * P0_2 / P0_F cost score and break combo, but do NOT cost a life.
+ * Combo math: multiplier = 1 + floor(combo / 3).
+ *
+ * First-contact rooms (P0_1, P0_2) run untimed rounds (`startRound(0)`) and
+ * never call loseLife — pressure timers and fail-out belong to boss
+ * escalation, not first contact (docs/VISION.md §6). The lives API stays for
+ * future boss use; no current event loses a life.
  */
 
 export type ScoreReason =
-  | 'step'
-  | 'pulse'
-  | 'altar'
-  | 'finale'
-  | 'timeBonus'
-  | 'perfect'
-  | 'penalty';
+  | "step"
+  | "pulse"
+  | "altar"
+  | "finale"
+  | "timeBonus"
+  | "perfect"
+  | "penalty";
 
 export type ScoreEvent = {
   amount: number;
@@ -51,7 +54,7 @@ class GameState {
   bestCombo = 0;
   lives = MAX_LIVES;
   readonly maxLives = MAX_LIVES;
-  currentPuzzle = '';
+  currentPuzzle = "";
   scoreByPuzzle: Record<string, number> = {};
 
   roundStartedAt = 0;
@@ -66,32 +69,32 @@ class GameState {
     this.combo = 0;
     this.bestCombo = 0;
     this.lives = this.maxLives;
-    this.currentPuzzle = '';
+    this.currentPuzzle = "";
     this.scoreByPuzzle = {};
     this.stopRoundSilent();
-    this.emitter.emit('reset');
+    this.emitter.emit("reset");
   }
 
   restoreLives(): void {
     this.lives = this.maxLives;
-    this.emitter.emit('lives', this.lives);
+    this.emitter.emit("lives", this.lives);
   }
 
   setCurrentPuzzle(key: string): void {
     this.currentPuzzle = key;
-    this.emitter.emit('puzzle', key);
+    this.emitter.emit("puzzle", key);
   }
 
   bumpCombo(): void {
     this.combo += 1;
     if (this.combo > this.bestCombo) this.bestCombo = this.combo;
-    this.emitter.emit('combo', this.combo);
+    this.emitter.emit("combo", this.combo);
   }
 
   breakCombo(): void {
     if (this.combo === 0) return;
     this.combo = 0;
-    this.emitter.emit('combo', this.combo);
+    this.emitter.emit("combo", this.combo);
   }
 
   addScore(base: number, reason: ScoreReason): number {
@@ -101,7 +104,7 @@ class GameState {
     this.scoreByPuzzle[this.currentPuzzle] =
       (this.scoreByPuzzle[this.currentPuzzle] ?? 0) + awarded;
     const event: ScoreEvent = { amount: awarded, base, multiplier, reason };
-    this.emitter.emit('score', event);
+    this.emitter.emit("score", event);
     return awarded;
   }
 
@@ -110,7 +113,7 @@ class GameState {
     this.score += amount;
     this.scoreByPuzzle[this.currentPuzzle] =
       (this.scoreByPuzzle[this.currentPuzzle] ?? 0) + amount;
-    this.emitter.emit('score', {
+    this.emitter.emit("score", {
       amount,
       base: amount,
       multiplier: 1,
@@ -124,11 +127,11 @@ class GameState {
     this.score -= actual;
     const cur = this.scoreByPuzzle[this.currentPuzzle] ?? 0;
     this.scoreByPuzzle[this.currentPuzzle] = Math.max(0, cur - actual);
-    this.emitter.emit('score', {
+    this.emitter.emit("score", {
       amount: -actual,
       base: -actual,
       multiplier: 1,
-      reason: 'penalty',
+      reason: "penalty",
     } satisfies ScoreEvent);
     return actual;
   }
@@ -137,16 +140,21 @@ class GameState {
     if (this.lives <= 0) return true;
     this.lives -= 1;
     this.breakCombo();
-    this.emitter.emit('lives', this.lives);
+    this.emitter.emit("lives", this.lives);
     return this.lives <= 0;
   }
 
+  /**
+   * Begin a round. `duration` 0 means untimed: no time bar is shown, the
+   * time bonus resolves to 0, and mistakes are still tracked for the
+   * perfect bonus.
+   */
   startRound(duration: number): void {
     this.roundStartedAt = performance.now();
     this.roundDuration = duration;
     this.roundMistakes = 0;
     this.roundActive = true;
-    this.emitter.emit('roundStart', duration);
+    this.emitter.emit("roundStart", duration);
   }
 
   recordMistake(): void {
@@ -154,12 +162,16 @@ class GameState {
     this.roundMistakes += 1;
   }
 
-  endRound(maxTimeBonus: number, perfectBonus: number): {
+  endRound(
+    maxTimeBonus: number,
+    perfectBonus: number,
+  ): {
     timeBonus: number;
     perfectBonus: number;
     wasPerfect: boolean;
   } {
-    if (!this.roundActive) return { timeBonus: 0, perfectBonus: 0, wasPerfect: false };
+    if (!this.roundActive)
+      return { timeBonus: 0, perfectBonus: 0, wasPerfect: false };
     const elapsed = performance.now() - this.roundStartedAt;
     const remaining = Math.max(0, this.roundDuration - elapsed);
     const ratio = this.roundDuration > 0 ? remaining / this.roundDuration : 0;
@@ -167,18 +179,19 @@ class GameState {
     const wasPerfect = this.roundMistakes === 0;
     const perfectBonusAwarded = wasPerfect ? perfectBonus : 0;
 
-    if (timeBonus > 0) this.awardBonus(timeBonus, 'timeBonus');
-    if (perfectBonusAwarded > 0) this.awardBonus(perfectBonusAwarded, 'perfect');
+    if (timeBonus > 0) this.awardBonus(timeBonus, "timeBonus");
+    if (perfectBonusAwarded > 0)
+      this.awardBonus(perfectBonusAwarded, "perfect");
 
     this.roundActive = false;
-    this.emitter.emit('roundEnd');
+    this.emitter.emit("roundEnd");
     return { timeBonus, perfectBonus: perfectBonusAwarded, wasPerfect };
   }
 
   private stopRoundSilent(): void {
     if (!this.roundActive) return;
     this.roundActive = false;
-    this.emitter.emit('roundEnd');
+    this.emitter.emit("roundEnd");
   }
 }
 

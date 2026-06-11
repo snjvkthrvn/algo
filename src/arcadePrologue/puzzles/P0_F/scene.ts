@@ -1,46 +1,40 @@
-import Phaser from 'phaser';
-import { COLORS, s } from '../P0_1/tokens';
-import { paintAtmosphere, type Atmosphere } from '../P0_1/visuals/atmosphere';
-import { ensureRuneTexture } from '../P0_1/visuals/rune';
-import { buildHud, type Hud } from '../P0_1/visuals/hud';
-import { readReduceMotion, writeReduceMotion } from '../P0_1/prefs';
-import { buildOutMap, forkKeySet } from '../P0_2/flow';
-import {
-  coordsOf,
-  mountFlowBoard,
-  type FlowBoard,
-} from '../P0_2/board';
-import { createEdges, type EdgeLayer } from '../P0_2/visuals/edges';
-import { createMarkers, type Markers } from '../P0_2/visuals/markers';
+import Phaser from "phaser";
+import { COLORS, s } from "../P0_1/tokens";
+import { paintAtmosphere, type Atmosphere } from "../P0_1/visuals/atmosphere";
+import { ensureRuneTexture } from "../P0_1/visuals/rune";
+import { buildHud, type Hud } from "../P0_1/visuals/hud";
+import { readReduceMotion, writeReduceMotion } from "../P0_1/prefs";
+import { buildOutMap, forkKeySet } from "../P0_2/flow";
+import { coordsOf, mountFlowBoard, type FlowBoard } from "../P0_2/board";
+import { createEdges, type EdgeLayer } from "../P0_2/visuals/edges";
+import { createMarkers, type Markers } from "../P0_2/visuals/markers";
 import {
   clearHighlights,
   createPulse,
   highlightChoices,
   type Pulse,
-} from '../P0_2/visuals/pulse';
-import { deadEndShimmer } from '../P0_2/feedback';
-import { bindDirectionalChoiceInput } from '../P0_2/input';
-import { LITANY_ROUND, type LitanyRound } from './rounds';
-import { altarKeys, altarsSatisfied, missedAltarKeys } from './flow';
-import { LITANY_LABEL, type LitanyState } from './state';
-import { createAltars, type Altars } from './visuals/altars';
-import { createIntro, type Intro } from './visuals/intro';
-import { finalCascade } from './feedback';
-import { bindLitanyInput } from './input';
-import { GAME, PENALTIES, POINTS } from '../../game/state';
+} from "../P0_2/visuals/pulse";
+import { deadEndShimmer } from "../P0_2/feedback";
+import { bindDirectionalChoiceInput } from "../P0_2/input";
+import { LITANY_ROUND, type LitanyRound } from "./rounds";
+import { altarKeys, altarsSatisfied, missedAltarKeys } from "./flow";
+import { LITANY_LABEL, type LitanyState } from "./state";
+import { createAltars, type Altars } from "./visuals/altars";
+import { createIntro, type Intro } from "./visuals/intro";
+import { finalCascade } from "./feedback";
+import { bindLitanyInput } from "./input";
+import { GAME, PENALTIES, POINTS } from "../../game/state";
 import {
   completeAlgorithmiaPuzzle,
   PROLOGUE_RUN_UI_KEY,
   resolveReturnScene,
-} from '../../game/algorithmiaIntegration';
-import { scorePopup } from '../../ui/popups';
-import { hexColorToNumber, sparkle } from '../../ui/particles';
-import { comboMilestone } from '../../game/milestone';
-import { SCENE_KEYS } from '../../../config/constants';
-import { buildSentinelPreview } from '../../../data/puzzles/puzzlePreviewLogic';
-import { PuzzlePreviewSidePanel } from '../../../ui/PuzzlePreviewSidePanel';
-import { playBossEntryBanner } from '../../../ui/BossEntryBanner';
-import { VISUAL_REVAMP_KEYS, getImageAssetPath } from '../../../config/assets';
+} from "../../game/algorithmiaIntegration";
+import { scorePopup } from "../../ui/popups";
+import { hexColorToNumber, sparkle } from "../../ui/particles";
+import { comboMilestone } from "../../game/milestone";
+import { SCENE_KEYS } from "../../../config/constants";
+import { playBossEntryBanner } from "../../../ui/BossEntryBanner";
+import { VISUAL_REVAMP_KEYS, getImageAssetPath } from "../../../config/assets";
 
 const LITANY_TIMER_MS = 80000;
 const LITANY_TIME_BONUS = 1200;
@@ -67,10 +61,6 @@ export class TheLitanyScene extends Phaser.Scene {
   private unbindInput?: () => void;
   private returnScene: string = SCENE_KEYS.PROLOGUE;
   private startedAt = Date.now();
-  private litanyState: LitanyState = 'idle';
-  private currentFork: string | null = null;
-  private currentForkChoices: string[] = [];
-  private preview: PuzzlePreviewSidePanel | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.BOSS_SENTINEL });
@@ -81,12 +71,25 @@ export class TheLitanyScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const backdropPath = getImageAssetPath(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG);
-    if (backdropPath && !this.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)) {
-      this.load.image(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG, backdropPath);
+    const backdropPath = getImageAssetPath(
+      VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
+    );
+    if (
+      backdropPath &&
+      !this.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)
+    ) {
+      this.load.image(
+        VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
+        backdropPath,
+      );
     }
-    const figurePath = getImageAssetPath(VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE);
-    if (figurePath && !this.textures.exists(VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE)) {
+    const figurePath = getImageAssetPath(
+      VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE,
+    );
+    if (
+      figurePath &&
+      !this.textures.exists(VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE)
+    ) {
       this.load.image(VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE, figurePath);
     }
   }
@@ -97,7 +100,8 @@ export class TheLitanyScene extends Phaser.Scene {
     this.reduceMotion = readReduceMotion();
     GAME.reset();
     GAME.setCurrentPuzzle(this.scene.key);
-    if (!this.scene.isActive(PROLOGUE_RUN_UI_KEY)) this.scene.launch(PROLOGUE_RUN_UI_KEY);
+    if (!this.scene.isActive(PROLOGUE_RUN_UI_KEY))
+      this.scene.launch(PROLOGUE_RUN_UI_KEY);
     this.scene.bringToTop(PROLOGUE_RUN_UI_KEY);
 
     this.atmosphere = paintAtmosphere(this);
@@ -108,17 +112,13 @@ export class TheLitanyScene extends Phaser.Scene {
     this.pulse = createPulse(this);
     this.intro = createIntro(this);
     this.hud = buildHud(this, {
-      eyebrow: 'PROLOGUE FINALE  \u00b7  CONVERGENCE',
-      footerHint: 'Arrow / WASD toward a fork as the pulse arrives   \u00b7   [M] reduce motion',
+      eyebrow: "PROLOGUE FINALE  \u00b7  CONVERGENCE",
+      footerHint:
+        "Arrow / WASD toward a fork as the pulse arrives   \u00b7   [M] reduce motion",
     });
-    // Cyan accent — Sentinel sits in the cosmic register; this matches the
-    // chamber's mandala glow and the entry banner.
-    this.preview = new PuzzlePreviewSidePanel(this, {
-      side: 'right', yOffset: -8,
-      accentColor: 0x22d3ee, accentColorHex: '#22d3ee',
-    });
-    this.preview.setTitle('SENTINEL PREVIEW');
-    this.preview.show();
+    // No SENTINEL PREVIEW side panel: it printed live routing state as a
+    // text wall, and the playable game never shows code or debugger views
+    // (docs/VISION.md §4). The deep layer lives in the Codex.
 
     // Boss entry banner — the audit flagged that bosses re-use puzzle chrome
     // and don't feel like capstones. The Sentinel gets a cyan accent because
@@ -127,9 +127,9 @@ export class TheLitanyScene extends Phaser.Scene {
     // mechanic is still mounting underneath, but the visual overlay sells
     // the "this is the boss" moment.
     playBossEntryBanner(this, {
-      bossName: 'The Litany',
-      regionTag: 'Prologue finale',
-      thesis: 'Sequence and selection. Both rules at once.',
+      bossName: "The Litany",
+      regionTag: "Prologue finale",
+      thesis: "Sequence and selection. Both rules at once.",
       accentColor: 0x22d3ee,
       onComplete: () => {
         // The Sentinel mechanic was already mounted under the banner — no
@@ -159,7 +159,7 @@ export class TheLitanyScene extends Phaser.Scene {
         duration: 1800,
         yoyo: true,
         repeat: -1,
-        ease: 'Sine.easeInOut',
+        ease: "Sine.easeInOut",
       });
     } else {
       // Defensive: attempt a late-load if the boot preload missed it (e.g.
@@ -168,7 +168,7 @@ export class TheLitanyScene extends Phaser.Scene {
       const path = getImageAssetPath(sentinelFigureKey);
       if (path) {
         this.load.image(sentinelFigureKey, path);
-        this.load.once('complete', () => {
+        this.load.once("complete", () => {
           if (this.textures.exists(sentinelFigureKey)) {
             const sentinelFigure = this.add
               .image(this.cameras.main.width / 2, s(110), sentinelFigureKey)
@@ -183,7 +183,7 @@ export class TheLitanyScene extends Phaser.Scene {
               duration: 1800,
               yoyo: true,
               repeat: -1,
-              ease: 'Sine.easeInOut',
+              ease: "Sine.easeInOut",
             });
           }
         });
@@ -196,14 +196,14 @@ export class TheLitanyScene extends Phaser.Scene {
       onToggleReduceMotion: () => this.toggleReduceMotion(),
     });
 
-    const escape = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-    escape?.on('down', this.exitToReturnScene, this);
+    const escape = this.input.keyboard?.addKey(
+      Phaser.Input.Keyboard.KeyCodes.ESC,
+    );
+    escape?.on("down", this.exitToReturnScene, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       escape?.removeAllListeners();
       this.unbindInput?.();
-      this.preview?.destroy();
-      this.preview = null;
     });
 
     void this.runFinale();
@@ -211,13 +211,13 @@ export class TheLitanyScene extends Phaser.Scene {
 
   private async runFinale(): Promise<void> {
     this.mountFinale();
-    this.setState('intro');
+    this.setState("intro");
     await this.intro.show(
-      'The Final Trial',
-      'The Litany',
-      'Steer the pulse through both altars \u2014 in order \u2014 to the sink.',
+      "The Final Trial",
+      "The Litany",
+      "Steer the pulse through both altars \u2014 in order \u2014 to the sink.",
     );
-    this.setState('preparing');
+    this.setState("preparing");
     await this.wait(PREPARE_BEAT_MS);
     GAME.startRound(LITANY_TIMER_MS);
     void this.firePulse();
@@ -225,18 +225,21 @@ export class TheLitanyScene extends Phaser.Scene {
 
   private mountFinale(): void {
     this.round = LITANY_ROUND;
-    this.hud.setRound(LITANY_ROUND.title, LITANY_ROUND.principle, LITANY_ROUND.teach);
+    this.hud.setRound(
+      LITANY_ROUND.title,
+      LITANY_ROUND.principle,
+      LITANY_ROUND.teach,
+    );
     this.board = mountFlowBoard(this, LITANY_ROUND);
     this.outMap = buildOutMap(LITANY_ROUND);
     this.forks = forkKeySet(LITANY_ROUND);
     this.altarSet = new Set(altarKeys(LITANY_ROUND));
     this.repaint();
-    this.refreshPreview();
   }
 
   private async firePulse(): Promise<void> {
     if (!this.board || !this.round) return;
-    this.setState('flowing');
+    this.setState("flowing");
 
     const result = await this.pulse.fireReactive(this.board, {
       sourceKey: this.board.sourceKey,
@@ -247,7 +250,7 @@ export class TheLitanyScene extends Phaser.Scene {
       onArrive: (key) => this.onArrive(key),
     });
 
-    if (result.outcome !== 'reached') {
+    if (result.outcome !== "reached") {
       this.onFizzle(result.finalKey);
       return;
     }
@@ -258,13 +261,13 @@ export class TheLitanyScene extends Phaser.Scene {
     await this.celebrate();
   }
 
-  private async decideAtFork(current: string, choices: string[]): Promise<string | null> {
+  private async decideAtFork(
+    current: string,
+    choices: string[],
+  ): Promise<string | null> {
     if (!this.board) return null;
     const rings = highlightChoices(this, this.board, choices);
     const handlers = new Map<string, () => void>();
-    this.currentFork = current;
-    this.currentForkChoices = [...choices];
-    this.refreshPreview();
 
     return new Promise<string | null>((resolve) => {
       let resolved = false;
@@ -273,26 +276,31 @@ export class TheLitanyScene extends Phaser.Scene {
         if (resolved) return;
         resolved = true;
         handlers.forEach((handler, key) => {
-          this.board?.glyphs.get(key)?.off('pointerdown', handler);
+          this.board?.glyphs.get(key)?.off("pointerdown", handler);
         });
         unbindDirectional();
         clearHighlights(this, rings);
         timer.remove();
-        this.currentFork = null;
-        this.currentForkChoices = [];
-        this.refreshPreview();
         resolve(next);
       };
 
-      const timer = this.time.delayedCall(DECISION_WINDOW_MS, () => finish(null));
-      unbindDirectional = bindDirectionalChoiceInput(this, this.board!, current, choices, finish);
+      const timer = this.time.delayedCall(DECISION_WINDOW_MS, () =>
+        finish(null),
+      );
+      unbindDirectional = bindDirectionalChoiceInput(
+        this,
+        this.board!,
+        current,
+        choices,
+        finish,
+      );
 
       for (const key of choices) {
         const glyph = this.board?.glyphs.get(key);
         if (!glyph) continue;
         const handler = (): void => finish(key);
         handlers.set(key, handler);
-        glyph.once('pointerdown', handler);
+        glyph.once("pointerdown", handler);
       }
     });
   }
@@ -301,7 +309,7 @@ export class TheLitanyScene extends Phaser.Scene {
     if (!this.board || !this.altarSet.has(key)) return;
     this.altars.chime(this.board, key);
     GAME.bumpCombo();
-    const awarded = GAME.addScore(POINTS.altar, 'altar');
+    const awarded = GAME.addScore(POINTS.altar, "altar");
     const at = coordsOf(this.board, key);
     scorePopup(this, at.x, at.y - s(30), `+${awarded}`);
     sparkle(this, at.x, at.y, { count: 10, color: 0xfde68a, spread: 36 });
@@ -342,37 +350,54 @@ export class TheLitanyScene extends Phaser.Scene {
 
   private async celebrate(): Promise<void> {
     if (!this.board) return;
-    this.setState('cleared');
+    this.setState("cleared");
     const sinkAt = coordsOf(this.board, this.board.sinkKey);
 
     GAME.bumpCombo();
-    const awarded = GAME.addScore(POINTS.finale, 'finale');
+    const awarded = GAME.addScore(POINTS.finale, "finale");
     scorePopup(this, sinkAt.x, sinkAt.y - s(44), `+${awarded}  FINALE`, {
-      color: '#fde68a',
+      color: "#fde68a",
       size: 18,
       rise: 38,
       duration: 1100,
     });
-    sparkle(this, sinkAt.x, sinkAt.y, { count: 18, color: 0xfde68a, spread: 56, duration: 900 });
+    sparkle(this, sinkAt.x, sinkAt.y, {
+      count: 18,
+      color: 0xfde68a,
+      spread: 56,
+      duration: 900,
+    });
 
     const bonuses = GAME.endRound(LITANY_TIME_BONUS, LITANY_PERFECT_BONUS);
     let off = s(76);
     if (bonuses.timeBonus > 0) {
-      scorePopup(this, sinkAt.x, sinkAt.y - off, `+${bonuses.timeBonus}  TIME`, {
-        color: '#fde68a',
-        size: 17,
-        rise: 36,
-        duration: 1200,
-      });
+      scorePopup(
+        this,
+        sinkAt.x,
+        sinkAt.y - off,
+        `+${bonuses.timeBonus}  TIME`,
+        {
+          color: "#fde68a",
+          size: 17,
+          rise: 36,
+          duration: 1200,
+        },
+      );
       off += s(28);
     }
     if (bonuses.wasPerfect && bonuses.perfectBonus > 0) {
-      scorePopup(this, sinkAt.x, sinkAt.y - off, `+${bonuses.perfectBonus}  PERFECT!`, {
-        color: '#a3e635',
-        size: 18,
-        rise: 42,
-        duration: 1400,
-      });
+      scorePopup(
+        this,
+        sinkAt.x,
+        sinkAt.y - off,
+        `+${bonuses.perfectBonus}  PERFECT!`,
+        {
+          color: "#a3e635",
+          size: 18,
+          rise: 42,
+          duration: 1400,
+        },
+      );
       sparkle(this, sinkAt.x, sinkAt.y, {
         count: 20,
         color: 0xa3e635,
@@ -382,12 +407,14 @@ export class TheLitanyScene extends Phaser.Scene {
     }
 
     await finalCascade(this, sinkAt);
-    this.hud.showSummary('Heard. Sequence and selection \u2014 two pillars, one path.');
+    this.hud.showSummary(
+      "Heard. Sequence and selection \u2014 two pillars, one path.",
+    );
     await this.wait(OUTRO_DELAY_MS);
     completeAlgorithmiaPuzzle(this, {
-      puzzleId: 'boss_sentinel',
-      puzzleName: 'The Litany',
-      concept: 'Pattern Recognition + Authentication',
+      puzzleId: "boss_sentinel",
+      puzzleName: "The Litany",
+      concept: "Pattern Recognition + Authentication",
       returnScene: this.returnScene,
       startedAt: this.startedAt,
     });
@@ -398,9 +425,9 @@ export class TheLitanyScene extends Phaser.Scene {
     this.tweens.killAll();
     this.unbindInput?.();
     completeAlgorithmiaPuzzle(this, {
-      puzzleId: 'boss_sentinel',
-      puzzleName: 'The Litany',
-      concept: 'Pattern Recognition + Authentication',
+      puzzleId: "boss_sentinel",
+      puzzleName: "The Litany",
+      concept: "Pattern Recognition + Authentication",
       returnScene: this.returnScene,
       startedAt: this.startedAt,
       stars,
@@ -416,23 +443,9 @@ export class TheLitanyScene extends Phaser.Scene {
   }
 
   private setState(next: LitanyState): void {
-    this.litanyState = next;
-    this.hud.setState(LITANY_LABEL[next] ?? '');
-    if (next === 'flowing') this.atmosphere.setMood('preview');
-    else this.atmosphere.setMood('normal');
-    this.refreshPreview();
-  }
-
-  private refreshPreview(): void {
-    if (!this.preview) return;
-    const preview = buildSentinelPreview({
-      phase: this.litanyState,
-      altars: this.round ? altarKeys(this.round) : [],
-      currentFork: this.currentFork,
-      choices: this.currentForkChoices,
-    });
-    this.preview.setState(preview.state);
-    this.preview.setNextAction(preview.next);
+    this.hud.setState(LITANY_LABEL[next] ?? "");
+    if (next === "flowing") this.atmosphere.setMood("preview");
+    else this.atmosphere.setMood("normal");
   }
 
   private wait(ms: number): Promise<void> {
@@ -445,7 +458,8 @@ export class TheLitanyScene extends Phaser.Scene {
   }
 
   private exitToReturnScene(): void {
-    if (this.scene.isActive(PROLOGUE_RUN_UI_KEY)) this.scene.stop(PROLOGUE_RUN_UI_KEY);
+    if (this.scene.isActive(PROLOGUE_RUN_UI_KEY))
+      this.scene.stop(PROLOGUE_RUN_UI_KEY);
     GAME.reset();
     this.scene.start(this.returnScene);
   }

@@ -20,8 +20,8 @@
  * actor stops ticking and shows a quiet "Glitch finally got it..." line.
  */
 
-import Phaser from 'phaser';
-import type { GlitchBanterConfig } from '../data/dialogue/glitch_dialogue';
+import Phaser from "phaser";
+import type { GlitchBanterConfig } from "../data/dialogue/glitch_dialogue";
 
 export interface BruteForceStrategy {
   /** Starting state for Glitch's row. Typically identical to the player's start. */
@@ -117,40 +117,54 @@ export class BruteForceActor {
     this.tileH = opts.tileHeight ?? TILE_DEFAULT_H;
     this.tileGap = opts.tileGap ?? TILE_DEFAULT_GAP;
     this.values = [...opts.strategy.initialValues];
-    this.notDoneLabel = opts.notDoneLabel ?? 'still flailing';
-    this.doneLabel = opts.doneLabel ?? 'finally got it.';
-    this.verbLabel = opts.verbLabel ?? 'moves';
+    this.notDoneLabel = opts.notDoneLabel ?? "still flailing";
+    this.doneLabel = opts.doneLabel ?? "finally got it.";
+    this.verbLabel = opts.verbLabel ?? "moves";
 
     const depth = opts.depth ?? 30;
 
     // Heading — barn-red, small caps. Matches GlitchCorner variant so Glitch
     // reads as the same character across the canvas.
-    this.headingText = scene.add.text(opts.x, opts.y - this.tileH / 2 - 22, opts.heading ?? '⚠ GLITCH', {
-      fontSize: '9px',
-      fontFamily: '"Press Start 2P", monospace',
-      color: '#a03830',
-      stroke: '#1a1208',
-      strokeThickness: 1,
-    }).setOrigin(0.5, 0.5).setDepth(depth);
+    this.headingText = scene.add
+      .text(opts.x, opts.y - this.tileH / 2 - 22, opts.heading ?? "⚠ GLITCH", {
+        fontSize: "9px",
+        fontFamily: '"Press Start 2P", monospace',
+        color: "#a03830",
+        stroke: "#1a1208",
+        strokeThickness: 1,
+      })
+      .setOrigin(0.5, 0.5)
+      .setDepth(depth);
     this.objects.push(this.headingText);
 
     // Subtitle quote below the row — italic muted ink, reads as flavour text.
-    this.subtitleText = scene.add.text(opts.x, opts.y + this.tileH / 2 + 14, opts.subtitle ?? '(grabbing at random...)', {
-      fontSize: '9px',
-      fontFamily: '"IBM Plex Mono", monospace',
-      color: '#4a3818',
-      fontStyle: 'italic',
-    }).setOrigin(0.5, 0.5).setDepth(depth);
+    this.subtitleText = scene.add
+      .text(
+        opts.x,
+        opts.y + this.tileH / 2 + 14,
+        opts.subtitle ?? "(grabbing at random...)",
+        {
+          fontSize: "9px",
+          fontFamily: '"IBM Plex Mono", monospace',
+          color: "#4a3818",
+          fontStyle: "italic",
+        },
+      )
+      .setOrigin(0.5, 0.5)
+      .setDepth(depth);
     this.objects.push(this.subtitleText);
 
     // Counter sits to the right of the row.
-    this.counterText = scene.add.text(opts.x, opts.y + this.tileH / 2 + 30, this.counterLabel(), {
-      fontSize: '10px',
-      fontFamily: '"IBM Plex Mono", monospace',
-      color: '#a03830',
-      stroke: '#1a1208',
-      strokeThickness: 1,
-    }).setOrigin(0.5, 0.5).setDepth(depth);
+    this.counterText = scene.add
+      .text(opts.x, opts.y + this.tileH / 2 + 30, this.counterLabel(), {
+        fontSize: "10px",
+        fontFamily: '"IBM Plex Mono", monospace',
+        color: "#a03830",
+        stroke: "#1a1208",
+        strokeThickness: 1,
+      })
+      .setOrigin(0.5, 0.5)
+      .setDepth(depth);
     this.objects.push(this.counterText);
 
     this.layoutTiles(opts.x, opts.y, depth);
@@ -178,7 +192,7 @@ export class BruteForceActor {
     // texture isn't loaded (older scenes that didn't preload the sprite).
     // Importing the asset key lazily via dynamic require keeps this entity
     // file decoupled from the asset-config import graph.
-    const corruptedKey = 'visual-revamp-ap-corrupted-crate';
+    const corruptedKey = "visual-revamp-ap-corrupted-crate";
     const hasCrate = this.scene.textures.exists(corruptedKey);
 
     for (let i = 0; i < n; i++) {
@@ -186,19 +200,23 @@ export class BruteForceActor {
       const container = this.scene.add.container(x, centerY).setDepth(depth);
 
       const crate = hasCrate
-        ? this.scene.add.image(0, 0, corruptedKey).setDisplaySize(this.tileW, this.tileH)
+        ? this.scene.add
+            .image(0, 0, corruptedKey)
+            .setDisplaySize(this.tileW, this.tileH)
         : null;
 
       const body = this.scene.add.graphics();
       this.paintBody(body, false);
 
-      const label = this.scene.add.text(0, 0, `${this.values[i]}`, {
-        fontSize: '18px',
-        fontFamily: '"Press Start 2P", monospace',
-        color: '#fefce8',
-        stroke: '#1a1208',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
+      const label = this.scene.add
+        .text(0, 0, `${this.values[i]}`, {
+          fontSize: "18px",
+          fontFamily: '"Press Start 2P", monospace',
+          color: "#fefce8",
+          stroke: "#1a1208",
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5);
 
       const children: Phaser.GameObjects.GameObject[] = [];
       if (crate) children.push(crate);
@@ -206,11 +224,20 @@ export class BruteForceActor {
       container.add(children);
       this.objects.push(container);
 
-      this.tiles.push({ container, body, label, value: this.values[i], homeX: x });
+      this.tiles.push({
+        container,
+        body,
+        label,
+        value: this.values[i],
+        homeX: x,
+      });
     }
   }
 
-  private paintBody(g: Phaser.GameObjects.Graphics, highlighted: boolean): void {
+  private paintBody(
+    g: Phaser.GameObjects.Graphics,
+    highlighted: boolean,
+  ): void {
     g.clear();
     const w = this.tileW;
     const h = this.tileH;
@@ -218,7 +245,9 @@ export class BruteForceActor {
     // skip the opaque fills (they'd cover the pixel art) and use this Graphics
     // layer only for the highlight outline. Fall back to the full Glitch-red
     // fill path when the sprite isn't loaded.
-    const hasCrate = this.scene.textures.exists('visual-revamp-ap-corrupted-crate');
+    const hasCrate = this.scene.textures.exists(
+      "visual-revamp-ap-corrupted-crate",
+    );
     if (!hasCrate) {
       g.fillStyle(highlighted ? GLITCH_HIGHLIGHT : GLITCH_DEEP, 1);
       g.fillRect(-w / 2, -h / 2, w, h);
@@ -291,7 +320,7 @@ export class BruteForceActor {
     this.stopped = true;
     this.timer?.remove();
     this.timer = null;
-    this.subtitleText.setText('(only took forever)');
+    this.subtitleText.setText("(only took forever)");
     this.counterText.setText(this.counterLabel());
   }
 
@@ -303,7 +332,11 @@ export class BruteForceActor {
    * between slots. This is the exact mental model of an array swap, and
    * teaches the player the swap mechanic by demonstration.
    */
-  private animateSwap(i: number, j: number, after: ReadonlyArray<number>): void {
+  private animateSwap(
+    i: number,
+    j: number,
+    after: ReadonlyArray<number>,
+  ): void {
     const tileI = this.tiles[i];
     const tileJ = this.tiles[j];
     if (!tileI || !tileJ) {
@@ -322,13 +355,23 @@ export class BruteForceActor {
     // Labels travel toward each other — labelI to the right with an up-arc,
     // labelJ to the left with a down-arc, so they pass each other visibly.
     this.scene.tweens.add({
-      targets: labelI, x: dx, duration: moveMs, ease: 'Sine.easeInOut',
+      targets: labelI,
+      x: dx,
+      duration: moveMs,
+      ease: "Sine.easeInOut",
     });
     this.scene.tweens.add({
-      targets: labelI, y: -arcAmount, duration: arcMs, yoyo: true, ease: 'Sine.easeInOut',
+      targets: labelI,
+      y: -arcAmount,
+      duration: arcMs,
+      yoyo: true,
+      ease: "Sine.easeInOut",
     });
     this.scene.tweens.add({
-      targets: labelJ, x: -dx, duration: moveMs, ease: 'Sine.easeInOut',
+      targets: labelJ,
+      x: -dx,
+      duration: moveMs,
+      ease: "Sine.easeInOut",
       onComplete: () => {
         // Reparent: labelI moves into tileJ's container, labelJ into tileI's.
         // Local positions reset to (0,0) — world positions stay unchanged
@@ -356,7 +399,11 @@ export class BruteForceActor {
       },
     });
     this.scene.tweens.add({
-      targets: labelJ, y: arcAmount, duration: arcMs, yoyo: true, ease: 'Sine.easeInOut',
+      targets: labelJ,
+      y: arcAmount,
+      duration: arcMs,
+      yoyo: true,
+      ease: "Sine.easeInOut",
     });
 
     // Body flash on both tiles — emphasis on "these two just exchanged".
@@ -377,7 +424,7 @@ export class BruteForceActor {
     this.timer = null;
     const finalLabel = `Glitch's ${this.verbLabel}: ${this.moves} · (you beat them)`;
     this.counterText.setText(finalLabel);
-    this.subtitleText.setText('(...you did it differently)');
+    this.subtitleText.setText("(...you did it differently)");
     this.bragTimer?.remove();
     this.bragTimer = null;
     // You out-solved them: Glitch saves face with a deflecting exit line.
@@ -388,9 +435,13 @@ export class BruteForceActor {
   /** Wire up self-driven heckling: an opening line, then brute-force brags on
    *  a slow loop while the actor is still flailing. Defeat lines fire in
    *  freeze(). No-op when no banter config is supplied. */
-  private startBanter(config: GlitchBanterConfig | null, bragIntervalMs: number): void {
+  private startBanter(
+    config: GlitchBanterConfig | null,
+    bragIntervalMs: number,
+  ): void {
     this.banter = config;
-    if (!config || (!config.opening && !(config.brags && config.brags.length))) return;
+    if (!config || (!config.opening && !(config.brags && config.brags.length)))
+      return;
     // One looping timer carries the rival's voice while it flails: the opening
     // line first, then random brute-force brags. `startAt` brings the first
     // line in ~3.2s after spawn (past the intro card on a typical dismiss),
@@ -424,26 +475,47 @@ export class BruteForceActor {
     const x = this.headingText.x;
     const y = this.headingText.y - 14;
     if (!this.speech) {
-      this.speech = this.scene.add.text(x, y, '', {
-        fontSize: '9px',
-        fontFamily: '"IBM Plex Mono", monospace',
-        color: '#ffd9c2',
-        backgroundColor: '#2a1208',
-        padding: { x: 7, y: 5 },
-        stroke: '#0a0502',
-        strokeThickness: 1,
-        align: 'center',
-        wordWrap: { width: 320, useAdvancedWrap: true },
-      }).setOrigin(0.5, 1).setDepth(55);
+      this.speech = this.scene.add
+        .text(x, y, "", {
+          fontSize: "9px",
+          fontFamily: '"IBM Plex Mono", monospace',
+          color: "#ffd9c2",
+          backgroundColor: "#2a1208",
+          padding: { x: 7, y: 5 },
+          stroke: "#0a0502",
+          strokeThickness: 1,
+          align: "center",
+          wordWrap: { width: 320, useAdvancedWrap: true },
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(55);
       this.objects.push(this.speech);
     }
-    this.speech.setText(text).setPosition(x, y).setAlpha(0).setVisible(true);
-    this.scene.tweens.add({ targets: this.speech, alpha: 1, y: y - 6, duration: 180, ease: 'Back.easeOut' });
+    // Clamp the bubble inside the camera: the row anchor sits near the screen
+    // edge in several rooms, and a centered wide bubble would run off-screen.
+    this.speech.setText(text);
+    const margin = 12;
+    const halfWidth = this.speech.width / 2;
+    const clampedX = Phaser.Math.Clamp(
+      x,
+      margin + halfWidth,
+      this.scene.cameras.main.width - margin - halfWidth,
+    );
+    this.speech.setPosition(clampedX, y).setAlpha(0).setVisible(true);
+    this.scene.tweens.add({
+      targets: this.speech,
+      alpha: 1,
+      y: y - 6,
+      duration: 180,
+      ease: "Back.easeOut",
+    });
     this.speechTimer?.remove();
     this.speechTimer = this.scene.time.delayedCall(holdMs, () => {
       if (this.speech?.active) {
         this.scene.tweens.add({
-          targets: this.speech, alpha: 0, duration: 260,
+          targets: this.speech,
+          alpha: 0,
+          duration: 260,
           onComplete: () => this.speech?.setVisible(false),
         });
       }
@@ -468,7 +540,7 @@ export class BruteForceActor {
       targets,
       alpha,
       duration: durationMs,
-      ease: 'Sine.easeInOut',
+      ease: "Sine.easeInOut",
     });
   }
 

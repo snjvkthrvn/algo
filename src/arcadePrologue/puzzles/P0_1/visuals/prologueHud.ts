@@ -1,5 +1,5 @@
-import Phaser from 'phaser';
-import { COLORS, s, STAGE, TYPE } from '../tokens';
+import Phaser from "phaser";
+import { COLORS, s, STAGE, TYPE } from "../tokens";
 
 /**
  * HUD for the isometric path puzzle — matches the screenshot layout:
@@ -37,11 +37,11 @@ export function buildPrologueHud(scene: Phaser.Scene): PrologueHud {
   // The puzzle's in-world name is the Path of Sequences; using that here keeps
   // the player inside the fiction rather than the codebase.
   scene.add
-    .text(PANEL_X + PANEL_W / 2, PANEL_Y + 22, 'The Path of Sequences', {
+    .text(PANEL_X + PANEL_W / 2, PANEL_Y + 22, "The Path of Sequences", {
       fontFamily: (TYPE.eyebrow as { fontFamily: string }).fontFamily,
-      fontSize: s(11) + 'px',
-      fontStyle: 'bold',
-      color: '#e6ecff',
+      fontSize: s(11) + "px",
+      fontStyle: "bold",
+      color: "#e6ecff",
       letterSpacing: s(2),
     })
     .setOrigin(0.5)
@@ -55,23 +55,12 @@ export function buildPrologueHud(scene: Phaser.Scene): PrologueHud {
   sep.lineTo(PANEL_X + PANEL_W - 14, PANEL_Y + 38);
   sep.strokePath();
 
-  scene.add
-    .text(PANEL_X + PANEL_W / 2, PANEL_Y + 56, 'The Path of Sequences', {
-      fontFamily: (TYPE.body as { fontFamily: string }).fontFamily,
-      fontSize: s(12) + 'px',
-      color: '#06b6d4',
-      align: 'center',
-      wordWrap: { width: PANEL_W - 24 },
-    })
-    .setOrigin(0.5)
-    .setDepth(101);
-
   const roundText = scene.add
-    .text(PANEL_X + PANEL_W / 2, PANEL_Y + 94, '', {
+    .text(PANEL_X + PANEL_W / 2, PANEL_Y + 94, "", {
       fontFamily: (TYPE.eyebrow as { fontFamily: string }).fontFamily,
-      fontSize: s(12) + 'px',
-      fontStyle: 'bold',
-      color: '#e6ecff',
+      fontSize: s(12) + "px",
+      fontStyle: "bold",
+      color: "#e6ecff",
       letterSpacing: s(2),
     })
     .setOrigin(0.5)
@@ -89,9 +78,9 @@ export function buildPrologueHud(scene: Phaser.Scene): PrologueHud {
 
   // State label
   const stateText = scene.add
-    .text(PANEL_X + PANEL_W / 2, PANEL_Y + 162, 'WATCHING', {
+    .text(PANEL_X + PANEL_W / 2, PANEL_Y + 162, "WATCHING", {
       fontFamily: (TYPE.micro as { fontFamily: string }).fontFamily,
-      fontSize: s(10) + 'px',
+      fontSize: s(10) + "px",
       color: COLORS.text.muted,
       letterSpacing: s(1),
     })
@@ -100,11 +89,11 @@ export function buildPrologueHud(scene: Phaser.Scene): PrologueHud {
 
   // ── Top-centre round principle text ──────────────────────────────────────────
   const principleText = scene.add
-    .text(STAGE.width / 2, PANEL_Y + 6, '', {
+    .text(STAGE.width / 2, PANEL_Y + 6, "", {
       fontFamily: (TYPE.body as { fontFamily: string }).fontFamily,
-      fontSize: s(11) + 'px',
+      fontSize: s(11) + "px",
       color: COLORS.text.muted,
-      align: 'center',
+      align: "center",
       wordWrap: { width: STAGE.width - 600 },
     })
     .setOrigin(0.5, 0)
@@ -117,7 +106,12 @@ export function buildPrologueHud(scene: Phaser.Scene): PrologueHud {
   function setRound(num: number, total: number): void {
     roundText.setText(`Round ${num}/${total}`);
     for (let i = 0; i < diamonds.length; i++) {
-      drawDiamond(diamonds[i]!, PANEL_X + PANEL_W / 2 + (i - (MAX_ROUND_GEMS - 1) / 2) * 30, diamondY, i < num);
+      drawDiamond(
+        diamonds[i]!,
+        PANEL_X + PANEL_W / 2 + (i - (MAX_ROUND_GEMS - 1) / 2) * 30,
+        diamondY,
+        i < num,
+      );
     }
   }
 
@@ -132,25 +126,48 @@ export function buildPrologueHud(scene: Phaser.Scene): PrologueHud {
   function showRoundTitle(text: string): void {
     scene.tweens.killTweensOf(principleText);
     principleText.setText(text).setAlpha(0);
-    scene.tweens.add({ targets: principleText, alpha: 1, duration: 340, ease: 'Sine.easeOut' });
+    scene.tweens.add({
+      targets: principleText,
+      alpha: 1,
+      duration: 340,
+      ease: "Sine.easeOut",
+    });
   }
 
   function showSummary(text: string): void {
     scene.tweens.killTweensOf(principleText);
     principleText.setText(text);
-    scene.tweens.add({ targets: principleText, alpha: 1, duration: 340, ease: 'Sine.easeOut' });
+    scene.tweens.add({
+      targets: principleText,
+      alpha: 1,
+      duration: 340,
+      ease: "Sine.easeOut",
+    });
   }
 
   function showPromptNext(label: string): void {
     stateText.setText(label.toUpperCase()).setColor(COLORS.text.accent);
   }
 
-  return { setRound, addScore, setState, showRoundTitle, showSummary, showPromptNext };
+  return {
+    setRound,
+    addScore,
+    setState,
+    showRoundTitle,
+    showSummary,
+    showPromptNext,
+  };
 }
 
 // ─── Drawing helpers ──────────────────────────────────────────────────────────
 
-function paintPanel(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number): void {
+function paintPanel(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
   g.fillStyle(0x050918, 0.91);
   g.fillRoundedRect(x, y, w, h, 7);
   g.lineStyle(2, 0x06b6d4, 0.8);
