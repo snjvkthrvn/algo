@@ -45,16 +45,16 @@ export class BalanceScale {
         .setStrokeStyle(2, 0x5e4a22, 1)
         .setDepth(15);
     }
+    // Carved into the dais stone — no panel box (VISION §5 wound #3).
     this.targetText = scene.add
       .text(x, y + 64, "", {
-        fontSize: "14px",
+        fontSize: "16px",
         fontFamily: FONTS.RETRO,
-        color: "#f4e3c1",
-        backgroundColor: "#2e2417",
-        padding: { x: 6, y: 3 },
+        color: "#2e2417",
       })
       .setOrigin(0.5)
-      .setDepth(16);
+      .setDepth(16)
+      .setShadow(0, 1, "#d8c8a8", 0, false, true);
   }
 
   /** Carve the round's target onto the plaque. */
