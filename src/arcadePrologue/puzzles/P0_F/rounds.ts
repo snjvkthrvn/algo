@@ -23,10 +23,9 @@ const X3 = { q: 2, r: 1 };
 
 export const LITANY_ROUND: LitanyRound = {
   title: 'The Litany',
-  principle:
-    'Sequence and selection compose. Order is decided by choices; choices are tested by the order they produce.',
-  teach:
-    'Each fork hides its dead-end somewhere different \u2014 look carefully, then route through both altars to the sink.',
+  // Stakes language only \u2014 the lecture lives in the Codex (VISION \u00a73-4).
+  principle: 'It bars the way home and will not be reasoned with.',
+  teach: 'Both altars must sound, in their order, before the sink.',
   field: [A, B, C, D, E, F, S, X1, X2, X3],
   source: A,
   sink: S,

@@ -1,8 +1,7 @@
 import Phaser from "phaser";
-import { COLORS, s } from "../P0_1/tokens";
+import { COLORS } from "../P0_1/tokens";
 import { paintAtmosphere, type Atmosphere } from "../P0_1/visuals/atmosphere";
 import { ensureRuneTexture } from "../P0_1/visuals/rune";
-import { buildHud, type Hud } from "../P0_1/visuals/hud";
 import { readReduceMotion, writeReduceMotion } from "../P0_1/prefs";
 import { buildOutMap, forkKeySet } from "../P0_2/flow";
 import { coordsOf, mountFlowBoard, type FlowBoard } from "../P0_2/board";
@@ -18,40 +17,72 @@ import { deadEndShimmer } from "../P0_2/feedback";
 import { bindDirectionalChoiceInput } from "../P0_2/input";
 import { LITANY_ROUND, type LitanyRound } from "./rounds";
 import { altarKeys, altarsSatisfied, missedAltarKeys } from "./flow";
-import { LITANY_LABEL, type LitanyState } from "./state";
+import { type LitanyState } from "./state";
 import { createAltars, type Altars } from "./visuals/altars";
-import { createIntro, type Intro } from "./visuals/intro";
 import { finalCascade } from "./feedback";
 import { bindLitanyInput } from "./input";
-import { GAME, PENALTIES, POINTS } from "../../game/state";
+import { GAME } from "../../game/state";
 import {
   completeAlgorithmiaPuzzle,
   PROLOGUE_RUN_UI_KEY,
   resolveReturnScene,
 } from "../../game/algorithmiaIntegration";
-import { scorePopup } from "../../ui/popups";
-import { hexColorToNumber, sparkle } from "../../ui/particles";
-import { comboMilestone } from "../../game/milestone";
 import { SCENE_KEYS } from "../../../config/constants";
 import { playBossEntryBanner } from "../../../ui/BossEntryBanner";
 import { VISUAL_REVAMP_KEYS, getImageAssetPath } from "../../../config/assets";
+import { a11yManager } from "../../../core/A11yManager";
+import { audioManager } from "../../../core/AudioManager";
+import { mountTransientLegend } from "../../../ui/transientLegend";
+import { ChamberCast } from "../../../puzzleRooms/chamber/ChamberCast";
+import type { ChamberShell } from "../../../puzzleRooms/chamber/ChamberShell";
+import { GamepadActionBridge } from "../../../input/GamepadActionBridge";
+import {
+  emptyLedger,
+  recordTrade,
+  starsForTrades,
+  type GrainLedger,
+} from "../../../puzzleRooms/grainChamber/grainEconomy";
+import { litanyPar } from "../../chamber/prologuePar";
+import { forkChoicesAlong, routeThrough } from "../../chamber/flowRoute";
+import {
+  createPrologueShell,
+  launchHomewardPulse,
+  paintExitChannel,
+  placeRuneLever,
+  type RuneLever,
+} from "../../chamber/prologueShell";
+import { createDecalLayer, type DecalLayer } from "../../chamber/runeDecals";
+import { PulseGhost } from "../../chamber/PulseGhost";
 
+// Bosses own urgency (docs/VISION.md §6): the Litany keeps its real clock.
 const LITANY_TIMER_MS = 80000;
-const LITANY_TIME_BONUS = 1200;
-const LITANY_PERFECT_BONUS = 1800;
 const DECISION_WINDOW_MS = 1100;
 const PREPARE_BEAT_MS = 600;
 const RETRY_BEAT_MS = 740;
-const OUTRO_DELAY_MS = 720;
+
+const SENTINEL_CAST = {
+  keeperKey: VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE,
+  keeperScale: 1.05,
+  entryLine: "SPEAK THE WAY, OR STAY.",
+  reactions: {
+    waste: ["THE LITANY REJECTS YOU.", "AGAIN. FROM THE SOURCE."],
+    clean: ["IT LISTENS."],
+    clear: ["…HEARD.", "THE WAY OPENS."],
+  },
+  tallyNoun: "pulses",
+  tallyVerdicts: {
+    thrifty: "FLAWLESS.",
+    lever: "PULL THE LEVER. SEE THE LITANY SPOKEN TRUE.",
+  },
+  bubble: { color: "#bfe3ff", backgroundColor: "#0c1024" },
+} as const;
 
 export class TheLitanyScene extends Phaser.Scene {
   private atmosphere!: Atmosphere;
-  private hud!: Hud;
   private edges!: EdgeLayer;
   private markers!: Markers;
   private altars!: Altars;
   private pulse!: Pulse;
-  private intro!: Intro;
   private board: FlowBoard | null = null;
   private round: LitanyRound | null = null;
   private outMap: Map<string, string[]> = new Map();
@@ -62,6 +93,17 @@ export class TheLitanyScene extends Phaser.Scene {
   private returnScene: string = SCENE_KEYS.PROLOGUE;
   private startedAt = Date.now();
 
+  private shell!: ChamberShell;
+  private cast!: ChamberCast;
+  private decals!: DecalLayer;
+  private ghostPulse!: PulseGhost;
+  private lever: RuneLever | null = null;
+
+  private ledger: GrainLedger = emptyLedger(0);
+  private hintsUsed = 0;
+  private roomCleared = false;
+  private exiting = false;
+
   constructor() {
     super({ key: SCENE_KEYS.BOSS_SENTINEL });
   }
@@ -71,26 +113,12 @@ export class TheLitanyScene extends Phaser.Scene {
   }
 
   preload(): void {
-    const backdropPath = getImageAssetPath(
+    for (const key of [
       VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
-    );
-    if (
-      backdropPath &&
-      !this.textures.exists(VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG)
-    ) {
-      this.load.image(
-        VISUAL_REVAMP_KEYS.PUZZLE_PROLOGUE_ACTION_ARENA_BG,
-        backdropPath,
-      );
-    }
-    const figurePath = getImageAssetPath(
       VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE,
-    );
-    if (
-      figurePath &&
-      !this.textures.exists(VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE)
-    ) {
-      this.load.image(VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE, figurePath);
+    ]) {
+      const path = getImageAssetPath(key);
+      if (path && !this.textures.exists(key)) this.load.image(key, path);
     }
   }
 
@@ -98,6 +126,7 @@ export class TheLitanyScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.bg.deep);
     this.startedAt = Date.now();
     this.reduceMotion = readReduceMotion();
+    audioManager.setScene(this);
     GAME.reset();
     GAME.setCurrentPuzzle(this.scene.key);
     if (!this.scene.isActive(PROLOGUE_RUN_UI_KEY))
@@ -110,89 +139,43 @@ export class TheLitanyScene extends Phaser.Scene {
     this.markers = createMarkers(this);
     this.altars = createAltars(this);
     this.pulse = createPulse(this);
-    this.intro = createIntro(this);
-    this.hud = buildHud(this, {
-      eyebrow: "PROLOGUE FINALE  \u00b7  CONVERGENCE",
-      footerHint:
-        "Arrow / WASD toward a fork as the pulse arrives   \u00b7   [M] reduce motion",
-    });
-    // No SENTINEL PREVIEW side panel: it printed live routing state as a
-    // text wall, and the playable game never shows code or debugger views
-    // (docs/VISION.md §4). The deep layer lives in the Codex.
 
-    // Boss entry banner — the audit flagged that bosses re-use puzzle chrome
-    // and don't feel like capstones. The Sentinel gets a cyan accent because
-    // it's the cosmic-prologue capstone (mystic register, matches the
-    // chamber's cyan glow). Banner fires immediately on create — the boss
-    // mechanic is still mounting underneath, but the visual overlay sells
-    // the "this is the boss" moment.
+    this.ledger = emptyLedger(0);
+    this.hintsUsed = 0;
+    this.roomCleared = false;
+    this.exiting = false;
+    this.decals = createDecalLayer(this, 6, this.reduceMotion);
+    this.shell = createPrologueShell(this, litanyPar());
+    // The Sentinel IS the cast — it looms beside the gate and speaks in
+    // stakes, never lecture (VISION §3). Off-center so its lines stay
+    // legible once the gate's light spill pours in.
+    this.cast = new ChamberCast(
+      this,
+      this.cameras.main.width / 2 + 190,
+      150,
+      SENTINEL_CAST,
+    );
+    this.ghostPulse = new PulseGhost(this);
+    mountTransientLegend(
+      this,
+      this.cameras.main.height - 18,
+      "ARROWS / WASD steer the pulse at each fork · H hint · M motion",
+    );
+
+    // Boss entry banner — stakes only; the mechanic teaches itself.
     playBossEntryBanner(this, {
       bossName: "The Litany",
       regionTag: "Prologue finale",
-      thesis: "Sequence and selection. Both rules at once.",
+      thesis: "The way home is barred. Answer its litany.",
       accentColor: 0x22d3ee,
       onComplete: () => {
-        // The Sentinel mechanic was already mounted under the banner — no
-        // additional start step required. This callback is a hook for
-        // future boss-only "begin combat" beats.
+        this.shell.seal();
+        this.cast.entry();
       },
     });
 
-    // Visible Sentinel figure (Round 3 art-pass — the prior audit found the
-    // Prologue boss was the only one without a hero figure on screen). The
-    // Fractured Sentinel hovers at the top, slightly off-center, with a
-    // gentle bob to suggest it's watching the player's choices. Cyan accent
-    // ties it to the chamber's mandala glow. Lower alpha + low depth keep
-    // it from competing with the hex-grid play surface.
-    const sentinelFigureKey = VISUAL_REVAMP_KEYS.BOSS_SENTINEL_FIGURE;
-    if (this.textures.exists(sentinelFigureKey)) {
-      const sentinelFigure = this.add
-        .image(this.cameras.main.width / 2, s(110), sentinelFigureKey)
-        .setOrigin(0.5, 0.5)
-        .setScale(0.8)
-        .setAlpha(0.78)
-        .setDepth(4)
-        .setScrollFactor(0);
-      this.tweens.add({
-        targets: sentinelFigure,
-        y: s(104),
-        duration: 1800,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
-    } else {
-      // Defensive: attempt a late-load if the boot preload missed it (e.g.
-      // dev hot-reload). Silently no-op on failure — the rest of the boss
-      // mechanic is independent of the figure being visible.
-      const path = getImageAssetPath(sentinelFigureKey);
-      if (path) {
-        this.load.image(sentinelFigureKey, path);
-        this.load.once("complete", () => {
-          if (this.textures.exists(sentinelFigureKey)) {
-            const sentinelFigure = this.add
-              .image(this.cameras.main.width / 2, s(110), sentinelFigureKey)
-              .setOrigin(0.5, 0.5)
-              .setScale(0.8)
-              .setAlpha(0.78)
-              .setDepth(4)
-              .setScrollFactor(0);
-            this.tweens.add({
-              targets: sentinelFigure,
-              y: s(104),
-              duration: 1800,
-              yoyo: true,
-              repeat: -1,
-              ease: "Sine.easeInOut",
-            });
-          }
-        });
-        this.load.start();
-      }
-    }
-
     this.unbindInput = bindLitanyInput(this, {
-      onReplay: () => {},
+      onReplay: () => void this.playGhost(),
       onToggleReduceMotion: () => this.toggleReduceMotion(),
     });
 
@@ -200,9 +183,14 @@ export class TheLitanyScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.ESC,
     );
     escape?.on("down", this.exitToReturnScene, this);
+    const hintKey = this.input.keyboard?.addKey(
+      Phaser.Input.Keyboard.KeyCodes.H,
+    );
+    hintKey?.on("down", this.showHint, this);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       escape?.removeAllListeners();
+      hintKey?.removeAllListeners();
       this.unbindInput?.();
     });
 
@@ -211,12 +199,6 @@ export class TheLitanyScene extends Phaser.Scene {
 
   private async runFinale(): Promise<void> {
     this.mountFinale();
-    this.setState("intro");
-    await this.intro.show(
-      "The Final Trial",
-      "The Litany",
-      "Steer the pulse through both altars \u2014 in order \u2014 to the sink.",
-    );
     this.setState("preparing");
     await this.wait(PREPARE_BEAT_MS);
     GAME.startRound(LITANY_TIMER_MS);
@@ -225,11 +207,6 @@ export class TheLitanyScene extends Phaser.Scene {
 
   private mountFinale(): void {
     this.round = LITANY_ROUND;
-    this.hud.setRound(
-      LITANY_ROUND.title,
-      LITANY_ROUND.principle,
-      LITANY_ROUND.teach,
-    );
     this.board = mountFlowBoard(this, LITANY_ROUND);
     this.outMap = buildOutMap(LITANY_ROUND);
     this.forks = forkKeySet(LITANY_ROUND);
@@ -240,6 +217,9 @@ export class TheLitanyScene extends Phaser.Scene {
   private async firePulse(): Promise<void> {
     if (!this.board || !this.round) return;
     this.setState("flowing");
+    // Every pulse fired is a cost the floor remembers — the boss's economy
+    // is the same physical ledger as the first-contact rooms.
+    this.ledger = recordTrade(this.ledger);
 
     const result = await this.pulse.fireReactive(this.board, {
       sourceKey: this.board.sourceKey,
@@ -308,33 +288,21 @@ export class TheLitanyScene extends Phaser.Scene {
   private onArrive(key: string): void {
     if (!this.board || !this.altarSet.has(key)) return;
     this.altars.chime(this.board, key);
-    GAME.bumpCombo();
-    const awarded = GAME.addScore(POINTS.altar, "altar");
-    const at = coordsOf(this.board, key);
-    scorePopup(this, at.x, at.y - s(30), `+${awarded}`);
-    sparkle(this, at.x, at.y, { count: 10, color: 0xfde68a, spread: 36 });
-    const milestone = comboMilestone(GAME.combo);
-    if (milestone) {
-      scorePopup(this, at.x, at.y - s(60), milestone.label, {
-        color: milestone.color,
-        size: 17,
-        rise: 38,
-        duration: 980,
-      });
-      sparkle(this, at.x, at.y, {
-        count: 14,
-        color: hexColorToNumber(milestone.color),
-        spread: 46,
-      });
-    }
+    this.cast.onCleanStretch();
+    a11yManager.announce("An altar sounds.", false);
   }
 
   private onFizzle(finalKey: string): void {
     if (!this.board) return;
     deadEndShimmer(this, this.board, finalKey);
-    GAME.recordMistake();
-    GAME.losePoints(PENALTIES.pfDeadEnd);
-    GAME.breakCombo();
+    const at = coordsOf(this.board, finalKey);
+    this.decals.scorchAt(at.x, at.y + 18);
+    audioManager.playTone(150, 140, "sawtooth");
+    this.cast.onSpillStreak();
+    a11yManager.announce(
+      "The pulse dies in a dead end — the floor scorches where it fell.",
+      false,
+    );
     this.time.delayedCall(RETRY_BEAT_MS, () => void this.firePulse());
   }
 
@@ -342,82 +310,114 @@ export class TheLitanyScene extends Phaser.Scene {
     if (!this.board || !this.round) return;
     const missed = missedAltarKeys(this.round, visited);
     this.altars.shimmerMissed(this.board, missed);
-    GAME.recordMistake();
-    GAME.losePoints(PENALTIES.pfMissedAltars);
-    GAME.breakCombo();
+    const at = coordsOf(this.board, this.board.sinkKey);
+    this.decals.scorchAt(at.x, at.y + 18);
+    audioManager.playTone(180, 160, "sawtooth");
+    this.cast.onSpillStreak();
+    a11yManager.announce(
+      "The pulse reached the sink, but the litany went unsung — the altars must sound first.",
+      false,
+    );
     this.time.delayedCall(RETRY_BEAT_MS, () => void this.firePulse());
   }
+
+  // ── Debrief: unbarred gate, plaque tally, lever ghost, homeward pulse ──────
 
   private async celebrate(): Promise<void> {
     if (!this.board) return;
     this.setState("cleared");
+    GAME.endRound(0, 0); // hides the boss clock; awards nothing
     const sinkAt = coordsOf(this.board, this.board.sinkKey);
-
-    GAME.bumpCombo();
-    const awarded = GAME.addScore(POINTS.finale, "finale");
-    scorePopup(this, sinkAt.x, sinkAt.y - s(44), `+${awarded}  FINALE`, {
-      color: "#fde68a",
-      size: 18,
-      rise: 38,
-      duration: 1100,
-    });
-    sparkle(this, sinkAt.x, sinkAt.y, {
-      count: 18,
-      color: 0xfde68a,
-      spread: 56,
-      duration: 900,
-    });
-
-    const bonuses = GAME.endRound(LITANY_TIME_BONUS, LITANY_PERFECT_BONUS);
-    let off = s(76);
-    if (bonuses.timeBonus > 0) {
-      scorePopup(
-        this,
-        sinkAt.x,
-        sinkAt.y - off,
-        `+${bonuses.timeBonus}  TIME`,
-        {
-          color: "#fde68a",
-          size: 17,
-          rise: 36,
-          duration: 1200,
-        },
-      );
-      off += s(28);
-    }
-    if (bonuses.wasPerfect && bonuses.perfectBonus > 0) {
-      scorePopup(
-        this,
-        sinkAt.x,
-        sinkAt.y - off,
-        `+${bonuses.perfectBonus}  PERFECT!`,
-        {
-          color: "#a3e635",
-          size: 18,
-          rise: 42,
-          duration: 1400,
-        },
-      );
-      sparkle(this, sinkAt.x, sinkAt.y, {
-        count: 20,
-        color: 0xa3e635,
-        spread: 64,
-        duration: 1000,
-      });
-    }
-
+    this.cast.onBloom();
     await finalCascade(this, sinkAt);
-    this.hud.showSummary(
-      "Heard. Sequence and selection \u2014 two pillars, one path.",
-    );
-    await this.wait(OUTRO_DELAY_MS);
-    completeAlgorithmiaPuzzle(this, {
-      puzzleId: "boss_sentinel",
-      puzzleName: "The Litany",
-      concept: "Pattern Recognition + Authentication",
-      returnScene: this.returnScene,
-      startedAt: this.startedAt,
+
+    this.shell.unbar(() => {
+      const par = litanyPar();
+      this.roomCleared = true;
+      this.shell.setPlaqueTally(this.ledger.trades, par);
+      this.cast.tallyLine(this.ledger.trades, par);
+      this.lever = placeRuneLever(
+        this,
+        this.cameras.main.width / 2 - 110,
+        70,
+        () => void this.playGhost(),
+      );
+      paintExitChannel(this, sinkAt.x, sinkAt.y);
+      this.bindExitInput();
+      a11yManager.announce(
+        `The litany is answered in ${this.ledger.trades} ${this.ledger.trades === 1 ? "pulse" : "pulses"}; a single pass suffices. ` +
+          "Pull the lever to see the litany spoken true, or send your pulse up through the open gate.",
+        true,
+      );
     });
+  }
+
+  private bindExitInput(): void {
+    const kb = this.input.keyboard;
+    const exit = (): void => this.sendHomeward();
+    const replay = (): void => void this.playGhost();
+    kb?.on("keydown-UP", exit);
+    kb?.on("keydown-W", exit);
+    new GamepadActionBridge(this, { up: exit, action: replay });
+    const gate = this.add
+      .zone(this.cameras.main.width / 2, 24, 140, 56)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    gate.on("pointerdown", exit);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      kb?.off("keydown-UP", exit);
+      kb?.off("keydown-W", exit);
+    });
+  }
+
+  private sendHomeward(): void {
+    if (!this.roomCleared || this.exiting || !this.board) return;
+    this.exiting = true;
+    a11yManager.announce("The pulse sails home through the open gate.", true);
+    const sinkAt = coordsOf(this.board, this.board.sinkKey);
+    launchHomewardPulse(this, sinkAt.x, sinkAt.y, () => {
+      const par = litanyPar();
+      const base = starsForTrades(this.ledger.trades, par);
+      const stars = Math.max(1, base - (this.hintsUsed > 0 ? 1 : 0));
+      completeAlgorithmiaPuzzle(this, {
+        puzzleId: "boss_sentinel",
+        puzzleName: "The Litany",
+        concept: "Pattern Recognition + Authentication",
+        returnScene: this.returnScene,
+        startedAt: this.startedAt,
+        stars,
+        hintsUsed: this.hintsUsed,
+        delayMs: 200,
+      });
+    });
+  }
+
+  private async playGhost(): Promise<void> {
+    if (!this.roomCleared || !this.board || this.ghostPulse.isPlaying) return;
+    this.lever?.pull();
+    const route = routeThrough(
+      this.outMap,
+      this.board.sourceKey,
+      this.board.sinkKey,
+      altarKeys(LITANY_ROUND),
+    );
+    if (!route) return;
+    await this.ghostPulse.play(
+      this.board,
+      this.outMap,
+      this.forks,
+      forkChoicesAlong(route, this.forks),
+    );
+  }
+
+  // ── Hints (H — the only prompting path) ────────────────────────────────────
+
+  private showHint(): void {
+    if (this.roomCleared) return;
+    this.hintsUsed += 1;
+    const line = "BOTH ALTARS. IN THEIR ORDER. THEN THE SINK.";
+    this.cast.speak(line);
+    a11yManager.announce(line, false);
   }
 
   onPuzzleComplete(stars = 3): void {
@@ -443,7 +443,6 @@ export class TheLitanyScene extends Phaser.Scene {
   }
 
   private setState(next: LitanyState): void {
-    this.hud.setState(LITANY_LABEL[next] ?? "");
     if (next === "flowing") this.atmosphere.setMood("preview");
     else this.atmosphere.setMood("normal");
   }

@@ -70,12 +70,14 @@ describe("prologue puzzle replacement scenes", () => {
     expect(arenaMappings?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 
-  it("dissolves prologue HUD chrome after entry like the shared transient legend", () => {
-    const hud = readSource("src/arcadePrologue/puzzles/P0_1/visuals/hud.ts");
+  it("mounts only the shared transient legend — no pinned HUD chrome", () => {
+    const p01 = readSource("src/arcadePrologue/puzzles/P0_1/scene.ts");
+    const p02 = readSource("src/arcadePrologue/puzzles/P0_2/scene.ts");
+    const boss = readSource("src/arcadePrologue/puzzles/P0_F/scene.ts");
 
-    expect(hud).toContain("LEGEND_HOLD_MS");
-    expect(hud).toMatch(
-      /from ['"]\.\.\/\.\.\/\.\.\/\.\.\/ui\/transientLegend['"]/,
-    );
+    for (const source of [p01, p02, boss]) {
+      expect(source).toContain("mountTransientLegend");
+      expect(source).not.toMatch(/buildHud|buildPrologueHud/);
+    }
   });
 });
