@@ -8,48 +8,109 @@
  * folder is absent the gym simply shows no shelf.
  */
 
-import Phaser from 'phaser';
-import { FONTS } from '../../config/constants';
+import Phaser from "phaser";
+import { FONTS } from "../../config/constants";
 
-const DROP_BASE = 'assets/visual_revamp/imagegen_drop_2026_06_10';
+const DROP_BASE = "assets/visual_revamp/imagegen_drop_2026_06_10";
 
-/** Keeper masters are 1254px; in-room display height ~96px (player is 64). */
-const KEEPER_DISPLAY_HEIGHT = 96;
-const CRATE_DISPLAY_SIZE = 48;
+/**
+ * Targets are BODY heights in world px, matched to where each piece will
+ * actually live in-game, so the shelf previews true integration size:
+ * - keepers: overworld NPC register — 192px frames, ~170px body, scale 0.95
+ *   (STATIC_NPC_SCALES) → ~162px body. Keepers deliberately tower over the
+ *   64px player; that hierarchy is art direction, not a bug.
+ * - crate: BruteForceActor tile (54x42).
+ * - stones: Twin Rivers overworld index stones (48px squares).
+ * Masters are 1254px squares; bodies fill ~80% of the frame (measured),
+ * stones ~49% of their 768px frame.
+ */
+const KEEPER_BODY_TARGET = 162;
+const KEEPER_BODY_FRACTION = 0.8;
+const CRATE_BODY_TARGET = 42;
+const CRATE_BODY_FRACTION = 0.64;
 const STONE_FRAME = { width: 512, height: 768 };
-const STONE_DISPLAY_HEIGHT = 40;
+const STONE_BODY_TARGET = 48;
+const STONE_BODY_FRACTION = 0.49;
 
-const DROP_CHARACTERS: ReadonlyArray<{ key: string; file: string; label: string }> = [
-  { key: 'drop-sorting-farmer', file: 'characters/sorting_farmer.png', label: 'sorting farmer' },
-  { key: 'drop-basket-keeper', file: 'characters/basket_keeper.png', label: 'basket keeper' },
-  { key: 'drop-crop-sorter', file: 'characters/crop_sorter.png', label: 'crop sorter' },
-  { key: 'drop-tile-worker', file: 'characters/tile_worker.png', label: 'tile worker' },
-  { key: 'drop-mirror-walker', file: 'characters/mirror_walker.png', label: 'mirror walker' },
-  { key: 'drop-bridge-keeper', file: 'characters/bridge_keeper.png', label: 'bridge keeper' },
-  { key: 'drop-window-fisher', file: 'characters/window_fisher.png', label: 'window fisher' },
-  { key: 'drop-current-rider', file: 'characters/current_rider.png', label: 'current rider' },
-  { key: 'drop-hash-keeper', file: 'characters/hash_keeper.png', label: 'hash keeper' },
+const DROP_CHARACTERS: ReadonlyArray<{
+  key: string;
+  file: string;
+  label: string;
+}> = [
+  {
+    key: "drop-sorting-farmer",
+    file: "characters/sorting_farmer.png",
+    label: "sorting farmer",
+  },
+  {
+    key: "drop-basket-keeper",
+    file: "characters/basket_keeper.png",
+    label: "basket keeper",
+  },
+  {
+    key: "drop-crop-sorter",
+    file: "characters/crop_sorter.png",
+    label: "crop sorter",
+  },
+  {
+    key: "drop-tile-worker",
+    file: "characters/tile_worker.png",
+    label: "tile worker",
+  },
+  {
+    key: "drop-mirror-walker",
+    file: "characters/mirror_walker.png",
+    label: "mirror walker",
+  },
+  {
+    key: "drop-bridge-keeper",
+    file: "characters/bridge_keeper.png",
+    label: "bridge keeper",
+  },
+  {
+    key: "drop-window-fisher",
+    file: "characters/window_fisher.png",
+    label: "window fisher",
+  },
+  {
+    key: "drop-current-rider",
+    file: "characters/current_rider.png",
+    label: "current rider",
+  },
+  {
+    key: "drop-hash-keeper",
+    file: "characters/hash_keeper.png",
+    label: "hash keeper",
+  },
 ];
 
-const DROP_CRATE = { key: 'drop-corrupted-crate', file: 'props/corrupted_crate.png' };
+const DROP_CRATE = {
+  key: "drop-corrupted-crate",
+  file: "props/corrupted_crate.png",
+};
 const DROP_STONES = {
-  key: 'drop-index-stones',
-  file: 'twin_rivers_index_stones/twin_rivers_index_stones.png',
+  key: "drop-index-stones",
+  file: "twin_rivers_index_stones/twin_rivers_index_stones.png",
 };
 
 /** Queue the drop assets. Missing files only log loader warnings. */
 export function preloadDropShowcase(scene: Phaser.Scene): void {
   for (const c of DROP_CHARACTERS) {
-    if (!scene.textures.exists(c.key)) scene.load.image(c.key, `${DROP_BASE}/${c.file}`);
+    if (!scene.textures.exists(c.key))
+      scene.load.image(c.key, `${DROP_BASE}/${c.file}`);
   }
   if (!scene.textures.exists(DROP_CRATE.key)) {
     scene.load.image(DROP_CRATE.key, `${DROP_BASE}/${DROP_CRATE.file}`);
   }
   if (!scene.textures.exists(DROP_STONES.key)) {
-    scene.load.spritesheet(DROP_STONES.key, `${DROP_BASE}/${DROP_STONES.file}`, {
-      frameWidth: STONE_FRAME.width,
-      frameHeight: STONE_FRAME.height,
-    });
+    scene.load.spritesheet(
+      DROP_STONES.key,
+      `${DROP_BASE}/${DROP_STONES.file}`,
+      {
+        frameWidth: STONE_FRAME.width,
+        frameHeight: STONE_FRAME.height,
+      },
+    );
   }
 }
 
@@ -62,55 +123,52 @@ export function placeDropShowcase(
   origin: { x: number; y: number },
 ): number {
   let placed = 0;
-  const spacing = 128;
+  const spacing = 192;
+  const keeperHeight = KEEPER_BODY_TARGET / KEEPER_BODY_FRACTION;
+  const label = (x: number, y: number, text: string) =>
+    scene.add
+      .text(x, y, text, {
+        fontSize: "8px",
+        fontFamily: FONTS.RETRO,
+        color: "#9fb8c8",
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(4);
 
   DROP_CHARACTERS.forEach((c, i) => {
     if (!scene.textures.exists(c.key)) return;
     const x = origin.x + i * spacing;
     const img = scene.add.image(x, origin.y, c.key).setDepth(4);
-    img.setScale(KEEPER_DISPLAY_HEIGHT / img.height);
-    scene.add
-      .text(x, origin.y + KEEPER_DISPLAY_HEIGHT / 2 + 10, c.label, {
-        fontSize: '8px',
-        fontFamily: FONTS.RETRO,
-        color: '#9fb8c8',
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(4);
+    img.setScale(keeperHeight / img.height);
+    label(x, origin.y + KEEPER_BODY_TARGET / 2 + 12, c.label);
     placed++;
   });
 
+  const rowY = origin.y + 240;
   if (scene.textures.exists(DROP_CRATE.key)) {
-    const crate = scene.add
-      .image(origin.x, origin.y + 160, DROP_CRATE.key)
-      .setDepth(4);
-    crate.setScale(CRATE_DISPLAY_SIZE / crate.height);
-    scene.add
-      .text(origin.x, origin.y + 160 + CRATE_DISPLAY_SIZE / 2 + 6, 'corrupted crate', {
-        fontSize: '8px',
-        fontFamily: FONTS.RETRO,
-        color: '#9fb8c8',
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(4);
+    const crateHeight = CRATE_BODY_TARGET / CRATE_BODY_FRACTION;
+    // Offset west of interior collision block 1 (x 640-767) so the crate
+    // sits on open floor.
+    const crateX = origin.x - 160;
+    const crate = scene.add.image(crateX, rowY, DROP_CRATE.key).setDepth(4);
+    crate.setScale(crateHeight / crate.height);
+    label(crateX, rowY + CRATE_BODY_TARGET / 2 + 8, "corrupted crate");
     placed++;
   }
 
   if (scene.textures.exists(DROP_STONES.key)) {
+    const stoneHeight = STONE_BODY_TARGET / STONE_BODY_FRACTION;
     for (let f = 0; f < 4; f++) {
       const stone = scene.add
-        .image(origin.x + 160 + f * 56, origin.y + 160, DROP_STONES.key, f)
+        .image(origin.x + 160 + f * 64, rowY, DROP_STONES.key, f)
         .setDepth(4);
-      stone.setScale(STONE_DISPLAY_HEIGHT / STONE_FRAME.height);
+      stone.setScale(stoneHeight / STONE_FRAME.height);
     }
-    scene.add
-      .text(origin.x + 160 + 1.5 * 56, origin.y + 160 + STONE_DISPLAY_HEIGHT / 2 + 6, 'index stones', {
-        fontSize: '8px',
-        fontFamily: FONTS.RETRO,
-        color: '#9fb8c8',
-      })
-      .setOrigin(0.5, 0)
-      .setDepth(4);
+    label(
+      origin.x + 160 + 1.5 * 64,
+      rowY + STONE_BODY_TARGET / 2 + 8,
+      "index stones",
+    );
     placed++;
   }
 
