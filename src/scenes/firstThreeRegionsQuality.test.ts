@@ -126,6 +126,59 @@ describe("first three regions quality guards", () => {
     expect(source).not.toMatch(/\bseconds\b/);
   });
 
+  it("Prologue rune walk teaches through cost, not chrome", () => {
+    const source = readSource("src/arcadePrologue/puzzles/P0_1/scene.ts");
+
+    // Chamber economy: every hop is recorded; wrong hops crack the floor
+    // instead of costing points, and the player walks out to complete.
+    expect(source).toContain("recordTrade(this.ledger)");
+    expect(source).toContain("crackAt(");
+    expect(source).toContain("walkOut");
+    expect(source).toContain("starsForTrades");
+
+    // Arcade/lecture chrome stays out of the room.
+    expect(source).not.toMatch(
+      /buildPrologueHud|createSequencePanel|scorePopup|comboMilestone/,
+    );
+    expect(source).not.toMatch(
+      /GAME\.addScore|GAME\.losePoints|GAME\.bumpCombo/,
+    );
+  });
+
+  it("Prologue flow consoles teach through cost, not chrome", () => {
+    const source = readSource("src/arcadePrologue/puzzles/P0_2/scene.ts");
+
+    expect(source).toContain("recordTrade(this.ledger)");
+    expect(source).toContain("scorchAt(");
+    expect(source).toContain("launchHomewardPulse");
+    expect(source).toContain("starsForTrades");
+
+    expect(source).not.toMatch(
+      /buildHud|GlitchCorner|scorePopup|comboMilestone/,
+    );
+    expect(source).not.toMatch(/The pulse slipped by/);
+    expect(source).not.toMatch(
+      /GAME\.addScore|GAME\.losePoints|GAME\.bumpCombo/,
+    );
+  });
+
+  it("Boss Sentinel keeps urgency but loses the lecture", () => {
+    const source = readSource("src/arcadePrologue/puzzles/P0_F/scene.ts");
+    const rounds = readSource("src/arcadePrologue/puzzles/P0_F/rounds.ts");
+
+    // Bosses own urgency: the litany clock stays; arcade chrome does not.
+    expect(source).toContain("GAME.startRound(LITANY_TIMER_MS)");
+    expect(source).toContain("recordTrade(this.ledger)");
+    expect(source).toContain("launchHomewardPulse");
+    expect(source).not.toMatch(
+      /buildHud|scorePopup|comboMilestone|intro\.show|loseLife/,
+    );
+
+    // The thesis speaks stakes, never lecture (VISION §3).
+    expect(source).not.toMatch(/Sequence and selection/);
+    expect(rounds).not.toMatch(/Sequence and selection/);
+  });
+
   it("keeps Two Sum rounds fully reachable by number-key controls", () => {
     for (const round of TWO_SUM_ROUND_CONFIGS) {
       expect(round.values.length).toBeLessThanOrEqual(9);
