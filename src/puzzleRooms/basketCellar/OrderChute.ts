@@ -37,11 +37,11 @@ export class OrderChute {
 
     const tag = this.scene.add.container(CHUTE_X, CHUTE_TOP_Y).setDepth(48);
     if (this.scene.textures.exists(BASKET_CELLAR_KEYS.ORDER_TAG)) {
-      tag.add(
-        this.scene.add
-          .image(0, 0, BASKET_CELLAR_KEYS.ORDER_TAG)
-          .setDisplaySize(TAG_W, TAG_H + 12),
-      );
+      // Natural aspect, scaled to the tag width — the art carries a rope
+      // loop above the face, so the words sit slightly below center.
+      const image = this.scene.add.image(0, 0, BASKET_CELLAR_KEYS.ORDER_TAG);
+      image.setScale(TAG_W / image.width);
+      tag.add(image);
     } else {
       tag.add(
         this.scene.add
@@ -49,14 +49,15 @@ export class OrderChute {
           .setStrokeStyle(2, 0x5b3f1e, 1),
       );
     }
+    const hasArt = this.scene.textures.exists(BASKET_CELLAR_KEYS.ORDER_TAG);
     tag.add(
       this.scene.add
-        .text(0, 0, text, {
+        .text(0, hasArt ? 14 : 0, text, {
           fontSize: "9px",
           fontFamily: FONTS.RETRO,
           color: "#2e2417",
           align: "center",
-          wordWrap: { width: TAG_W - 16 },
+          wordWrap: { width: TAG_W - 28 },
         })
         .setOrigin(0.5),
     );
