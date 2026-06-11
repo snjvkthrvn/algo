@@ -1,9 +1,10 @@
 /**
- * ChamberShell — the Isaac beat for the Grain Chamber: doors seal when the
- * player enters, the exit unbars when the field is cleared.
+ * ChamberShell — the shared Isaac beat for chamber rooms: doors seal when
+ * the player enters, the exit unbars when the room is cleared, and the par
+ * plaque carries the room's only number as diegetic signage.
  *
- * Texture-guarded: uses CHAMBER door art when loaded, otherwise draws plank
- * rectangles so the room runs before the art batch lands.
+ * Texture-guarded: uses the room's door/plaque art when loaded, otherwise
+ * draws plank rectangles so a room runs before its art batch lands.
  */
 
 import Phaser from "phaser";
@@ -16,14 +17,28 @@ import { GRAIN_CHAMBER_KEYS } from "../../config/assets";
 const DOOR_W = 96;
 const DOOR_H = 24;
 
+export interface ChamberShellTextures {
+  doorTexture?: string;
+  plaqueTexture?: string;
+}
+
 export class ChamberShell {
   private scene: Phaser.Scene;
   private southDoor: Phaser.GameObjects.Container;
   private northDoor: Phaser.GameObjects.Container;
   private plaqueText: Phaser.GameObjects.Text | null = null;
+  private textures: Required<ChamberShellTextures>;
 
-  constructor(scene: Phaser.Scene, fieldPar?: number) {
+  constructor(
+    scene: Phaser.Scene,
+    fieldPar?: number,
+    textures: ChamberShellTextures = {},
+  ) {
     this.scene = scene;
+    this.textures = {
+      doorTexture: textures.doorTexture ?? GRAIN_CHAMBER_KEYS.DOOR_PLANKS,
+      plaqueTexture: textures.plaqueTexture ?? GRAIN_CHAMBER_KEYS.PAR_PLAQUE,
+    };
     const { width, height } = scene.cameras.main;
     this.southDoor = this.buildDoor(width / 2, height - DOOR_H / 2);
     this.northDoor = this.buildDoor(width / 2, DOOR_H / 2);
@@ -38,11 +53,11 @@ export class ChamberShell {
    * presented as signage (diegetic replay hook, spec "Move economy").
    */
   private placePlaque(fieldPar: number): void {
-    if (!this.scene.textures.exists(GRAIN_CHAMBER_KEYS.PAR_PLAQUE)) return;
+    if (!this.scene.textures.exists(this.textures.plaqueTexture)) return;
     const { width } = this.scene.cameras.main;
     const x = width / 2 + 96;
     this.scene.add
-      .image(x, 40, GRAIN_CHAMBER_KEYS.PAR_PLAQUE)
+      .image(x, 40, this.textures.plaqueTexture)
       .setDepth(12);
     this.plaqueText = this.scene.add
       .text(x, 40, `BEST\n${fieldPar}`, {
@@ -62,9 +77,9 @@ export class ChamberShell {
 
   private buildDoor(x: number, y: number): Phaser.GameObjects.Container {
     const container = this.scene.add.container(x, y).setDepth(60);
-    if (this.scene.textures.exists(GRAIN_CHAMBER_KEYS.DOOR_PLANKS)) {
+    if (this.scene.textures.exists(this.textures.doorTexture)) {
       container.add(
-        this.scene.add.image(0, 0, GRAIN_CHAMBER_KEYS.DOOR_PLANKS),
+        this.scene.add.image(0, 0, this.textures.doorTexture),
       );
       return container;
     }

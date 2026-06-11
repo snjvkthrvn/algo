@@ -56,11 +56,11 @@ import {
   gapIndexAtX,
   shouldGlitchScramble,
 } from "../../puzzleRooms/grainChamber/chamberRules";
-import { ChamberShell } from "../../puzzleRooms/grainChamber/ChamberShell";
+import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
 import { CrateLane } from "../../puzzleRooms/grainChamber/CrateLane";
 import { GrainFx } from "../../puzzleRooms/grainChamber/GrainFx";
-import { ChickenFlock } from "../../puzzleRooms/grainChamber/ChickenFlock";
-import { CartDelivery } from "../../puzzleRooms/grainChamber/CartDelivery";
+import { ChickenFlock } from "../../puzzleRooms/chamber/ChickenFlock";
+import { CartDelivery } from "../../puzzleRooms/chamber/CartDelivery";
 import { ChamberCast } from "../../puzzleRooms/grainChamber/ChamberCast";
 import { GhostReplay } from "../../puzzleRooms/grainChamber/GhostReplay";
 
