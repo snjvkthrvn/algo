@@ -1217,21 +1217,50 @@ test.describe("Prologue region â€“ visual audit", () => {
     await snap(page, "17b-ap1-grain-spill.png");
   });
 
-  test("18 - AP-2 Indexing Barn - region encounter layout", async ({
+  test("18 - AP-2 Basket Cellar - sealed room with first order", async ({
     page,
   }) => {
     await jumpToScene(page, "P1_2_BasketIndexing", {
       returnScene: "ArrayPlainsScene",
     });
-    // FEEL_IT design: dismiss the lesson card + round banner so the snapshot
-    // captures the actual playable surface (basket shelf + Glitch ticking +
-    // affordance prompt) rather than the opening copy.
-    await page.waitForTimeout(700);
-    await page.keyboard.press("Space");
-    await page.waitForTimeout(700);
-    await page.keyboard.press("Space");
-    await page.waitForTimeout(2500);
-    await snap(page, "18-ap2-indexing-barn-layout.png");
+    // Basket Cellar design: no cards or banners to dismiss — wait out the
+    // door seal, entry legend settle, and the first order tag's drop
+    // (~1.8x RAF throttle applies).
+    await page.waitForTimeout(4200);
+    await snap(page, "18-ap2-basket-cellar-order.png");
+  });
+
+  test("18b - AP-2 Basket Cellar - wrong basket tumbles persistent mess", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P1_2_BasketIndexing", {
+      returnScene: "ArrayPlainsScene",
+    });
+    await page.waitForTimeout(4200);
+    // Order 1 wants basket 4; press 1 to open the wrong one. The opening is
+    // allowed, counted, and tumbles mess that persists (chamber economy).
+    await page.keyboard.press("1");
+    await page.waitForTimeout(2600);
+    const state = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("P1_2_BasketIndexing") as Record<
+        string,
+        unknown
+      > | null;
+      const ledger = scene?.["ledger"] as { trades?: number } | undefined;
+      const shelf = scene?.["shelf"] as
+        | { messPositions?: () => unknown[] }
+        | undefined;
+      return {
+        openings: ledger?.trades ?? 0,
+        mess: shelf?.messPositions?.()?.length ?? 0,
+        orderIndex: scene?.["orderIndex"],
+      };
+    });
+    expect(state.openings).toBe(1);
+    expect(state.mess).toBeGreaterThan(0);
+    expect(state.orderIndex).toBe(0); // order still open — no refusal, just cost
+    await snap(page, "18b-ap2-basket-cellar-mess.png");
   });
 
   test("19 - AP-3 Grain Hopper - region encounter layout", async ({ page }) => {
