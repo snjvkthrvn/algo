@@ -263,6 +263,40 @@ export const BASKET_CELLAR_SHEET_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Sorting Mill (P1_3 rebuild) — see
+ * docs/superpowers/specs/2026-06-11-p1-3-sorting-mill-design.md.
+ * Keys declared ahead of the art; modules guard on textures.exists.
+ */
+export const SORTING_MILL_KEYS = {
+  BACKDROP: "sorting-mill-backdrop",
+  BIN: "sorting-mill-bin",
+  CROP_SHEET: "sorting-mill-crops",
+  BRUISE_SHEET: "sorting-mill-bruise",
+} as const;
+
+const SORTING_MILL_BASE = `${VISUAL_REVAMP_BASE}/sorting_mill`;
+
+export const SORTING_MILL_IMAGE_ASSETS: AssetEntry[] = [
+  { key: SORTING_MILL_KEYS.BACKDROP, path: `${SORTING_MILL_BASE}/backdrop.png` },
+  { key: SORTING_MILL_KEYS.BIN, path: `${SORTING_MILL_BASE}/bin.png` },
+];
+
+export const SORTING_MILL_SHEET_ASSETS: AssetEntry[] = [
+  {
+    key: SORTING_MILL_KEYS.CROP_SHEET,
+    path: `${SORTING_MILL_BASE}/crops.png`,
+    frameWidth: 24,
+    frameHeight: 24,
+  },
+  {
+    key: SORTING_MILL_KEYS.BRUISE_SHEET,
+    path: `${SORTING_MILL_BASE}/bruise.png`,
+    frameWidth: 16,
+    frameHeight: 16,
+  },
+];
+
 export const GRAIN_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
   {
     key: GRAIN_CHAMBER_KEYS.GRAIN_DECALS,
