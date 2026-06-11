@@ -15,6 +15,7 @@ import { FONTS } from "../../config/constants";
 import { SORTING_MILL_KEYS } from "../../config/assets";
 import { audioManager } from "../../core/AudioManager";
 import type { BinRowGeometry } from "./millRules";
+import { makeCropSprite } from "./cropVisual";
 
 const BIN_W = 80;
 const BIN_H = 64;
@@ -121,7 +122,7 @@ export class BinRow {
   toss(
     binIndex: number,
     correct: boolean,
-    cropFrame: number,
+    crop: string,
     fromX: number,
     fromY: number,
   ): Promise<void> {
@@ -129,7 +130,8 @@ export class BinRow {
     if (!bin || this.busy) return Promise.resolve();
     this.busy = true;
 
-    const flying = this.makeCropSprite(cropFrame, fromX, fromY);
+    const flying = makeCropSprite(this.scene, crop, fromX, fromY);
+    (flying as Phaser.GameObjects.Components.Depth & typeof flying).setDepth?.(30);
     const targetY = this.rowY - BIN_H / 2;
 
     return new Promise((resolve) => {
@@ -193,23 +195,6 @@ export class BinRow {
         },
       });
     });
-  }
-
-  private makeCropSprite(
-    frame: number,
-    x: number,
-    y: number,
-  ): Phaser.GameObjects.GameObject &
-    Phaser.GameObjects.Components.Transform & { destroy(): void } {
-    if (this.scene.textures.exists(SORTING_MILL_KEYS.CROP_SHEET)) {
-      return this.scene.add
-        .image(x, y, SORTING_MILL_KEYS.CROP_SHEET, frame)
-        .setDepth(30);
-    }
-    return this.scene.add
-      .ellipse(x, y, 16, 12, 0x9bbf5a, 1)
-      .setStrokeStyle(1, 0x5e7a34, 1)
-      .setDepth(30);
   }
 
   private dropBruise(x: number): void {

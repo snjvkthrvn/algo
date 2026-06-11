@@ -13,21 +13,7 @@ import { SORTING_MILL_KEYS } from "../../config/assets";
 import { a11yManager } from "../../core/A11yManager";
 import { audioManager } from "../../core/AudioManager";
 
-/** Frame order matches the crops.png sheet contract (plan Task 7). */
-const CROP_FRAMES: Record<string, number> = {
-  WHEAT: 0,
-  BEAN: 1,
-  CORN: 2,
-  RICE: 3,
-  OAT: 4,
-  PEA: 5,
-  KALE: 6,
-  YAM: 7,
-};
-
-export function cropFrame(crop: string): number {
-  return CROP_FRAMES[crop] ?? 0;
-}
+import { makeCropSprite } from "./cropVisual";
 
 export class CropBench {
   private scene: Phaser.Scene;
@@ -100,12 +86,7 @@ export class CropBench {
   }
 
   private makeCropBody(crop: string): Phaser.GameObjects.GameObject {
-    if (this.scene.textures.exists(SORTING_MILL_KEYS.CROP_SHEET)) {
-      return this.scene.add.image(0, 0, SORTING_MILL_KEYS.CROP_SHEET, cropFrame(crop));
-    }
-    return this.scene.add
-      .ellipse(0, 0, 18, 14, 0x9bbf5a, 1)
-      .setStrokeStyle(1, 0x5e7a34, 1);
+    return makeCropSprite(this.scene, crop, 0, 0);
   }
 
   /** Pick the waiting crop up; it follows the player from here. */

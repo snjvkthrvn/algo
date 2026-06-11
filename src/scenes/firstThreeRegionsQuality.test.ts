@@ -89,6 +89,23 @@ describe("first three regions quality guards", () => {
     expect(source).toContain("ordinalWords(order.index)");
   });
 
+  it("Sorting Mill teaches hashing through cost, not refusal or pressure", () => {
+    const source = readSource("src/scenes/puzzles/P1_3_HashHopper.ts");
+
+    // Every toss is allowed and recorded; wrong bins spit back and bruise
+    // instead of blocking (chamber economy).
+    expect(source).toContain("this.ledger = recordTrade(this.ledger);");
+    expect(source).toContain("toss(index, correct, arrival.crop");
+
+    // No falling-crop pressure, no lecture chrome, no formulas on screen.
+    expect(source).not.toMatch(/fallMs|spawnGapMs/);
+    expect(source).not.toMatch(
+      /showLessonCard|showRoundRecap|showRoundBanner/,
+    );
+    expect(source).not.toMatch(/BruteForceActor|NextMoveHint/);
+    expect(source).not.toMatch(/% bucket|key %/);
+  });
+
   it("locks Two Sum input while a wrong pair is being cleared", () => {
     const source = readSource("src/scenes/puzzles/P1_4_TwoSum.ts");
 
