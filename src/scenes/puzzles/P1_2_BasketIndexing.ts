@@ -1,726 +1,411 @@
 /**
- * P1_2_BasketIndexing — "Find the Lost Tool" (AP_2)
+ * P1_2_BasketIndexing — "The Basket Cellar" (AP_2).
  *
- * Overhaul (per puzzles_overhauled.md):
- *   • 3-round escalation: TEACH (1 fetch, 5 baskets), TWIST (3 fast fetches, 8 baskets),
- *     MASTER (5 fetches, 10 baskets, labels fade after 2s → commit to the address).
- *   • Basket "lid lift" animation when the player taps — the chosen basket pops open
- *     to reveal the tool inside, reinforcing "the address was the right one".
- *   • No fail clock — the spec calls for time pressure that affects star rating only.
- *     We expose a per-request soft timer (the request panel slowly bleeds colour) so
- *     players feel urgency without being instantly punished.
- *   • Keyboard shortcuts 1..0 → baskets 0..9.
+ * Chamber rollout (spec:
+ * docs/superpowers/specs/2026-06-11-p1-2-basket-cellar-design.md):
+ *   • Sealed Isaac-style chamber — doors slam on entry, unbar on clear.
+ *   • Orders drop as wooden tags from the chute ("THE 4TH BASKET — rope").
+ *     Walk to a basket and act: right one fills the order; wrong one
+ *     tumbles its contents onto the floor, where the mess persists.
+ *   • Glitch fills the same orders at his corner shelf by scanning from
+ *     the left — his cost grows with the shelf, yours never does. That
+ *     contrast is the O(1) lesson, felt, never stated.
+ *   • Batches grow 5 → 8 → 10 via cart delivery; the final batch gutters
+ *     the lanterns and the basket numbers go dark (address = position).
+ *   • No lesson cards, banners, request panels, or soft timers. Walk out
+ *     the opened north door to complete; lever replays direct-vs-scan.
  */
 
-import Phaser from 'phaser';
-import { BasePuzzleScene } from './BasePuzzleScene';
-import { COLORS, FONTS, SCENE_KEYS } from '../../config/constants';
-import { VISUAL_REVAMP_KEYS } from '../../config/assets';
-import { audioManager } from '../../core/AudioManager';
-import { JuiceSystem } from '../../systems/JuiceSystem';
-import { drawPanel } from '../../ui/panel';
-import { BitHint } from '../../entities/BitHint';
-import { PuzzleAmbience } from '../../ui/PuzzleAmbience';
-import { PuzzlePreviewSidePanel } from '../../ui/PuzzlePreviewSidePanel';
-import { showRoundBanner } from '../../ui/RoundBanner';
-import { showLessonCard } from '../../ui/LessonCard';
-import { BitCompanion } from '../../ui/BitCompanion';
-import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from './puzzleTheme';
-import type { RegionBackdropId, RegionBackdropOptions } from '../../ui/RegionBackdrop';
+import Phaser from "phaser";
+import { BasePuzzleScene } from "./BasePuzzleScene";
+import { COLORS, SCENE_KEYS } from "../../config/constants";
 import {
-  INDEXING_ROUNDS,
-  starsFromMistakesAndHints,
-  type IndexingRound,
-} from '../../data/puzzles/arrayPlainsPuzzleLogic';
-import { buildIndexingPreview } from '../../data/puzzles/puzzlePreviewLogic';
-import { numberKeyToIndex } from '../../input/NumberKeyCommand';
-import { BruteForceScanner } from '../../entities/BruteForceScanner';
-import { GLITCH_BANTER } from '../../data/dialogue/glitch_dialogue';
-import { PuzzlePhase } from '../../data/types';
-import { PuzzleRoom } from '../../puzzleRooms/PuzzleRoom';
+  VISUAL_REVAMP_KEYS,
+  BASKET_CELLAR_KEYS,
+  BASKET_CELLAR_IMAGE_ASSETS,
+  BASKET_CELLAR_SHEET_ASSETS,
+} from "../../config/assets";
+import { a11yManager } from "../../core/A11yManager";
+import { JuiceSystem } from "../../systems/JuiceSystem";
+import { PuzzleAmbience } from "../../ui/PuzzleAmbience";
+import { BitCompanion } from "../../ui/BitCompanion";
+import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from "./puzzleTheme";
+import type {
+  RegionBackdropId,
+  RegionBackdropOptions,
+} from "../../ui/RegionBackdrop";
+import { numberKeyToIndex } from "../../input/NumberKeyCommand";
+import { PuzzleRoom } from "../../puzzleRooms/PuzzleRoom";
+import {
+  emptyLedger,
+  recordTrade,
+  starsForTrades,
+  type GrainLedger,
+} from "../../puzzleRooms/grainChamber/grainEconomy";
+import {
+  CELLAR_BATCHES,
+  cellarPar,
+  ordinalWords,
+  type CellarOrder,
+} from "../../puzzleRooms/basketCellar/orderPlan";
+import { basketIndexAtX } from "../../puzzleRooms/basketCellar/cellarRules";
+import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
+import { ChamberCast } from "../../puzzleRooms/chamber/ChamberCast";
+import { ChickenFlock } from "../../puzzleRooms/chamber/ChickenFlock";
+import { CartDelivery } from "../../puzzleRooms/chamber/CartDelivery";
+import { BasketShelf } from "../../puzzleRooms/basketCellar/BasketShelf";
+import { OrderChute } from "../../puzzleRooms/basketCellar/OrderChute";
+import { GlitchShelf } from "../../puzzleRooms/basketCellar/GlitchShelf";
+import { CellarReplay } from "../../puzzleRooms/basketCellar/CellarReplay";
 
-interface Basket {
-  index: number;
-  container: Phaser.GameObjects.Container;
-  body: Phaser.GameObjects.Rectangle;
-  lid: Phaser.GameObjects.Rectangle;
-  numberLabel: Phaser.GameObjects.Text;
-  item: Phaser.GameObjects.Text;
-  /** Strap of straw at the rim — fades when lid lifts. */
-  straw: Phaser.GameObjects.Graphics;
-}
-
-const BASKET_W = 84;
-const BASKET_H = 68;
+const CELLAR_CAST = {
+  keeperKey: VISUAL_REVAMP_KEYS.BASKET_KEEPER,
+  entryLine: "Orders are piling up. The tags name the basket — trust them.",
+  reactions: {
+    waste: [
+      "Oh — that one was packed so neatly.",
+      "Every wrong lid is an evening of repacking.",
+    ],
+    clean: [
+      "Straight to it. Like you knew the cellar blind.",
+      "Not a basket disturbed. Lovely.",
+    ],
+    clear: ["The shelf stands ready!", "Every order filled, every lid shut."],
+  },
+  tallyNoun: "openings",
+} as const;
 
 export class P1_2_BasketIndexing extends BasePuzzleScene {
-  private roundIndex = 0;
-  private requestIndex = 0;
-  private mistakesTotal = 0;
-  private isResolving = false;
+  private batchIndex = 0;
+  private orderIndex = 0;
+  private ledger: GrainLedger = emptyLedger(0);
+  private cellarCleared = false;
+  private exiting = false;
+  private leverX = -1;
+  private shelfYPx = 0;
+  private resolving = false;
+  private roomBounds = { x: 0, y: 0, width: 0, height: 0 };
 
-  private baskets: Basket[] = [];
-  private requestLabel!: Phaser.GameObjects.Text;
-  private roundBadge!: Phaser.GameObjects.Text;
-  private bitHint: BitHint | null = null;
-  private obscureTimer: Phaser.Time.TimerEvent | null = null;
-  private labelsObscured = false;
-  private preview: PuzzlePreviewSidePanel | null = null;
-  /** Glitch as visible scanning co-actor during FEEL_IT round 1. A parallel
-   *  row of slots with a cursor that walks 0→N until it finds the target —
-   *  visually demonstrating the linear-scan brute force that indexing
-   *  obsoletes. */
-  private bruteForce: BruteForceScanner | null = null;
-  private namedYet = false;
-  private affordancePrompt: Phaser.GameObjects.Text | null = null;
-  private affordanceFaded = false;
-  /** The embodiment layer (docs/VISION.md §2): the player walks the storeroom
-   *  aisle among the baskets; standing beside one focuses it, SPACE opens it.
-   *  Number keys stay as the O(1) jump — that contrast IS the lesson. */
   private room: PuzzleRoom | null = null;
-  private focusedBasket = -1;
+  private shelf!: BasketShelf;
+  private chute!: OrderChute;
+  private shell!: ChamberShell;
+  private flock!: ChickenFlock;
+  private cart!: CartDelivery;
+  private cast!: ChamberCast;
+  private rival!: GlitchShelf;
+  private replay!: CellarReplay;
+  private focusMarker: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.PUZZLE_AP_2 });
-    this.puzzleId = 'ap_2';
-    this.puzzleName = 'Find the Lost Tool';
-    this.puzzleDescription = 'The index tells you exactly which basket. No scanning.';
-  }
-
-  protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG;
-  }
-  protected getPuzzleFrameFillAlpha(): number {
-    return 0;
-  }
-  protected getPuzzleTheme(): PuzzleTheme {
-    return ARRAY_PLAINS_PUZZLE_THEME;
-  }
-  protected getRegionBackdrop(): { id: RegionBackdropId; options?: RegionBackdropOptions } | null {
-    return { id: 'array-plains', options: { intensity: 0.85 } };
+    this.puzzleId = "ap_2";
+    this.puzzleName = "The Basket Cellar";
+    this.puzzleDescription =
+      "Orders are piling up. Fetch from the basket each tag names.";
   }
 
   preload(): void {
     super.preload();
+    for (const asset of BASKET_CELLAR_IMAGE_ASSETS) {
+      if (!this.textures.exists(asset.key))
+        this.load.image(asset.key, asset.path);
+    }
+    for (const asset of BASKET_CELLAR_SHEET_ASSETS) {
+      if (!this.textures.exists(asset.key))
+        this.load.spritesheet(asset.key, asset.path, {
+          frameWidth: asset.frameWidth ?? 24,
+          frameHeight: asset.frameHeight ?? 24,
+        });
+    }
     PuzzleRoom.preload(this);
     PuzzleRoom.preloadKeeper(this, VISUAL_REVAMP_KEYS.BASKET_KEEPER);
   }
 
   create(): void {
-    // FEEL_IT diegetic puzzleDescription override — strip "the index tells
-    // you exactly which basket" (that names the mechanic before play).
-    if (INDEXING_ROUNDS[0].lesson.phase === PuzzlePhase.FEEL_IT) {
-      this.puzzleDescription = 'The Basket Keeper needs a tool. Help them find it.';
-    }
     super.create();
-    new PuzzleAmbience(this, 'farmland', { intensity: 0.35 });
+    new PuzzleAmbience(this, "farmland", { intensity: 0.35 });
 
-    const { width } = this.cameras.main;
-    this.buildRoundBadge(width);
-    this.buildRequestPanel(width);
-    // BitCompanion stays — fictional character. All algorithm-named UI
-    // (preview, GlitchCorner→BruteForceActor) mounts per-phase.
-    new BitCompanion(this, { stage: 'byte', x: width - 92, y: 100, depth: 40, highlight: 5 });
+    const { width, height } = this.cameras.main;
+    this.shelfYPx = Math.round((height * 0.42) / 8) * 8;
 
+    // Door planks + plaque reuse the grain chamber's generic wood pieces —
+    // same barn register, no cellar-specific door art needed.
+    this.shell = new ChamberShell(this, cellarPar());
+    this.shelf = new BasketShelf(this, this.shelfYPx, this.prefersReducedMotion());
+    this.chute = new OrderChute(this, this.shelfYPx + 120);
+    this.flock = new ChickenFlock(
+      this,
+      new Phaser.Geom.Rectangle(64, height - 180, width - 360, 140),
+    );
+    this.cart = new CartDelivery(this);
+    this.cast = new ChamberCast(this, 80, this.shelfYPx - 24, CELLAR_CAST);
+    this.rival = new GlitchShelf(this, width - 300, height - 120);
+    this.replay = new CellarReplay(this);
+    new BitCompanion(this, { stage: "byte", x: width - 92, y: 100, depth: 40 });
+
+    this.ledger = emptyLedger(0);
+    this.shelf.setBatch(CELLAR_BATCHES[0].basketCount);
+    this.rival.setBatch(CELLAR_BATCHES[0].basketCount);
+    this.focusMarker = this.add.graphics().setDepth(10);
     this.mountRoom();
 
-    this.startRound(0).catch(() => undefined);
+    this.shell.seal();
+    this.cast.entry();
+    this.time.delayedCall(1200, () => void this.nextOrder());
 
+    this.input.keyboard?.on("keydown", this.onNumberKey, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.bitHint?.destroy();
-      this.bitHint = null;
-      this.obscureTimer?.destroy();
-      this.preview?.destroy();
-      this.preview = null;
-      this.bruteForce?.destroy();
-      this.bruteForce = null;
-      this.affordancePrompt?.destroy();
-      this.affordancePrompt = null;
-    });
-
-    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
-      if (this.isResolving) return;
-      const round = INDEXING_ROUNDS[this.roundIndex];
-      if (!round) return;
-      const idx = event.key === '0' ? 9 : numberKeyToIndex(event.key, round.basketCount);
-      if (idx !== null && idx < round.basketCount) this.chooseBasket(idx);
+      this.input.keyboard?.off("keydown", this.onNumberKey, this);
+      this.focusMarker?.destroy();
+      this.focusMarker = null;
     });
   }
 
-  /**
-   * The storeroom aisle: the player walks among the baskets; the nearest
-   * one within reach is focused, and SPACE / gamepad A / a floor click
-   * opens it. Walking the shelf IS the linear scan — the number-key jump
-   * the player learns later is the O(1) contrast (docs/VISION.md §2).
-   */
+  private currentOrder(): CellarOrder | null {
+    return CELLAR_BATCHES[this.batchIndex]?.orders[this.orderIndex] ?? null;
+  }
+
+  private onNumberKey(event: KeyboardEvent): void {
+    const batch = CELLAR_BATCHES[this.batchIndex];
+    if (!batch || !this.room) return;
+    const index = numberKeyToIndex(event.key, batch.basketCount);
+    if (index === null) return;
+    const center = this.shelf.basketCenter(index);
+    if (!center) return;
+    this.room.player.walkTo(center.x, this.shelfYPx + 72, () => this.onAct());
+  }
+
   private mountRoom(): void {
     const { width, height } = this.cameras.main;
+    const floorTop = this.shelfYPx + 44;
+    this.roomBounds = {
+      x: 80,
+      y: floorTop,
+      width: width - 160,
+      height: height - floorTop - 56,
+    };
     this.room = new PuzzleRoom(this, {
-      bounds: { x: width / 2 - 460, y: height / 2 - 110, width: 920, height: 300 },
-      spawn: { x: width / 2 - 380, y: height / 2 + 150 },
-      isBlocked: (point) =>
-        this.baskets.some(
-          (b) =>
-            Math.abs(point.x - b.container.x) < BASKET_W / 2 + 6 &&
-            Math.abs(point.y - b.container.y) < BASKET_H / 2 + 6,
-        ),
-      onAct: () => {
-        if (this.focusedBasket >= 0) this.chooseBasket(this.focusedBasket);
+      bounds: this.roomBounds,
+      spawn: { x: width / 2, y: height - 96 },
+      onAct: () => this.onAct(),
+      onStep: (pos) => {
+        this.repaintFocusMarker(pos.x);
+        this.flock.scatterFrom(pos.x, pos.y);
+        this.checkDoorExit(pos);
       },
-      onStep: () => this.refreshBasketFocus(),
     });
+  }
 
-    // The Basket Keeper watches from the aisle's west edge.
-    PuzzleRoom.placeKeeper(this, VISUAL_REVAMP_KEYS.BASKET_KEEPER, width / 2 - 470, height / 2 + 130);
+  private openExitPath(): void {
+    const { height } = this.cameras.main;
+    this.roomBounds.y = 56;
+    this.roomBounds.height = height - 56 - 56;
+  }
+
+  private checkDoorExit(pos: { x: number; y: number }): void {
+    if (!this.cellarCleared || this.exiting) return;
+    const { width } = this.cameras.main;
+    if (Math.abs(pos.x - width / 2) < 56 && pos.y < 88) {
+      this.exiting = true;
+      a11yManager.announce("You step out through the open door.", true);
+      this.onPuzzleComplete(starsForTrades(this.ledger.trades, cellarPar()));
+    }
+  }
+
+  private repaintFocusMarker(playerX: number): void {
+    if (!this.focusMarker) return;
+    this.focusMarker.clear();
+    if (this.cellarCleared || this.resolving) return;
+    const index = basketIndexAtX(playerX, this.shelf.geometry());
+    if (index < 0) return;
+    const center = this.shelf.basketCenter(index);
+    if (!center) return;
+    this.focusMarker.lineStyle(2, COLORS.GOLD_ACCENT, 0.55);
+    this.focusMarker.strokeCircle(center.x, this.shelfYPx + 44, 10);
+  }
+
+  private onAct(): void {
+    if (this.cellarCleared) {
+      const pos = this.room?.player.getPosition();
+      if (
+        pos &&
+        this.leverX >= 0 &&
+        Math.abs(pos.x - this.leverX) < 72 &&
+        pos.y < 160
+      ) {
+        void this.playReplay();
+      }
+      return;
+    }
+    if (this.shelf.isBusy || this.resolving) return;
+    const order = this.currentOrder();
+    if (!order) return;
+    const playerX = this.room?.player.getPosition().x ?? -1;
+    const index = basketIndexAtX(playerX, this.shelf.geometry());
+    if (index < 0) return;
+
+    const correct = index === order.index;
+    this.ledger = recordTrade(this.ledger);
+    const center = this.shelf.basketCenter(index);
+    if (center)
+      this.emitPuzzleActionPulse(center.x, center.y, correct ? "correct" : "wrong");
+
+    if (!correct) this.cast.onSpillStreak();
+
+    void this.shelf.openBasket(index, correct).then(() => {
+      if (!correct) {
+        a11yManager.announce(
+          `That was basket ${index + 1} — the order wants another.`,
+          false,
+        );
+        return;
+      }
+      a11yManager.announce(
+        `Order filled from basket ${index + 1}: the ${order.item}.`,
+        false,
+      );
+      if (center) JuiceSystem.correctBurst(this, center.x, center.y - 30);
+      this.chute.clear();
+      this.cast.onCleanStretch();
+      this.orderIndex++;
+      void this.advance();
+    });
+  }
+
+  private async advance(): Promise<void> {
+    const batch = CELLAR_BATCHES[this.batchIndex];
+    if (this.orderIndex < batch.orders.length) {
+      await this.nextOrder();
+      return;
+    }
+    // Batch cleared.
+    this.resolving = true;
+    this.cast.onBloom();
+    if (this.batchIndex + 1 >= CELLAR_BATCHES.length) {
+      this.finishCellar();
+      return;
+    }
+    this.batchIndex++;
+    this.orderIndex = 0;
+    const next = CELLAR_BATCHES[this.batchIndex];
+    await this.cart.deliver(this.shelfYPx);
+    this.shelf.setBatch(next.basketCount);
+    this.rival.setBatch(next.basketCount);
+    if (next.lanternsOut) {
+      this.shelf.dimLabels();
+      a11yManager.announce(
+        "The lanterns gutter out — the basket numbers fade into the dark.",
+        true,
+      );
+    }
+    this.resolving = false;
+    await this.nextOrder();
+  }
+
+  private async nextOrder(): Promise<void> {
+    const order = this.currentOrder();
+    if (!order) return;
+    await this.chute.drop(`${ordinalWords(order.index)} — ${order.item}`);
+    // Glitch races the same order at his shelf, the slow way.
+    this.rival.fillOrder(order.index);
+  }
+
+  private finishCellar(): void {
+    this.shell.unbar(() => {
+      this.cellarCleared = true;
+      this.openExitPath();
+      this.flock.feast(this.shelf.messPositions());
+      this.shell.setPlaqueTally(this.ledger.trades, cellarPar());
+      this.cast.tallyLine(this.ledger.trades, cellarPar());
+      a11yManager.announce(
+        `Cellar cleared in ${this.ledger.trades} openings; the minimum is ${cellarPar()}. ` +
+          "Pull the lever by the door to watch the straight walk, or leave through the north door.",
+        true,
+      );
+      this.placeLever();
+      this.resolving = false;
+    });
+  }
+
+  private placeLever(): void {
+    const { width } = this.cameras.main;
+    const x = width / 2 - 96;
+    this.leverX = x;
+    const base = this.add
+      .rectangle(x, 56, 10, 22, 0x8a6233, 1)
+      .setStrokeStyle(2, 0x5b3f1e, 1)
+      .setDepth(12);
+    const handle = this.add
+      .rectangle(x, 44, 4, 16, 0xd8b35a, 1)
+      .setAngle(-30)
+      .setDepth(13);
+    this.tweens.add({
+      targets: [base, handle],
+      alpha: { from: 0, to: 1 },
+      duration: 400,
+    });
+  }
+
+  private async playReplay(): Promise<void> {
+    if (this.replay.isPlaying) return;
+    // Replay the final batch's last order — the longest scan contrast.
+    const batch = CELLAR_BATCHES[CELLAR_BATCHES.length - 1];
+    const order = batch.orders[batch.orders.length - 1];
+    await this.replay.play(batch.basketCount, order.index, this.shelfYPx - 96);
   }
 
   update(time: number, delta: number): void {
     this.room?.update(time, delta);
   }
 
-  /** Standing near a basket focuses it — proximity is attention. */
-  private refreshBasketFocus(): void {
-    if (!this.room) return;
-    const pos = this.room.player.getPosition();
-    let best = -1;
-    let bestDist = Infinity;
-    for (const basket of this.baskets) {
-      const dist = Math.hypot(pos.x - basket.container.x, pos.y - basket.container.y);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = basket.index;
-      }
-    }
-    if (bestDist > BASKET_W * 1.15) best = -1;
-    if (best === this.focusedBasket) return;
-
-    const prev = this.baskets.find((b) => b.index === this.focusedBasket);
-    if (prev) this.tweens.add({ targets: prev.container, scale: 1, duration: 90 });
-    this.focusedBasket = best;
-    const next = this.baskets.find((b) => b.index === best);
-    if (next) this.tweens.add({ targets: next.container, scale: 1.06, duration: 90 });
-  }
-
-  /** Freeze the walking layer while the keeper names the concept. */
-  protected async showNameItBeat(beat: { speaker: string; line: string }): Promise<void> {
-    this.room?.setActive(false);
-    await super.showNameItBeat(beat);
-    this.room?.setActive(true);
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Chrome
-  // ──────────────────────────────────────────────────────────────────
-
-  private buildRoundBadge(width: number): void {
-    // Round-5 chrome simplification: dropped the cyan-bordered dark-navy
-    // panel chrome — it competed with the title banner above and the play
-    // surface below. Round/index info now floats as themed text.
-    const theme = this.getPuzzleTheme();
-    this.roundBadge = this.add.text(width / 2, 152, '', {
-      fontSize: '11px',
-      fontFamily: FONTS.RETRO,
-      color: theme.titleColor,
-      stroke: theme.titleStroke,
-      strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(20).setAlpha(0.92);
-  }
-
-  private buildRequestPanel(width: number): void {
-    drawPanel(this, width / 2 - 200, 200, 400, 56, {
-      depth: 12, fill: 0xe0f8d0, frame: COLORS.WARNING, inner: COLORS.SUCCESS, alpha: 0.96,
-    });
-    this.requestLabel = this.add.text(width / 2, 228, '', {
-      fontSize: '14px',
-      fontFamily: FONTS.RETRO,
-      color: '#081820',
-      align: 'center',
-    }).setOrigin(0.5).setDepth(20);
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Round lifecycle
-  // ──────────────────────────────────────────────────────────────────
-
-  private async startRound(idx: number): Promise<void> {
-    this.roundIndex = idx;
-    this.requestIndex = 0;
-    this.isResolving = true;
-
-    const round = INDEXING_ROUNDS[idx];
-    const total = INDEXING_ROUNDS.length;
-    const isFeelIt = round.lesson.phase === PuzzlePhase.FEEL_IT;
-
-    // FEEL_IT badge strips "use the address directly" — that names the
-    // mechanic before play. Diegetic version: just count the round.
-    this.roundBadge.setText(
-      isFeelIt
-        ? `ROUND ${idx + 1}/${total}`
-        : `ROUND ${idx + 1}/${total} · ${round.label} · use the address directly`,
-    );
-
-    this.layoutBaskets(round);
-
-    if (isFeelIt) {
-      this.mountFeelItPanels();
-    } else {
-      this.mountUseItPanels();
-      this.bruteForce?.fadeTo(0.32);
-    }
-
-    const labelLine = round.obscureLabels
-      ? `${round.label}  ·  labels fade — commit to the address`
-      : `${round.label}  ·  ${round.requests.length} fetch${round.requests.length > 1 ? 'es' : ''}`;
-
-    await showLessonCard(this, round.lesson, 'parchment', {
-      dockPosition: 'top',
-      width: 760,
-      height: 168,
-      autoDismissMs: 5000,
-    });
-
-    await showRoundBanner(this, {
-      label: `ROUND ${idx + 1} / ${total}`,
-      subtitle: labelLine,
-      accent: idx >= total - 1 ? COLORS.GOLD_ACCENT : COLORS.CYAN_GLOW,
-    });
-
-    this.isResolving = false;
-    this.nextRequest();
-  }
-
-  private isFeelItRound(): boolean {
-    return INDEXING_ROUNDS[this.roundIndex]?.lesson.phase === PuzzlePhase.FEEL_IT;
-  }
-
-  /** FEEL_IT: a visible scanning row above the player's basket shelf (Glitch
-   *  walking 0→N) + the affordance prompt. NO PuzzlePreviewSidePanel
-   *  (algorithm-name leak). NO Bit-pointing. */
-  private mountFeelItPanels(): void {
-    if (this.bruteForce) return;
-    const { width, height } = this.cameras.main;
-    const round = INDEXING_ROUNDS[this.roundIndex];
-    const request = round.requests[0];
-    if (!request) return;
-
-    // Glitch's scan row sits BELOW the player's basket shelf so the
-    // hierarchy reads top-to-bottom: chrome → request → affordance →
-    // player's shelf → Glitch's brute-force scan. Slot labels are the
-    // numbers 0..N-1 so the player sees Glitch walking through addresses
-    // while they themselves can jump straight to the right one.
-    const slotLabels = Array.from({ length: round.basketCount }, (_, i) => `${i}`);
-    this.bruteForce = new BruteForceScanner(this, {
-      x: width / 2,
-      y: height - 150,
-      slotCount: round.basketCount,
-      slotLabels,
-      target: request.index,
-      heading: "⚠ GLITCH'S APPROACH",
-      subtitle: `(opening baskets one by one, looking for ${request.item.toLowerCase()})`,
-      notDoneLabel: 'still hunting',
-      doneLabel: 'found it. eventually.',
-      verbLabel: 'checks',
-      banter: GLITCH_BANTER.ap_2,
-      depth: 40,
-      tickIntervalMs: 750,
-    });
-
-    // Affordance prompt — sits just above the player's basket shelf, in
-    // the band between the request panel and the baskets. Tells the player
-    // WHAT to do without naming the algorithm.
-    this.affordancePrompt = this.add.text(width / 2, 290,
-      'Tap the basket whose number matches.',
-      {
-        fontSize: '11px',
-        fontFamily: '"IBM Plex Mono", monospace',
-        color: '#88c070',
-        fontStyle: 'italic',
-        stroke: '#081820',
-        strokeThickness: 2,
-      },
-    ).setOrigin(0.5, 0.5).setDepth(40);
-    this.tweens.add({
-      targets: this.affordancePrompt,
-      alpha: 0.6,
-      duration: 1200,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-  }
-
-  /** USE_IT: the full teaching toolkit. Idempotent. */
-  private mountUseItPanels(): void {
-    if (!this.preview) {
-      this.preview = new PuzzlePreviewSidePanel(this, { side: 'right', yOffset: -12 });
-      this.preview.setTitle('INDEX PREVIEW');
-      this.preview.show();
-    }
-  }
-
-  // showNameItBeat lifted to BasePuzzleScene.
-
-  private layoutBaskets(round: IndexingRound): void {
-    this.baskets.forEach((b) => b.container.destroy());
-    this.baskets = [];
-    this.focusedBasket = -1;
-
-    const { width, height } = this.cameras.main;
-    const n = round.basketCount;
-    // Two rows when there are more than 5 baskets so the shelf stays readable.
-    const perRow = n <= 5 ? n : Math.ceil(n / 2);
-    const rows = Math.ceil(n / perRow);
-    const gap = 18;
-    const rowWidth = perRow * BASKET_W + (perRow - 1) * gap;
-    const startX = width / 2 - rowWidth / 2 + BASKET_W / 2;
-    const startY = height / 2 + 24 - ((rows - 1) * (BASKET_H + 26)) / 2;
-
-    for (let i = 0; i < n; i++) {
-      const row = Math.floor(i / perRow);
-      const col = i % perRow;
-      const x = startX + col * (BASKET_W + gap);
-      const y = startY + row * (BASKET_H + 26);
-      this.baskets.push(this.createBasket(i, x, y));
-    }
-
-    // Bit hovers above basket 0 in USE_IT — anchors attention to the shelf.
-    // FEEL_IT suppresses Bit entirely; the basket numbers + the request panel
-    // are the player's only cues. No hovering helper.
-    this.bitHint?.destroy();
-    this.bitHint = null;
-    if (!this.isFeelItRound()) {
-      const first = this.baskets[0];
-      if (first) {
-        this.bitHint = new BitHint(this, first.container.x, first.container.y - 80);
-        this.bitHint.showNeutral();
-      }
-    }
-  }
-
-  private createBasket(index: number, x: number, y: number): Basket {
-    const container = this.add.container(x, y).setDepth(30);
-
-    // Footprint shadow (anchored, stays put).
-    const shadow = this.add.rectangle(3, BASKET_H / 2 + 4, BASKET_W, 6, 0x000000, 0.42);
-
-    // Wooden body — deep brown so brass plate + numerals pop.
-    const body = this.add.rectangle(0, 4, BASKET_W, BASKET_H - 8, 0x5e3a1f, 1)
-      .setStrokeStyle(2, 0x2b1810, 1)
-      .setInteractive({ useHandCursor: true });
-
-    // Plank seams + side highlights drawn over the body — purely decorative.
-    const decor = this.add.graphics();
-    decor.lineStyle(1, 0x2b1810, 0.85);
-    // 3 vertical plank seams
-    for (let s = 1; s <= 2; s++) {
-      const sx = -BASKET_W / 2 + (BASKET_W / 3) * s;
-      decor.beginPath();
-      decor.moveTo(sx, -BASKET_H / 2 + 10);
-      decor.lineTo(sx, BASKET_H / 2 - 2);
-      decor.strokePath();
-    }
-    // Iron banding (top + bottom thin straps)
-    decor.fillStyle(0x3a2418, 1);
-    decor.fillRect(-BASKET_W / 2, BASKET_H / 2 - 10, BASKET_W, 2);
-    decor.fillRect(-BASKET_W / 2, -BASKET_H / 2 + 18, BASKET_W, 2);
-    // Light wood highlight on left edge
-    decor.fillStyle(0x8c5a32, 0.55);
-    decor.fillRect(-BASKET_W / 2 + 2, -BASKET_H / 2 + 12, 2, BASKET_H - 18);
-
-    // Brass index plate behind the numeral.
-    const plate = this.add.graphics();
-    plate.fillStyle(0xd4a155, 1);
-    plate.fillRoundedRect(-22, -10, 44, 22, 3);
-    plate.lineStyle(2, 0x6e4f1f, 1);
-    plate.strokeRoundedRect(-22, -10, 44, 22, 3);
-    // Tiny rivets at each corner.
-    plate.fillStyle(0x6e4f1f, 1);
-    [[-19, -7], [19, -7], [-19, 9], [19, 9]].forEach(([rx, ry]) => plate.fillCircle(rx, ry, 1.4));
-
-    // Hinged lid — kept as a Rectangle so the existing rotation tween still works.
-    const lid = this.add.rectangle(0, -BASKET_H / 2 + 6, BASKET_W + 6, 14, 0xb88542, 1)
-      .setStrokeStyle(2, 0x6e4f1f, 1)
-      .setOrigin(0.5, 1);
-
-    // Lid handle + plank decoration.
-    const lidDecor = this.add.graphics();
-    lidDecor.fillStyle(0x6e4f1f, 1);
-    lidDecor.fillRoundedRect(-10, -BASKET_H / 2 - 4, 20, 4, 1);
-    lidDecor.lineStyle(1, 0x6e4f1f, 0.7);
-    lidDecor.beginPath();
-    lidDecor.moveTo(-BASKET_W / 2 + 8, -BASKET_H / 2 + 2);
-    lidDecor.lineTo(BASKET_W / 2 - 8, -BASKET_H / 2 + 2);
-    lidDecor.strokePath();
-
-    // Wisps of straw poking up from the rim of the basket.
-    const straw = this.add.graphics();
-    straw.lineStyle(1, 0xe7c068, 0.95);
-    for (let s = 0; s < 5; s++) {
-      const sx = -BASKET_W / 2 + 14 + s * 14;
-      straw.beginPath();
-      straw.moveTo(sx, -BASKET_H / 2 + 8);
-      straw.lineTo(sx + (s % 2 === 0 ? -4 : 4), -BASKET_H / 2 + 1);
-      straw.strokePath();
-    }
-
-    const numberLabel = this.add.text(0, 0, `${index}`, {
-      fontSize: '15px',
-      fontFamily: FONTS.RETRO,
-      color: '#3a2418',
-      stroke: '#fef8e0',
-      strokeThickness: 1,
-    }).setOrigin(0.5);
-
-    // Item glyph: hidden until the lid lifts.
-    const item = this.add.text(0, -BASKET_H / 2 - 26, '', {
-      fontSize: '14px',
-      fontFamily: FONTS.RETRO,
-      color: '#fbbf24',
-      stroke: '#081820',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setAlpha(0);
-
-    container.add([shadow, body, decor, plate, numberLabel, straw, lid, lidDecor, item]);
-    body.on('pointerdown', () => this.chooseBasket(index));
-
-    // Entrance: small scale-in stagger so the shelf assembles.
-    container.setScale(0.6);
-    container.setAlpha(0);
-    this.tweens.add({
-      targets: container, scale: 1, alpha: 1,
-      duration: 240, delay: index * 50,
-      ease: 'Back.easeOut',
-    });
-
-    return { index, container, body, lid, numberLabel, item, straw };
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Per-request flow
-  // ──────────────────────────────────────────────────────────────────
-
-  private nextRequest(): void {
-    const round = INDEXING_ROUNDS[this.roundIndex];
-    const request = round.requests[this.requestIndex];
-    this.refreshPreview();
-
-    // Reset basket visuals from previous request.
-    for (const basket of this.baskets) {
-      basket.body.setFillStyle(0x5e3a1f, 1);
-      basket.item.setAlpha(0).setText('');
-      basket.item.y = -BASKET_H / 2 - 26;
-      basket.lid.setRotation(0);
-      basket.lid.setY(-BASKET_H / 2 + 6);
-      basket.straw.setAlpha(1);
-      basket.numberLabel.setAlpha(this.labelsObscured ? 0 : 1);
-    }
-
-    const remaining = round.requests.length - this.requestIndex;
-    const remainingNote = round.requests.length > 1 ? ` · ${remaining} left` : '';
-    // FEEL_IT swaps "index" → "basket" — algorithm vocabulary leaks
-    // through that single word otherwise.
-    const addressWord = this.isFeelItRound() ? 'basket' : 'index';
-    this.requestLabel.setText(
-      `Fetch  ${request.item.toUpperCase()}  →  ${addressWord} ${request.index}${remainingNote}`,
-    );
-    this.requestLabel.setColor('#081820');
-
-    // Bit walks above the requested basket — but ONLY in USE_IT. In FEEL_IT,
-    // Bit floating directly over the answer is unfiltered hand-holding;
-    // the player should derive that the number IS the address from the
-    // request alone, not by following Bit.
-    if (!this.isFeelItRound()) {
-      const target = this.baskets[request.index];
-      if (target) this.bitHint?.moveTo(target.container.x, target.container.y - 80, 320);
-      this.bitHint?.showWarm();
-    } else {
-      this.bitHint?.showNeutral();
-    }
-
-    // Serene wonder (docs/VISION.md §6): no countdown on first contact with
-    // indexing. Stars are earned by accuracy alone; urgency belongs to the
-    // boss, not to the moment a concept is being felt.
-
-    // Round 3: labels fade after `obscureAfterMs`, simulating "you already
-    // perceived the address; now commit". The request panel still shows the
-    // address — the player just can't double-check the basket labels.
-    this.labelsObscured = false;
-    this.obscureTimer?.destroy();
-    if (round.obscureLabels) {
-      this.obscureTimer = this.time.delayedCall(round.obscureAfterMs, () => this.obscureLabels());
-    }
-  }
-
-  private refreshPreview(): void {
-    if (!this.preview) return;
-    const round = INDEXING_ROUNDS[this.roundIndex];
-    const preview = buildIndexingPreview({
-      basketCount: round.basketCount,
-      request: round.requests[this.requestIndex] ?? null,
-      requestNumber: Math.min(this.requestIndex + 1, round.requests.length),
-      totalRequests: round.requests.length,
-    });
-    this.preview.setState(preview.state);
-    this.preview.setNextAction(preview.next);
-  }
-
-  private obscureLabels(): void {
-    this.labelsObscured = true;
-    for (const basket of this.baskets) {
-      this.tweens.add({
-        targets: basket.numberLabel, alpha: 0,
-        duration: 380, ease: 'Sine.easeInOut',
-      });
-    }
-    JuiceSystem.cameraShake(this, 40, 0.0008);
-  }
-
-  private chooseBasket(index: number): void {
-    if (this.isResolving) return;
-    // Fade the affordance prompt on first interaction (any tap — even wrong
-    // ones teach the control affordance).
-    if (this.affordancePrompt && !this.affordanceFaded) {
-      this.affordanceFaded = true;
-      this.tweens.killTweensOf(this.affordancePrompt);
-      this.tweens.add({
-        targets: this.affordancePrompt,
-        alpha: 0,
-        duration: 320,
-        ease: 'Sine.easeIn',
-        onComplete: () => {
-          this.affordancePrompt?.destroy();
-          this.affordancePrompt = null;
-        },
-      });
-    }
-    const round = INDEXING_ROUNDS[this.roundIndex];
-    const request = round.requests[this.requestIndex];
-    // Round-transition guard: between the last correct fetch of a round and
-    // the next round starting, requestIndex is past the end of the array
-    // (see line 458). Without this check, clicking during that window would
-    // throw when reading request.index. P1_1/P1_3/P1_4 release isResolving
-    // at safer points so this guard isn't needed there.
-    if (!request) return;
-    this.obscureTimer?.destroy();
-    this.isResolving = true;
-
-    const basket = this.baskets[index];
-    if (!basket) {
-      this.isResolving = false;
-      return;
-    }
-
-    const correct = index === request.index;
-
-    // Lid lift animation reveals what was inside that slot.
-    basket.item.setText(correct ? request.item.toUpperCase() : '?');
-    this.tweens.add({
-      targets: basket.lid, rotation: -1.05, y: basket.lid.y - 18,
-      duration: 220, ease: 'Back.easeOut',
-    });
-    // Hide the straw as the lid lifts so it doesn't poke through.
-    this.tweens.add({
-      targets: basket.straw, alpha: 0, duration: 160,
-    });
-    this.tweens.add({
-      targets: basket.item, alpha: 1, y: basket.item.y - 6, duration: 220, delay: 80,
-    });
-
-    if (correct) {
-      basket.body.setFillStyle(COLORS.SUCCESS, 0.95);
-      audioManager.playCorrectTone();
-      JuiceSystem.correctBurst(this, basket.container.x, basket.container.y);
-      this.bitHint?.showWarm();
-    } else {
-      basket.body.setFillStyle(COLORS.ERROR, 0.85);
-      audioManager.playWrongTone();
-      JuiceSystem.wrongBurst(this, basket.container.x, basket.container.y);
-      JuiceSystem.cameraShake(this, 60, 0.002);
-      this.attempts++;
-      this.mistakesTotal++;
-      this.bitHint?.showCold();
-      this.showMessage(`Index ${index} held nothing. Wanted index ${request.index}.`, COLORS.WARNING);
-    }
-
-    this.time.delayedCall(correct ? 520 : 900, () => {
-      this.isResolving = false;
-      if (!correct) {
-        // Re-prompt the same request so misses aren't fatal but cost stars.
-        this.nextRequest();
-        return;
-      }
-      this.requestIndex++;
-      if (this.requestIndex >= round.requests.length) {
-        this.completeRound();
-      } else {
-        this.nextRequest();
-      }
-    });
-  }
-
-  // ──────────────────────────────────────────────────────────────────
-  // Round / puzzle completion
-  // ──────────────────────────────────────────────────────────────────
-
-  private completeRound(): void {
-    JuiceSystem.screenFlash(this, COLORS.SUCCESS, 0.10, 240);
-    const isFinal = this.roundIndex >= INDEXING_ROUNDS.length - 1;
-
-    const totalRequests = INDEXING_ROUNDS[this.roundIndex].requests.length;
-    const summary = `Round ${this.roundIndex + 1} complete · ${totalRequests} fetch${totalRequests > 1 ? 'es' : ''} delivered`;
-    this.showMessage(summary, COLORS.SUCCESS);
-
-    if (isFinal) {
-      this.bitHint?.celebrate();
-      // Hold the body still through the victory + naming beat.
-      this.room?.setActive(false);
-      this.time.delayedCall(1200, () => {
-        // Stars come from accuracy + hints only — no speed pressure on a
-        // first-contact puzzle (docs/VISION.md §6).
-        const stars = starsFromMistakesAndHints(this.mistakesTotal, this.hintsUsed);
-        this.onPuzzleComplete(stars);
-      });
-      return;
-    }
-
-    this.time.delayedCall(1400, async () => {
-      // FEEL_IT completion → fire the NAME_IT script beat once. The Basket
-      // Keeper names what the player just felt.
-      const round = INDEXING_ROUNDS[this.roundIndex];
-      if (
-        round.lesson.phase === PuzzlePhase.FEEL_IT &&
-        round.lesson.nameItBeat &&
-        !this.namedYet
-      ) {
-        this.namedYet = true;
-        this.bruteForce?.freeze();
-        await this.showNameItBeat(round.lesson.nameItBeat);
-      }
-      this.startRound(this.roundIndex + 1).catch(() => undefined);
-    });
-  }
-
+  /** H-key hints — plain language, no notation. */
   protected displayHint(hintNumber: number): void {
-    const round = INDEXING_ROUNDS[this.roundIndex];
-    const request = round.requests[this.requestIndex];
-    const target = request ? request.index : 0;
-    // FEEL_IT hints stay diegetic — no "Array indexing is O(1)" leak.
-    const messages = this.isFeelItRound()
-      ? [
-          `The request shows you a number — ${target}. That's the basket.`,
-          `Tap basket ${target}. The Keeper trusts the number.`,
-          `Keyboard: 1..9 maps to the basket numbered to its left.`,
-        ]
-      : [
-          `The request already gives you the address: index ${target}.`,
-          'Array indexing is O(1). Tap the slot directly — never scan from 0.',
-          'Keyboard: 1..9 maps to baskets 0..8, and 0 maps to basket 9.',
-        ];
-    this.showMessage(messages[hintNumber - 1] ?? messages[0], COLORS.GOLD_ACCENT);
+    const order = this.currentOrder();
+    const messages = [
+      "The tag names a position. Count from the left.",
+      order
+        ? `The tag wants ${ordinalWords(order.index).toLowerCase()} — count to it.`
+        : "Walk the shelf and trust the count, not the labels.",
+    ];
+    this.showMessage(
+      messages[Math.min(hintNumber, messages.length) - 1],
+      COLORS.GOLD_ACCENT,
+    );
   }
 
   protected getConceptName(): string {
-    return 'Array Indexing';
+    return "Array Indexing";
+  }
+
+  protected getPuzzleFrameFillAlpha(): number {
+    return 0;
+  }
+
+  protected getPuzzleTheme(): PuzzleTheme {
+    return ARRAY_PLAINS_PUZZLE_THEME;
+  }
+
+  protected getRegionBackdrop(): {
+    id: RegionBackdropId;
+    options?: RegionBackdropOptions;
+  } | null {
+    if (this.textures.exists(BASKET_CELLAR_KEYS.BACKDROP)) return null;
+    return { id: "array-plains", options: { intensity: 1 } };
+  }
+
+  protected getPuzzleBackdropKey(): string | null {
+    if (this.textures.exists(BASKET_CELLAR_KEYS.BACKDROP)) {
+      return BASKET_CELLAR_KEYS.BACKDROP;
+    }
+    return super.getPuzzleBackdropKey();
+  }
+
+  private prefersReducedMotion(): boolean {
+    return (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
   }
 }
-

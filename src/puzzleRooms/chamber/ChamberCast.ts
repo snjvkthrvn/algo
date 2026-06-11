@@ -1,11 +1,12 @@
 /**
- * ChamberCast — the people in the room. Nobody lectures (VISION §3):
- *  • Keeper (Sorting Farmer) putters on a leash loop, reacting line-by-line:
- *    wince at a spill streak, nod at a clean stretch, applause at the bloom.
- *  • Glitch heckles from the hay loft. Final delivery only, after 10s idle,
- *    he hops down ONCE, scrambles one pair, and climbs back (rule lives in
- *    chamberRules.shouldGlitchScramble; the scene drives it).
- * Reuses PuzzleRoom.placeKeeper and the existing Glitch taunt pool.
+ * ChamberCast — the shared keeper-in-the-room for chamber rooms. Nobody
+ * lectures (VISION §3): the keeper putters on a leash loop and reacts
+ * line-by-line — a wince at a waste streak, a nod at a clean stretch,
+ * applause at the clear — plus the post-clear tally in plain words.
+ *
+ * Each room passes its own keeper sprite key, entry stakes line, and
+ * reaction line pools. Glitch's heckle helper rides along for rooms that
+ * stage him without a body of his own.
  */
 
 import Phaser from "phaser";
@@ -18,29 +19,58 @@ function pick(lines: ReadonlyArray<string>): string {
   return lines[Math.floor(Math.random() * lines.length)];
 }
 
-const KEEPER_REACTIONS = {
-  spillStreak: [
-    "Easy now — that grain feeds the hens.",
-    "Every trade shakes a little loose.",
-  ],
-  cleanStretch: [
-    "Good eye. Barely a kernel down.",
-    "That's the way — let the row tell you.",
-  ],
-  bloom: ["Look at them stand!", "The field remembers that order."],
-} as const;
+export interface ChamberCastConfig {
+  keeperKey?: string;
+  entryLine?: string;
+  reactions?: {
+    waste: ReadonlyArray<string>;
+    clean: ReadonlyArray<string>;
+    clear: ReadonlyArray<string>;
+  };
+  /** Verb for the tally line ("trades", "openings"). */
+  tallyNoun?: string;
+}
+
+const GRAIN_DEFAULTS: Required<ChamberCastConfig> = {
+  keeperKey: VISUAL_REVAMP_KEYS.SORTING_FARMER,
+  entryLine: "The furrows grew out of order. Mind the grain.",
+  reactions: {
+    waste: [
+      "Easy now — that grain feeds the hens.",
+      "Every trade shakes a little loose.",
+    ],
+    clean: [
+      "Good eye. Barely a kernel down.",
+      "That's the way — let the row tell you.",
+    ],
+    clear: ["Look at them stand!", "The field remembers that order."],
+  },
+  tallyNoun: "trades",
+};
 
 export class ChamberCast {
   private scene: Phaser.Scene;
   private keeper: Phaser.GameObjects.Sprite | null;
   private speech: Phaser.GameObjects.Text;
   private lastReactionAt = 0;
+  private config: Required<ChamberCastConfig>;
 
-  constructor(scene: Phaser.Scene, keeperX: number, keeperY: number) {
+  constructor(
+    scene: Phaser.Scene,
+    keeperX: number,
+    keeperY: number,
+    config: ChamberCastConfig = {},
+  ) {
     this.scene = scene;
+    this.config = {
+      keeperKey: config.keeperKey ?? GRAIN_DEFAULTS.keeperKey,
+      entryLine: config.entryLine ?? GRAIN_DEFAULTS.entryLine,
+      reactions: config.reactions ?? GRAIN_DEFAULTS.reactions,
+      tallyNoun: config.tallyNoun ?? GRAIN_DEFAULTS.tallyNoun,
+    };
     this.keeper = PuzzleRoom.placeKeeper(
       scene,
-      VISUAL_REVAMP_KEYS.SORTING_FARMER,
+      this.config.keeperKey,
       keeperX,
       keeperY,
     );
@@ -89,34 +119,35 @@ export class ChamberCast {
   /** Entry line — stakes only, no mechanics (VISION §3). */
   entry(): void {
     this.lastReactionAt = -10_000;
-    this.say("The furrows grew out of order. Mind the grain.", 3200);
+    this.say(this.config.entryLine, 3200);
   }
 
   onSpillStreak(): void {
-    this.say(pick(KEEPER_REACTIONS.spillStreak));
+    this.say(pick(this.config.reactions.waste));
   }
 
   onCleanStretch(): void {
-    this.say(pick(KEEPER_REACTIONS.cleanStretch));
+    this.say(pick(this.config.reactions.clean));
   }
 
   onBloom(): void {
     this.lastReactionAt = -10_000;
-    this.say(pick(KEEPER_REACTIONS.bloom), 2000);
+    this.say(pick(this.config.reactions.clear), 2000);
   }
 
   /**
    * Post-clear harvest tally — plain numbers, plain words, after play
    * (FEEL→NAME safe). Bypasses the reaction rate limit.
    */
-  tallyLine(trades: number, fieldPar: number, holdMs = 5200): void {
+  tallyLine(count: number, par: number, holdMs = 5200): void {
     this.lastReactionAt = -10_000;
+    const noun = this.config.tallyNoun;
     const verdict =
-      trades <= fieldPar + 1
-        ? "You traded like the field was glass."
+      count <= par + 1
+        ? "Hardly a thing wasted."
         : "Pull the lever by the door — Bit knows a thriftier way.";
     this.say(
-      `${trades} trades to settle the field. Its best is ${fieldPar}. ${verdict}`,
+      `${count} ${noun} to clear the room. Its best is ${par}. ${verdict}`,
       holdMs,
     );
   }

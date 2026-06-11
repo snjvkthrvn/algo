@@ -70,6 +70,25 @@ describe("first three regions quality guards", () => {
     );
   });
 
+  it("Basket Cellar teaches indexing through cost, not refusal", () => {
+    const source = readSource("src/scenes/puzzles/P1_2_BasketIndexing.ts");
+
+    // Every opening is allowed and recorded; wrong baskets tumble mess
+    // instead of being blocked (chamber economy, spec pillar 2-3).
+    expect(source).toContain("this.ledger = recordTrade(this.ledger);");
+    expect(source).toContain("openBasket(index, correct)");
+
+    // Lecture chrome stays out of the room.
+    expect(source).not.toMatch(
+      /showLessonCard|showRoundRecap|showRoundBanner/,
+    );
+    expect(source).not.toMatch(/BruteForceScanner|secondsPerRequest/);
+    // The cellar has no auto-aim arrow at all.
+    expect(source).not.toMatch(/NextMoveHint/);
+    // Orders speak plain words, never "index N".
+    expect(source).toContain("ordinalWords(order.index)");
+  });
+
   it("locks Two Sum input while a wrong pair is being cleared", () => {
     const source = readSource("src/scenes/puzzles/P1_4_TwoSum.ts");
 

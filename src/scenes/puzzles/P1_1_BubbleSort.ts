@@ -61,7 +61,7 @@ import { CrateLane } from "../../puzzleRooms/grainChamber/CrateLane";
 import { GrainFx } from "../../puzzleRooms/grainChamber/GrainFx";
 import { ChickenFlock } from "../../puzzleRooms/chamber/ChickenFlock";
 import { CartDelivery } from "../../puzzleRooms/chamber/CartDelivery";
-import { ChamberCast } from "../../puzzleRooms/grainChamber/ChamberCast";
+import { ChamberCast } from "../../puzzleRooms/chamber/ChamberCast";
 import { GhostReplay } from "../../puzzleRooms/grainChamber/GhostReplay";
 
 const GRAIN_START = 120;
