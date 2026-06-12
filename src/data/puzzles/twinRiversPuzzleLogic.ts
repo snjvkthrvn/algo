@@ -48,7 +48,7 @@ export const MIRROR_WALK_ROUNDS: ReadonlyArray<MirrorWalkRound> = [
       ],
       nameItBeat: {
         speaker: 'Mirror Walker',
-        line: 'Well walked. What you just did — that\'s called Two Pointers. One mind moving two hands. Not two problems — ONE problem with two tools. When the work meets in the middle, you\'ve done in n/2 steps what the river would have needed n² for.',
+        line: 'Well walked. What you just did — that\'s called Two Pointers. One mind moving two hands. Not two problems — ONE problem with two tools. When the work meets in the middle, the whole river has turned in half a walk.',
       },
     },
   },
@@ -69,14 +69,13 @@ export const MIRROR_WALK_ROUNDS: ReadonlyArray<MirrorWalkRound> = [
     values: [4, 7, 2, 8, 6, 1, 5, 9],
     label: 'MASTER',
     lesson: {
-      title: '⌊n/2⌋ swaps · O(n) total',
+      title: 'Half the walk, all the work',
       subtitle: 'Round 3 · Master',
       bullets: [
-        'You make exactly floor(n/2) swaps.',
-        'Each swap is a constant-time operation.',
-        'In-place reverse is O(n) time, O(1) space.',
+        'You only ever trade up to the middle.',
+        'Each trade costs the same as the last.',
+        'No second row, no copies — the river turns where it lies.',
       ],
-      comparison: 'in-place O(1) space  ·  copy-then-reverse O(n) space',
     },
   },
   // MASTER+: 12 elements with deliberate repeats. The reverse algorithm

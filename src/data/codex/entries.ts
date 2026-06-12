@@ -426,4 +426,59 @@ export const CODEX_ENTRIES: CodexEntry[] = [
       },
     ],
   },
+  {
+    id: 'two_pointers',
+    algorithmName: 'Two Pointers - In-Place Reverse',
+    category: AlgorithmType.TWO_POINTERS,
+    unlockedBy: 'tr_1',
+    difficulty: Difficulty.MEDIUM,
+    relatedConcepts: ['two-pointers', 'in-place', 'reversal'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'Your reflection stood where you needed to reach, every step you took.',
+          'You traded only the pairs that differed and walked past the ones that already mirrored.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'Two pointers start at both ends of a row and walk inward together.',
+          'At each step they swap the values under them, then step in. When they meet, the row is reversed.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: [
+          '1. Put one pointer at each end',
+          '2. Swap the values under them (skip if already equal)',
+          '3. Step both pointers inward',
+          '4. Stop when they meet or cross',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'The Cost',
+        content: [
+          'You make exactly ⌊n/2⌋ swaps — each one constant time — so in-place reverse is O(n) time and O(1) extra space.',
+          'Copying into a second row also takes O(n) time but pays O(n) extra space; the two-pointer walk turns the river where it lies.',
+          'Odd rows leave a fixed centre (L and R cross instead of meeting — that is the loop\'s stop condition), and duplicates change nothing: the walk is positional, not value-based.',
+        ],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['Reversing strings and buffers', 'Palindrome checks', 'Rotating sequences', 'Interview staple patterns'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Mirror Stride - Opposite ends of a row now feel like two hands of one body.',
+      },
+    ],
+  },
 ];
