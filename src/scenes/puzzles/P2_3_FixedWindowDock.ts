@@ -127,8 +127,9 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     new PuzzleAmbience(this, "river", { intensity: 0.4 });
 
     const { width, height } = this.cameras.main;
-    this.rowYPx = Math.round((height * 0.46) / 8) * 8;
-    this.walkYPx = this.rowYPx + 92;
+    // Sits on the backdrop's painted mooring-post row along the dock edge.
+    this.rowYPx = Math.round((height * 0.54) / 8) * 8;
+    this.walkYPx = this.rowYPx + 84;
     this.beamXPx = 128;
 
     this.shell = new ChamberShell(this, dockPar());

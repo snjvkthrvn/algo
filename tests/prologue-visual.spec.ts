@@ -1581,12 +1581,54 @@ test.describe("Prologue region â€“ visual audit", () => {
     await snap(page, "24b-tr2-rope-bridge-snapback.png");
   });
 
-  test("25 - TR-3 Fixed Window Dock - encounter layout", async ({ page }) => {
+  test("25 - TR-3 Fishing Dock - sealed dock with the net", async ({
+    page,
+  }) => {
     await jumpToScene(page, "P2_3_FixedWindowDock", {
       returnScene: "TwinRiversScene",
     });
-    await page.waitForTimeout(700);
-    await snap(page, "25-tr3-fixed-window-layout.png");
+    // Chamber room: wait out the door seal + entry legend settle.
+    await page.waitForTimeout(4200);
+    await snap(page, "25-tr3-fishing-dock-sealed.png");
+  });
+
+  test("25b - TR-3 Fishing Dock - a light haul tears the net", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P2_3_FixedWindowDock", {
+      returnScene: "TwinRiversScene",
+    });
+    await page.waitForTimeout(4200);
+    // Walk to the first basket (net frames the dock's start) and haul:
+    // round 1's heaviest window lives elsewhere, so the net tears — haul
+    // recorded, debris persisted, round unchanged (cost, not refusal).
+    await page.keyboard.press("1");
+    await page.waitForTimeout(4200);
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(3200);
+    const state = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("P2_3_FixedWindowDock") as Record<
+        string,
+        unknown
+      > | null;
+      const ledger = scene?.["ledger"] as { trades?: number } | undefined;
+      const row = scene?.["row"] as
+        | { debrisPositions?: () => unknown[] }
+        | undefined;
+      const net = scene?.["net"] as { start?: number } | undefined;
+      return {
+        round: scene?.["roundIndex"],
+        start: net?.start,
+        moves: ledger?.trades ?? 0,
+        debris: row?.debrisPositions?.()?.length ?? 0,
+      };
+    });
+    expect(state.round).toBe(0); // the tear holds the round open
+    expect(state.start).toBe(0);
+    expect(state.moves).toBeGreaterThan(0);
+    expect(state.debris).toBeGreaterThan(0);
+    await snap(page, "25b-tr3-fishing-dock-tear.png");
   });
 
   test("26 - TR-4 Current Rider - encounter layout", async ({ page }) => {
