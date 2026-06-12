@@ -481,4 +481,59 @@ export const CODEX_ENTRIES: CodexEntry[] = [
       },
     ],
   },
+  {
+    id: 'pointer_convergence',
+    algorithmName: 'Two-Pointer Convergence - Sorted Two Sum',
+    category: AlgorithmType.POINTER_CONVERGENCE,
+    unlockedBy: 'tr_2',
+    difficulty: Difficulty.MEDIUM,
+    relatedConcepts: ['two-pointers', 'sorted-arrays', 'two-sum'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'The rope sagged when the pair weighed heavy and stretched when it ran light — and only one buoy could ever fix it.',
+          'You never checked every pair. The walk did the checking for you.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'On a sorted row, start one pointer at each end. If the pair sums below the target, only moving the left pointer up can help; above, only the right pointer down.',
+          'Each step rules out every pair that used the abandoned value, so the answer is found in a single pass.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: [
+          '1. Sort (or receive sorted) values; point L at the start, R at the end',
+          '2. If values[L] + values[R] < target, move L right',
+          '3. If the sum is over the target, move R left',
+          '4. Equal → found; L ≥ R → no pair exists',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'The Cost',
+        content: [
+          'The convergent walk is O(n): each step retires one value forever, so at most n−1 steps happen before the pointers meet.',
+          'Checking all pairs is O(n²) — n·(n−1)/2 checks. At 14 stones that is 91 pair-checks against at most 14 walk steps; at n = 1000 it is half a million against a thousand.',
+          'The forced move is a proof, not a habit: no smaller value exists left of L and no larger right of R, so the "wrong" pointer can never repair the sum.',
+        ],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['Pair sums in sorted data', 'Container/water problems', 'Merging range queries', 'Interview staple patterns'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Rope Sense - Sorted rows now whisper which end to walk from.',
+      },
+    ],
+  },
 ];

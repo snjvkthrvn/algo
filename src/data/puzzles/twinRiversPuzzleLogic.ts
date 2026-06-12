@@ -137,7 +137,7 @@ export const POINTER_BRIDGE_ROUNDS: ReadonlyArray<PointerBridgeRound> = [
       ],
       nameItBeat: {
         speaker: 'Bridge Keeper',
-        line: 'You did not check every stone. You did not check every pair. You walked, and the walk DID the checking for you. That is Two-Pointer Convergence. When the river is in order, your feet become your eyes — and the work that would take n² checks finishes in n steps.',
+        line: 'You did not check every stone. You did not check every pair. You walked, and the walk DID the checking for you. That is Two-Pointer Convergence. When the river is in order, your feet become your eyes — one walk across does what a thousand guesses never could.',
       },
     },
   },
@@ -160,14 +160,13 @@ export const POINTER_BRIDGE_ROUNDS: ReadonlyArray<PointerBridgeRound> = [
     target: 28,
     label: 'MASTER',
     lesson: {
-      title: 'O(n) on sorted ⇒ huge speedup',
+      title: 'Order is a gift',
       subtitle: 'Round 3 · Master',
       bullets: [
-        "Pointer bridge is O(n) on a sorted row.",
-        'Check-all-pairs is O(n²).',
-        "At n = 9, that's 9 steps vs 36. At n = 1000, it's a million.",
+        'Because the stones stand in order, one walk is enough.',
+        'Glitch is still guessing pairs back there.',
+        'The longer the row, the bigger the gift.',
       ],
-      comparison: 'sorted two-sum  O(n)  ·  unsorted check-all-pairs  O(n²)',
     },
   },
   // MASTER+: 14 sorted values, target placed near the middle so the walk
@@ -181,11 +180,10 @@ export const POINTER_BRIDGE_ROUNDS: ReadonlyArray<PointerBridgeRound> = [
       title: 'No matter where the answer hides…',
       subtitle: 'Round 4 · Master+',
       bullets: [
-        '14 stones, one valid sum — and you find it in ≤14 moves.',
-        'Brute force would check 91 pairs.',
-        "The sorted-walk doesn't care *where* the pair is. The walk converges every time.",
+        'Fourteen stones, one true pair — and one crossing finds it.',
+        'Guessing pairs would take all night.',
+        "The walk doesn't care where the pair hides. It converges every time.",
       ],
-      comparison: '14·13/2 = 91 pair-checks  vs.  ≤ 14 walk steps',
     },
   },
 ];
