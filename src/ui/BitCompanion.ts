@@ -46,6 +46,8 @@ export class BitCompanion {
   private readonly tweens: Phaser.Tweens.Tween[] = [];
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
   private highlightIndex: number;
+  private readonly baseScale: number;
+  private pulseTween: Phaser.Tweens.Tween | null = null;
 
   constructor(scene: Phaser.Scene, opts: BitCompanionOptions) {
     this.scene = scene;
@@ -54,6 +56,7 @@ export class BitCompanion {
     this.highlightIndex = opts.highlight ?? -1;
 
     this.container = scene.add.container(opts.x, opts.y);
+    this.baseScale = opts.scale ?? 1;
     if (opts.scale && opts.scale !== 1) this.container.setScale(opts.scale);
     this.container.setDepth(opts.depth ?? 50);
 
@@ -120,14 +123,22 @@ export class BitCompanion {
 
   /** Quick celebratory scale-punch — Bit's "bounce" on a correct step. */
   pulse(): void {
-    const base = this.container.scaleX || 1;
-    this.scene.tweens.add({
+    // Punch from the RESTING scale, never from a mid-flight value —
+    // overlapping pulses used to compound (1.35^n) and balloon Bit into a
+    // screen-filling orb under rapid correct-step chains.
+    this.pulseTween?.stop();
+    this.container.setScale(this.baseScale);
+    this.pulseTween = this.scene.tweens.add({
       targets: this.container,
-      scaleX: base * 1.35,
-      scaleY: base * 1.35,
+      scaleX: this.baseScale * 1.35,
+      scaleY: this.baseScale * 1.35,
       duration: 150,
       yoyo: true,
       ease: 'Quad.easeOut',
+      onComplete: () => {
+        this.pulseTween = null;
+        this.container.setScale(this.baseScale);
+      },
     });
   }
 
