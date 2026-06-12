@@ -8,6 +8,7 @@ import { SCENE_KEYS } from '../../config/constants';
 
 export const WARP_SCENE_KEYS: ReadonlyArray<string> = [
   SCENE_KEYS.MOVEMENT_GYM,
+  SCENE_KEYS.PROLOGUE_TRIAL,
   SCENE_KEYS.DEBUG_SELECT,
 ];
 

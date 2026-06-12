@@ -42,6 +42,7 @@ export class DebugSelectScene extends Phaser.Scene {
 
     const scenesToTest = [
       SCENE_KEYS.MOVEMENT_GYM,
+      SCENE_KEYS.PROLOGUE_TRIAL,
       SCENE_KEYS.PROLOGUE,
       SCENE_KEYS.PUZZLE_P0_1,
       SCENE_KEYS.PUZZLE_P0_2,

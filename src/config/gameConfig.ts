@@ -3,6 +3,7 @@ import { BootScene } from "../scenes/BootScene";
 import { MenuScene } from "../scenes/MenuScene";
 import { DebugSelectScene } from "../scenes/DebugSelectScene";
 import { MovementGymScene } from "../scenes/dev/MovementGymScene";
+import { PrologueTrialScene } from "../scenes/prologueTrial/PrologueTrialScene";
 import { PrologueScene } from "../scenes/prologue/PrologueScene";
 import { ArrayPlainsScene } from "../scenes/ArrayPlainsScene";
 import { TwinRiversScene } from "../scenes/TwinRiversScene";
@@ -115,6 +116,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     MenuScene,
     DebugSelectScene,
     MovementGymScene,
+    PrologueTrialScene,
     PrologueRunUIScene,
     PrologueScene,
     ArrayPlainsScene,

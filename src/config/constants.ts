@@ -79,6 +79,7 @@ export const SCENE_KEYS = {
   MENU: "MenuScene",
   DEBUG_SELECT: "DebugSelectScene",
   MOVEMENT_GYM: "MovementGymScene",
+  PROLOGUE_TRIAL: "PrologueTrialScene",
   PROLOGUE: "PrologueScene",
   ARRAY_PLAINS: "ArrayPlainsScene",
   TWIN_RIVERS: "TwinRiversScene",
