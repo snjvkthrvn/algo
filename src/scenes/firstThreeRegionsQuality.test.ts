@@ -207,7 +207,9 @@ describe("first three regions quality guards", () => {
     expect(twinRivers).toContain(
       'export { P2_1_MirrorWalk } from "./P2_1_MirrorWalk";',
     );
-    expect(twinRivers).toContain("performPointerBridgeBoardStep");
+    expect(twinRivers).toContain(
+      'export { P2_2_PointerBridge } from "./P2_2_PointerBridge";',
+    );
     expect(twinRivers).toContain("performFixedWindowBoardStep");
     expect(twinRivers).toContain("performCurrentRiderBoardStep");
     expect(twinRivers).toContain("handleSerpentRowPress");
@@ -219,6 +221,27 @@ describe("first three regions quality guards", () => {
     expect(shuffler).toContain("private actHash");
     expect(shuffler).toContain("private actPair");
     expect(shuffler).toContain("this.room.player.walkTo");
+  });
+
+  it("Rope Bridge reads through the rope, not arithmetic text", () => {
+    const source = readSource("src/scenes/puzzles/P2_2_PointerBridge.ts");
+
+    // Every step and lock is recorded; dead ends snap back instead of
+    // failing; wrong locks splash (chamber economy).
+    expect(source).toContain("this.ledger = recordTrade(this.ledger);");
+    expect(source).toContain("this.line.snapBack()");
+    expect(source).toContain("this.line.failLock();");
+
+    // The sum lives in the rope's sag — the old sumText arithmetic readout
+    // and target status line must never come back. (Matched on the exact
+    // template-literal forms the old scene rendered, so prose comments
+    // about arithmetic don't trip the gate.)
+    expect(source).not.toMatch(/sumText|setText\(\s*`.*\$\{sum\}/);
+    expect(source).not.toMatch(/`BRIDGE \$\{|target = \$\{/);
+    expect(source).not.toMatch(
+      /showLessonCard|showRoundRecap|showRoundBanner/,
+    );
+    expect(source).not.toMatch(/NextMoveHint|RiverRow/);
   });
 
   it("Threshing Floor pressures through telegraphed interference, not chrome", () => {
