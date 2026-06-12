@@ -238,12 +238,12 @@ export const FIXED_WINDOW_ROUNDS: ReadonlyArray<FixedWindowRound> = [
     windowSize: 4,
     label: 'TWIST',
     lesson: {
-      title: 'Bigger windows pay off more',
+      title: 'Bigger nets pay off more',
       subtitle: 'Round 2 · Twist',
       bullets: [
-        'With window size k, recomputing every step is O(k) per slide.',
-        'Sliding is O(1) per slide regardless of k.',
-        "At k = 4 you're already 4× faster than the naïve approach.",
+        'A wider net holds more — but a slide still only changes its edges.',
+        'Recounting the whole net every step is wasted hauling.',
+        'The wider the net, the more the edges save you.',
       ],
     },
   },
@@ -252,14 +252,13 @@ export const FIXED_WINDOW_ROUNDS: ReadonlyArray<FixedWindowRound> = [
     windowSize: 3,
     label: 'MASTER',
     lesson: {
-      title: 'Track the best as you go',
+      title: 'Remember the best as you go',
       subtitle: 'Round 3 · Master',
       bullets: [
-        'Maintain a `best` while sliding — don\'t scan at the end.',
-        'O(n) total, even when most windows are dull.',
-        "The expensive part is bookkeeping, not searching.",
+        'Keep the heaviest catch in mind while you slide — no second pass.',
+        'One walk of the dock is enough, even when most stretches are dull.',
+        'The craft is remembering, not re-searching.',
       ],
-      comparison: 'recompute each window  O(n·k)  ·  slide  O(n)',
     },
   },
   // MASTER+: 14 slats, window 5, with a *fake-best* prefix. Looks rich early
@@ -273,9 +272,9 @@ export const FIXED_WINDOW_ROUNDS: ReadonlyArray<FixedWindowRound> = [
       title: 'The early high is a decoy',
       subtitle: 'Round 4 · Master+',
       bullets: [
-        "First five slats sum 20 — looks great, but you haven't slid yet.",
-        "Sliding past the dip uncovers a 32-sum window.",
-        "The window doesn't know what's coming. You must slide all the way.",
+        'The first stretch looks heavy — but you haven\'t slid yet.',
+        'Past the dip, a heavier catch waits.',
+        "The net doesn't know what's coming. Slide all the way before you swear by it.",
       ],
     },
   },

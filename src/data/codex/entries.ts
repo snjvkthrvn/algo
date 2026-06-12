@@ -536,4 +536,59 @@ export const CODEX_ENTRIES: CodexEntry[] = [
       },
     ],
   },
+  {
+    id: 'sliding_window',
+    algorithmName: 'Sliding Window - Fixed Width',
+    category: AlgorithmType.SLIDING_WINDOW,
+    unlockedBy: 'tr_3',
+    difficulty: Difficulty.MEDIUM,
+    relatedConcepts: ['sliding-window', 'running-sums', 'subarrays'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'Every slide, only two baskets mattered: the one entering your net and the one leaving it.',
+          'You kept the heaviest catch in mind as you walked, and one pass of the dock was enough.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'A fixed window of k items slides along a row one position at a time.',
+          'Instead of recomputing the window from scratch, update the running sum: add the entering value, subtract the leaving one, and track the best seen.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: [
+          '1. Sum the first k values; remember it as the best',
+          '2. Slide by one: sum += entering − leaving',
+          '3. Update the best if the new sum beats it',
+          '4. Stop after the last window; the best is the answer',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'The Cost',
+        content: [
+          'Recomputing every window costs k additions per slide — (n−k+1)·k work, O(n·k).',
+          'Sliding costs one add and one subtract per slide regardless of k — O(n) total. The wider the window, the bigger the saving.',
+          'This fixed-width walk is the gateway to variable windows, where the edges move independently — the Current Rider teaches that next.',
+        ],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['Moving averages', 'Network throughput metering', 'Best k-day spans in time series', 'Interview staple patterns'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Edge Sight - Sliding ranges now show you only what changes.',
+      },
+    ],
+  },
 ];
