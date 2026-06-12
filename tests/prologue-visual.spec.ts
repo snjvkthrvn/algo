@@ -51,7 +51,10 @@ type GameWindow = Window & {
   __gameState__?: {
     getFlag(flag: string): boolean;
     getBitMood?(): string;
-    getState(): { player: { x: number; y: number; region: string } };
+    getState(): {
+      player: { x: number; y: number; region: string };
+      puzzleResults?: Record<string, { stars: number } | undefined>;
+    };
     unlockCodexEntry?(entryId: string): void;
   };
 };
@@ -1020,6 +1023,58 @@ test.describe("Prologue region â€“ visual audit", () => {
       () => !!(window as GameWindow).__gameState__?.getFlag("gateway_open"),
     );
     expect(gatewayOpen).toBe(true);
+  });
+
+  // ── Echo Causeway (dev-warp trial room, gym-pattern generated tiles) ──────
+
+  test("64 - Echo Causeway - sealed trial layout", async ({ page }) => {
+    await jumpToScene(page, "PrologueTrialScene", {});
+    // Seal beat fires ~900ms in; watch lightshow follows. Snap the sealed
+    // chamber with the leg-1 field visible.
+    await page.waitForTimeout(2_500);
+    await snap(page, "64-trial-causeway-sealed.png");
+  });
+
+  test("64b - Echo Causeway - walk phase and completion bridge", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await jumpToScene(page, "PrologueTrialScene", {});
+
+    // The first watch ends and hands over the walk (RAF-throttled).
+    await page.waitForFunction(
+      () => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene("PrologueTrialScene") as Record<
+          string,
+          unknown
+        > | null;
+        return (
+          (scene?.["trial"] as { phase?: string } | undefined)?.phase === "walk"
+        );
+      },
+      undefined,
+      { timeout: 30_000 },
+    );
+    await snap(page, "64b-trial-causeway-walk.png");
+
+    // Completion via the public hook (state bridge, like test 11).
+    await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("PrologueTrialScene") as Record<
+        string,
+        unknown
+      > | null;
+      const complete = scene?.["puzzleComplete"];
+      if (typeof complete === "function") (complete as () => void).call(scene);
+    });
+    await waitForScene(page, "PrologueScene", 15_000);
+    const result = await page.evaluate(
+      () =>
+        (window as GameWindow).__gameState__?.getState?.()?.puzzleResults
+          ?.p0_trial ?? null,
+    );
+    expect(result).not.toBeNull();
   });
 
   test("13 - Array Plains - walk route, inspect marker, return to Prologue", async ({

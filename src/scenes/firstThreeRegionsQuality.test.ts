@@ -179,6 +179,23 @@ describe("first three regions quality guards", () => {
     expect(rounds).not.toMatch(/Sequence and selection/);
   });
 
+  it("Echo Causeway trial teaches through cost, not chrome", () => {
+    const source = readSource(
+      "src/scenes/prologueTrial/PrologueTrialScene.ts",
+    );
+
+    // The gym pattern: generated tileset baked once, pure plan logic.
+    expect(source).toContain("batchDrawFrame");
+    expect(source).toContain("pickTrialTile");
+    // Chamber economy: steps graded purely, stars from par, walk-out exit.
+    expect(source).toContain("gradeStep");
+    expect(source).toContain("starsForTrades");
+    expect(source).toContain("completeAlgorithmiaPuzzle");
+    expect(source).not.toMatch(
+      /buildHud|buildPrologueHud|scorePopup|comboMilestone|GlitchCorner/,
+    );
+  });
+
   it("keeps Two Sum rounds fully reachable by number-key controls", () => {
     for (const round of TWO_SUM_ROUND_CONFIGS) {
       expect(round.values.length).toBeLessThanOrEqual(9);
