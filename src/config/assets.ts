@@ -425,6 +425,23 @@ export const MIRROR_CROSSING_SHEET_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Rope Bridge (P2_2 rebuild) — see
+ * docs/superpowers/specs/2026-06-12-p2-2-rope-bridge-design.md.
+ * Buoys + pilings reuse PROP_WATER_BUOY / TR_DOCK_NODE; debris reuses the
+ * mirror-crossing sheet. Only the backdrop is bespoke.
+ */
+export const POINTER_BRIDGE_KEYS = {
+  BACKDROP: "pointer-bridge-backdrop",
+} as const;
+
+export const POINTER_BRIDGE_IMAGE_ASSETS: AssetEntry[] = [
+  {
+    key: POINTER_BRIDGE_KEYS.BACKDROP,
+    path: `${VISUAL_REVAMP_BASE}/pointer_bridge/backdrop.png`,
+  },
+];
+
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.TITLE_BG,
