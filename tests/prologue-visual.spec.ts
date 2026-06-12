@@ -1391,12 +1391,53 @@ test.describe("Prologue region â€“ visual audit", () => {
     await snap(page, "20b-ap4-pairing-grounds-chips.png");
   });
 
-  test("21 - Shuffler Domain - boss encounter layout", async ({ page }) => {
+  test("21 - Shuffler Threshing Floor - sealed arena, phase I", async ({
+    page,
+  }) => {
     await jumpToScene(page, "Boss_Shuffler", {
       returnScene: "ArrayPlainsScene",
     });
-    await page.waitForTimeout(700);
-    await snap(page, "21-shuffler-domain-layout.png");
+    // Seal + entry banner + phase I mount (~1.8x RAF throttle).
+    await page.waitForTimeout(8000);
+    await snap(page, "21-shuffler-threshing-floor.png");
+  });
+
+  test("21b - Shuffler scrambles the row himself, honestly", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "Boss_Shuffler", {
+      returnScene: "ArrayPlainsScene",
+    });
+    await page.waitForTimeout(8000);
+    const before = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("Boss_Shuffler") as Record<
+        string,
+        unknown
+      > | null;
+      return [...((scene?.["bubbleValues"] as number[]) ?? [])];
+    });
+    // One full interference cycle with NO player input: the Shuffler must
+    // telegraph and scramble on his own, leaving the player's ledger at 0
+    // and raising par via the scramble counter instead.
+    await page.waitForTimeout(16000);
+    const after = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("Boss_Shuffler") as Record<
+        string,
+        unknown
+      > | null;
+      const ledger = scene?.["ledger"] as { trades?: number } | undefined;
+      return {
+        values: [...((scene?.["bubbleValues"] as number[]) ?? [])],
+        actions: ledger?.trades ?? -1,
+        scrambles: scene?.["scrambles"] ?? -1,
+      };
+    });
+    expect(after.values).not.toEqual(before);
+    expect(after.actions).toBe(0);
+    expect(after.scrambles).toBeGreaterThan(0);
+    await snap(page, "21b-shuffler-scramble.png");
   });
 
   test("22 - Twin Rivers - Continue from save", async ({ page }) => {
