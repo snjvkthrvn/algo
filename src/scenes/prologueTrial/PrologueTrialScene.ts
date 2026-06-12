@@ -364,7 +364,20 @@ export class PrologueTrialScene extends BaseOverworldScene {
   private pullLever(): void {
     if (this.trial.phase !== "cleared" || this.ghost.isPlaying) return;
     this.lever?.pull();
-    void this.ghost.play(TRIAL_LEGS.flatMap((leg) => [...leg.path]));
+    // The lever commands the camera: ride with the spectral walker from
+    // the first stone, then hand the view back to the player.
+    void this.ghost.play(
+      TRIAL_LEGS.flatMap((leg) => [...leg.path]),
+      {
+        onStart: (walker) => {
+          this.cameras.main.stopFollow();
+          this.cameras.main.startFollow(walker, true, 0.06, 0.06);
+        },
+        onEnd: () => {
+          this.setupOverworldCamera(WORLD_W, WORLD_H);
+        },
+      },
+    );
   }
 
   private onHint = (): void => {

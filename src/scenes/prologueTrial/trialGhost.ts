@@ -31,8 +31,18 @@ export class TrialGhost {
     return this.playing;
   }
 
-  /** Glide the spectral walker along `tiles` (all legs concatenated). */
-  async play(tiles: ReadonlyArray<TileXY>): Promise<void> {
+  /**
+   * Glide the spectral walker along `tiles` (all legs concatenated).
+   * `onStart` hands the walker to the caller (e.g. for a camera follow);
+   * `onEnd` fires after the fade so the caller can restore its camera.
+   */
+  async play(
+    tiles: ReadonlyArray<TileXY>,
+    hooks: {
+      onStart?: (walker: Phaser.GameObjects.Arc) => void;
+      onEnd?: () => void;
+    } = {},
+  ): Promise<void> {
     if (this.playing || tiles.length === 0) return;
     this.playing = true;
     a11yManager.announce(
@@ -44,6 +54,7 @@ export class TrialGhost {
       .circle(start.x, start.y - 8, 8, 0x9fe8f7, 0.85)
       .setDepth(64);
     const trail = this.scene.add.graphics().setDepth(63).setAlpha(0.7);
+    hooks.onStart?.(ghost);
 
     for (let i = 1; i < tiles.length; i++) {
       const from = worldOf(tiles[i - 1]!);
@@ -72,6 +83,7 @@ export class TrialGhost {
       onComplete: () => {
         ghost.destroy();
         trail.destroy();
+        hooks.onEnd?.();
       },
     });
     this.playing = false;
