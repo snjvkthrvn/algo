@@ -399,6 +399,32 @@ export const THRESHING_FLOOR_IMAGE_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Mirror Crossing (P2_1 rebuild) — see
+ * docs/superpowers/specs/2026-06-11-p2-1-mirror-crossing-design.md.
+ * Crates reuse TR_DOCK_CRATE; only the arena + debris are bespoke.
+ */
+export const MIRROR_CROSSING_KEYS = {
+  BACKDROP: "mirror-crossing-backdrop",
+  DEBRIS_SHEET: "mirror-crossing-debris",
+} as const;
+
+export const MIRROR_CROSSING_IMAGE_ASSETS: AssetEntry[] = [
+  {
+    key: MIRROR_CROSSING_KEYS.BACKDROP,
+    path: `${VISUAL_REVAMP_BASE}/mirror_crossing/backdrop.png`,
+  },
+];
+
+export const MIRROR_CROSSING_SHEET_ASSETS: AssetEntry[] = [
+  {
+    key: MIRROR_CROSSING_KEYS.DEBRIS_SHEET,
+    path: `${VISUAL_REVAMP_BASE}/mirror_crossing/debris.png`,
+    frameWidth: 16,
+    frameHeight: 16,
+  },
+];
+
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.TITLE_BG,
