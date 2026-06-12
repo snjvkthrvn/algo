@@ -1478,12 +1478,50 @@ test.describe("Prologue region â€“ visual audit", () => {
     await snap(page, "22-twin-rivers-continue.png");
   });
 
-  test("23 - TR-1 Mirror Walk - encounter layout", async ({ page }) => {
+  test("23 - TR-1 Mirror Crossing - sealed river arena", async ({ page }) => {
     await jumpToScene(page, "P2_1_MirrorWalk", {
       returnScene: "TwinRiversScene",
     });
-    await page.waitForTimeout(700);
-    await snap(page, "23-tr1-mirror-walk-layout.png");
+    // Chamber room: wait out the door seal + entry legend settle.
+    await page.waitForTimeout(4200);
+    await snap(page, "23-tr1-mirror-crossing-sealed.png");
+  });
+
+  test("23b - TR-1 Mirror Crossing - any order trades, waste splashes", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P2_1_MirrorWalk", {
+      returnScene: "TwinRiversScene",
+    });
+    await page.waitForTimeout(4200);
+    // Trade the MIDDLE pair first — the old room only accepted one forced
+    // sequence; the crossing must accept any pair, any order.
+    await page.keyboard.press("3");
+    await page.waitForTimeout(4200);
+    // Trade the same pair again: it is now resolved, so the river keeps
+    // the splash — recorded, debris persisted, values unchanged.
+    await page.keyboard.press("3");
+    await page.waitForTimeout(3600);
+    const state = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("P2_1_MirrorWalk") as Record<
+        string,
+        unknown
+      > | null;
+      const ledger = scene?.["ledger"] as { trades?: number } | undefined;
+      const rack = scene?.["rack"] as
+        | { debrisPositions?: () => unknown[] }
+        | undefined;
+      return {
+        values: [...((scene?.["values"] as number[]) ?? [])],
+        trades: ledger?.trades ?? 0,
+        debris: rack?.debrisPositions?.()?.length ?? 0,
+      };
+    });
+    expect(state.values).toEqual([3, 8, 4, 1, 7, 2]);
+    expect(state.trades).toBe(2);
+    expect(state.debris).toBeGreaterThan(0);
+    await snap(page, "23b-tr1-mirror-crossing-splash.png");
   });
 
   test("24 - TR-2 Pointer Bridge - encounter layout", async ({ page }) => {
