@@ -310,6 +310,36 @@ export const PROLOGUE_CHAMBER_KEYS = {
   SCORCH_DECAL: "prologue-chamber-scorch-decal",
 } as const;
 
+const PROLOGUE_CHAMBER_BASE = "assets/visual_revamp/prologue_chamber";
+
+export const PROLOGUE_CHAMBER_IMAGE_ASSETS: AssetEntry[] = [
+  {
+    key: PROLOGUE_CHAMBER_KEYS.GATE_DOOR,
+    path: `${PROLOGUE_CHAMBER_BASE}/gate_door.png`,
+  },
+  {
+    key: PROLOGUE_CHAMBER_KEYS.PAR_PLAQUE,
+    path: `${PROLOGUE_CHAMBER_BASE}/par_plaque.png`,
+  },
+  {
+    key: PROLOGUE_CHAMBER_KEYS.LEVER,
+    path: `${PROLOGUE_CHAMBER_BASE}/lever.png`,
+  },
+  {
+    key: PROLOGUE_CHAMBER_KEYS.SCORCH_DECAL,
+    path: `${PROLOGUE_CHAMBER_BASE}/scorch_decal.png`,
+  },
+];
+
+export const PROLOGUE_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
+  {
+    key: PROLOGUE_CHAMBER_KEYS.CRACK_DECALS,
+    path: `${PROLOGUE_CHAMBER_BASE}/crack_decals.png`,
+    frameWidth: 32,
+    frameHeight: 32,
+  },
+];
+
 export const GRAIN_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
   {
     key: GRAIN_CHAMBER_KEYS.GRAIN_DECALS,
@@ -1345,6 +1375,7 @@ export const SPRITE_ASSETS: AssetEntry[] = [
   ...DEV_GYM_SPRITE_ASSETS,
   ...OVERWORLD_CHARACTER_SPRITE_ASSETS,
   ...REGION_PROP_SPRITE_ASSETS,
+  ...PROLOGUE_CHAMBER_SHEET_ASSETS,
 ];
 
 export const BOOT_SPRITE_ASSETS: AssetEntry[] = [];
@@ -1399,6 +1430,7 @@ export const IMAGE_ASSETS: AssetEntry[] = [
   ...TWIN_RIVERS_IMAGE_ASSETS,
   ...P0_1_PUZZLE_ASSETS,
   ...GRAIN_CHAMBER_IMAGE_ASSETS,
+  ...PROLOGUE_CHAMBER_IMAGE_ASSETS,
 ];
 
 export const BOOT_IMAGE_ASSETS: AssetEntry[] = [

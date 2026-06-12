@@ -57,6 +57,7 @@ import {
 import { pathPar } from "../../chamber/prologuePar";
 import {
   createPrologueShell,
+  loadPrologueChamberAssets,
   placeRuneLever,
   type RuneLever,
 } from "../../chamber/prologueShell";
@@ -200,6 +201,7 @@ export class FollowThePathScene extends Phaser.Scene {
       const path = getImageAssetPath(key);
       if (path && !this.textures.exists(key)) this.load.image(key, path);
     }
+    loadPrologueChamberAssets(this);
   }
 
   create(): void {
@@ -228,7 +230,9 @@ export class FollowThePathScene extends Phaser.Scene {
     this.ledger = emptyLedger(0);
     this.hintsUsed = 0;
     this.exiting = false;
-    this.decals = createDecalLayer(this, 9, this.reduceMotion);
+    // Above the iso tiles (depth 10..23) and cursor (25), below the trace
+    // ribbon (30) — the floor's damage must stay visible over the tile art.
+    this.decals = createDecalLayer(this, 26, this.reduceMotion);
     this.traceG = this.add.graphics().setDepth(30);
     this.buildPlayerSprite();
 

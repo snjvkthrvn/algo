@@ -48,6 +48,7 @@ import { forkChoicesAlong, routeThrough } from "../../chamber/flowRoute";
 import {
   createPrologueShell,
   launchHomewardPulse,
+  loadPrologueChamberAssets,
   paintExitChannel,
   placeRuneLever,
   type RuneLever,
@@ -133,6 +134,7 @@ export class FlowConsolesScene extends Phaser.Scene {
       const path = getImageAssetPath(key);
       if (path && !this.textures.exists(key)) this.load.image(key, path);
     }
+    loadPrologueChamberAssets(this);
   }
 
   create(): void {

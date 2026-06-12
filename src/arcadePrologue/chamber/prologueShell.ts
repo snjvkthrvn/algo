@@ -7,8 +7,27 @@
 
 import Phaser from "phaser";
 import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
-import { PROLOGUE_CHAMBER_KEYS } from "../../config/assets";
+import {
+  PROLOGUE_CHAMBER_IMAGE_ASSETS,
+  PROLOGUE_CHAMBER_KEYS,
+  PROLOGUE_CHAMBER_SHEET_ASSETS,
+} from "../../config/assets";
 import { audioManager } from "../../core/AudioManager";
+
+/** Texture-guarded preload of the chamber dressing (call from preload()). */
+export function loadPrologueChamberAssets(scene: Phaser.Scene): void {
+  for (const asset of PROLOGUE_CHAMBER_IMAGE_ASSETS) {
+    if (!scene.textures.exists(asset.key))
+      scene.load.image(asset.key, asset.path);
+  }
+  for (const asset of PROLOGUE_CHAMBER_SHEET_ASSETS) {
+    if (!scene.textures.exists(asset.key))
+      scene.load.spritesheet(asset.key, asset.path, {
+        frameWidth: asset.frameWidth ?? 32,
+        frameHeight: asset.frameHeight ?? 32,
+      });
+  }
+}
 
 export function createPrologueShell(
   scene: Phaser.Scene,
