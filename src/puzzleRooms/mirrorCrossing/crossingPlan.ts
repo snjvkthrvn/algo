@@ -46,6 +46,24 @@ export function crossingPar(): number {
   );
 }
 
+/**
+ * Whether the mirror pair anchored at `slot` already holds its reversed
+ * arrangement relative to the START row. Trading a resolved pair is waste
+ * (equal-value pairs and the odd centre are resolved from the start; a
+ * freshly traded pair becomes resolved — trading it back undoes work).
+ */
+export function pairResolved(
+  current: ReadonlyArray<number>,
+  start: ReadonlyArray<number>,
+  slot: number,
+): boolean {
+  const n = current.length;
+  const mirror = n - 1 - slot;
+  return (
+    current[slot] === start[mirror] && current[mirror] === start[slot]
+  );
+}
+
 /** True when `current` is exactly `start` reversed (and not trivially so). */
 export function isReversed(
   current: ReadonlyArray<number>,

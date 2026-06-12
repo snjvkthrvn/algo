@@ -5,6 +5,7 @@ import {
   crossingPar,
   isReversed,
   needsTrade,
+  pairResolved,
   roundPar,
 } from "./crossingPlan";
 
@@ -46,6 +47,30 @@ describe("roundPar / crossingPar", () => {
       0,
     );
     expect(crossingPar()).toBe(expected);
+  });
+});
+
+describe("pairResolved", () => {
+  const start = [3, 8, 1, 4, 7, 2];
+
+  it("a fresh differing pair is not resolved", () => {
+    expect(pairResolved(start, start, 0)).toBe(false);
+  });
+
+  it("a traded pair is resolved — trading it again is waste", () => {
+    const afterTrade = [2, 8, 1, 4, 7, 3];
+    expect(pairResolved(afterTrade, start, 0)).toBe(true);
+    expect(pairResolved(afterTrade, start, 5)).toBe(true); // mirror slot too
+  });
+
+  it("equal-value pairs are resolved from the start", () => {
+    const dupes = [3, 7, 3, 1, 4, 7, 2, 4, 8, 1, 6, 3];
+    expect(pairResolved(dupes, dupes, 0)).toBe(true);
+  });
+
+  it("the odd fixed centre is always resolved", () => {
+    const odd = [9, 1, 5, 3, 6, 4, 7];
+    expect(pairResolved(odd, odd, 3)).toBe(true);
   });
 });
 

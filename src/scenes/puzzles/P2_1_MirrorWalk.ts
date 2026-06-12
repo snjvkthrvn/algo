@@ -52,7 +52,7 @@ import {
   CROSSING_ROUNDS,
   crossingPar,
   isReversed,
-  needsTrade,
+  pairResolved,
 } from "../../puzzleRooms/mirrorCrossing/crossingPlan";
 import {
   mirrorSlot,
@@ -269,7 +269,6 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     const mirror = mirrorSlot(slot, n);
 
     this.ledger = recordTrade(this.ledger);
-    const wasted = !needsTrade(this.values, slot);
 
     if (slot === mirror) {
       // The fixed centre faces itself — pure splash.
@@ -282,11 +281,13 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
       return;
     }
 
-    if (wasted) {
+    if (pairResolved(this.values, this.startValues, slot)) {
+      // Already in its reversed arrangement (equal values, or previously
+      // traded) — trading it is waste, and the river says so.
       this.rack.splash(slot);
       this.cast.onSpillStreak();
       a11yManager.announce(
-        "Those two already mirror each other — the river keeps the splash.",
+        "Those two already stand reversed — the river keeps the splash.",
         false,
       );
       return;
