@@ -383,6 +383,22 @@ export const PAIRING_GROUNDS_SHEET_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Threshing Floor (Boss_Shuffler rebuild) — see
+ * docs/superpowers/specs/2026-06-11-boss-shuffler-threshing-floor-design.md.
+ * Props reuse the four room batches; only the arena backdrop is bespoke.
+ */
+export const THRESHING_FLOOR_KEYS = {
+  BACKDROP: "threshing-floor-backdrop",
+} as const;
+
+export const THRESHING_FLOOR_IMAGE_ASSETS: AssetEntry[] = [
+  {
+    key: THRESHING_FLOOR_KEYS.BACKDROP,
+    path: `${VISUAL_REVAMP_BASE}/threshing_floor/backdrop.png`,
+  },
+];
+
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.TITLE_BG,

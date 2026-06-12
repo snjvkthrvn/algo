@@ -207,9 +207,30 @@ describe("first three regions quality guards", () => {
     expect(twinRivers).toContain("performCurrentRiderBoardStep");
     expect(twinRivers).toContain("handleSerpentRowPress");
 
-    expect(shuffler).toContain("moveBossFocus");
-    expect(shuffler).toContain("activateBossFocus");
-    expect(shuffler).toContain("onTilePress");
+    // Threshing Floor rebuild: the boss is played with the same embodied
+    // verbs as the rooms (walk + act via PuzzleRoom), not a tile cursor.
+    expect(shuffler).toContain("new PuzzleRoom(this");
+    expect(shuffler).toContain("private actBubble");
+    expect(shuffler).toContain("private actHash");
+    expect(shuffler).toContain("private actPair");
+    expect(shuffler).toContain("this.room.player.walkTo");
+  });
+
+  it("Threshing Floor pressures through telegraphed interference, not chrome", () => {
+    const source = readSource("src/scenes/puzzles/Boss_Shuffler.ts");
+
+    // Every action records to the ledger; the boss's sabotage is windUp-
+    // telegraphed and raises par honestly instead of punishing stars.
+    expect(source).toContain("this.ledger = recordTrade(this.ledger);");
+    expect(source).toContain("await this.boss.windUp(");
+    expect(source).toContain("bossPar(this.scrambles)");
+
+    // The triple banner/status/detail tell is gone; transitions carry one
+    // line each and the boss BARKS instead of narrating.
+    expect(source).not.toMatch(/statusText|detailText/);
+    expect(source).not.toMatch(/showLessonCard|NextMoveHint|RiverRow/);
+    // No timers-as-failure: urgency is the boss, not a countdown.
+    expect(source).not.toMatch(/timeLeft|countdown/i);
   });
 
   it("keeps first-three puzzle actions tied into the shared kinetic arena layer", () => {

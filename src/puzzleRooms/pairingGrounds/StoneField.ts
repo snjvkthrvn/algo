@@ -189,6 +189,34 @@ export class StoneField {
     });
   }
 
+  /**
+   * Boss interference: the unspent, uncarried stones trade home positions
+   * and slide there. The values don't change — only where they stand —
+   * so the player re-finds their stone by eye.
+   */
+  scatter(rng: () => number): void {
+    const movable = this.stones.filter((s) => !s.spent && !s.carried);
+    if (movable.length < 2) return;
+    const homes = movable.map((s) => ({ x: s.homeX, y: s.homeY }));
+    for (let i = homes.length - 1; i > 0; i--) {
+      const j = Math.min(i, Math.floor(rng() * (i + 1)));
+      const tmp = homes[i];
+      homes[i] = homes[j];
+      homes[j] = tmp;
+    }
+    movable.forEach((stone, i) => {
+      stone.homeX = homes[i].x;
+      stone.homeY = homes[i].y;
+      this.scene.tweens.add({
+        targets: stone.container,
+        x: stone.homeX,
+        y: stone.homeY,
+        duration: this.reduceMotion ? 60 : 340,
+        ease: "Sine.easeInOut",
+      });
+    });
+  }
+
   /** Return the carried stone to its home after a failed offer rebound. */
   reboundCarried(): void {
     const stone = this.stones.find((s) => s.carried);

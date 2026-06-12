@@ -1,662 +1,555 @@
 /**
- * Boss_Shuffler - Array Plains finale (interactive multi-phase).
+ * Boss_Shuffler — "The Threshing Floor" (Array Plains finale).
  *
- * Three phases combine the region's mechanics:
- *   1. Bubble Storm  - sort a row while the Shuffler periodically scrambles it
- *   2. Hash Storm    - rapid-fire crops; press the bucket key matching index%4
- *   3. Pair Lockdown - find target-sum pairs across three rounds
+ * Chamber rollout (spec:
+ * docs/superpowers/specs/2026-06-11-boss-shuffler-threshing-floor-design.md):
+ * the boss reprises the region's three chamber verbs with the same modules
+ * the rooms taught them in, while the Shuffler physically interferes —
+ * every sabotage telegraphed by a wind-up the player can read and race.
+ * No timers, no lives (VISION §6: fair boss urgency).
  *
- * No multiple choice. Every phase forces the player to perform the algorithm
- * the region taught them.
+ *   I.   Bubble Storm — walk the lane, trade adjacent crates (CrateLane);
+ *        the Shuffler periodically un-sorts one in-order pair (+1 to par —
+ *        the tally never blames the player for the boss's mess).
+ *   II.  Hash Storm — carry crops from the bench into bins (CropBench +
+ *        BinRow); the Shuffler swaps two bins, numbers and all, so homes
+ *        physically move and the player re-aims.
+ *   III. Pair Lockdown — anchor a stone and offer pairs at the small scale
+ *        (StoneField + BalanceScale); each lock scatters the rest.
+ *
+ * Defeat dissolves the boss to husk-dust, the plaque flips to the tally,
+ * and the player WALKS OUT through the unbarred north door.
  */
 
 import Phaser from "phaser";
 import { BasePuzzleScene } from "./BasePuzzleScene";
-import { COLORS, FONTS, SCENE_KEYS } from "../../config/constants";
-import { VISUAL_REVAMP_KEYS, getImageAssetPath } from "../../config/assets";
-import { audioManager } from "../../core/AudioManager";
+import { COLORS, SCENE_KEYS } from "../../config/constants";
+import {
+  VISUAL_REVAMP_KEYS,
+  THRESHING_FLOOR_KEYS,
+  THRESHING_FLOOR_IMAGE_ASSETS,
+  getImageAssetPath,
+} from "../../config/assets";
+import { a11yManager } from "../../core/A11yManager";
 import { JuiceSystem } from "../../systems/JuiceSystem";
-import { RiverRow } from "../../ui/RiverRow";
 import { PuzzleAmbience } from "../../ui/PuzzleAmbience";
+import { ARRAY_PLAINS_PUZZLE_THEME, type PuzzleTheme } from "./puzzleTheme";
+import { playBossEntryBanner } from "../../ui/BossEntryBanner";
+import { playBossPhaseTransition } from "../../ui/BossPhaseTransition";
+import { numberKeyToIndex } from "../../input/NumberKeyCommand";
+import { PuzzleRoom } from "../../puzzleRooms/PuzzleRoom";
 import {
   isSortedAscending,
   swapAdjacent,
-  hashBucket,
-  isTwoSumPair,
 } from "../../data/puzzles/arrayPlainsPuzzleLogic";
-import { numberKeyToIndex } from "../../input/NumberKeyCommand";
-import { mountTransientLegend } from "../../ui/transientLegend";
-import { GamepadActionBridge } from "../../input/GamepadActionBridge";
-import { playBossPhaseTransition } from "../../ui/BossPhaseTransition";
-import { playBossEntryBanner } from "../../ui/BossEntryBanner";
+import {
+  emptyLedger,
+  recordTrade,
+  starsForTrades,
+  type GrainLedger,
+} from "../../puzzleRooms/grainChamber/grainEconomy";
+import { gapIndexAtX } from "../../puzzleRooms/grainChamber/chamberRules";
+import { CrateLane } from "../../puzzleRooms/grainChamber/CrateLane";
+import { GrainFx } from "../../puzzleRooms/grainChamber/GrainFx";
+import { binIndexAtX } from "../../puzzleRooms/sortingMill/millRules";
+import { BinRow } from "../../puzzleRooms/sortingMill/BinRow";
+import { CropBench } from "../../puzzleRooms/sortingMill/CropBench";
+import { stoneIndexAt } from "../../puzzleRooms/pairingGrounds/groundsRules";
+import { StoneField } from "../../puzzleRooms/pairingGrounds/StoneField";
+import { BalanceScale } from "../../puzzleRooms/pairingGrounds/BalanceScale";
+import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
+import {
+  BUBBLE_START,
+  HASH_ARRIVALS,
+  PAIR_TARGETS,
+  bossPar,
+  inOrderAdjacentIndex,
+} from "../../puzzleRooms/threshingFloor/bossPlan";
+import { ShufflerBoss } from "../../puzzleRooms/threshingFloor/ShufflerBoss";
 
-type ShufflerPhase = "bubble" | "hash" | "pair" | "won";
+type FloorPhase = "bubble" | "hash" | "pair" | "won";
 
-const BUBBLE_START = [5, 2, 4, 1, 3];
-
-interface HashRound {
-  crop: string;
-  letterIndex: number;
-}
-
-const HASH_ROUNDS: HashRound[] = [
-  { crop: "WHEAT", letterIndex: 22 },
-  { crop: "BEAN", letterIndex: 1 },
-  { crop: "CORN", letterIndex: 2 },
-  { crop: "RICE", letterIndex: 17 },
-];
-
-interface PairRound {
-  values: ReadonlyArray<number>;
-  target: number;
-}
-
-const PAIR_ROUNDS: PairRound[] = [
-  { values: [3, 6, 2, 7, 4], target: 9 },
-  { values: [5, 1, 8, 4, 2], target: 10 },
-  { values: [7, 11, 6, 13, 4], target: 17 },
-];
+const SCRAMBLE_EVERY_MS = 7000;
+const BIN_SWAP_EVERY_MS = 9000;
+const STONE_REACH = 64;
 
 export class Boss_Shuffler extends BasePuzzleScene {
-  private phase: ShufflerPhase = "bubble";
-  private mistakes = 0;
-  private banner!: Phaser.GameObjects.Text;
-  private statusText!: Phaser.GameObjects.Text;
-  private detailText!: Phaser.GameObjects.Text;
-  private row!: RiverRow;
-  private actionLocked = false;
-  private bossFocusIndex = 0;
+  private phase: FloorPhase = "bubble";
+  private ledger: GrainLedger = emptyLedger(0);
+  private scrambles = 0;
+  private exiting = false;
+  private resolving = false;
+  private boardY = 0;
+  private roomBounds = { x: 0, y: 0, width: 0, height: 0 };
+  private interference: Phaser.Time.TimerEvent | null = null;
 
-  // Bubble phase
+  private room: PuzzleRoom | null = null;
+  private shell!: ChamberShell;
+  private boss!: ShufflerBoss;
+
+  // Phase I
+  private lane: CrateLane | null = null;
+  private fx!: GrainFx;
   private bubbleValues: number[] = [];
-  private chaosTimer: Phaser.Time.TimerEvent | null = null;
-  private chaosCountdownText: Phaser.GameObjects.Text | null = null;
-  private nextChaosIn = 6;
 
-  // Hash phase
-  private hashRoundIdx = 0;
-  private hashCrop: HashRound | null = null;
-  private hashTimer: Phaser.Time.TimerEvent | null = null;
-  private hashTimeLeft = 0;
+  // Phase II
+  private bins: BinRow | null = null;
+  private bench: CropBench | null = null;
+  private arrivalIndex = 0;
 
-  // Pair phase
-  private pairRoundIdx = 0;
-  private pairSelected: number[] = [];
-  private pairTiles: Phaser.GameObjects.Container[] = [];
-  private pairValues: number[] = [];
+  // Phase III
+  private field: StoneField | null = null;
+  private balance: BalanceScale | null = null;
+  private pairIndex = 0;
 
   constructor() {
     super({ key: SCENE_KEYS.BOSS_SHUFFLER });
     this.puzzleId = "boss_shuffler";
     this.puzzleName = "The Shuffler";
     this.puzzleDescription =
-      "Three storms - sort, hash, pair. Outlast the chaos.";
+      "Three storms — sort, route, pair. Outlast the chaos.";
     this.maxHints = 2;
   }
 
-  protected getPuzzleBackdropKey(): string | null {
-    return VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG;
-  }
-
-  // Preload the visible boss figure (Phase 16) — BasePuzzleScene only
-  // loads the puzzle backdrop + chamber frame, not arbitrary asset keys
-  // used in create(). Without this override the figure renders as a
-  // missing-texture and the audit's "visible serpent/shuffler" fix
-  // silently fails.
   preload(): void {
     super.preload();
-    const key = VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE;
-    const path = getImageAssetPath(key);
-    if (path && !this.textures.exists(key)) {
-      this.load.image(key, path);
+    for (const asset of THRESHING_FLOOR_IMAGE_ASSETS) {
+      if (!this.textures.exists(asset.key))
+        this.load.image(asset.key, asset.path);
     }
-  }
-  protected getPuzzleFrameFillAlpha(): number {
-    return 0.03;
-  }
-  protected getConceptName(): string {
-    return "Array Plains Mastery";
-  }
-  // Override title-bar module label so the boss reads as a boss for the
-  // entire encounter (not just during the 2.6s entry banner). Pairs with
-  // BossEntryBanner for full coverage of the "this is the boss" cue.
-  protected getModuleLabel(): string {
-    return "BOSS  •  FARMSTEAD";
+    const figurePath = getImageAssetPath(
+      VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE,
+    );
+    if (
+      figurePath &&
+      !this.textures.exists(VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE)
+    ) {
+      this.load.image(VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE, figurePath);
+    }
+    PuzzleRoom.preload(this);
   }
 
   create(): void {
     super.create();
-    new PuzzleAmbience(this, "farmland", { intensity: 1.1 });
-    const { width, height } = this.cameras.main;
+    new PuzzleAmbience(this, "farmland", { intensity: 0.3 });
 
-    // Boss entry banner — gold accent matches the farmland-harvest palette
-    // and the chaos-storm theme. Banner overlays on top of the mounting
-    // boss mechanic for ~2.6s, then onComplete fires (no-op — boss is
-    // already running underneath).
+    const { width, height } = this.cameras.main;
+    this.boardY = Math.round((height * 0.42) / 8) * 8;
+
+    this.shell = new ChamberShell(this, bossPar(0));
+    this.boss = new ShufflerBoss(this, width / 2, 120);
+    this.fx = new GrainFx(this, this.prefersReducedMotion());
+
+    this.ledger = emptyLedger(0);
+    this.mountRoom();
+    this.shell.seal();
     playBossEntryBanner(this, {
       bossName: "The Shuffler",
       regionTag: "Array Plains finale",
-      thesis: "Three storms — sort, hash, pair. Outlast the chaos.",
-      accentColor: 0xfbbf24,
-      onComplete: () => {},
+      onComplete: () => this.startBubblePhase(),
     });
 
-    // Visible boss figure (Phase 16) — the cloaked Shuffler looms above
-    // the play area, juggling crops. Slow hover tween gives an
-    // unsettled "watching" presence. Scroll factor 0 so it stays
-    // anchored to the camera. Low alpha keeps it from competing with
-    // the puzzle UI but still announces "the boss is here".
-    const shufflerFigure = this.add
-      .image(width / 2, 130, VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE)
-      .setOrigin(0.5, 0.5)
-      .setScale(0.6)
-      .setAlpha(0.78)
-      .setDepth(4)
-      .setScrollFactor(0);
-    this.tweens.add({
-      targets: shufflerFigure,
-      y: 124,
-      duration: 1800,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.easeInOut",
+    this.input.keyboard?.on("keydown", this.onNumberKey, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off("keydown", this.onNumberKey, this);
+      this.interference?.remove();
     });
-
-    this.banner = this.add
-      .text(width / 2, 156, "", {
-        fontSize: "17px",
-        fontFamily: FONTS.RETRO,
-        color: "#e0f8d0",
-        backgroundColor: "#1a1a3e",
-        padding: { x: 14, y: 8 },
-        stroke: "#06b6d4",
-        strokeThickness: 2,
-      })
-      .setOrigin(0.5)
-      .setDepth(21);
-
-    this.statusText = this.createStatusReadout(width / 2, 196, {
-      fontSize: 11,
-    });
-
-    this.detailText = this.add
-      .text(width / 2, 232, "", {
-        fontSize: "14px",
-        fontFamily: FONTS.RETRO,
-        color: "#fbbf24",
-        stroke: "#081820",
-        strokeThickness: 2,
-        // Word-wrap so phase-1 instructions don't overrun the frame. The
-        // 14-px retro font is wide enough that "press 1-4 to swap a tile
-        // with its right neighbour" overran the right edge previously.
-        wordWrap: { width: width - 360, useAdvancedWrap: true },
-        align: "center",
-      })
-      .setOrigin(0.5)
-      .setDepth(20);
-
-    mountTransientLegend(this, height - 76, this.controlsHelp());
-
-    this.input.keyboard?.on("keydown", (event: KeyboardEvent) =>
-      this.onKey(event),
-    );
-    new GamepadActionBridge(this, {
-      left: () => this.moveBossFocus(-1),
-      right: () => this.moveBossFocus(1),
-      action: () => this.activateBossFocus(),
-    });
-
-    this.startBubblePhase();
   }
 
-  private controlsHelp(): string {
-    return "tap row or use [1]-[4]  -  gamepad: move focus + A  -  phase 3 pick two tiles";
-  }
-
-  // -------- Phase 1: Bubble Storm --------
-
-  private startBubblePhase(): void {
-    this.phase = "bubble";
-    this.bubbleValues = [...BUBBLE_START];
-    this.nextChaosIn = 6;
-    this.banner.setText("PHASE I  -  BUBBLE STORM");
-    this.statusText.setText("Sort the row before the Shuffler scrambles it.");
-    this.detailText.setText("press 1-4 to swap with the right neighbour");
-    this.cycleRow(this.bubbleValues);
-    this.setBossFocus(0, Math.max(0, this.bubbleValues.length - 2), "SWAP");
-    this.startChaosTimer();
-  }
-
-  private startChaosTimer(): void {
-    this.chaosCountdownText?.destroy();
-    this.chaosCountdownText = this.add
-      .text(this.cameras.main.width / 2, 268, "", {
-        fontSize: "11px",
-        fontFamily: FONTS.RETRO,
-        color: "#ef4444",
-      })
-      .setOrigin(0.5)
-      .setDepth(20);
-    this.refreshChaosCountdown();
-
-    this.chaosTimer?.destroy();
-    this.chaosTimer = this.time.addEvent({
-      delay: 1000,
-      repeat: -1,
-      callback: () => {
-        this.nextChaosIn--;
-        this.refreshChaosCountdown();
-        if (this.nextChaosIn <= 0) {
-          this.scrambleOnePair();
-          this.nextChaosIn = 6;
-          this.refreshChaosCountdown();
-        }
+  private mountRoom(): void {
+    const { width, height } = this.cameras.main;
+    const floorTop = this.boardY + 48;
+    this.roomBounds = {
+      x: 80,
+      y: floorTop,
+      width: width - 160,
+      height: height - floorTop - 56,
+    };
+    this.room = new PuzzleRoom(this, {
+      bounds: this.roomBounds,
+      spawn: { x: width / 2, y: height - 96 },
+      onAct: () => this.onAct(),
+      onStep: (pos) => {
+        this.bench?.followPlayer(pos.x, pos.y);
+        this.field?.followPlayer(pos.x, pos.y);
+        this.checkDoorExit(pos);
       },
     });
   }
 
-  private refreshChaosCountdown(): void {
-    if (!this.chaosCountdownText) return;
-    this.chaosCountdownText.setText(`SHUFFLE IN ${this.nextChaosIn}s`);
+  private openExitPath(): void {
+    const { height } = this.cameras.main;
+    this.roomBounds.y = 56;
+    this.roomBounds.height = height - 56 - 56;
   }
 
-  private scrambleOnePair(): void {
-    if (this.phase !== "bubble" || this.actionLocked) return;
-    if (this.bubbleValues.length < 2) return;
-    const i = Math.floor(Math.random() * (this.bubbleValues.length - 1));
-    void this.row.animateSwap(i, i + 1);
-    [this.bubbleValues[i], this.bubbleValues[i + 1]] = [
-      this.bubbleValues[i + 1],
-      this.bubbleValues[i],
-    ];
-    JuiceSystem.cameraShake(this, 100, 0.0035);
-    audioManager.playWrongTone();
-    this.statusText.setText("The Shuffler twisted the row!");
-  }
-
-  private async tryBubbleSwap(leftIndex: number): Promise<void> {
-    if (this.phase !== "bubble" || this.actionLocked) return;
-    if (leftIndex < 0 || leftIndex >= this.bubbleValues.length - 1) return;
-
-    this.actionLocked = true;
-    const wasUseful =
-      this.bubbleValues[leftIndex] > this.bubbleValues[leftIndex + 1];
-    await this.row.animateSwap(leftIndex, leftIndex + 1);
-    this.bubbleValues = swapAdjacent(this.bubbleValues, leftIndex);
-    audioManager.playTone(wasUseful ? 480 : 200, 90, "square");
-    if (!wasUseful) this.mistakes++;
-
-    this.actionLocked = false;
-    if (isSortedAscending(this.bubbleValues)) {
-      this.completeBubblePhase();
+  private checkDoorExit(pos: { x: number; y: number }): void {
+    if (this.phase !== "won" || this.exiting) return;
+    const { width } = this.cameras.main;
+    if (Math.abs(pos.x - width / 2) < 56 && pos.y < 88) {
+      this.exiting = true;
+      a11yManager.announce("You step out of the threshing floor.", true);
+      this.onPuzzleComplete(
+        starsForTrades(this.ledger.trades, bossPar(this.scrambles)),
+      );
     }
   }
 
-  private completeBubblePhase(): void {
-    this.chaosTimer?.destroy();
-    this.chaosTimer = null;
-    this.chaosCountdownText?.destroy();
-    this.chaosCountdownText = null;
-    audioManager.playCorrectTone();
-    JuiceSystem.correctBurst(
-      this,
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
+  // ── Phase I — Bubble Storm ────────────────────────────────────────────
+
+  private startBubblePhase(): void {
+    this.phase = "bubble";
+    this.lane = new CrateLane(this, this.boardY);
+    this.bubbleValues = [...BUBBLE_START];
+    this.lane.setRow(this.bubbleValues);
+    a11yManager.announce(
+      "Phase one: the row is scrambled. Trade neighbours to settle it — the Shuffler will fight back.",
+      true,
     );
-    // Phase transition banner — the Shuffler is shifting from sort to map.
-    // Gold accent matches the hashing palette and foreshadows the bucket UI.
+    this.interference = this.time.addEvent({
+      delay: SCRAMBLE_EVERY_MS,
+      loop: true,
+      callback: () => void this.bossScramble(),
+    });
+  }
+
+  private async bossScramble(): Promise<void> {
+    if (this.phase !== "bubble" || !this.lane) return;
+    if (this.lane.isAnimating || this.resolving) return;
+    if (isSortedAscending(this.bubbleValues)) return;
+    const gap = inOrderAdjacentIndex(this.bubbleValues, Math.random);
+    if (gap < 0) return;
+    const center = this.lane.crateCenter(gap);
+    if (!center) return;
+    await this.boss.windUp(center.x, center.y);
+    // Re-check: the player may have raced the telegraph.
+    if (this.phase !== "bubble" || !this.lane || this.lane.isAnimating) return;
+    if (this.bubbleValues[gap] >= this.bubbleValues[gap + 1]) return;
+    this.bubbleValues = swapAdjacent(this.bubbleValues, gap);
+    this.scrambles++;
+    void this.lane.animateTrade(gap);
+    if (this.scrambles % 2 === 1) this.boss.bark();
+    a11yManager.announce("The Shuffler scrambles a pair!", false);
+  }
+
+  private async finishBubblePhase(): Promise<void> {
+    this.resolving = true;
+    this.interference?.remove();
+    this.interference = null;
+    await this.lane?.bloomCascade(0);
+    this.lane?.setRow([]);
+    this.lane = null;
     playBossPhaseTransition(this, {
       phaseNumber: "II",
       phaseName: "HASH STORM",
-      patternHint: "Crops fall fast. The bucket is the answer.",
-      accentColor: 0xfbbf24,
       onComplete: () => this.startHashPhase(),
     });
   }
 
-  // -------- Phase 2: Hash Storm --------
+  // ── Phase II — Hash Storm ─────────────────────────────────────────────
 
   private startHashPhase(): void {
     this.phase = "hash";
-    this.hashRoundIdx = 0;
-    this.banner.setText("PHASE II  -  HASH STORM");
-    this.statusText.setText("Compute index % 4 and slam the bucket key.");
-    this.cycleHashBuckets();
-    this.setBossFocus(0, 3, "PICK");
-    this.queueNextHashCrop();
-  }
-
-  private cycleHashBuckets(): void {
-    if (this.row) this.row.destroy();
-    this.row = new RiverRow(this, {
-      values: ["B 0", "B 1", "B 2", "B 3"],
-      centerX: this.cameras.main.width / 2,
-      y: this.cameras.main.height / 2 + 64,
-      tileSize: 96,
-      gap: 16,
-      showIndices: false,
-      onTilePress: (index) => this.tryHashChoice(index),
+    this.arrivalIndex = 0;
+    this.bins = new BinRow(this, this.boardY, this.prefersReducedMotion());
+    this.bins.setBins(4);
+    this.bench = new CropBench(this, 152, this.boardY + 120);
+    this.resolving = false;
+    a11yManager.announce(
+      "Phase two: carry each crop to its bin — and watch the bins; the Shuffler moves them.",
+      true,
+    );
+    void this.nextArrival();
+    this.interference = this.time.addEvent({
+      delay: BIN_SWAP_EVERY_MS,
+      loop: true,
+      callback: () => void this.bossBinSwap(),
     });
   }
 
-  private queueNextHashCrop(): void {
-    if (this.hashRoundIdx >= HASH_ROUNDS.length) {
-      this.completeHashPhase();
-      return;
-    }
-    this.hashCrop = HASH_ROUNDS[this.hashRoundIdx];
-    this.hashTimeLeft = 5;
-    this.detailText.setText(
-      `${this.hashCrop.crop}: index ${this.hashCrop.letterIndex}   -   bucket = ?`,
-    );
-    this.detailText.setColor("#fbbf24");
-
-    this.hashTimer?.destroy();
-    this.hashTimer = this.time.addEvent({
-      delay: 1000,
-      repeat: -1,
-      callback: () => {
-        this.hashTimeLeft--;
-        const c = this.hashCrop;
-        if (c) {
-          this.detailText.setText(
-            `${c.crop}: index ${c.letterIndex}   -   ${this.hashTimeLeft}s`,
-          );
-        }
-        if (this.hashTimeLeft <= 0) this.handleHashTimeout();
-      },
-    });
+  private async nextArrival(): Promise<void> {
+    const arrival = HASH_ARRIVALS[this.arrivalIndex];
+    if (!arrival || !this.bench) return;
+    await this.bench.arrive(arrival.crop, arrival.weight);
   }
 
-  private tryHashChoice(bucketIndex: number): void {
-    if (this.phase !== "hash" || !this.hashCrop) return;
-    const crop = this.hashCrop;
-    this.hashCrop = null;
-    const expected = hashBucket(crop.letterIndex, 4);
-    this.hashTimer?.destroy();
-    this.hashTimer = null;
-
-    if (bucketIndex === expected) {
-      this.row.pulseTile(bucketIndex, COLORS.SUCCESS);
-      audioManager.playCorrectTone();
-      this.detailText.setText(
-        `${crop.letterIndex} % 4 = ${expected}  -  routed.`,
-      );
-      this.detailText.setColor("#88c070");
-    } else {
-      this.row.flashTile(bucketIndex);
-      this.row.pulseTile(expected, COLORS.SUCCESS);
-      audioManager.playWrongTone();
-      this.mistakes++;
-      this.detailText.setText(
-        `${crop.letterIndex} % 4 = ${expected}  -  not bucket ${bucketIndex}.`,
-      );
-      this.detailText.setColor("#ef4444");
-    }
-    this.hashRoundIdx++;
-    this.time.delayedCall(900, () => this.queueNextHashCrop());
+  private async bossBinSwap(): Promise<void> {
+    if (this.phase !== "hash" || !this.bins) return;
+    if (this.bins.isBusy || this.resolving) return;
+    const slotA = Phaser.Math.Between(0, 3);
+    let slotB = Phaser.Math.Between(0, 3);
+    if (slotA === slotB) slotB = (slotB + 1) % 4;
+    const a = this.bins.binCenter(this.bins.binAtSlot(slotA));
+    if (!a) return;
+    await this.boss.windUp(a.x, a.y);
+    if (this.phase !== "hash" || !this.bins || this.bins.isBusy) return;
+    await this.bins.swapSlots(slotA, slotB);
+    this.boss.bark("Keep up. The bins answer to ME.");
+    a11yManager.announce("The Shuffler swaps two bins!", false);
   }
 
-  private handleHashTimeout(): void {
-    if (!this.hashCrop) return;
-    const crop = this.hashCrop;
-    this.hashCrop = null;
-    const expected = hashBucket(crop.letterIndex, 4);
-    this.row.flashTile(expected);
-    audioManager.playWrongTone();
-    this.mistakes++;
-    this.detailText.setText(
-      `Time's up. ${crop.letterIndex} % 4 was ${expected}.`,
-    );
-    this.detailText.setColor("#ef4444");
-    this.hashRoundIdx++;
-    this.hashTimer?.destroy();
-    this.hashTimer = null;
-    this.time.delayedCall(900, () => this.queueNextHashCrop());
-  }
-
-  private completeHashPhase(): void {
-    this.hashTimer?.destroy();
-    this.hashTimer = null;
-    audioManager.playCorrectTone();
-    JuiceSystem.correctBurst(
-      this,
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-    );
-    // Final phase shift — pair lockdown uses complement lookup (two-sum).
-    // Cyan accent signals "memory-of-what-you-saw" tools the player used in AP_4.
+  private finishHashPhase(): void {
+    this.resolving = true;
+    this.interference?.remove();
+    this.interference = null;
+    this.bins?.setBins(0);
+    this.bins = null;
     playBossPhaseTransition(this, {
       phaseNumber: "III",
       phaseName: "PAIR LOCKDOWN",
-      patternHint: "Find the two tiles that complete the target weight.",
-      accentColor: 0x06b6d4,
       onComplete: () => this.startPairPhase(),
     });
   }
 
-  // -------- Phase 3: Pair Lockdown --------
+  // ── Phase III — Pair Lockdown ─────────────────────────────────────────
 
   private startPairPhase(): void {
     this.phase = "pair";
-    this.pairRoundIdx = 0;
-    this.banner.setText("PHASE III  -  PAIR LOCKDOWN");
-    this.statusText.setText("Pick two tiles whose values reach the target.");
-    if (this.row) this.row.destroy();
-    this.queueNextPairRound();
+    this.pairIndex = 0;
+    const { width } = this.cameras.main;
+    this.field = new StoneField(this, this.boardY, this.prefersReducedMotion());
+    this.balance = new BalanceScale(this, width / 2, 196);
+    this.mountPairRound();
+    this.resolving = false;
+    a11yManager.announce(
+      "Phase three: the scale wants its numbers. Lock the pairs while the stones keep moving.",
+      true,
+    );
   }
 
-  private queueNextPairRound(): void {
-    if (this.pairRoundIdx >= PAIR_ROUNDS.length) {
-      this.completePairPhase();
+  private mountPairRound(): void {
+    const round = PAIR_TARGETS[this.pairIndex];
+    if (!round || !this.field || !this.balance) return;
+    this.field.setRound(round.values);
+    this.balance.setTarget(round.target);
+    a11yManager.announce(`The scale asks for ${round.target}.`, true);
+  }
+
+  // ── Shared input ──────────────────────────────────────────────────────
+
+  private onNumberKey(event: KeyboardEvent): void {
+    if (!this.room) return;
+    if (this.phase === "bubble" && this.lane) {
+      const left = numberKeyToIndex(event.key, this.bubbleValues.length - 1);
+      if (left === null) return;
+      const geo = this.lane.geometry();
+      const x =
+        geo.startX + geo.crateW + geo.gapW / 2 + left * (geo.crateW + geo.gapW);
+      this.room.player.walkTo(x, this.boardY + 72, () => this.onAct());
       return;
     }
-    const round = PAIR_ROUNDS[this.pairRoundIdx];
-    this.pairValues = [...round.values];
-    this.pairSelected = [];
-    this.detailText.setText(`TARGET = ${round.target}`);
-    this.detailText.setColor("#fbbf24");
-    this.renderPairTiles();
+    if (this.phase === "hash" && this.bins) {
+      const slot = numberKeyToIndex(event.key, 4);
+      if (slot === null) return;
+      const center = this.bins.binCenter(this.bins.binAtSlot(slot));
+      if (!center) return;
+      this.room.player.walkTo(center.x, this.boardY + 72, () => this.onAct());
+      return;
+    }
+    if (this.phase === "pair" && this.field) {
+      const round = PAIR_TARGETS[this.pairIndex];
+      if (!round) return;
+      const index = numberKeyToIndex(event.key, round.values.length);
+      if (index === null || this.field.isSpent(index)) return;
+      const center = this.field.stoneCenter(index);
+      if (!center) return;
+      this.room.player.walkTo(center.x, center.y + 44, () => this.onAct());
+    }
   }
 
-  private renderPairTiles(): void {
-    for (const t of this.pairTiles) t.destroy();
-    this.pairTiles = [];
+  private onAct(): void {
+    if (this.resolving) return;
+    switch (this.phase) {
+      case "bubble":
+        this.actBubble();
+        return;
+      case "hash":
+        this.actHash();
+        return;
+      case "pair":
+        this.actPair();
+        return;
+      case "won":
+        return;
+    }
+  }
 
-    const { width, height } = this.cameras.main;
-    const startX = width / 2 - (this.pairValues.length - 1) * 60;
-    const y = height / 2 + 80;
-
-    this.pairValues.forEach((value, i) => {
-      const container = this.add.container(startX + i * 120, y).setDepth(20);
-      const shadow = this.add.rectangle(3, 4, 84, 84, 0x081820, 0.32);
-      const box = this.add
-        .rectangle(0, 0, 84, 84, COLORS.FRAME_BG, 0.96)
-        .setStrokeStyle(3, COLORS.FRAME_BORDER_LIGHT, 1)
-        .setInteractive({ useHandCursor: true });
-      const label = this.add
-        .text(0, 0, String(value), {
-          fontSize: "24px",
-          fontFamily: FONTS.RETRO,
-          color: "#081820",
-        })
-        .setOrigin(0.5);
-      const key = this.add
-        .text(0, 50, `${i + 1}`, {
-          fontSize: "8px",
-          fontFamily: FONTS.RETRO,
-          color: "#346856",
-        })
-        .setOrigin(0.5);
-      container.add([shadow, box, label, key]);
-
-      box.on("pointerdown", () => this.pickPairTile(i));
-      this.pairTiles.push(container);
+  private actBubble(): void {
+    if (!this.lane || this.lane.isAnimating) return;
+    const playerX = this.room?.player.getPosition().x ?? -1;
+    const gap = gapIndexAtX(playerX, this.lane.geometry());
+    if (gap < 0) return;
+    this.bubbleValues = swapAdjacent(this.bubbleValues, gap);
+    this.ledger = recordTrade(this.ledger);
+    const center = this.lane.crateCenter(gap);
+    if (center) {
+      this.fx.spill(center.x, center.y);
+      this.emitPuzzleActionPulse(center.x, center.y, "neutral");
+    }
+    void this.lane.animateTrade(gap).then(() => {
+      if (isSortedAscending(this.bubbleValues)) void this.finishBubblePhase();
     });
   }
 
-  private pickPairTile(index: number): void {
-    if (this.phase !== "pair") return;
-    if (this.pairSelected.includes(index)) return;
-    this.pairSelected.push(index);
-    const tile = this.pairTiles[index];
-    const box = tile.list[1] as Phaser.GameObjects.Rectangle;
-    box.setStrokeStyle(3, COLORS.CYAN_GLOW, 1);
-
-    if (this.pairSelected.length === 2) {
-      const round = PAIR_ROUNDS[this.pairRoundIdx];
-      const values = [
-        this.pairValues[this.pairSelected[0]],
-        this.pairValues[this.pairSelected[1]],
-      ];
-      const ok = isTwoSumPair(this.pairValues, round.target, values);
-      if (ok) {
-        for (const i of this.pairSelected) {
-          (
-            this.pairTiles[i].list[1] as Phaser.GameObjects.Rectangle
-          ).setStrokeStyle(3, COLORS.SUCCESS, 1);
-        }
-        audioManager.playCorrectTone();
-        JuiceSystem.correctBurst(
-          this,
-          this.cameras.main.width / 2,
-          this.cameras.main.height / 2,
-        );
-        this.pairRoundIdx++;
-        this.time.delayedCall(900, () => this.queueNextPairRound());
-      } else {
-        for (const i of this.pairSelected) {
-          (
-            this.pairTiles[i].list[1] as Phaser.GameObjects.Rectangle
-          ).setStrokeStyle(3, 0xef4444, 1);
-        }
-        audioManager.playWrongTone();
-        JuiceSystem.cameraShake(this, 80, 0.0024);
-        this.mistakes++;
-        this.detailText.setText(
-          `Sum was ${values[0] + values[1]}, not ${round.target}.`,
-        );
-        this.detailText.setColor("#ef4444");
-        this.time.delayedCall(700, () => {
-          for (const i of this.pairSelected) {
-            (
-              this.pairTiles[i].list[1] as Phaser.GameObjects.Rectangle
-            ).setStrokeStyle(3, COLORS.FRAME_BORDER_LIGHT, 1);
-          }
-          this.pairSelected = [];
-          this.detailText.setText(`TARGET = ${round.target}`);
-          this.detailText.setColor("#fbbf24");
-        });
+  private actHash(): void {
+    if (!this.bins || !this.bench || this.bins.isBusy) return;
+    const pos = this.room?.player.getPosition();
+    if (!pos) return;
+    if (!this.bench.isCarrying) {
+      const bench = this.bench.benchPosition;
+      if (
+        Math.abs(pos.x - bench.x) < 72 &&
+        Math.abs(pos.y - bench.y) < 84 &&
+        this.bench.take()
+      ) {
+        a11yManager.announce("You pick the crop up.", false);
       }
+      return;
     }
+    const arrival = HASH_ARRIVALS[this.arrivalIndex];
+    if (!arrival) return;
+    const slot = binIndexAtX(pos.x, this.bins.geometry());
+    if (slot < 0) return;
+    const binLabel = this.bins.binAtSlot(slot);
+    const correct = binLabel === arrival.bin;
+    this.ledger = recordTrade(this.ledger);
+    void this.bins
+      .toss(binLabel, correct, arrival.crop, pos.x, pos.y - 30)
+      .then(() => {
+        if (!correct) {
+          a11yManager.announce(
+            `Bin ${binLabel + 1} spat the ${arrival.crop} back out.`,
+            false,
+          );
+          return;
+        }
+        this.bench?.consumeCarried();
+        this.arrivalIndex++;
+        if (this.arrivalIndex >= HASH_ARRIVALS.length) {
+          this.finishHashPhase();
+          return;
+        }
+        void this.nextArrival();
+      });
   }
 
-  private completePairPhase(): void {
+  private actPair(): void {
+    if (!this.field || !this.balance) return;
+    const round = PAIR_TARGETS[this.pairIndex];
+    const pos = this.room?.player.getPosition();
+    if (!round || !pos) return;
+    const addressed = stoneIndexAt(
+      pos.x,
+      pos.y - 24,
+      this.field.centers(),
+      STONE_REACH,
+    );
+    const carriedIndex = this.field.carriedIndex();
+    if (carriedIndex < 0) {
+      if (addressed >= 0) this.field.pickUp(addressed);
+      return;
+    }
+    if (addressed < 0) {
+      this.field.putDown();
+      return;
+    }
+    const anchor = this.field.valueOf(carriedIndex);
+    const partner = this.field.valueOf(addressed);
+    if (anchor === null || partner === null) return;
+    this.resolving = true;
+    this.ledger = recordTrade(this.ledger);
+    void this.balance.offer(anchor, partner, round.target).then((settled) => {
+      if (!settled) {
+        const center = this.field?.stoneCenter(addressed);
+        if (center) this.field?.crackChip(center.x, center.y);
+        this.field?.reboundCarried();
+        this.resolving = false;
+        return;
+      }
+      this.field?.spendPair(carriedIndex, addressed);
+      this.pairIndex++;
+      if (this.pairIndex >= PAIR_TARGETS.length) {
+        void this.winFloor();
+        return;
+      }
+      this.mountPairRound();
+      this.field?.scatter(Math.random);
+      this.boss.bark("Stand STILL, stones!");
+      this.resolving = false;
+    });
+  }
+
+  // ── Defeat ────────────────────────────────────────────────────────────
+
+  private async winFloor(): Promise<void> {
     this.phase = "won";
-    this.cameras.main.flash(420, 224, 248, 208);
-    const stars = this.mistakes <= 1 ? 3 : this.mistakes <= 4 ? 2 : 1;
-    this.onPuzzleComplete(stars);
-  }
-
-  // -------- Helpers --------
-
-  private cycleRow(values: ReadonlyArray<string | number>): void {
-    if (this.row) {
-      this.cameras.main.flash(220, 6, 182, 212);
-      this.row.destroy();
-    }
-    this.row = new RiverRow(this, {
-      values,
-      centerX: this.cameras.main.width / 2,
-      y: this.cameras.main.height / 2 + 64,
-      tileSize: 64,
-      gap: 8,
-      onTilePress: (index) => {
-        const maxLeft = Math.max(0, this.bubbleValues.length - 2);
-        void this.tryBubbleSwap(Math.min(index, maxLeft));
-      },
-    });
-  }
-
-  private setBossFocus(index: number, maxIndex: number, label: string): void {
-    this.bossFocusIndex = Phaser.Math.Clamp(index, 0, Math.max(0, maxIndex));
-    this.row.setCursor("ACT", {
-      label,
-      color: COLORS.GOLD_ACCENT,
-      index: this.bossFocusIndex,
-      side: "bottom",
-    });
-  }
-
-  private moveBossFocus(direction: -1 | 1): void {
-    if (this.phase === "bubble") {
-      this.setBossFocus(
-        this.bossFocusIndex + direction,
-        this.bubbleValues.length - 2,
-        "SWAP",
+    const { width } = this.cameras.main;
+    JuiceSystem.correctBurst(this, width / 2, 150);
+    await this.boss.defeat();
+    this.shell.unbar(() => {
+      this.openExitPath();
+      this.shell.setPlaqueTally(this.ledger.trades, bossPar(this.scrambles));
+      a11yManager.announce(
+        `The Shuffler dissolves. ${this.ledger.trades} actions against a floor's best of ${bossPar(this.scrambles)}. ` +
+          "Walk out through the north door.",
+        true,
       );
-      audioManager.playTone(560, 35, "triangle");
-      return;
-    }
-    if (this.phase === "hash") {
-      this.setBossFocus(this.bossFocusIndex + direction, 3, "PICK");
-      audioManager.playTone(560, 35, "triangle");
-    }
+      this.resolving = false;
+    });
   }
 
-  private activateBossFocus(): void {
-    if (this.phase === "bubble") {
-      void this.tryBubbleSwap(this.bossFocusIndex);
-      return;
-    }
-    if (this.phase === "hash") {
-      this.tryHashChoice(this.bossFocusIndex);
-    }
+  update(time: number, delta: number): void {
+    this.room?.update(time, delta);
   }
 
-  private onKey(event: KeyboardEvent): void {
-    if (this.phase === "bubble") {
-      const idx = numberKeyToIndex(event.key, this.bubbleValues.length - 1);
-      if (idx !== null) void this.tryBubbleSwap(idx);
-      return;
-    }
-    if (this.phase === "hash") {
-      const idx = numberKeyToIndex(event.key, 4);
-      if (idx !== null) this.tryHashChoice(idx);
-      return;
-    }
-    if (this.phase === "pair") {
-      const idx = numberKeyToIndex(event.key, this.pairValues.length);
-      if (idx !== null) this.pickPairTile(idx);
-    }
-  }
-
+  /** H-key hints — phase-aware, plain words. */
   protected displayHint(hintNumber: number): void {
-    if (this.phase === "bubble") {
-      this.showMessage(
-        hintNumber === 1
-          ? "Bubble sort: only swap when left > right. The Shuffler will retry."
-          : "Sort fast - the Shuffler scrambles a random pair every 6s.",
-        COLORS.GOLD_ACCENT,
-      );
-      return;
+    const byPhase: Record<FloorPhase, string[]> = {
+      bubble: [
+        "Race the wind-up: his ring marks the pair he'll ruin.",
+        "Settle the row the way the chamber taught you — neighbour by neighbour.",
+      ],
+      hash: [
+        "The number travels WITH the bin. Aim for the number, not the spot.",
+        "Carry, walk, toss — same as the mill.",
+      ],
+      pair: [
+        "Hold one stone and seek exactly what it needs.",
+        "They move, but they don't change. Track the values.",
+      ],
+      won: ["The door is open."],
+    };
+    const messages = byPhase[this.phase];
+    this.showMessage(
+      messages[Math.min(hintNumber, messages.length) - 1] ?? messages[0],
+      COLORS.GOLD_ACCENT,
+    );
+  }
+
+  protected getConceptName(): string {
+    return "Collection Mastery";
+  }
+
+  protected getPuzzleFrameFillAlpha(): number {
+    return 0;
+  }
+
+  protected getPuzzleTheme(): PuzzleTheme {
+    return ARRAY_PLAINS_PUZZLE_THEME;
+  }
+
+  protected getPuzzleBackdropKey(): string | null {
+    if (this.textures.exists(THRESHING_FLOOR_KEYS.BACKDROP)) {
+      return THRESHING_FLOOR_KEYS.BACKDROP;
     }
-    if (this.phase === "hash") {
-      this.showMessage(
-        hintNumber === 1
-          ? "bucket = letterIndex modulo 4. Watch the formula."
-          : `Current: ${this.hashCrop?.letterIndex} % 4 = ${this.hashCrop ? hashBucket(this.hashCrop.letterIndex, 4) : "?"}`,
-        COLORS.GOLD_ACCENT,
-      );
-      return;
-    }
-    if (this.phase === "pair") {
-      this.showMessage(
-        hintNumber === 1
-          ? "For each value v, you need a partner = target - v."
-          : "Scan left to right; check each later tile for the complement.",
-        COLORS.GOLD_ACCENT,
-      );
-    }
+    return VISUAL_REVAMP_KEYS.PUZZLE_ARRAY_ACTION_ARENA_BG;
+  }
+
+  private prefersReducedMotion(): boolean {
+    return (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
   }
 }

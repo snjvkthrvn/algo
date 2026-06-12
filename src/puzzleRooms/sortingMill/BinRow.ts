@@ -34,6 +34,8 @@ export class BinRow {
   private rowY: number;
   private reduceMotion: boolean;
   private busy = false;
+  /** Slot → bin index. Identity until someone (a boss) swaps slots. */
+  private order: number[] = [];
 
   constructor(scene: Phaser.Scene, rowY: number, reduceMotion: boolean) {
     this.scene = scene;
@@ -70,8 +72,56 @@ export class BinRow {
   setBins(count: number): void {
     this.bins.forEach((bin) => bin.container.destroy());
     this.bins = [];
-    for (let i = 0; i < count; i++) this.bins.push(this.buildBin(i));
+    this.order = [];
+    for (let i = 0; i < count; i++) {
+      this.bins.push(this.buildBin(i));
+      this.order.push(i);
+    }
     this.layout();
+  }
+
+  /** Which bin (by label index) currently sits at a physical slot. */
+  binAtSlot(slot: number): number {
+    return this.order[slot] ?? -1;
+  }
+
+  /**
+   * Boss interference: two bins physically slide past each other, taking
+   * their painted numbers with them — homes follow the label, so the
+   * player re-aims by eye. No-op while a toss is animating.
+   */
+  swapSlots(slotA: number, slotB: number): Promise<void> {
+    const binA = this.bins[this.order[slotA]];
+    const binB = this.bins[this.order[slotB]];
+    if (!binA || !binB || this.busy || slotA === slotB)
+      return Promise.resolve();
+    this.busy = true;
+    const tmp = this.order[slotA];
+    this.order[slotA] = this.order[slotB];
+    this.order[slotB] = tmp;
+    audioManager.playTone(220, 120, "sawtooth");
+    const move = (bin: Bin, x: number, lift: number): Promise<void> =>
+      new Promise((resolve) =>
+        this.scene.tweens.chain({
+          targets: bin.container,
+          tweens: [
+            { y: this.rowY - lift, duration: 140, ease: "Quad.easeOut" },
+            {
+              x,
+              duration: this.reduceMotion ? 60 : 260,
+              ease: "Sine.easeInOut",
+            },
+            { y: this.rowY, duration: 120, ease: "Quad.easeIn" },
+          ],
+          onComplete: () => resolve(),
+        }),
+      );
+    return Promise.all([
+      move(binA, binB.container.x, 26),
+      move(binB, binA.container.x, 12),
+    ]).then(() => {
+      this.busy = false;
+    });
   }
 
   private buildBin(index: number): Bin {
