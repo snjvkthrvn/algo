@@ -342,11 +342,11 @@ export const CURRENT_RIDER_ROUNDS: ReadonlyArray<CurrentRiderRound> = [
     letters: ['R', 'I', 'V', 'E', 'R', 'B', 'A', 'N', 'K'],
     label: 'TWIST',
     lesson: {
-      title: 'The window adapts',
+      title: 'The net adapts',
       subtitle: 'Round 2 · Twist',
       bullets: [
-        "L never goes backwards — once a position is left behind, it stays behind.",
-        'That\'s why it\'s O(n): each pointer crosses each letter at most once.',
+        'The tie never pays back in — what leaves the net stays gone.',
+        'Each float passes through your net once. That is the whole trick.',
         'No restarts. No double-checks.',
       ],
     },
@@ -355,14 +355,13 @@ export const CURRENT_RIDER_ROUNDS: ReadonlyArray<CurrentRiderRound> = [
     letters: ['M', 'I', 'R', 'R', 'O', 'R', 'W', 'A', 'T', 'E', 'R'],
     label: 'MASTER',
     lesson: {
-      title: 'Index lookup ⇒ O(1) shrink',
+      title: 'Remember where twins last stood',
       subtitle: 'Round 3 · Master',
       bullets: [
-        'When R sees a duplicate, you can jump L past the previous occurrence.',
-        'A hash map of letter → last-index makes that jump O(1).',
-        'Total time: still O(n), even with the jumps.',
+        'When a twin arrives, the tie can pay out straight past its old place.',
+        'Remembering where each letter last stood makes that one motion.',
+        'One ride, even with the jumps.',
       ],
-      comparison: 'check-all-substrings O(n³)  ·  sliding window O(n)',
     },
   },
   // MASTER+: 16 letters with three runs of duplicates that force L to jump

@@ -591,4 +591,59 @@ export const CODEX_ENTRIES: CodexEntry[] = [
       },
     ],
   },
+  {
+    id: 'advanced_pointers',
+    algorithmName: 'Variable Sliding Window - Longest Unique Run',
+    category: AlgorithmType.ADVANCED_POINTERS,
+    unlockedBy: 'tr_4',
+    difficulty: Difficulty.HARD,
+    relatedConcepts: ['sliding-window', 'two-pointers', 'hash-maps'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'The net grew while the catch stayed clean, and twins tangled it the instant they met.',
+          'You paid the left tie out just enough to clear each snag, and never rode the same water twice.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'A variable window grows from the right and shrinks from the left only when a constraint breaks — here, a repeated letter inside the window.',
+          'Track the best window seen during one pass; the answer is whatever the ride proved longest.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: [
+          '1. Extend the right edge one item at a time',
+          '2. While the window breaks the rule, shrink from the left',
+          '3. Record the window whenever it beats the best so far',
+          '4. Stop at the end of the stream — the recorded best is the answer',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'The Cost',
+        content: [
+          'Each element enters the window once and leaves at most once, so the whole ride is O(n) — even though the window keeps changing size.',
+          'Checking every substring from scratch is O(n³); even checking every start point is O(n²). The one-pass ride does it in n.',
+          'A hash map of letter → last index upgrades the shrink: instead of paying the tie out one float at a time, jump the left edge straight past the previous twin in O(1).',
+        ],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['Longest unique substring', 'Rate limiting windows', 'Stream deduplication spans', 'Interview staple patterns'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Current Sense - Growing and shrinking ranges now feel like one continuous ride.',
+      },
+    ],
+  },
 ];
