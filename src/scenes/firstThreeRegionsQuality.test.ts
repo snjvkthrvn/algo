@@ -201,7 +201,12 @@ describe("first three regions quality guards", () => {
     expect(riverRow).toContain("emitTilePressPulse");
     expect(riverRow).toContain("emitPuzzleActionPulse");
 
-    expect(twinRivers).toContain("performMirrorWalkBoardStep");
+    // P2_1 extracted to its chamber-room file (Mirror Crossing); the barrel
+    // keeps re-exporting it. The remaining choice scenes still own their
+    // board-step handlers until their own chamber rollouts land.
+    expect(twinRivers).toContain(
+      'export { P2_1_MirrorWalk } from "./P2_1_MirrorWalk";',
+    );
     expect(twinRivers).toContain("performPointerBridgeBoardStep");
     expect(twinRivers).toContain("performFixedWindowBoardStep");
     expect(twinRivers).toContain("performCurrentRiderBoardStep");

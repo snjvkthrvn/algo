@@ -8,29 +8,34 @@ const scenePath = resolve(
   "TwinRiversChoiceScenes.ts",
 );
 
-describe("Mirror Walk controls", () => {
-  it("requires explicit swap, left advance, and right retreat actions", () => {
-    const source = readFileSync(scenePath, "utf8");
+describe("Mirror Crossing controls", () => {
+  const crossingPath = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "P2_1_MirrorWalk.ts",
+  );
 
-    // Keybinding label rewritten to clarify that D and J each control one of
-    // two pointers (left-hand-on-D / right-hand-on-J), not "D goes left".
-    // The arrow-key aliases are also called out in the label now.
-    expect(source).toContain("[D] / [→] L pointer");
-    expect(source).toContain("[J] / [←] R pointer");
-    expect(source).toContain("private swappedThisPair = false;");
-    expect(source).toContain("private leftAdvancedThisPair = false;");
-    expect(source).toContain("private rightRetreatedThisPair = false;");
-    expect(source).toContain("private roundCompleting = false;");
-    expect(source).toContain("private readonly onSwap");
-    expect(source).toContain("private tryMoveLeft(): void");
-    expect(source).toContain("private tryMoveRight(): void");
-    expect(source).toContain("Swap the mirrored values first.");
-    // Quote-style agnostic: the formatter hook may flip the scene file
-    // between single and double quotes.
-    expect(source).toContain("J: R = R - 1");
-    expect(source).toContain("Retreat R before checking the loop again.");
-    expect(source).not.toContain("private async tryStep()");
-    expect(source).not.toContain("Just press SPACE.");
+  it("trades facing pairs in any order through the mirror twin", () => {
+    const source = readFileSync(crossingPath, "utf8");
+
+    // The chamber rebuild: player + mirror twin, free pair choice, wasted
+    // trades splash instead of being refused, and no dictation chrome.
+    expect(source).toContain("this.ledger = recordTrade(this.ledger);");
+    expect(source).toContain("mirrorSlot(slot, n)");
+    expect(source).toContain("this.rack.splash(slot);");
+    expect(source).toContain("isReversed(this.values, this.startValues)");
+
+    // The QTE-era chrome must never come back.
+    expect(source).not.toMatch(/arr\[|L = L|R = R - 1|NextMoveHint/);
+    expect(source).not.toMatch(/must retreat|Swap the mirrored values first/);
+    expect(source).not.toMatch(/swappedThisPair|leftAdvancedThisPair/);
+  });
+
+  it("stays out of the choice-scene barrel except as a re-export", () => {
+    const barrel = readFileSync(scenePath, "utf8");
+    expect(barrel).toContain(
+      'export { P2_1_MirrorWalk } from "./P2_1_MirrorWalk";',
+    );
+    expect(barrel).not.toContain("class P2_1_MirrorWalk extends");
   });
 });
 
