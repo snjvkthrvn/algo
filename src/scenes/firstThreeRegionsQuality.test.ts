@@ -213,7 +213,9 @@ describe("first three regions quality guards", () => {
     expect(twinRivers).toContain(
       'export { P2_3_FixedWindowDock } from "./P2_3_FixedWindowDock";',
     );
-    expect(twinRivers).toContain("performCurrentRiderBoardStep");
+    expect(twinRivers).toContain(
+      'export { P2_4_CurrentRider } from "./P2_4_CurrentRider";',
+    );
     expect(twinRivers).toContain("handleSerpentRowPress");
 
     // Threshing Floor rebuild: the boss is played with the same embodied
@@ -258,6 +260,22 @@ describe("first three regions quality guards", () => {
 
     // The old SUM/BEST/window-size readouts must never come back.
     expect(source).not.toMatch(/SUM = |BEST = |window size = /);
+    expect(source).not.toMatch(
+      /showLessonCard|showRoundRecap|showRoundBanner/,
+    );
+    expect(source).not.toMatch(/NextMoveHint|RiverRow|ComplexityMeter/);
+  });
+
+  it("Current Run snags visibly instead of printing metrics", () => {
+    const source = readSource("src/scenes/puzzles/P2_4_CurrentRider.ts");
+
+    // Edge rides + tie releases + claims all record; snags render through
+    // firstSnag, never as text metrics.
+    expect(source).toContain("this.ledger = recordTrade(this.ledger);");
+    expect(source).toContain("firstSnag(letters, this.leftTie, this.rightEdge)");
+    expect(source).toContain("rightEdgeAtX(playerX, this.run.geometry()");
+
+    expect(source).not.toMatch(/LENGTH = |BEST = |REPEAT!/);
     expect(source).not.toMatch(
       /showLessonCard|showRoundRecap|showRoundBanner/,
     );

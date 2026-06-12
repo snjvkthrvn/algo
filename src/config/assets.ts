@@ -458,6 +458,21 @@ export const FISHING_DOCK_IMAGE_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Current Run (P2_4 rebuild) — see
+ * docs/superpowers/specs/2026-06-12-p2-4-current-run-design.md.
+ */
+export const CURRENT_RUN_KEYS = {
+  BACKDROP: "current-run-backdrop",
+} as const;
+
+export const CURRENT_RUN_IMAGE_ASSETS: AssetEntry[] = [
+  {
+    key: CURRENT_RUN_KEYS.BACKDROP,
+    path: `${VISUAL_REVAMP_BASE}/current_run/backdrop.png`,
+  },
+];
+
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.TITLE_BG,
