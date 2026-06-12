@@ -1329,12 +1329,50 @@ test.describe("Prologue region â€“ visual audit", () => {
     await snap(page, "19b-ap3-sorting-mill-spitback.png");
   });
 
-  test("20 - AP-4 Pairing Grounds - region encounter layout", async ({
+  test("20 - AP-4 Pairing Grounds - sealed courtyard with scale", async ({
     page,
   }) => {
     await jumpToScene(page, "P1_4_TwoSum", { returnScene: "ArrayPlainsScene" });
-    await page.waitForTimeout(700);
-    await snap(page, "20-ap4-pairing-grounds-layout.png");
+    // Chamber room: wait out the door seal + entry legend settle.
+    await page.waitForTimeout(4200);
+    await snap(page, "20-ap4-pairing-grounds-sealed.png");
+  });
+
+  test("20b - AP-4 Pairing Grounds - wrong offer cracks chips", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P1_4_TwoSum", { returnScene: "ArrayPlainsScene" });
+    await page.waitForTimeout(4200);
+    // Anchor stone 1 (value 1), then offer it with stone 2 (value 3):
+    // 1+3 misses target 9 — the offer is recorded, chips crack off and
+    // persist, and the anchor stays in the player's hands.
+    await page.keyboard.press("1");
+    await page.waitForTimeout(4200);
+    await page.keyboard.press("2");
+    await page.waitForTimeout(4200);
+    const state = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("P1_4_TwoSum") as Record<
+        string,
+        unknown
+      > | null;
+      const ledger = scene?.["ledger"] as { trades?: number } | undefined;
+      const field = scene?.["field"] as
+        | {
+            carriedIndex?: () => number;
+            chipPositions?: () => unknown[];
+          }
+        | undefined;
+      return {
+        offers: ledger?.trades ?? 0,
+        carried: field?.carriedIndex?.() ?? -2,
+        chips: field?.chipPositions?.()?.length ?? 0,
+      };
+    });
+    expect(state.offers).toBe(1);
+    expect(state.carried).toBe(0); // anchor survives the slam
+    expect(state.chips).toBeGreaterThan(0);
+    await snap(page, "20b-ap4-pairing-grounds-chips.png");
   });
 
   test("21 - Shuffler Domain - boss encounter layout", async ({ page }) => {
