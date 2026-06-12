@@ -58,7 +58,6 @@ import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
 import { ChamberCast } from "../../puzzleRooms/chamber/ChamberCast";
 import { CartDelivery } from "../../puzzleRooms/chamber/CartDelivery";
 
-const BEAM_REACH = 64;
 
 const DOCK_CAST = {
   keeperKey: VISUAL_REVAMP_KEYS.WINDOW_FISHER,
@@ -182,7 +181,13 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     const round = this.currentRound();
     if (!round) return;
     this.row.setRound(round.values, round.windowSize);
-    this.net.reset(0);
+    // The net starts under the player's feet — standing still is free.
+    const playerX = this.room?.player.getPosition().x;
+    this.net.reset(
+      playerX === undefined
+        ? 0
+        : frameStartAtX(playerX, this.row.geometry()),
+    );
     this.rival.setRow(Math.min(round.values.length, 8));
     a11yManager.announce(
       `${round.values.length} baskets on the dock; your net frames ${round.windowSize}. Bring the beam the heaviest catch.`,
@@ -217,7 +222,10 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     });
   }
 
-  /** The net frame follows the walk; edge changes record the slide. */
+  /**
+   * The net frame follows the walk. Each slat crossed records one slide,
+   * deterministic regardless of step sampling — pacing in place is free.
+   */
   private followNet(playerX: number): void {
     if (this.dockCleared || this.resolving || this.row.isBusy) return;
     const round = this.currentRound();
@@ -225,7 +233,9 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     const previous = this.net.start;
     const next = frameStartAtX(playerX, this.row.geometry());
     if (!this.net.glideTo(next)) return;
-    this.ledger = recordTrade(this.ledger);
+    for (let i = 0; i < Math.abs(next - previous); i++) {
+      this.ledger = recordTrade(this.ledger);
+    }
     // The edges are the show: entering pulses, leaving dims.
     if (next > previous) {
       this.row.pulseEnter(next + round.windowSize - 1);
@@ -269,9 +279,8 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     const round = this.currentRound();
     const pos = this.room?.player.getPosition();
     if (!round || !pos) return;
-    // The haul: act near the weigh-beam at the dock's west head.
-    if (Math.abs(pos.x - this.beamXPx) > BEAM_REACH) return;
-
+    // The haul: act anywhere on the dock — what the net frames is what the
+    // beam weighs. The framed baskets fly to the beam themselves.
     this.ledger = recordTrade(this.ledger);
     const start = this.net.start;
     const framed = windowSum(round.values, start, round.windowSize);
