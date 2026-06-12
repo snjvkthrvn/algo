@@ -1524,12 +1524,61 @@ test.describe("Prologue region â€“ visual audit", () => {
     await snap(page, "23b-tr1-mirror-crossing-splash.png");
   });
 
-  test("24 - TR-2 Pointer Bridge - encounter layout", async ({ page }) => {
+  test("24 - TR-2 Rope Bridge - sealed crossing", async ({ page }) => {
     await jumpToScene(page, "P2_2_PointerBridge", {
       returnScene: "TwinRiversScene",
     });
-    await page.waitForTimeout(700);
-    await snap(page, "24-tr2-pointer-bridge-layout.png");
+    // Chamber room: wait out the door seal + entry legend settle.
+    await page.waitForTimeout(4200);
+    await snap(page, "24-tr2-rope-bridge-sealed.png");
+  });
+
+  test("24b - TR-2 Rope Bridge - dead end snaps the rope back", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "P2_2_PointerBridge", {
+      returnScene: "TwinRiversScene",
+    });
+    await page.waitForTimeout(4200);
+    // Round 1's end pair already makes the target — lock it (key 2), then
+    // in round 2 march the LEFT buoy into the right one. The buoys meeting
+    // without the weight must snap back to the ends, with every wasted
+    // step still on the ledger (cost, not refusal).
+    await page.keyboard.press("2");
+    await page.waitForTimeout(6500);
+    for (let i = 0; i < 7; i++) {
+      await page.keyboard.press("1");
+      await page.waitForTimeout(2400);
+    }
+    await page.waitForTimeout(2000);
+    const state = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("P2_2_PointerBridge") as Record<
+        string,
+        unknown
+      > | null;
+      const ledger = scene?.["ledger"] as { trades?: number } | undefined;
+      const line = scene?.["line"] as
+        | {
+            leftIndex?: number;
+            rightIndex?: number;
+            debrisPositions?: () => unknown[];
+          }
+        | undefined;
+      return {
+        round: scene?.["roundIndex"],
+        left: line?.leftIndex,
+        right: line?.rightIndex,
+        moves: ledger?.trades ?? 0,
+        debris: line?.debrisPositions?.()?.length ?? 0,
+      };
+    });
+    expect(state.round).toBe(1);
+    expect(state.left).toBe(0); // snapped back to the banks
+    expect(state.right).toBe(7);
+    expect(state.moves).toBe(8); // 1 lock + 7 wasted steps, all recorded
+    expect(state.debris).toBeGreaterThan(0);
+    await snap(page, "24b-tr2-rope-bridge-snapback.png");
   });
 
   test("25 - TR-3 Fixed Window Dock - encounter layout", async ({ page }) => {

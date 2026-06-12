@@ -132,7 +132,8 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     new PuzzleAmbience(this, "river", { intensity: 0.4 });
 
     const { width, height } = this.cameras.main;
-    this.lineYPx = Math.round((height * 0.42) / 8) * 8;
+    // Sits on the backdrop's painted piling row (the band's lower half).
+    this.lineYPx = Math.round((height * 0.478) / 8) * 8;
     this.southWalkY = this.lineYPx + 96;
 
     this.shell = new ChamberShell(this, bridgePar());
