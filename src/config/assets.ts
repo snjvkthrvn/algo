@@ -442,6 +442,22 @@ export const POINTER_BRIDGE_IMAGE_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Fishing Dock (P2_3 rebuild) — see
+ * docs/superpowers/specs/2026-06-12-p2-3-fishing-dock-design.md.
+ * Baskets/net render procedurally; debris reuses mirror_crossing.
+ */
+export const FISHING_DOCK_KEYS = {
+  BACKDROP: "fishing-dock-backdrop",
+} as const;
+
+export const FISHING_DOCK_IMAGE_ASSETS: AssetEntry[] = [
+  {
+    key: FISHING_DOCK_KEYS.BACKDROP,
+    path: `${VISUAL_REVAMP_BASE}/fishing_dock/backdrop.png`,
+  },
+];
+
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.TITLE_BG,

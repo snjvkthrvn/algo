@@ -210,7 +210,9 @@ describe("first three regions quality guards", () => {
     expect(twinRivers).toContain(
       'export { P2_2_PointerBridge } from "./P2_2_PointerBridge";',
     );
-    expect(twinRivers).toContain("performFixedWindowBoardStep");
+    expect(twinRivers).toContain(
+      'export { P2_3_FixedWindowDock } from "./P2_3_FixedWindowDock";',
+    );
     expect(twinRivers).toContain("performCurrentRiderBoardStep");
     expect(twinRivers).toContain("handleSerpentRowPress");
 
@@ -242,6 +244,24 @@ describe("first three regions quality guards", () => {
       /showLessonCard|showRoundRecap|showRoundBanner/,
     );
     expect(source).not.toMatch(/NextMoveHint|RiverRow/);
+  });
+
+  it("Fishing Dock shows the edges, never the running sums", () => {
+    const source = readSource("src/scenes/puzzles/P2_3_FixedWindowDock.ts");
+
+    // Slides record only on real frame movement; hauls record always;
+    // wrong hauls tear and splash (cost, not refusal).
+    expect(source).toContain("this.ledger = recordTrade(this.ledger);");
+    expect(source).toContain("frameStartAtX(playerX, this.row.geometry())");
+    expect(source).toContain("pulseEnter(");
+    expect(source).toContain("dimLeave(");
+
+    // The old SUM/BEST/window-size readouts must never come back.
+    expect(source).not.toMatch(/SUM = |BEST = |window size = /);
+    expect(source).not.toMatch(
+      /showLessonCard|showRoundRecap|showRoundBanner/,
+    );
+    expect(source).not.toMatch(/NextMoveHint|RiverRow|ComplexityMeter/);
   });
 
   it("Threshing Floor pressures through telegraphed interference, not chrome", () => {
