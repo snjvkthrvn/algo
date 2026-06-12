@@ -498,6 +498,9 @@ test.describe("Prologue region â€“ visual audit", () => {
 
   // Every test starts with a fresh page load at the main menu.
   test.beforeEach(async ({ page }) => {
+    // Swallow the Vite HMR websocket so dev-server file saves (e.g. from a
+    // concurrent editing session) cannot full-reload the page mid-test.
+    await page.routeWebSocket(/.*/, () => {});
     const runtimeErrors: string[] = [];
     runtimeErrorsByPage.set(page, runtimeErrors);
     page.on("pageerror", (error) => {
@@ -885,8 +888,33 @@ test.describe("Prologue region â€“ visual audit", () => {
 
     // FEELâ†’NAME: the Rune Keeper names the pattern in-scene, then the
     // puzzle returns straight to the Prologue. No bridge scene.
-    await page.waitForTimeout(2_600);
+    // Chamber debrief: the gate unbars and the room opens into free roam
+    // (par plaque tally + lever visible). The player WALKS OUT to complete.
+    await page.waitForFunction(
+      () => {
+        const game = (window as GameWindow).__PHASER_GAME__;
+        const scene = game?.scene.getScene("P0_1_FollowThePath") as Record<
+          string,
+          unknown
+        > | null;
+        return scene?.["state"] === "roam";
+      },
+      undefined,
+      { timeout: 30_000 },
+    );
+    // Let the final win cascade settle so the debrief reads clean.
+    await page.waitForTimeout(3_400);
     await snap(page, "10-p0-1-complete.png");
+
+    // Walk out through the north gate: iso-steering Up climbs row then
+    // col, ending on the exit cell (0,1); one more Up steps through.
+    await pressSequence(
+      page,
+      ["ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp"],
+      450,
+    );
+
+    await page.waitForTimeout(2_600);
     await advanceNameItBeat(page);
 
     const flagSet = await page.evaluate(
@@ -896,25 +924,13 @@ test.describe("Prologue region â€“ visual audit", () => {
     expect(flagSet).toBe(true);
   });
 
-  test("11 - P0-2 Flow Consoles - completes all 3 shards", async ({ page }) => {
+  test("11 - P0-2 Flow Consoles - completes via the state bridge", async ({ page }) => {
     await jumpToScene(page, "P0_2_FlowConsoles", {
       returnScene: "PrologueScene",
     });
-    await page.waitForTimeout(1_000);
-
-    await page.keyboard.press("1");
-    await page.waitForTimeout(400);
-    await page.keyboard.press("1");
-    await page.waitForTimeout(600);
-
-    await page.keyboard.press("2");
-    await page.waitForTimeout(400);
-    await page.keyboard.press("2");
-    await page.waitForTimeout(600);
-
-    await page.keyboard.press("3");
-    await page.waitForTimeout(400);
-    await page.keyboard.press("3");
+    // Sealed chamber settles (door slam + keeper stakes line), then the
+    // state bridge completes the room via the public test hook.
+    await page.waitForTimeout(2_000);
 
     await page.evaluate(() => {
       const game = (window as GameWindow).__PHASER_GAME__;
