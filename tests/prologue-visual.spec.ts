@@ -1631,12 +1631,62 @@ test.describe("Prologue region â€“ visual audit", () => {
     await snap(page, "25b-tr3-fishing-dock-tear.png");
   });
 
-  test("26 - TR-4 Current Rider - encounter layout", async ({ page }) => {
+  test("26 - TR-4 Current Run - sealed river ride", async ({ page }) => {
     await jumpToScene(page, "P2_4_CurrentRider", {
       returnScene: "TwinRiversScene",
     });
-    await page.waitForTimeout(700);
-    await snap(page, "26-tr4-current-rider-layout.png");
+    // Chamber room: wait out the door seal + entry legend settle.
+    await page.waitForTimeout(4200);
+    await snap(page, "26-tr4-current-run-sealed.png");
+  });
+
+  test("26b - TR-4 Current Run - twins snag the net", async ({ page }) => {
+    await jumpToScene(page, "P2_4_CurrentRider", {
+      returnScene: "TwinRiversScene",
+    });
+    await page.waitForTimeout(4200);
+    // Ride to the fourth float: A-B-C-A puts twins inside the net, which
+    // must SNAG (render-state, not text). Paying the left tie out clears
+    // it — every move on the ledger.
+    await page.keyboard.press("4");
+    await page.waitForTimeout(4200);
+    const snagged = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("P2_4_CurrentRider") as Record<
+        string,
+        unknown
+      > | null;
+      const run = scene?.["run"] as
+        | { paintNet?: (l: number, r: number) => [number, number] | null }
+        | undefined;
+      return {
+        L: scene?.["leftTie"],
+        R: scene?.["rightEdge"],
+        snag: run?.paintNet?.(
+          scene?.["leftTie"] as number,
+          scene?.["rightEdge"] as number,
+        ),
+        moves: (scene?.["ledger"] as { trades?: number } | undefined)?.trades,
+      };
+    });
+    expect(snagged.R).toBe(3);
+    expect(snagged.snag).toEqual([0, 3]); // the twin A's
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(1500);
+    const released = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("P2_4_CurrentRider") as Record<
+        string,
+        unknown
+      > | null;
+      return {
+        L: scene?.["leftTie"],
+        moves: (scene?.["ledger"] as { trades?: number } | undefined)?.trades,
+      };
+    });
+    expect(released.L).toBe(1); // the tie paid out past the first twin
+    expect(released.moves).toBe(4);
+    await snap(page, "26b-tr4-current-run-snag.png");
   });
 
   test("27 - Mirror Serpent - boss encounter layout", async ({ page }) => {
