@@ -134,8 +134,9 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     new PuzzleAmbience(this, "river", { intensity: 0.4 });
 
     const { width, height } = this.cameras.main;
+    // Floats ride the painted lane; the player walks the painted planks.
     this.laneYPx = Math.round((height * 0.44) / 8) * 8;
-    this.walkYPx = this.laneYPx + 92;
+    this.walkYPx = Math.round((height * 0.74) / 8) * 8;
     this.postXPx = width - 120;
 
     this.shell = new ChamberShell(this, runPar());

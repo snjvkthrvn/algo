@@ -76,6 +76,11 @@ export class FloatRun {
     this.floats.forEach((piece) => piece.container.destroy());
     this.letters = [...letters];
     this.floats = letters.map((letter, i) => this.buildFloat(letter, i));
+    // Re-place after the array is complete: floatX depends on the full
+    // count, so positions assigned mid-construction are wrong.
+    this.floats.forEach((piece, i) =>
+      piece.container.setPosition(this.floatX(i), this.laneY),
+    );
     this.frame.clear();
     this.tangle.clear();
   }
