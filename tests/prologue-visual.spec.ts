@@ -1027,15 +1027,15 @@ test.describe("Prologue region â€“ visual audit", () => {
 
   // ── Echo Causeway (dev-warp trial room, gym-pattern generated tiles) ──────
 
-  test("64 - Echo Causeway - sealed trial layout", async ({ page }) => {
+  test("90 - Echo Causeway - sealed trial layout", async ({ page }) => {
     await jumpToScene(page, "PrologueTrialScene", {});
     // Seal beat fires ~900ms in; watch lightshow follows. Snap the sealed
     // chamber with the leg-1 field visible.
     await page.waitForTimeout(2_500);
-    await snap(page, "64-trial-causeway-sealed.png");
+    await snap(page, "90-trial-causeway-sealed.png");
   });
 
-  test("64b - Echo Causeway - walk phase and completion bridge", async ({
+  test("90b - Echo Causeway - walk phase and completion bridge", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -1056,7 +1056,7 @@ test.describe("Prologue region â€“ visual audit", () => {
       undefined,
       { timeout: 30_000 },
     );
-    await snap(page, "64b-trial-causeway-walk.png");
+    await snap(page, "90b-trial-causeway-walk.png");
 
     // Completion via the public hook (state bridge, like test 11).
     await page.evaluate(() => {
