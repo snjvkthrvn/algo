@@ -646,4 +646,61 @@ export const CODEX_ENTRIES: CodexEntry[] = [
       },
     ],
   },
+  {
+    id: 'convergence_mastery',
+    algorithmName: 'Convergence Mastery - Reverse, Pair, Window',
+    category: AlgorithmType.HYBRID,
+    unlockedBy: 'boss_mirror_serpent',
+    difficulty: Difficulty.HARD,
+    relatedConcepts: ['two-pointers', 'sliding-window', 'in-place'],
+    sections: [
+      {
+        type: 'what_you_felt',
+        title: 'What You Felt',
+        content: [
+          'The serpent bent all three currents at once: it un-turned a pair you had set, shoved a buoy back toward its bank, and swapped the baskets under your net.',
+          'You answered with the same three motions you already knew — turn the river, pair the shores, net the heaviest stretch — and every bit of its mischief only added to its own count, never yours.',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'Plain Explanation',
+        content: [
+          'Three river ideas share one habit: read the structure, then move an edge — never start over.',
+          'Reversing in place walks two ends inward, swapping as they pass. Pairing to a target walks two ends inward on a sorted row, stepping the end the sum tells you to. A fixed window slides one seat at a time, watching only what enters and what leaves.',
+          'Each is a single sweep across the data. The shape of the input — sorted, mirrored, contiguous — is what lets one walk replace a tangle of nested loops.',
+        ],
+      },
+      {
+        type: 'pattern_steps',
+        title: 'The Pattern',
+        content: [
+          '1. Name the shape of the row — mirrored, sorted, or a running span',
+          '2. Pick the motion it rewards — turn, pair, or net',
+          '3. Move only the edge the structure demands; leave the middle alone',
+          '4. Finish in one pass — if you find yourself restarting, the structure was telling you something else',
+        ],
+      },
+      {
+        type: 'plain_explanation',
+        title: 'The Cost',
+        content: [
+          'Reversing in place is n/2 swaps and no extra row — O(n) time, O(1) space — against copying into a second array backwards.',
+          'Pairing two converging pointers on a sorted row is one O(n) walk, against checking every pair at O(n²).',
+          'Sliding a fixed window updates one add and one subtract per step — O(n) total — against re-summing each window at O(n·k).',
+          'The common thread: when the input already carries an order, a single inward or onward walk beats the nested-loop brute force every time.',
+        ],
+      },
+      {
+        type: 'real_world',
+        title: 'In the Real World',
+        content: ['In-place string reversal', 'Pair-sum and interval merges', 'Streaming windowed metrics', 'Interview staple patterns'],
+      },
+      {
+        type: 'unlocked_ability',
+        title: 'Unlocked Ability',
+        content: 'Convergence Mastery - Twin Rivers stills to glass. The way climbs toward Hash Highlands.',
+      },
+    ],
+  },
 ];
