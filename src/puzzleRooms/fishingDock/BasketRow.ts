@@ -134,6 +134,51 @@ export class BasketRow {
   }
 
   /**
+   * Boss sabotage: two baskets trade slats, weights and all, arcing over
+   * each other with a splash. The heaviest stretch can MOVE, so the player
+   * re-scouts. Resolves when both land; the scene swaps its own values.
+   */
+  swap(i: number, j: number): Promise<void> {
+    if (this.busy) return Promise.resolve();
+    const a = this.baskets[i];
+    const b = this.baskets[j];
+    if (!a || !b || i === j) return Promise.resolve();
+    this.busy = true;
+    this.baskets[i] = b;
+    this.baskets[j] = a;
+    const xi = this.basketX(i);
+    const xj = this.basketX(j);
+    audioManager.playTone(240, 130, "triangle");
+    const arc = (
+      container: Phaser.GameObjects.Container,
+      toX: number,
+    ): Promise<void> =>
+      new Promise((resolve) => {
+        this.scene.tweens.chain({
+          targets: container,
+          tweens: [
+            {
+              x: (container.x + toX) / 2,
+              y: this.rowY - 30,
+              duration: this.reduceMotion ? 40 : 180,
+              ease: "Quad.easeOut",
+            },
+            {
+              x: toX,
+              y: this.rowY,
+              duration: this.reduceMotion ? 40 : 200,
+              ease: "Quad.easeIn",
+            },
+          ],
+          onComplete: () => resolve(),
+        });
+      });
+    return Promise.all([arc(a.container, xj), arc(b.container, xi)]).then(() => {
+      this.busy = false;
+    });
+  }
+
+  /**
    * Haul the framed catch toward the weigh-beam. Success lashes the
    * baskets up and out; failure tears the net — splash + spill back.
    */
@@ -203,6 +248,14 @@ export class BasketRow {
       return { x: obj.x, y: obj.y };
     });
   }
+
+  /** Remove every basket and splash this row made — used at phase retire. */
+  teardown(): void {
+    this.baskets.forEach((basket) => basket.container.destroy());
+    this.baskets = [];
+    this.debris.forEach((bit) => bit.destroy());
+    this.debris = [];
+  }
 }
 
 /** The net frame that follows the player's walk along the dock. */
@@ -256,5 +309,10 @@ export class NetFrame {
       g.lineTo(x - 8, this.rowY + 34);
       g.strokePath();
     }
+  }
+
+  /** Remove the frame graphic — used when a phase board retires. */
+  teardown(): void {
+    this.frame.destroy();
   }
 }

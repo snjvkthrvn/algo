@@ -40,19 +40,39 @@ describe("Mirror Crossing controls", () => {
 });
 
 describe("Mirror Serpent controls", () => {
-  it("maps the displayed D/J two-sum controls to the forced pointer moves", () => {
-    const source = readFileSync(scenePath, "utf8");
+  const serpentPath = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "Boss_MirrorSerpent.ts",
+  );
 
-    expect(source).toMatch(
-      /private handleD\(\): void \{[\s\S]*this\.advanceTwoSumLeft\(1\)/,
+  it("plays the three river verbs through the rooms' own kits", () => {
+    const source = readFileSync(serpentPath, "utf8");
+
+    // Phase kits, not a fresh boss mechanic.
+    expect(source).toContain("new CrateRack(");
+    expect(source).toContain("new PostLine(");
+    expect(source).toContain("new BasketRow(");
+
+    // Telegraphed sabotage scored 1:1 into par — never blamed on the player.
+    expect(source).toContain("await this.serpent.windUp(");
+    expect(source).toContain("this.untrades++");
+    expect(source).toContain("this.pushes++");
+    expect(source).toContain("this.swaps++");
+    expect(source).toContain(
+      "serpentPar(this.untrades, this.pushes, this.swaps)",
     );
-    expect(source).toMatch(
-      /private handleJ\(\): void \{[\s\S]*this\.retreatTwoSumRight\(-1\)/,
+
+    // The QTE-era forced-pointer controls and triple-tell chrome are gone.
+    expect(source).not.toMatch(/advanceTwoSumLeft|retreatTwoSumRight/);
+    expect(source).not.toMatch(/serpentBanner|statusText|detailText/);
+    expect(source).not.toMatch(/RiverRow|handleSerpentRowPress/);
+  });
+
+  it("stays out of the choice-scene barrel except as a re-export", () => {
+    const barrel = readFileSync(scenePath, "utf8");
+    expect(barrel).toContain(
+      'export { Boss_MirrorSerpent } from "./Boss_MirrorSerpent";',
     );
-    expect(source).toContain("Sum too small - press D.");
-    expect(source).toContain("private reverseCompleting = false;");
-    expect(source).toMatch(
-      /if \(this\.reverseCompleting \|\| this\.phase !== ['"]reverse['"]\) return;/,
-    );
+    expect(barrel).not.toContain("class Boss_MirrorSerpent extends");
   });
 });

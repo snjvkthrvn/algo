@@ -233,7 +233,9 @@ describe("first three regions quality guards", () => {
     expect(twinRivers).toContain(
       'export { P2_4_CurrentRider } from "./P2_4_CurrentRider";',
     );
-    expect(twinRivers).toContain("handleSerpentRowPress");
+    expect(twinRivers).toContain(
+      'export { Boss_MirrorSerpent } from "./Boss_MirrorSerpent";',
+    );
 
     // Threshing Floor rebuild: the boss is played with the same embodied
     // verbs as the rooms (walk + act via PuzzleRoom), not a tile cursor.
@@ -242,6 +244,29 @@ describe("first three regions quality guards", () => {
     expect(shuffler).toContain("private actHash");
     expect(shuffler).toContain("private actPair");
     expect(shuffler).toContain("this.room.player.walkTo");
+  });
+
+  it("Mirror Serpent reprises the three river verbs with honest par", () => {
+    const source = readSource("src/scenes/puzzles/Boss_MirrorSerpent.ts");
+
+    // Embodied like the rooms: PuzzleRoom walk + act, one ledger, walk-out.
+    expect(source).toContain("new PuzzleRoom(this");
+    expect(source).toContain("this.ledger = recordTrade(this.ledger);");
+    expect(source).toContain("this.room.player.walkTo");
+    expect(source).toContain("private checkDoorExit");
+
+    // The finale reuses the rooms' own kits — never a fresh mechanic.
+    expect(source).toContain("CrateRack");
+    expect(source).toContain("PostLine");
+    expect(source).toContain("BasketRow");
+
+    // Telegraphed sabotage, scored honestly: each kind raises par 1:1.
+    expect(source).toContain("this.serpent.windUp");
+    expect(source).toContain("serpentPar(this.untrades, this.pushes, this.swaps)");
+
+    // The triple-tell chrome and the tile-cursor row are gone for good.
+    expect(source).not.toMatch(/serpentBanner|statusText|detailText/);
+    expect(source).not.toMatch(/RiverRow|NextMoveHint/);
   });
 
   it("Rope Bridge reads through the rope, not arithmetic text", () => {

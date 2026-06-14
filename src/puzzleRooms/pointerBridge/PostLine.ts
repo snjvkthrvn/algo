@@ -232,6 +232,39 @@ export class PostLine {
     });
   }
 
+  /**
+   * Boss sabotage: shove a buoy one piling back OUTWARD toward its bank —
+   * the only force in the game that moves a pointer the wrong way, which is
+   * exactly why it reads as violation. Clamped at the bank; the rope re-sags.
+   */
+  pushOutward(side: "left" | "right"): Promise<void> {
+    if (this.busy) return Promise.resolve();
+    if (side === "left") {
+      if (this.left <= 0) return Promise.resolve();
+      this.left--;
+    } else {
+      if (this.right >= this.values.length - 1) return Promise.resolve();
+      this.right++;
+    }
+    this.busy = true;
+    const buoy = side === "left" ? this.buoyL : this.buoyR;
+    const targetX = side === "left" ? this.leftX() : this.rightX();
+    audioManager.playTone(side === "left" ? 200 : 180, 110, "sawtooth");
+    return new Promise((resolve) => {
+      this.scene.tweens.add({
+        targets: buoy,
+        x: targetX,
+        duration: this.reduceMotion ? 50 : 300,
+        ease: "Sine.easeInOut",
+        onComplete: () => {
+          this.paintRope();
+          this.busy = false;
+          resolve();
+        },
+      });
+    });
+  }
+
   /** The buoys met without the target: the rope snaps back to the ends. */
   snapBack(): Promise<void> {
     this.busy = true;
@@ -316,5 +349,18 @@ export class PostLine {
       const obj = bit as unknown as { x: number; y: number };
       return { x: obj.x, y: obj.y };
     });
+  }
+
+  /** Remove every object this line made — used when a phase board retires. */
+  teardown(): void {
+    this.pilings.forEach((piling) => piling.destroy());
+    this.pilings = [];
+    this.buoyL?.destroy();
+    this.buoyR?.destroy();
+    this.buoyL = null;
+    this.buoyR = null;
+    this.debris.forEach((bit) => bit.destroy());
+    this.debris = [];
+    this.rope.destroy();
   }
 }

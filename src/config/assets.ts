@@ -492,6 +492,17 @@ export const CURRENT_RUN_IMAGE_ASSETS: AssetEntry[] = [
   },
 ];
 
+export const SERPENT_COIL_KEYS = {
+  BACKDROP: "serpent-coil-backdrop",
+} as const;
+
+export const SERPENT_COIL_IMAGE_ASSETS: AssetEntry[] = [
+  {
+    key: SERPENT_COIL_KEYS.BACKDROP,
+    path: `${VISUAL_REVAMP_BASE}/serpent_coil/backdrop.png`,
+  },
+];
+
 export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.TITLE_BG,

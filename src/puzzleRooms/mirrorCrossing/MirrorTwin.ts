@@ -72,4 +72,9 @@ export class MirrorTwin {
       ease: "Sine.easeInOut",
     });
   }
+
+  /** Dissolve the reflection — used when a phase board retires. */
+  teardown(): void {
+    this.body.destroy();
+  }
 }

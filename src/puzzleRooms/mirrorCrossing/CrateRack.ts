@@ -255,4 +255,14 @@ export class CrateRack {
       return { x: obj.x, y: obj.y };
     });
   }
+
+  /** Remove every object this rack made — used when a phase board retires. */
+  teardown(): void {
+    this.crates.forEach((crate) => crate.container.destroy());
+    this.crates = [];
+    this.debris.forEach((bit) => bit.destroy());
+    this.debris = [];
+    this.currentRibbon?.destroy();
+    this.currentRibbon = null;
+  }
 }
