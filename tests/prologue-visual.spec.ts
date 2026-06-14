@@ -1744,12 +1744,58 @@ test.describe("Prologue region â€“ visual audit", () => {
     await snap(page, "26b-tr4-current-run-snag.png");
   });
 
-  test("27 - Mirror Serpent - boss encounter layout", async ({ page }) => {
+  test("27 - Mirror Serpent - sealed coil arena, phase I", async ({ page }) => {
     await jumpToScene(page, "Boss_MirrorSerpent", {
       returnScene: "TwinRiversScene",
     });
-    await page.waitForTimeout(700);
+    // Seal + entry banner + phase I mount (~1.8x RAF throttle).
+    await page.waitForTimeout(8000);
     await snap(page, "27-mirror-serpent-layout.png");
+  });
+
+  test("27b - Mirror Serpent - the coil un-turns a set pair, for free", async ({
+    page,
+  }) => {
+    await jumpToScene(page, "Boss_MirrorSerpent", {
+      returnScene: "TwinRiversScene",
+    });
+    await page.waitForTimeout(8000);
+    // Turn one mirror pair so a RESOLVED pair exists for the coil to undo.
+    await page.keyboard.press("1");
+    await page.waitForTimeout(4000);
+    const before = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("Boss_MirrorSerpent") as Record<
+        string,
+        unknown
+      > | null;
+      const ledger = scene?.["ledger"] as { trades?: number } | undefined;
+      return {
+        actions: ledger?.trades ?? -1,
+        untrades: scene?.["untrades"] ?? -1,
+      };
+    });
+    expect(before.actions).toBe(1); // exactly the player's one trade
+    expect(before.untrades).toBe(0); // the coil has not struck yet
+    // One full interference cycle with NO further input: the coil must
+    // telegraph and un-turn the set pair on its own, leaving the player's
+    // ledger untouched and raising par via the untrade counter instead.
+    await page.waitForTimeout(16000);
+    const after = await page.evaluate(() => {
+      const game = (window as GameWindow).__PHASER_GAME__;
+      const scene = game?.scene.getScene("Boss_MirrorSerpent") as Record<
+        string,
+        unknown
+      > | null;
+      const ledger = scene?.["ledger"] as { trades?: number } | undefined;
+      return {
+        actions: ledger?.trades ?? -1,
+        untrades: scene?.["untrades"] ?? -1,
+      };
+    });
+    expect(after.untrades).toBeGreaterThan(0); // the coil struck on its own
+    expect(after.actions).toBe(1); // and it cost the player nothing
+    await snap(page, "27b-mirror-serpent-untrade.png");
   });
 
   test("27a - Twin Rivers - Hash Highlands gateway stays locked until Mirror Serpent", async ({
