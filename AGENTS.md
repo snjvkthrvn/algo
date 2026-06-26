@@ -31,7 +31,9 @@ OpenAI proxy: add `OPENAI_API_KEY=<key>` to `.env.local` (no `VITE_` prefix — 
 
 ## Architecture
 
-**Algorithmia: The Path of Logic** is a Phaser 3 educational game teaching CS algorithms through 9 themed regions, each with 4 puzzles + a boss fight.
+**Algorithmia: The Path of Logic** is a Phaser 3 educational game teaching CS algorithms. The codebase implements 9 themed regions (4 puzzles + a boss each), but **production scope is the first 3 regions only** — Prologue, Array Plains, Twin Rivers. Regions 4–9 are beta-gated behind the Twin Rivers portal and receive no production effort.
+
+> **Direction authority:** [`docs/VISION.md`](docs/VISION.md) is the north star. When it conflicts with this file, the older audits, or the existing code, VISION.md wins. The sections below describe the *current* code, which predates VISION.md in places (e.g. ConceptBridge lectures and `ScriptedChoiceScene` choice cards are slated to be cut).
 
 ### Scene pipeline
 

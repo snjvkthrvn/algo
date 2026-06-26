@@ -1,5 +1,11 @@
 # Playtest Brief — Algorithmia: The Path of Logic
 
+> **Status (2026-06-26):** This brief describes the **current build**, which still
+> has features [`VISION.md`](VISION.md) plans to cut — the post-puzzle ConceptBridge
+> lecture and the puzzle live-preview side panel. Revise this brief after the VISION
+> rebuild lands. Before sending to testers, fill the `<insert ...>` placeholders
+> (deployed URL and feedback address) below.
+
 Thank you for playtesting. The goal is to find anything that confuses, frustrates, breaks, or feels off **before** the public release. Honest negative feedback is more valuable than polite praise.
 
 **Time commitment:** 30-45 minutes for the golden path, longer if you want to explore the beta regions.

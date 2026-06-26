@@ -14,19 +14,22 @@ Each puzzle maps to a real algorithm or data structure idea. Completing a puzzle
 
 ### The Journey
 
-The game spans 9 fully playable regions, starting from the basics of sequential flow and concluding with complex dynamic programming:
+The **production game is three regions** — from the basics of sequential flow through dual-pointer river traversal:
 
 - **Prologue — Chamber of Flow**: The starting region: floating platforms and “algorithms still running in the dark.” (Sequences, Mapping)
 - **Array Plains**: Order & Collections (Sorting, Indexing, Hashing, Two Sum)
 - **Twin Rivers**: Dual Traversal (Two Pointers, Sliding Window)
-- **Hash Highlands**: Instant Knowledge (Hash Maps, Frequency, Memoization)
-- **Stack Spires**: Depth & Limits (Stacks, Recursion, Backtracking)
-- **Queue Canals**: Order & Fairness (Queues, BFS, Priority)
-- **Tree Canopy**: Hierarchy & Balance (BSTs, DFS)
-- **Graph Nexus**: Connections (Graphs, Pathfinding, Cycles)
-- **The Core**: The Final Answer (Dynamic Programming, Synthesis)
 
-Each region introduces concepts through environmental exploration, puzzle encounters with dynamic educational animations, and a culminating Boss challenge.
+Six further regions exist in code as a **beta**, gated behind the Twin Rivers portal and not held to the production bar:
+
+- **Hash Highlands** (beta): Instant Knowledge (Hash Maps, Frequency, Memoization)
+- **Stack Spires** (beta): Depth & Limits (Stacks, Recursion, Backtracking)
+- **Queue Canals** (beta): Order & Fairness (Queues, BFS, Priority)
+- **Tree Canopy** (beta): Hierarchy & Balance (BSTs, DFS)
+- **Graph Nexus** (beta): Connections (Graphs, Pathfinding, Cycles)
+- **The Core** (beta): The Final Answer (Dynamic Programming, Synthesis)
+
+Each region introduces concepts through environmental exploration, puzzle encounters, and a culminating Boss challenge. Production direction lives in [`docs/VISION.md`](docs/VISION.md).
 
 Key characters: **Professor Node** (mentor), **Bit** (companion that grows as you learn), **Glitch** (rival between lessons).
 
