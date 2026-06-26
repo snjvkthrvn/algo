@@ -19,6 +19,9 @@ archive/
 
 # Local/generated source art kept outside the production asset manifest
 art_sources/
+# Dated imagegen staging drops (regen iterations, contact sheets) — only
+# manifest-registered copies under public/assets/ should be tracked
+public/assets/visual_revamp/imagegen_drop_*/
 
 # Editor directories and files
 .vscode/*
@@ -84,3 +87,6 @@ __pycache__/
 
 # AI tool transient outputs (imagegen logs, prompt drafts)
 .tmp/
+
+# Scratch commit-message draft
+good_commit_msg.txt

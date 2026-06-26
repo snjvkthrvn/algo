@@ -1,8 +1,0 @@
-feat: Twin Rivers region, P1 puzzles, visual revamp assets, juice system
-
-- Add Twin Rivers / future regions data, scenes, and twin_rivers assets
-- Add P1 bubble sort, basket indexing, hash hopper, two-sum, boss shuffler puzzles
-- Add array plains puzzle logic extraction and CRT/future region scaffolding
-- Wire progression, codex, UI polish, TransitionManager, and Boot/Menu updates
-- Include visual_revamp sprites, portals, props, art_sources contact sheets
-- Add QA screenshot captures at repo root
