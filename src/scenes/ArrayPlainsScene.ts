@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
-import { ARRAY_PLAINS_SCENE_IMAGE_ASSETS, ARRAY_PLAINS_SCENE_SPRITE_ASSETS, VISUAL_REVAMP_KEYS } from '../config/assets';
+import {
+  ARRAY_PLAINS_SCENE_IMAGE_ASSETS,
+  ARRAY_PLAINS_SCENE_SPRITE_ASSETS,
+  ARRAY_PLAINS_TILEMAP_KEYS,
+  VISUAL_REVAMP_KEYS,
+} from '../config/assets';
 import { COLORS, FONTS, REGIONS, SCENE_KEYS } from '../config/constants';
 import { audioManager } from '../core/AudioManager';
 import { eventBus } from '../core/EventBus';
@@ -19,6 +24,12 @@ import {
   isPointOnArrayPlainsRoute,
   type ArrayPlainsCollisionBlocker,
 } from '../data/regions/arrayPlains';
+import {
+  AP_TILE_COLS,
+  AP_TILE_ROWS,
+  AP_TILE_SIZE,
+  buildArrayPlainsTileGrid,
+} from '../data/regions/arrayPlainsTilemap';
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { HUDManager } from '../systems/HUDManager';
 import { JuiceSystem } from '../systems/JuiceSystem';
@@ -592,29 +603,41 @@ export class ArrayPlainsScene extends BaseOverworldScene {
 
   private renderField(): void {
     this.cameras.main.setBackgroundColor(0x102818);
-    const bg = this.add.image(ARRAY_PLAINS_WORLD_WIDTH / 2, ARRAY_PLAINS_WORLD_HEIGHT / 2, VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)
-      .setOrigin(0.5)
-      .setDepth(0);
-    const source = bg.texture.getSourceImage() as HTMLImageElement;
-    const coverScale = Math.max(
-      ARRAY_PLAINS_WORLD_WIDTH / source.width,
-      ARRAY_PLAINS_WORLD_HEIGHT / source.height
-    );
-    bg.setScale(coverScale);
-    bg.setAlpha(0.96);
-
-    this.add.rectangle(0, 0, ARRAY_PLAINS_WORLD_WIDTH, ARRAY_PLAINS_WORLD_HEIGHT, 0xe0f8d0, 0.03)
-      .setOrigin(0)
-      .setDepth(0.5);
+    // Real 32px tilemap (docs/VISION.md §2): the whole static ground plan
+    // bakes into ONE RenderTexture (2,700 tiles → 1 GO), replacing the
+    // retired living-map painting. 1:1 texel-to-world-pixel — no scaling.
+    if (this.textures.exists(ARRAY_PLAINS_TILEMAP_KEYS.TERRAIN)) {
+      const rt = this.add
+        .renderTexture(0, 0, ARRAY_PLAINS_WORLD_WIDTH, ARRAY_PLAINS_WORLD_HEIGHT)
+        .setOrigin(0, 0)
+        .setDepth(0);
+      const frames = buildArrayPlainsTileGrid();
+      rt.beginDraw();
+      for (let ty = 0; ty < AP_TILE_ROWS; ty += 1) {
+        for (let tx = 0; tx < AP_TILE_COLS; tx += 1) {
+          rt.batchDrawFrame(
+            ARRAY_PLAINS_TILEMAP_KEYS.TERRAIN,
+            frames[ty][tx],
+            tx * AP_TILE_SIZE,
+            ty * AP_TILE_SIZE
+          );
+        }
+      }
+      rt.endDraw();
+    } else {
+      // Minimal test boots load no textures — a flat field keeps the scene alive.
+      this.add
+        .rectangle(0, 0, ARRAY_PLAINS_WORLD_WIDTH, ARRAY_PLAINS_WORLD_HEIGHT, 0x5a7616)
+        .setOrigin(0)
+        .setDepth(0);
+    }
     this.createFieldAmbient();
   }
 
   private renderRoute(): void {
-    // The living map (array_plains_living_v1.png) bakes the roads into the
-    // art itself — walkable lanes are readable because they ARE the dirt
-    // paths the painter drew. Procedural route surfaces, stop pads, and the
-    // scanning cursor are retired with the corridor map; route rects now
-    // exist purely as collision data.
+    // Walkable lanes are readable because the tile plan stamps them as
+    // packed dirt straight from the route rects (arrayPlainsTilemap.ts).
+    // Route rects stay pure collision data; no procedural route surfaces.
   }
 
   private createInteractables(): void {

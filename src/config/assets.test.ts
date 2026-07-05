@@ -10,6 +10,8 @@ import {
   OVERWORLD_PLAYER_SPRITE_ASSETS,
   OVERWORLD_SHARED_CHARACTER_SPRITE_ASSETS,
   ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS,
+  ARRAY_PLAINS_TILEMAP_KEYS,
+  ARRAY_PLAINS_TILEMAP_SHEET_ASSETS,
   TWIN_RIVERS_CHARACTER_SPRITE_ASSETS,
   ARRAY_PLAINS_SCENE_SPRITE_ASSETS,
   TWIN_RIVERS_SCENE_SPRITE_ASSETS,
@@ -245,11 +247,25 @@ describe('visual revamp asset manifest', () => {
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.TITLE_BG)).toBe('assets/visual_revamp/title/title_first_three_overhaul_v1.png');
   });
 
+  it('renders Array Plains from the real terrain tilesheet, not a painting', () => {
+    expect(ARRAY_PLAINS_TILEMAP_SHEET_ASSETS).toEqual([
+      {
+        key: ARRAY_PLAINS_TILEMAP_KEYS.TERRAIN,
+        path: 'assets/visual_revamp/regions/ap_terrain_v1.png',
+        frameWidth: 32,
+        frameHeight: 32,
+      },
+    ]);
+    // The retired living-map painting must be gone from the runtime manifest.
+    for (const asset of VISUAL_REVAMP_IMAGE_ASSETS) {
+      expect(asset.path).not.toContain('array_plains_living');
+    }
+  });
+
   it('uses grounded imagegen region backgrounds for every post-prologue overworld', () => {
     const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
 
-    expect(assetPaths.get(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe('assets/visual_revamp/regions/array_plains_living_v1.png');
-    expect(assetPaths.get(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe('assets/visual_revamp/regions/twin_rivers_living_v1.png');
+    expect(assetPaths.get(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe('assets/visual_revamp/regions/twin_rivers_living_v2.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG)).toBe('assets/visual_revamp/regions/hash_highlands_grounded_v1.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.STACK_SPIRES_BG)).toBe('assets/visual_revamp/regions/stack_spires_grounded_v1.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.QUEUE_CANALS_BG)).toBe('assets/visual_revamp/regions/queue_canals_grounded_v1.png');
@@ -322,7 +338,6 @@ describe('visual revamp asset manifest', () => {
 
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.TITLE_BG)).toBe(true);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.PROLOGUE_BG)).toBe(false);
-    expect(bootKeys.has(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe(false);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe(false);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.STACK_SPIRES_BG)).toBe(false);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_STACK_SCROLL_STACK_BG)).toBe(false);
@@ -349,7 +364,7 @@ describe('visual revamp asset manifest', () => {
     expect(prologueSpriteKeys.has(VISUAL_REVAMP_KEYS.BIT_SPARK)).toBe(true);
     expect(prologueSpriteKeys.has(VISUAL_REVAMP_KEYS.WATCHER)).toBe(true);
     expect(playerSpriteKeys).toEqual(new Set([PROLOGUE_SHEET_KEYS.PLAYER]));
-    expect(arrayKeys.has(VISUAL_REVAMP_KEYS.ARRAY_PLAINS_BG)).toBe(true);
+    expect(arraySpriteKeys.has(ARRAY_PLAINS_TILEMAP_KEYS.TERRAIN)).toBe(true);
     expect(arrayKeys.has(VISUAL_REVAMP_KEYS.SORTING_FARMER)).toBe(false);
     expect(arraySpriteKeys.has(VISUAL_REVAMP_KEYS.SORTING_FARMER)).toBe(true);
     expect(arraySpriteKeys.has(VISUAL_REVAMP_KEYS.PROP_CHICKEN)).toBe(true);

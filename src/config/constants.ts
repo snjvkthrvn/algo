@@ -187,12 +187,12 @@ export const FONTS = {
  * Deadzone sized to ~1-1.5 tiles so small movements don't shake camera.
  */
 export const CAMERA_TUNING = {
-  // Bumped from 2.0 to 2.5 (Phase 13) after the brutal audit flagged the
-  // player sprite as too small in overworld shots — old zoom read the
-  // protagonist as ~16px tall in a 1280×800 frame. 2.5 = 25% bigger in
-  // screen space; trade-off is 27% less visible world per camera, which
-  // is fine for narrative overworlds with NPCs every 200-400 world-px.
-  ZOOM: 2.5,
+  // INTEGER ZOOM ONLY. 2.5 (Phase 13) made every logical pixel 2.5 device
+  // px — alternating 2px/3px columns wobbled the whole overworld pixel
+  // grid (the 2026-07-04 audit's #1 "not a real game" tell). At 2.0 each
+  // 32px tile renders exactly 64 screen px, and the density-unified ~48px
+  // player reads ~96px tall in the 1280×720 frame. Whole-number steps only.
+  ZOOM: 2,
   FOLLOW_LERP: 0.18,
   DEADZONE_WIDTH: 80,
   DEADZONE_HEIGHT: 48,
