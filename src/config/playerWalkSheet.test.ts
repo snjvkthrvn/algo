@@ -5,8 +5,9 @@
  * whose body stopped ~36px above the ground line of the other three rows,
  * with a detached dust speck below — walking right made the player shrink
  * and float. Player.ts slices this sheet as 4 rows (down/left/right/up) of
- * eight 256x256 frames and never flips, so every row must stand on the same
- * ground line.
+ * eight frames and never flips, so every row must stand on the same ground
+ * line. Frames are 64px since the 2026-07-05 density unification (BOX /4
+ * + palette snap of the 256px smooth sheet).
  */
 
 import { inflateSync } from "node:zlib";
@@ -15,11 +16,11 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PROLOGUE_SHEET_SPRITE_ASSETS, PROLOGUE_SHEET_KEYS } from "./assets";
 
-const FRAME_SIZE = 256;
+const FRAME_SIZE = 64;
 const DIRECTION_ROWS = ["down", "left", "right", "up"] as const;
 const ALPHA_THRESHOLD = 32;
 /** Max allowed spread (px) between the body ground lines of the 4 rows. */
-const GROUND_LINE_TOLERANCE_PX = 6;
+const GROUND_LINE_TOLERANCE_PX = 2;
 
 interface DecodedPng {
   width: number;
@@ -162,7 +163,7 @@ describe("player walk spritesheet consistency", () => {
     (asset) => asset.key === PROLOGUE_SHEET_KEYS.PLAYER,
   );
 
-  it("declares the player sheet with 256px frames", () => {
+  it("declares the player sheet with 64px frames", () => {
     expect(entry).toBeDefined();
     expect(entry?.frameWidth).toBe(FRAME_SIZE);
     expect(entry?.frameHeight).toBe(FRAME_SIZE);

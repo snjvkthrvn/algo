@@ -10,8 +10,11 @@ import { audioManager } from '../core/AudioManager';
 import { PlayerState } from '../data/types';
 import { JuiceSystem } from '../systems/JuiceSystem';
 import { isGamepadButtonPressed, readGamepadDirection } from '../input/GamepadInput';
+import { worldDepthForY } from '../utils/actorDepth';
 
-const PLAYER_SPRITE_SCALE = 0.25;
+// Density-unified sheet (2026-07-05): 64px frames at native scale — one
+// logical pixel everywhere. Keep this 1 unless the sheet is regenerated.
+const PLAYER_SPRITE_SCALE = 1;
 export const PLAYER_GRID_STEP = 32;
 const PLAYER_STEP_DURATION_MS = 160;
 const PLAYER_RUN_STEP_DURATION_MS = 112;
@@ -103,6 +106,13 @@ export class Player {
 
   update(_time: number, _delta: number): void {
     this.shadow.setPosition(this.sprite.x, this.sprite.y + 14);
+    // y-sort with landmarks + NPCs through the shared 3..5 actor band.
+    // Optional chaining: headless unit tests stub the scene without bounds.
+    const worldHeight =
+      this.scene.physics?.world?.bounds?.height || this.scene.scale?.height || 1440;
+    const depth = worldDepthForY(this.sprite.y + 22, worldHeight);
+    this.sprite.setDepth(depth);
+    this.shadow.setDepth(depth - 0.01);
 
     if (this.state === PlayerState.FROZEN || this.state === PlayerState.INTERACTING) {
       this.stopMovementTween();
@@ -338,7 +348,7 @@ export class Player {
     // sprite-velocity going negative (rubber-band effect).
     const planted = lift; // identical envelope: |sin(2π·t)|, two peaks per step
     const ANCHOR_PX = 5;
-    const SPRITE_DISPLAY = 64; // 256 source × 0.25 scale
+    const SPRITE_DISPLAY = 64; // 64px frames at native scale 1
     const facingX = this.facingDirection === 'left' ? -1 : this.facingDirection === 'right' ? 1 : 0;
     const facingY = this.facingDirection === 'up' ? -1 : this.facingDirection === 'down' ? 1 : 0;
     // originX > 0.5 shifts the rendered sprite LEFT (pivot column is right of center).

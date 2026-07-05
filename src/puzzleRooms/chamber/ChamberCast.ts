@@ -39,7 +39,9 @@ export interface ChamberCastConfig {
 
 const GRAIN_DEFAULTS: Required<ChamberCastConfig> = {
   keeperKey: VISUAL_REVAMP_KEYS.SORTING_FARMER,
-  keeperScale: 0.5,
+  // Keeper sheets are density-unified 48px frames (2026-07-05): 2x is the
+  // same ~96px on-screen size the 192px art had at 0.5 — but integer.
+  keeperScale: 2,
   entryLine: "The furrows grew out of order. Mind the grain.",
   reactions: {
     waste: [
@@ -100,7 +102,10 @@ export class ChamberCast {
         wordWrap: { width: 200 },
       })
       .setOrigin(0.5, 1)
-      .setDepth(50)
+      // Above doors (60) and plaque (62/63): a speaking line is the most
+      // transient, most informational layer in the room — nothing should
+      // slice it (2026-07 audit: Sentinel's litany clipped by its own body).
+      .setDepth(66)
       .setAlpha(0);
     this.leashLoop(keeperX);
   }
@@ -124,6 +129,16 @@ export class ChamberCast {
     if (this.keeper)
       this.speech.setPosition(this.keeper.x, this.keeper.y - 64);
     this.speech.setText(line).setAlpha(1);
+    // Keepers putter near the walls; clamp the bubble fully on-screen so
+    // long lines don't run off an edge (2026-07 audit: P0-2 + Current Run
+    // clipped left; tall keepers push their line into the top door band).
+    const cam = this.scene.cameras.main;
+    this.speech.x = Phaser.Math.Clamp(
+      this.speech.x,
+      this.speech.width / 2 + 8,
+      cam.width - this.speech.width / 2 - 8,
+    );
+    this.speech.y = Math.max(this.speech.y, this.speech.height + 30);
     this.scene.tweens.add({
       targets: this.speech,
       alpha: 0,

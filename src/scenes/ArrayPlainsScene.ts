@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import {
+  AP_LANDMARK_KEYS,
   ARRAY_PLAINS_SCENE_IMAGE_ASSETS,
   ARRAY_PLAINS_SCENE_SPRITE_ASSETS,
   ARRAY_PLAINS_TILEMAP_KEYS,
@@ -30,6 +31,7 @@ import {
   AP_TILE_SIZE,
   buildArrayPlainsTileGrid,
 } from '../data/regions/arrayPlainsTilemap';
+import { placeArrayPlainsLandmarks } from '../data/regions/arrayPlainsLandmarks';
 import { DialogueSystem } from '../systems/DialogueSystem';
 import { HUDManager } from '../systems/HUDManager';
 import { JuiceSystem } from '../systems/JuiceSystem';
@@ -77,6 +79,8 @@ export class ArrayPlainsScene extends BaseOverworldScene {
   private npcPuzzleMap: Record<string, string> = {};
   /** True once the sorting-mastery bridge repair has run (flag-backed). */
   private bridgeRepaired = false;
+  /** Plank pile / footbridge sprite over the hopper stream. */
+  private bridgeSprite: Phaser.GameObjects.Image | null = null;
 
   // Overworld sequence puzzle
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];
@@ -133,8 +137,11 @@ export class ArrayPlainsScene extends BaseOverworldScene {
     // Static + animated farm props (Phase 10): pecking chickens, scarecrow,
     // hay bale + cat, watering can. World-space — they sit at fixed
     // positions and parallax with the player like any other entity.
-    // Depth 1-3 keeps them below the player (depth ~4) for correct silhouette.
+    // Depth 1-3 keeps small dressing below the actor band (3..5 y-sort).
     placeRegionProps(this, 'array_plains');
+    // Landmark buildings, trees, and fence runs — the scenery the retired
+    // painting used to bake in, now real sprites y-sorted with the player.
+    placeArrayPlainsLandmarks(this);
 
     this.player = new Player(this, px, py, {
       canMoveTo: (point) => this.isPlayerStepWalkable(point),
@@ -308,7 +315,7 @@ export class ArrayPlainsScene extends BaseOverworldScene {
         name: farmer.name,
         type: NPCType.VILLAGER,
         spriteKey: farmer.spriteKey,
-        spriteScale: 0.34,
+        spriteScale: 1,
         defaultPosition: { x, y },
         dialogue: this.getDialogueTreeForPuzzle(farmer.puzzleId) ?? { startNodeId: '', nodes: [] },
         movement: {
@@ -357,7 +364,22 @@ export class ArrayPlainsScene extends BaseOverworldScene {
     const bx = ARRAY_PLAINS_BRIDGE_RECT.x + ARRAY_PLAINS_BRIDGE_RECT.width / 2;
     const by = ARRAY_PLAINS_BRIDGE_RECT.y + ARRAY_PLAINS_BRIDGE_RECT.height / 2;
 
-    if (this.bridgeRepaired) return; // crossing already open — art shows planks
+    // Physical planks over the stream: a scattered pile until the sorting-
+    // mastery repair, a real footbridge after. Sits above the water bake
+    // (depth 0) and below the actor band (3..5).
+    if (this.textures.exists(AP_LANDMARK_KEYS.BRIDGE_BROKEN)) {
+      this.bridgeSprite = this.add
+        .image(
+          bx,
+          by,
+          this.bridgeRepaired
+            ? AP_LANDMARK_KEYS.BRIDGE_REPAIRED
+            : AP_LANDMARK_KEYS.BRIDGE_BROKEN
+        )
+        .setDepth(1.6);
+    }
+
+    if (this.bridgeRepaired) return; // crossing already open — bridge art shows
 
     // The prompt anchor sits at the bridge's west landing, a step from the
     // hopper-yard edge — close enough for the proximity prompt to fire
@@ -417,6 +439,8 @@ export class ArrayPlainsScene extends BaseOverworldScene {
     this.time.delayedCall(280 * plankLengths.length + 500, () => {
       this.bridgeRepaired = true;
       gameState.setFlag('ap_bridge_repaired', true);
+      this.bridgeSprite?.setTexture(AP_LANDMARK_KEYS.BRIDGE_REPAIRED);
+      planks.forEach((plank) => plank.destroy());
       audioManager.playCorrectTone();
       JuiceSystem.correctBurst(this, bx, by);
       a11yManager.announce('The bridge is repaired. The stream crossing is open.', true);
@@ -720,7 +744,7 @@ export class ArrayPlainsScene extends BaseOverworldScene {
       name: 'Village Elder',
       type: NPCType.MENTOR,
       spriteKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
-      spriteScale: 0.34,
+      spriteScale: 1,
       defaultPosition: { x: 300, y: 668 },
       dialogue: elderDialogue,
       movement: {
@@ -1063,6 +1087,7 @@ export class ArrayPlainsScene extends BaseOverworldScene {
     if (this.twinRiversGateway) { this.interactablePool.release(this.twinRiversGateway); this.twinRiversGateway = null; }
     if (this.shufflerGate) { this.interactablePool.release(this.shufflerGate); this.shufflerGate = null; }
     if (this.bridgeGate) { this.interactablePool.release(this.bridgeGate); this.bridgeGate = null; }
+    this.bridgeSprite = null; // scene teardown destroys the display object
 
     for (const npc of this.livingNPCs) npc.destroy();
     this.livingNPCs = [];

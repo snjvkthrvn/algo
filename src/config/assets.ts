@@ -380,6 +380,52 @@ export const ARRAY_PLAINS_TILEMAP_SHEET_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Array Plains landmark props — individually placed transparent sprites at
+ * terrain density (32px logical grid, sizes in 32px multiples), replacing
+ * the scenery that was baked into the retired living-map painting.
+ * Buildings are imagegen (sources in art_sources/visual_revamp/replacements);
+ * flora/fences/bridges are deterministic PIL pieces sharing the tileset
+ * palette. Placement data lives in src/data/regions/arrayPlainsLandmarks.ts.
+ */
+export const AP_LANDMARK_KEYS = {
+  SHED: "ap-landmark-shed",
+  BARN: "ap-landmark-barn",
+  SILO: "ap-landmark-silo",
+  FARMHOUSE: "ap-landmark-farmhouse",
+  TREE_LARGE: "ap-landmark-tree-large",
+  TREE_SMALL: "ap-landmark-tree-small",
+  BUSH: "ap-landmark-bush",
+  BRIDGE_BROKEN: "ap-bridge-broken",
+  BRIDGE_REPAIRED: "ap-bridge-repaired",
+} as const;
+
+export const AP_LANDMARK_IMAGE_ASSETS: AssetEntry[] = [
+  { key: AP_LANDMARK_KEYS.SHED, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_shed_v1.png` },
+  { key: AP_LANDMARK_KEYS.BARN, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_barn_v1.png` },
+  { key: AP_LANDMARK_KEYS.SILO, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_silo_v1.png` },
+  { key: AP_LANDMARK_KEYS.FARMHOUSE, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_farmhouse_v1.png` },
+  { key: AP_LANDMARK_KEYS.TREE_LARGE, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_tree_large_v1.png` },
+  { key: AP_LANDMARK_KEYS.TREE_SMALL, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_tree_small_v1.png` },
+  { key: AP_LANDMARK_KEYS.BUSH, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_bush_v1.png` },
+  { key: AP_LANDMARK_KEYS.BRIDGE_BROKEN, path: `${VISUAL_REVAMP_BASE}/props/ap_bridge_broken_v1.png` },
+  { key: AP_LANDMARK_KEYS.BRIDGE_REPAIRED, path: `${VISUAL_REVAMP_BASE}/props/ap_bridge_repaired_v1.png` },
+];
+
+/** Split-rail fence kit: 6 32px frames (H seg/L end/R end, V seg/top/bottom). */
+export const AP_FENCE_KEYS = {
+  KIT: "ap-fence-kit",
+} as const;
+
+export const AP_FENCE_SHEET_ASSETS: AssetEntry[] = [
+  {
+    key: AP_FENCE_KEYS.KIT,
+    path: `${VISUAL_REVAMP_BASE}/props/ap_fence_kit_v1.png`,
+    frameWidth: 32,
+    frameHeight: 32,
+  },
+];
+
 export const GRAIN_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
   {
     key: GRAIN_CHAMBER_KEYS.GRAIN_DECALS,
@@ -1234,10 +1280,12 @@ export const PROLOGUE_SHEET_SPRITE_ASSETS: AssetEntry[] = [
     frameHeight: 32,
   },
   {
+    // Density-unified (2026-07-05): BOX /4 + palette snap of the smooth v10
+    // sheet — 64px frames, character ~45px tall = 1.4 tiles at scale 1.
     key: PROLOGUE_SHEET_KEYS.PLAYER,
     path: `${SHEET_BASE}/characters/imagegen_player_walk_smooth_v10.png`,
-    frameWidth: 256,
-    frameHeight: 256,
+    frameWidth: 64,
+    frameHeight: 64,
   },
   {
     key: PROLOGUE_SHEET_KEYS.NPCS,
@@ -1369,26 +1417,26 @@ export const ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.SORTING_FARMER,
     path: `${VISUAL_REVAMP_BASE}/characters/sorting_farmer_idle_v1.png`,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 48,
+    frameHeight: 48,
   },
   {
     key: VISUAL_REVAMP_KEYS.BASKET_KEEPER,
     path: `${VISUAL_REVAMP_BASE}/characters/basket_keeper_idle_v1.png`,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 48,
+    frameHeight: 48,
   },
   {
     key: VISUAL_REVAMP_KEYS.CROP_SORTER,
     path: `${VISUAL_REVAMP_BASE}/characters/crop_sorter_idle_v1.png`,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 48,
+    frameHeight: 48,
   },
   {
     key: VISUAL_REVAMP_KEYS.TILE_WORKER,
     path: `${VISUAL_REVAMP_BASE}/characters/tile_worker_idle_v1.png`,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 48,
+    frameHeight: 48,
   },
 ];
 
@@ -1396,26 +1444,26 @@ export const TWIN_RIVERS_CHARACTER_SPRITE_ASSETS: AssetEntry[] = [
   {
     key: VISUAL_REVAMP_KEYS.MIRROR_WALKER,
     path: `${VISUAL_REVAMP_BASE}/characters/mirror_walker_idle_v1.png`,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 48,
+    frameHeight: 48,
   },
   {
     key: VISUAL_REVAMP_KEYS.BRIDGE_KEEPER,
     path: `${VISUAL_REVAMP_BASE}/characters/bridge_keeper_idle_v1.png`,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 48,
+    frameHeight: 48,
   },
   {
     key: VISUAL_REVAMP_KEYS.WINDOW_FISHER,
     path: `${VISUAL_REVAMP_BASE}/characters/window_fisher_idle_v1.png`,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 48,
+    frameHeight: 48,
   },
   {
     key: VISUAL_REVAMP_KEYS.CURRENT_RIDER,
     path: `${VISUAL_REVAMP_BASE}/characters/current_rider_idle_v1.png`,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 48,
+    frameHeight: 48,
   },
 ];
 
@@ -1454,6 +1502,7 @@ export const ARRAY_PLAINS_SCENE_SPRITE_ASSETS: AssetEntry[] = [
   ...ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS,
   ...ARRAY_PLAINS_PROP_SPRITE_ASSETS,
   ...ARRAY_PLAINS_TILEMAP_SHEET_ASSETS,
+  ...AP_FENCE_SHEET_ASSETS,
 ];
 export const TWIN_RIVERS_SCENE_SPRITE_ASSETS: AssetEntry[] = [
   ...TWIN_RIVERS_CHARACTER_SPRITE_ASSETS,
@@ -1524,6 +1573,7 @@ export const SPRITE_ASSETS: AssetEntry[] = [
   ...PROLOGUE_CHAMBER_SHEET_ASSETS,
   ...PROLOGUE_TRIAL_SHEET_ASSETS,
   ...ARRAY_PLAINS_TILEMAP_SHEET_ASSETS,
+  ...AP_FENCE_SHEET_ASSETS,
   // Chamber-kit sheets, registered so getSpriteAssetEntry can resolve them
   // for the shared BasePuzzleScene preload (chickens fell back to white
   // ellipses in every room but P1_1 — 2026-07 audit).
@@ -1580,6 +1630,7 @@ const LEGACY_PROLOGUE_COMPOSITE_IMAGE_ASSETS: AssetEntry[] = [
 
 export const IMAGE_ASSETS: AssetEntry[] = [
   ...LEGACY_PROLOGUE_COMPOSITE_IMAGE_ASSETS,
+  ...AP_LANDMARK_IMAGE_ASSETS,
   ...PROLOGUE_REWORK_IMAGE_ASSETS,
   ...VISUAL_REVAMP_IMAGE_ASSETS,
   ...ARRAY_PLAINS_IMAGE_ASSETS,
@@ -1662,6 +1713,7 @@ const ARRAY_PLAINS_SCENE_VISUAL_KEYS = new Set<string>([
 
 export const ARRAY_PLAINS_SCENE_IMAGE_ASSETS: AssetEntry[] = [
   ...ARRAY_PLAINS_IMAGE_ASSETS,
+  ...AP_LANDMARK_IMAGE_ASSETS,
   ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) =>
     ARRAY_PLAINS_SCENE_VISUAL_KEYS.has(asset.key),
   ),

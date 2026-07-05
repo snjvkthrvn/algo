@@ -18,6 +18,7 @@ import { PROLOGUE_REWORK_KEYS, PROLOGUE_SHEET_KEYS, VISUAL_REVAMP_KEYS } from '.
 import { eventBus, GameEvents } from '../core/EventBus';
 import { gameState } from '../core/GameStateManager';
 import type { NPCConfig } from '../data/types';
+import { worldDepthForY } from '../utils/actorDepth';
 
 export type { NPCConfig };
 
@@ -39,24 +40,19 @@ const STATIC_NPC_SCALES: Record<string, number> = {
   [VISUAL_REVAMP_KEYS.RUNE_KEEPER]: 0.22,
   [VISUAL_REVAMP_KEYS.CONSOLE_KEEPER]: 0.22,
   [VISUAL_REVAMP_KEYS.WATCHER]: 0.22,
-  [VISUAL_REVAMP_KEYS.VILLAGE_ELDER]: 0.95,
+  [VISUAL_REVAMP_KEYS.VILLAGE_ELDER]: 1,
   [VISUAL_REVAMP_KEYS.GLITCH]: 0.22,
 
-  // Array Plains keepers (192x192 downscaled art) — 0.95 lands their head
-  // around 180px tall, matching the prologue cast's apparent height when
-  // the camera is at the standard overworld zoom.
-  [VISUAL_REVAMP_KEYS.SORTING_FARMER]: 0.95,
-  [VISUAL_REVAMP_KEYS.BASKET_KEEPER]: 0.95,
-  [VISUAL_REVAMP_KEYS.CROP_SORTER]: 0.95,
-  [VISUAL_REVAMP_KEYS.TILE_WORKER]: 0.95,
-
-  // Twin Rivers keepers (256x256 placeholders today, real art via
-  // codex exec in Phase 5) — 0.78 lands them at roughly the same screen
-  // height as the Array Plains cast.
-  [VISUAL_REVAMP_KEYS.MIRROR_WALKER]: 0.78,
-  [VISUAL_REVAMP_KEYS.BRIDGE_KEEPER]: 0.78,
-  [VISUAL_REVAMP_KEYS.WINDOW_FISHER]: 0.78,
-  [VISUAL_REVAMP_KEYS.CURRENT_RIDER]: 0.78,
+  // AP + TR keepers are density-unified 48px sheets (2026-07-05): native
+  // scale 1 puts them on the same logical pixel grid as the terrain.
+  [VISUAL_REVAMP_KEYS.SORTING_FARMER]: 1,
+  [VISUAL_REVAMP_KEYS.BASKET_KEEPER]: 1,
+  [VISUAL_REVAMP_KEYS.CROP_SORTER]: 1,
+  [VISUAL_REVAMP_KEYS.TILE_WORKER]: 1,
+  [VISUAL_REVAMP_KEYS.MIRROR_WALKER]: 1,
+  [VISUAL_REVAMP_KEYS.BRIDGE_KEEPER]: 1,
+  [VISUAL_REVAMP_KEYS.WINDOW_FISHER]: 1,
+  [VISUAL_REVAMP_KEYS.CURRENT_RIDER]: 1,
 
   // Hash Highlands keeper (256x256 draft) — same target screen size as
   // Twin Rivers; revisit once HH gets art.
@@ -112,7 +108,7 @@ export class NPC {
     this.updateGlow();
 
     // Name tag
-    this.nameTag = scene.add.text(x, y - 46, config.name, {
+    this.nameTag = scene.add.text(x, y - 34, config.name, {
       fontSize: '10px',
       fontFamily: FONTS.RETRO,
       color: '#9ca3af',
@@ -328,6 +324,11 @@ export class NPC {
    * readable.
    */
   update(time: number): void {
+    // y-sort with the player + landmarks (shared 3..5 actor band). Runs
+    // before the movement early-returns so stationary NPCs sort too.
+    const worldHeight = this.scene.physics.world.bounds.height || 1440;
+    this.sprite.setDepth(worldDepthForY(this.sprite.y + 20, worldHeight));
+
     const movement = this.config.movement;
     if (!movement || this.isStepping) return;
 
@@ -381,12 +382,12 @@ export class NPC {
         const y = fromY + (target.y - fromY) * t - hop;
         this.sprite.setPosition(x, y);
         this.glowGraphics.setPosition(x, y + hop);
-        this.nameTag.setPosition(x, y + hop - 46);
+        this.nameTag.setPosition(x, y + hop - 34);
       },
       onComplete: () => {
         this.sprite.setPosition(target.x, target.y);
         this.glowGraphics.setPosition(target.x, target.y);
-        this.nameTag.setPosition(target.x, target.y - 46);
+        this.nameTag.setPosition(target.x, target.y - 34);
         this.isStepping = false;
         this.stepTween = null;
       },
@@ -430,7 +431,7 @@ export class NPC {
     this.sprite.setPosition(x, y);
     this.sprite.setActive(true).setVisible(true);
     this.glowGraphics.setPosition(x, y).setAlpha(0).setVisible(true);
-    this.nameTag.setText(config.name).setPosition(x, y - 46).setVisible(false);
+    this.nameTag.setText(config.name).setPosition(x, y - 34).setVisible(false);
     this.isHighlighted = false;
     this.isSpeaking = false;
   }

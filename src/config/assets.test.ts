@@ -104,7 +104,14 @@ describe('prologue spritesheet manifest', () => {
     for (const asset of PROLOGUE_SHEET_SPRITE_ASSETS) {
       expect(asset.path).toMatch(/^assets\/prologue_sheets\//);
       expect(asset.path.endsWith('.png')).toBe(true);
-      const expectedFrameSize = asset.key === PROLOGUE_SHEET_KEYS.ROUTE_TILESET ? 32 : 256;
+      // Route tileset is native 32px; the player sheet is density-unified
+      // 64px frames (2026-07-05); the remaining sheets are legacy 256px.
+      const expectedFrameSize =
+        asset.key === PROLOGUE_SHEET_KEYS.ROUTE_TILESET
+          ? 32
+          : asset.key === PROLOGUE_SHEET_KEYS.PLAYER
+            ? 64
+            : 256;
       expect(asset.frameWidth, asset.key).toBe(expectedFrameSize);
       expect(asset.frameHeight, asset.key).toBe(expectedFrameSize);
     }
@@ -132,8 +139,8 @@ describe('prologue spritesheet manifest', () => {
     expect(sheet).toBeDefined();
 
     const bytes = readFileSync(join(process.cwd(), 'public', sheet!.path));
-    expect(bytes.readUInt32BE(16)).toBe(2048);
-    expect(bytes.readUInt32BE(20)).toBe(1024);
+    expect(bytes.readUInt32BE(16)).toBe(512);
+    expect(bytes.readUInt32BE(20)).toBe(256);
     expect(bytes.length).toBeGreaterThan(25);
 
     // PNG color type 6 means RGBA; the movement sheet needs alpha because the
@@ -159,15 +166,17 @@ describe('prologue spritesheet manifest', () => {
       frameHeight: 96,
     });
 
+    // Keeper sheets are density-unified 48px frames (2026-07-05): one
+    // logical pixel shared with the 32px terrain grid.
     for (const asset of ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS) {
       expect(asset.path).toMatch(/^assets\/visual_revamp\/characters\/.+_idle_v1\.png$/);
-      expect(asset.frameWidth).toBe(192);
-      expect(asset.frameHeight).toBe(192);
+      expect(asset.frameWidth).toBe(48);
+      expect(asset.frameHeight).toBe(48);
     }
     for (const asset of TWIN_RIVERS_CHARACTER_SPRITE_ASSETS) {
       expect(asset.path).toMatch(/^assets\/visual_revamp\/characters\/.+_idle_v1\.png$/);
-      expect(asset.frameWidth).toBe(192);
-      expect(asset.frameHeight).toBe(192);
+      expect(asset.frameWidth).toBe(48);
+      expect(asset.frameHeight).toBe(48);
     }
   });
 

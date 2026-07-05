@@ -506,7 +506,7 @@ export class TwinRiversScene extends BaseOverworldScene {
   }
 
   private renderRoute(): void {
-    // The living map (twin_rivers_living_v1.png) bakes the paths, bridge,
+    // The living map (twin_rivers_living_v2.png) bakes the paths, bridge,
     // and docks into the art — route rects are collision data only.
     this.createWaterFlow();
   }
@@ -564,7 +564,7 @@ export class TwinRiversScene extends BaseOverworldScene {
       name: "River Guide",
       type: NPCType.MENTOR,
       spriteKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
-      spriteScale: 0.34,
+      spriteScale: 1,
       defaultPosition: {
         x: TWIN_RIVERS_CONFIG.npcs[0].position.x,
         y: TWIN_RIVERS_CONFIG.npcs[0].position.y,
@@ -699,7 +699,7 @@ export class TwinRiversScene extends BaseOverworldScene {
         name: meta.name ?? meta.title,
         type: NPCType.VILLAGER,
         spriteKey: meta.spriteKey ?? VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
-        spriteScale: 0.34,
+        spriteScale: 1,
         defaultPosition: { x: puzzle.position.x, y: puzzle.position.y },
         dialogue: this.getDialogueTreeForPuzzle(puzzle.id) ?? {
           startNodeId: "",
