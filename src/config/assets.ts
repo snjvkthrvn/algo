@@ -398,6 +398,10 @@ export const AP_LANDMARK_KEYS = {
   BUSH: "ap-landmark-bush",
   BRIDGE_BROKEN: "ap-bridge-broken",
   BRIDGE_REPAIRED: "ap-bridge-repaired",
+  ARCH: "ap-landmark-arch",
+  GROVE_STONE: "ap-landmark-grovestone",
+  BOSSGATE_LOCKED: "ap-bossgate-locked",
+  BOSSGATE_OPEN: "ap-bossgate-open",
 } as const;
 
 export const AP_LANDMARK_IMAGE_ASSETS: AssetEntry[] = [
@@ -410,6 +414,10 @@ export const AP_LANDMARK_IMAGE_ASSETS: AssetEntry[] = [
   { key: AP_LANDMARK_KEYS.BUSH, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_bush_v1.png` },
   { key: AP_LANDMARK_KEYS.BRIDGE_BROKEN, path: `${VISUAL_REVAMP_BASE}/props/ap_bridge_broken_v1.png` },
   { key: AP_LANDMARK_KEYS.BRIDGE_REPAIRED, path: `${VISUAL_REVAMP_BASE}/props/ap_bridge_repaired_v1.png` },
+  { key: AP_LANDMARK_KEYS.ARCH, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_arch_v1.png` },
+  { key: AP_LANDMARK_KEYS.GROVE_STONE, path: `${VISUAL_REVAMP_BASE}/props/ap_landmark_grovestone_v1.png` },
+  { key: AP_LANDMARK_KEYS.BOSSGATE_LOCKED, path: `${VISUAL_REVAMP_BASE}/props/ap_bossgate_locked_v1.png` },
+  { key: AP_LANDMARK_KEYS.BOSSGATE_OPEN, path: `${VISUAL_REVAMP_BASE}/props/ap_bossgate_open_v1.png` },
 ];
 
 /** Split-rail fence kit: 6 32px frames (H seg/L end/R end, V seg/top/bottom). */

@@ -845,10 +845,11 @@ export class ArrayPlainsScene extends BaseOverworldScene {
       prompt: progressionSystem.isShufflerGateOpen() ? '[SPACE] Challenge' : '[LOCKED] Help farmers',
       locked: !progressionSystem.isShufflerGateOpen(),
       imageByState: {
-        locked: VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_LOCKED,
-        unlocked: VISUAL_REVAMP_KEYS.PROP_BOSS_GATE_OPEN,
+        // Density-unified palisade pair (224px, terrain logical pixels).
+        locked: AP_LANDMARK_KEYS.BOSSGATE_LOCKED,
+        unlocked: AP_LANDMARK_KEYS.BOSSGATE_OPEN,
       },
-      imageScale: 0.2,
+      imageScale: 1,
       imageOriginY: 0.84,
       initialState: progressionSystem.isShufflerGateOpen() ? 'unlocked' : 'locked',
       onInteract: () => {

@@ -30,6 +30,10 @@ export const AP_LANDMARKS: ReadonlyArray<ApLandmarkPlacement> = [
   { key: AP_LANDMARK_KEYS.BARN, x: 960, baseY: 320 },
   { key: AP_LANDMARK_KEYS.SILO, x: 264, baseY: 1152 },
   { key: AP_LANDMARK_KEYS.FARMHOUSE, x: 1000, baseY: 1152 },
+  // Stone gateway arch straddling the west exit; the void portal sits in
+  // its walkable gap. Grove shrine stones ring the hidden-clearing beat.
+  { key: AP_LANDMARK_KEYS.ARCH, x: 88, baseY: 752 },
+  { key: AP_LANDMARK_KEYS.GROVE_STONE, x: 1492, baseY: 248 },
   // Trees + bushes on grass, echoing the painting's clusters.
   { key: AP_LANDMARK_KEYS.TREE_LARGE, x: 216, baseY: 592 },
   { key: AP_LANDMARK_KEYS.TREE_LARGE, x: 688, baseY: 560 },
