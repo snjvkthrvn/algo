@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import {
+  INTERACTABLE_PROP_KEYS,
   TWIN_RIVERS_SCENE_IMAGE_ASSETS,
   TWIN_RIVERS_SCENE_SPRITE_ASSETS,
   TWIN_RIVERS_TILEMAP_KEYS,
@@ -532,9 +533,9 @@ export class TwinRiversScene extends BaseOverworldScene {
       prompt: "[SPACE] Array Plains",
       locked: false,
       imageByState: {
-        unlocked: VISUAL_REVAMP_KEYS.PORTAL_FIELD,
+        unlocked: INTERACTABLE_PROP_KEYS.PORTAL_WATER,
       },
-      imageScale: 0.24,
+      imageScale: 1,
       imageOriginY: 0.86,
       initialState: "unlocked",
       onInteract: () => {
@@ -691,8 +692,8 @@ export class TwinRiversScene extends BaseOverworldScene {
           y: puzzle.position.y,
           prompt: completed ? "[SPACE] Replay" : meta.prompt,
           locked: false,
-          imageByState: { unlocked: VISUAL_REVAMP_KEYS.PORTAL_WATER },
-          imageScale: 0.24,
+          imageByState: { unlocked: INTERACTABLE_PROP_KEYS.PORTAL_WATER },
+          imageScale: 1,
           imageOriginY: 0.84,
           initialState: "unlocked",
           onInteract: () => this.startPuzzle(meta.scene),

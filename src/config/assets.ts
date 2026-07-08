@@ -460,6 +460,14 @@ export const TR_LANDMARK_KEYS = {
   BUSH: "tr-landmark-bush",
   LANTERN: "tr-prop-lantern",
   PILLAR: "tr-prop-pillar",
+  BRIDGE_TOWER_NORTH: "tr-bridge-tower-north",
+  BRIDGE_TOWER_SOUTH: "tr-bridge-tower-south",
+  SERPENT_GATE: "tr-serpent-gate",
+  CRANE: "tr-crane",
+  DOCKHUT: "tr-dockhut",
+  BOAT: "tr-boat",
+  BOAT2: "tr-boat2",
+  NETRACK: "tr-netrack",
 } as const;
 
 export const TR_LANDMARK_IMAGE_ASSETS: AssetEntry[] = [
@@ -468,6 +476,35 @@ export const TR_LANDMARK_IMAGE_ASSETS: AssetEntry[] = [
   { key: TR_LANDMARK_KEYS.BUSH, path: `${VISUAL_REVAMP_BASE}/props/tr_landmark_bush_v1.png` },
   { key: TR_LANDMARK_KEYS.LANTERN, path: `${VISUAL_REVAMP_BASE}/props/tr_prop_lantern_v1.png` },
   { key: TR_LANDMARK_KEYS.PILLAR, path: `${VISUAL_REVAMP_BASE}/props/tr_prop_pillar_v1.png` },
+  { key: TR_LANDMARK_KEYS.BRIDGE_TOWER_NORTH, path: `${VISUAL_REVAMP_BASE}/props/tr_bridge_tower_north_v1.png` },
+  { key: TR_LANDMARK_KEYS.BRIDGE_TOWER_SOUTH, path: `${VISUAL_REVAMP_BASE}/props/tr_bridge_tower_south_v1.png` },
+  { key: TR_LANDMARK_KEYS.SERPENT_GATE, path: `${VISUAL_REVAMP_BASE}/props/tr_serpent_gate_v1.png` },
+  { key: TR_LANDMARK_KEYS.CRANE, path: `${VISUAL_REVAMP_BASE}/props/tr_crane_v1.png` },
+  { key: TR_LANDMARK_KEYS.DOCKHUT, path: `${VISUAL_REVAMP_BASE}/props/tr_dockhut_v1.png` },
+  { key: TR_LANDMARK_KEYS.BOAT, path: `${VISUAL_REVAMP_BASE}/props/tr_boat_v1.png` },
+  { key: TR_LANDMARK_KEYS.BOAT2, path: `${VISUAL_REVAMP_BASE}/props/tr_boat2_v1.png` },
+  { key: TR_LANDMARK_KEYS.NETRACK, path: `${VISUAL_REVAMP_BASE}/props/tr_netrack_v1.png` },
+];
+
+/**
+ * Interactable prop set at terrain density (2026-07-08): pixel portal
+ * arches, shrine obelisk, index marker, and field sign that replace the
+ * smooth-shaded interactable art in the first-three overworld scenes.
+ */
+export const INTERACTABLE_PROP_KEYS = {
+  PORTAL_VOID: "prop-portal-void-px",
+  PORTAL_WATER: "prop-portal-water-px",
+  SHRINE: "prop-puzzle-shrine-px",
+  MARKER: "prop-array-marker-px",
+  SIGN: "prop-field-sign-px",
+} as const;
+
+export const INTERACTABLE_PROP_IMAGE_ASSETS: AssetEntry[] = [
+  { key: INTERACTABLE_PROP_KEYS.PORTAL_VOID, path: `${VISUAL_REVAMP_BASE}/props/prop_portal_void_v1.png` },
+  { key: INTERACTABLE_PROP_KEYS.PORTAL_WATER, path: `${VISUAL_REVAMP_BASE}/props/prop_portal_water_v1.png` },
+  { key: INTERACTABLE_PROP_KEYS.SHRINE, path: `${VISUAL_REVAMP_BASE}/props/prop_puzzle_shrine_v1.png` },
+  { key: INTERACTABLE_PROP_KEYS.MARKER, path: `${VISUAL_REVAMP_BASE}/props/prop_array_marker_v1.png` },
+  { key: INTERACTABLE_PROP_KEYS.SIGN, path: `${VISUAL_REVAMP_BASE}/props/prop_field_sign_v1.png` },
 ];
 
 export const GRAIN_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
@@ -1674,6 +1711,7 @@ export const IMAGE_ASSETS: AssetEntry[] = [
   ...LEGACY_PROLOGUE_COMPOSITE_IMAGE_ASSETS,
   ...AP_LANDMARK_IMAGE_ASSETS,
   ...TR_LANDMARK_IMAGE_ASSETS,
+  ...INTERACTABLE_PROP_IMAGE_ASSETS,
   ...PROLOGUE_REWORK_IMAGE_ASSETS,
   ...VISUAL_REVAMP_IMAGE_ASSETS,
   ...ARRAY_PLAINS_IMAGE_ASSETS,
@@ -1757,6 +1795,7 @@ const ARRAY_PLAINS_SCENE_VISUAL_KEYS = new Set<string>([
 export const ARRAY_PLAINS_SCENE_IMAGE_ASSETS: AssetEntry[] = [
   ...ARRAY_PLAINS_IMAGE_ASSETS,
   ...AP_LANDMARK_IMAGE_ASSETS,
+  ...INTERACTABLE_PROP_IMAGE_ASSETS,
   ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) =>
     ARRAY_PLAINS_SCENE_VISUAL_KEYS.has(asset.key),
   ),
@@ -1783,6 +1822,7 @@ const TWIN_RIVERS_SCENE_VISUAL_KEYS = new Set<string>([
 export const TWIN_RIVERS_SCENE_IMAGE_ASSETS: AssetEntry[] = [
   ...TWIN_RIVERS_IMAGE_ASSETS,
   ...TR_LANDMARK_IMAGE_ASSETS,
+  ...INTERACTABLE_PROP_IMAGE_ASSETS,
   ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) =>
     TWIN_RIVERS_SCENE_VISUAL_KEYS.has(asset.key),
   ),

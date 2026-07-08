@@ -642,7 +642,8 @@ test.describe("Prologue region â€“ visual audit", () => {
     expect(sheetInfo).toEqual({
       textureKey: "prologue-sheet-player-walk",
       frameCount: 32,
-      frameSize: { width: 256, height: 256 },
+      // Density-unified sheet (2026-07-05): 64px frames at native scale.
+      frameSize: { width: 64, height: 64 },
       walkRightFrames: [16, 17, 18, 19, 20, 21, 22, 23],
     });
   });

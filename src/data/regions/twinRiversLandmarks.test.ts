@@ -20,11 +20,22 @@ describe('TR_LANDMARKS', () => {
       expect(ty).toBeGreaterThanOrEqual(0);
       expect(ty).toBeLessThan(TR_TILE_ROWS);
       const material = grid[ty][tx];
-      const isFlora =
-        p.key === TR_LANDMARK_KEYS.TREE_LARGE ||
-        p.key === TR_LANDMARK_KEYS.TREE_SMALL ||
-        p.key === TR_LANDMARK_KEYS.BUSH;
-      const legal = isFlora ? ['grass'] : ['grass', 'stone'];
+      const legalByKey: Record<string, string[]> = {
+        [TR_LANDMARK_KEYS.TREE_LARGE]: ['grass'],
+        [TR_LANDMARK_KEYS.TREE_SMALL]: ['grass'],
+        [TR_LANDMARK_KEYS.BUSH]: ['grass'],
+        [TR_LANDMARK_KEYS.LANTERN]: ['grass', 'stone'],
+        [TR_LANDMARK_KEYS.PILLAR]: ['grass', 'stone'],
+        [TR_LANDMARK_KEYS.BRIDGE_TOWER_NORTH]: ['deck', 'path', 'grass'],
+        [TR_LANDMARK_KEYS.BRIDGE_TOWER_SOUTH]: ['deck', 'path', 'grass', 'dock'],
+        [TR_LANDMARK_KEYS.SERPENT_GATE]: ['water', 'grass', 'path'],
+        [TR_LANDMARK_KEYS.CRANE]: ['dock'],
+        [TR_LANDMARK_KEYS.DOCKHUT]: ['dock'],
+        [TR_LANDMARK_KEYS.BOAT]: ['water'],
+        [TR_LANDMARK_KEYS.BOAT2]: ['water'],
+        [TR_LANDMARK_KEYS.NETRACK]: ['dock', 'water'],
+      };
+      const legal = legalByKey[p.key] ?? ['grass'];
       expect(legal, `${p.key} base @${tx},${ty} on ${material}`).toContain(material);
     }
   });

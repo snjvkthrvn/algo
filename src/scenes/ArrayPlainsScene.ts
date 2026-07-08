@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {
   AP_LANDMARK_KEYS,
+  INTERACTABLE_PROP_KEYS,
   ARRAY_PLAINS_SCENE_IMAGE_ASSETS,
   ARRAY_PLAINS_SCENE_SPRITE_ASSETS,
   ARRAY_PLAINS_TILEMAP_KEYS,
@@ -673,9 +674,9 @@ export class ArrayPlainsScene extends BaseOverworldScene {
       prompt: '[SPACE] Return',
       locked: false,
       imageByState: {
-        unlocked: VISUAL_REVAMP_KEYS.PORTAL_VOID,
+        unlocked: INTERACTABLE_PROP_KEYS.PORTAL_VOID,
       },
-      imageScale: 0.24,
+      imageScale: 1,
       imageOriginY: 0.86,
       initialState: 'unlocked',
       onInteract: () => {
@@ -694,10 +695,10 @@ export class ArrayPlainsScene extends BaseOverworldScene {
       imageByState: {
         // Same water-portal sprite either way — the halo + LOCKED label conveys state,
         // so the gate doesn't visually masquerade as a stone boss door when locked.
-        locked: VISUAL_REVAMP_KEYS.PORTAL_WATER,
-        unlocked: VISUAL_REVAMP_KEYS.PORTAL_WATER,
+        locked: INTERACTABLE_PROP_KEYS.PORTAL_WATER,
+        unlocked: INTERACTABLE_PROP_KEYS.PORTAL_WATER,
       },
-      imageScale: 0.24,
+      imageScale: 1,
       imageOriginY: 0.86,
       initialState: progressionSystem.isTwinRiversGatewayOpen() ? 'unlocked' : 'locked',
       onInteract: () => {
@@ -718,8 +719,8 @@ export class ArrayPlainsScene extends BaseOverworldScene {
       y: ARRAY_PLAINS_CONFIG.npcs[0].position.y,
       prompt: '[SPACE] Listen',
       locked: false,
-      spriteImageKey: VISUAL_REVAMP_KEYS.PROP_FIELD_SIGN,
-      imageScale: 0.13,
+      spriteImageKey: INTERACTABLE_PROP_KEYS.SIGN,
+      imageScale: 1,
       imageOriginY: 0.86,
       onInteract: () => this.showFieldNote('Array Guide', 'Every stone in this row has a position. Arrays remember by index.'),
     });
@@ -766,8 +767,8 @@ export class ArrayPlainsScene extends BaseOverworldScene {
         y: marker.position.y,
         prompt: '[SPACE] Inspect',
         locked: false,
-        spriteImageKey: VISUAL_REVAMP_KEYS.PROP_ARRAY_MARKER,
-        imageScale: 0.12,
+        spriteImageKey: INTERACTABLE_PROP_KEYS.MARKER,
+        imageScale: 1,
         imageOriginY: 0.84,
         onInteract: () => this.showFieldNote(`Index ${index}`, `Slot ${index} has one address and one value.`),
       });
@@ -808,8 +809,8 @@ export class ArrayPlainsScene extends BaseOverworldScene {
         y: puzzle.position.y,
         prompt: completed ? '[SPACE] Replay' : meta.prompt,
         locked: false,
-        spriteImageKey: VISUAL_REVAMP_KEYS.PROP_PUZZLE_SHRINE,
-        imageScale: 0.13,
+        spriteImageKey: INTERACTABLE_PROP_KEYS.SHRINE,
+        imageScale: 1,
         imageOriginY: 0.84,
         onInteract: () => {
           const tree = this.getDialogueTreeForPuzzle(puzzle.id);

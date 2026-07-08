@@ -52,6 +52,17 @@ export const TR_LANDMARKS: ReadonlyArray<TrLandmarkPlacement> = [
   { key: TR_LANDMARK_KEYS.PILLAR, x: 1420, baseY: 240 },
   { key: TR_LANDMARK_KEYS.PILLAR, x: 1210, baseY: 300 },
   { key: TR_LANDMARK_KEYS.PILLAR, x: 1370, baseY: 320 },
+  // The grand Pointer Bridge gatehouses (open passages align with the
+  // deck) and the Mirror Serpent gate astride the east river.
+  { key: TR_LANDMARK_KEYS.BRIDGE_TOWER_NORTH, x: 956, baseY: 560 },
+  { key: TR_LANDMARK_KEYS.BRIDGE_TOWER_SOUTH, x: 956, baseY: 1020 },
+  { key: TR_LANDMARK_KEYS.SERPENT_GATE, x: 1760, baseY: 736 },
+  // Dock village dressing.
+  { key: TR_LANDMARK_KEYS.CRANE, x: 620, baseY: 1020 },
+  { key: TR_LANDMARK_KEYS.DOCKHUT, x: 780, baseY: 1068 },
+  { key: TR_LANDMARK_KEYS.BOAT, x: 500, baseY: 1170 },
+  { key: TR_LANDMARK_KEYS.BOAT2, x: 890, baseY: 1200 },
+  { key: TR_LANDMARK_KEYS.NETRACK, x: 1000, baseY: 1080 },
 ];
 
 /** Place all Twin Rivers landmark sprites. Call after the ground bake. */
