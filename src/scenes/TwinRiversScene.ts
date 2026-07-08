@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import {
   TWIN_RIVERS_SCENE_IMAGE_ASSETS,
   TWIN_RIVERS_SCENE_SPRITE_ASSETS,
+  TWIN_RIVERS_TILEMAP_KEYS,
   VISUAL_REVAMP_KEYS,
 } from "../config/assets";
 import {
@@ -29,6 +30,13 @@ import {
   isTwinRiversStepWalkable,
   type TwinRiversCollisionBlocker,
 } from "../data/regions/twinRivers";
+import {
+  TR_TILE_COLS,
+  TR_TILE_ROWS,
+  TR_TILE_SIZE,
+  buildTwinRiversTileGrid,
+} from "../data/regions/twinRiversTilemap";
+import { placeTwinRiversLandmarks } from "../data/regions/twinRiversLandmarks";
 import { DialogueSystem } from "../systems/DialogueSystem";
 import { OverworldAmbience } from "../ui/OverworldAmbience";
 import { HUDManager } from "../systems/HUDManager";
@@ -476,38 +484,42 @@ export class TwinRiversScene extends BaseOverworldScene {
 
   private renderField(): void {
     this.cameras.main.setBackgroundColor(0x0e2f42);
-    const bg = this.add
-      .image(
-        TWIN_RIVERS_WORLD_WIDTH / 2,
-        TWIN_RIVERS_WORLD_HEIGHT / 2,
-        VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG,
-      )
-      .setOrigin(0.5)
-      .setDepth(0);
-    const source = bg.texture.getSourceImage() as HTMLImageElement;
-    const coverScale = Math.max(
-      TWIN_RIVERS_WORLD_WIDTH / source.width,
-      TWIN_RIVERS_WORLD_HEIGHT / source.height,
-    );
-    bg.setScale(coverScale);
-    bg.setAlpha(0.96);
-
-    this.add
-      .rectangle(
-        0,
-        0,
-        TWIN_RIVERS_WORLD_WIDTH,
-        TWIN_RIVERS_WORLD_HEIGHT,
-        0x9be8ff,
-        0.035,
-      )
-      .setOrigin(0)
-      .setDepth(0.5);
+    // Real 32px tilemap (docs/VISION.md §2): the whole static ground plan
+    // bakes into ONE RenderTexture, replacing the retired living-map
+    // painting. 1:1 texel-to-world-pixel — no scaling anywhere.
+    if (this.textures.exists(TWIN_RIVERS_TILEMAP_KEYS.TERRAIN)) {
+      const rt = this.add
+        .renderTexture(0, 0, TWIN_RIVERS_WORLD_WIDTH, TWIN_RIVERS_WORLD_HEIGHT)
+        .setOrigin(0, 0)
+        .setDepth(0);
+      const frames = buildTwinRiversTileGrid();
+      rt.beginDraw();
+      for (let ty = 0; ty < TR_TILE_ROWS; ty += 1) {
+        for (let tx = 0; tx < TR_TILE_COLS; tx += 1) {
+          rt.batchDrawFrame(
+            TWIN_RIVERS_TILEMAP_KEYS.TERRAIN,
+            frames[ty][tx],
+            tx * TR_TILE_SIZE,
+            ty * TR_TILE_SIZE,
+          );
+        }
+      }
+      rt.endDraw();
+      placeTwinRiversLandmarks(this);
+    } else {
+      // Minimal test boots load no textures — flat valley keeps the scene alive.
+      this.add
+        .rectangle(0, 0, TWIN_RIVERS_WORLD_WIDTH, TWIN_RIVERS_WORLD_HEIGHT, 0x55702c)
+        .setOrigin(0)
+        .setDepth(0);
+    }
   }
 
   private renderRoute(): void {
-    // The living map (twin_rivers_living_v2.png) bakes the paths, bridge,
-    // and docks into the art — route rects are collision data only.
+    // Walkable lanes are readable because the tile plan stamps them as
+    // dirt/deck/dock straight from the route rects (twinRiversTilemap.ts).
+    // Route rects stay pure collision data; the cyan painting-era wash is
+    // retired with the painting.
     this.createWaterFlow();
   }
 

@@ -20,7 +20,6 @@ const VISUAL_REVAMP_BASE = "assets/visual_revamp";
 export const VISUAL_REVAMP_KEYS = {
   TITLE_BG: "visual-revamp-title-bg",
   PROLOGUE_BG: "visual-revamp-prologue-bg",
-  TWIN_RIVERS_BG: "visual-revamp-twin-rivers-bg",
   HASH_HIGHLANDS_BG: "visual-revamp-hash-highlands-bg",
   STACK_SPIRES_BG: "visual-revamp-stack-spires-bg",
   QUEUE_CANALS_BG: "visual-revamp-queue-canals-bg",
@@ -434,6 +433,43 @@ export const AP_FENCE_SHEET_ASSETS: AssetEntry[] = [
   },
 ];
 
+/**
+ * Twin Rivers overworld terrain tilesheet — 8x10 grid of 32px tiles
+ * (ground rows 0-3, water/reed rows 4-7, bridge-deck/dock rows 8-9),
+ * harvested from three 4x registration sheets (art_sources/.../tr_*).
+ * Frame layout contract: src/data/regions/twinRiversTilemap.ts.
+ */
+export const TWIN_RIVERS_TILEMAP_KEYS = {
+  TERRAIN: "twin-rivers-terrain-tileset",
+} as const;
+
+export const TWIN_RIVERS_TILEMAP_SHEET_ASSETS: AssetEntry[] = [
+  {
+    key: TWIN_RIVERS_TILEMAP_KEYS.TERRAIN,
+    path: "assets/visual_revamp/regions/tr_terrain_v1.png",
+    frameWidth: 32,
+    frameHeight: 32,
+  },
+];
+
+/** Twin Rivers landmark props at terrain density (placement data in
+ * src/data/regions/twinRiversLandmarks.ts). */
+export const TR_LANDMARK_KEYS = {
+  TREE_LARGE: "tr-landmark-tree-large",
+  TREE_SMALL: "tr-landmark-tree-small",
+  BUSH: "tr-landmark-bush",
+  LANTERN: "tr-prop-lantern",
+  PILLAR: "tr-prop-pillar",
+} as const;
+
+export const TR_LANDMARK_IMAGE_ASSETS: AssetEntry[] = [
+  { key: TR_LANDMARK_KEYS.TREE_LARGE, path: `${VISUAL_REVAMP_BASE}/props/tr_landmark_tree_large_v1.png` },
+  { key: TR_LANDMARK_KEYS.TREE_SMALL, path: `${VISUAL_REVAMP_BASE}/props/tr_landmark_tree_small_v1.png` },
+  { key: TR_LANDMARK_KEYS.BUSH, path: `${VISUAL_REVAMP_BASE}/props/tr_landmark_bush_v1.png` },
+  { key: TR_LANDMARK_KEYS.LANTERN, path: `${VISUAL_REVAMP_BASE}/props/tr_prop_lantern_v1.png` },
+  { key: TR_LANDMARK_KEYS.PILLAR, path: `${VISUAL_REVAMP_BASE}/props/tr_prop_pillar_v1.png` },
+];
+
 export const GRAIN_CHAMBER_SHEET_ASSETS: AssetEntry[] = [
   {
     key: GRAIN_CHAMBER_KEYS.GRAIN_DECALS,
@@ -603,14 +639,9 @@ export const VISUAL_REVAMP_IMAGE_ASSETS: AssetEntry[] = [
     key: VISUAL_REVAMP_KEYS.PROLOGUE_BG,
     path: `${VISUAL_REVAMP_BASE}/regions/prologue_chamber.png`,
   },
-  // Living explorable maps (docs/VISION.md §2) — 1920x1440, multi-route,
-  // secrets + mastery-gated crossings baked into the art. Array Plains has
-  // graduated to a real 32px tilemap (ARRAY_PLAINS_TILEMAP_SHEET_ASSETS);
-  // Twin Rivers renders its painting until its own rebuild lands.
-  {
-    key: VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG,
-    path: `${VISUAL_REVAMP_BASE}/regions/twin_rivers_living_v2.png`,
-  },
+  // Living explorable maps (docs/VISION.md §2) are real 32px tilemaps now
+  // (ARRAY_PLAINS_TILEMAP_SHEET_ASSETS / TWIN_RIVERS_TILEMAP_SHEET_ASSETS);
+  // the retired paintings are archived in art_sources as composition refs.
   {
     key: VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG,
     path: `${VISUAL_REVAMP_BASE}/regions/hash_highlands_grounded_v1.png`,
@@ -1511,10 +1542,12 @@ export const ARRAY_PLAINS_SCENE_SPRITE_ASSETS: AssetEntry[] = [
   ...ARRAY_PLAINS_PROP_SPRITE_ASSETS,
   ...ARRAY_PLAINS_TILEMAP_SHEET_ASSETS,
   ...AP_FENCE_SHEET_ASSETS,
+  ...TWIN_RIVERS_TILEMAP_SHEET_ASSETS,
 ];
 export const TWIN_RIVERS_SCENE_SPRITE_ASSETS: AssetEntry[] = [
   ...TWIN_RIVERS_CHARACTER_SPRITE_ASSETS,
   ...TWIN_RIVERS_PROP_SPRITE_ASSETS,
+  ...TWIN_RIVERS_TILEMAP_SHEET_ASSETS,
 ];
 
 const LEGACY_PROLOGUE_TILESET_ASSET: AssetEntry = {
@@ -1582,6 +1615,7 @@ export const SPRITE_ASSETS: AssetEntry[] = [
   ...PROLOGUE_TRIAL_SHEET_ASSETS,
   ...ARRAY_PLAINS_TILEMAP_SHEET_ASSETS,
   ...AP_FENCE_SHEET_ASSETS,
+  ...TWIN_RIVERS_TILEMAP_SHEET_ASSETS,
   // Chamber-kit sheets, registered so getSpriteAssetEntry can resolve them
   // for the shared BasePuzzleScene preload (chickens fell back to white
   // ellipses in every room but P1_1 — 2026-07 audit).
@@ -1639,6 +1673,7 @@ const LEGACY_PROLOGUE_COMPOSITE_IMAGE_ASSETS: AssetEntry[] = [
 export const IMAGE_ASSETS: AssetEntry[] = [
   ...LEGACY_PROLOGUE_COMPOSITE_IMAGE_ASSETS,
   ...AP_LANDMARK_IMAGE_ASSETS,
+  ...TR_LANDMARK_IMAGE_ASSETS,
   ...PROLOGUE_REWORK_IMAGE_ASSETS,
   ...VISUAL_REVAMP_IMAGE_ASSETS,
   ...ARRAY_PLAINS_IMAGE_ASSETS,
@@ -1728,7 +1763,6 @@ export const ARRAY_PLAINS_SCENE_IMAGE_ASSETS: AssetEntry[] = [
 ];
 
 const TWIN_RIVERS_SCENE_VISUAL_KEYS = new Set<string>([
-  VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG,
   VISUAL_REVAMP_KEYS.ROUTE_MATERIALS,
   VISUAL_REVAMP_KEYS.BIT_SPARK,
   VISUAL_REVAMP_KEYS.BIT_BYTE,
@@ -1748,6 +1782,7 @@ const TWIN_RIVERS_SCENE_VISUAL_KEYS = new Set<string>([
 
 export const TWIN_RIVERS_SCENE_IMAGE_ASSETS: AssetEntry[] = [
   ...TWIN_RIVERS_IMAGE_ASSETS,
+  ...TR_LANDMARK_IMAGE_ASSETS,
   ...VISUAL_REVAMP_IMAGE_ASSETS.filter((asset) =>
     TWIN_RIVERS_SCENE_VISUAL_KEYS.has(asset.key),
   ),

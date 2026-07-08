@@ -12,6 +12,8 @@ import {
   ARRAY_PLAINS_CHARACTER_SPRITE_ASSETS,
   ARRAY_PLAINS_TILEMAP_KEYS,
   ARRAY_PLAINS_TILEMAP_SHEET_ASSETS,
+  TWIN_RIVERS_TILEMAP_KEYS,
+  TWIN_RIVERS_TILEMAP_SHEET_ASSETS,
   TWIN_RIVERS_CHARACTER_SPRITE_ASSETS,
   ARRAY_PLAINS_SCENE_SPRITE_ASSETS,
   TWIN_RIVERS_SCENE_SPRITE_ASSETS,
@@ -256,7 +258,7 @@ describe('visual revamp asset manifest', () => {
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.TITLE_BG)).toBe('assets/visual_revamp/title/title_first_three_overhaul_v1.png');
   });
 
-  it('renders Array Plains from the real terrain tilesheet, not a painting', () => {
+  it('renders the first-three overworlds from real terrain tilesheets, not paintings', () => {
     expect(ARRAY_PLAINS_TILEMAP_SHEET_ASSETS).toEqual([
       {
         key: ARRAY_PLAINS_TILEMAP_KEYS.TERRAIN,
@@ -265,16 +267,24 @@ describe('visual revamp asset manifest', () => {
         frameHeight: 32,
       },
     ]);
-    // The retired living-map painting must be gone from the runtime manifest.
+    expect(TWIN_RIVERS_TILEMAP_SHEET_ASSETS).toEqual([
+      {
+        key: TWIN_RIVERS_TILEMAP_KEYS.TERRAIN,
+        path: 'assets/visual_revamp/regions/tr_terrain_v1.png',
+        frameWidth: 32,
+        frameHeight: 32,
+      },
+    ]);
+    // The retired living-map paintings must be gone from the runtime manifest.
     for (const asset of VISUAL_REVAMP_IMAGE_ASSETS) {
       expect(asset.path).not.toContain('array_plains_living');
+      expect(asset.path).not.toContain('twin_rivers_living');
     }
   });
 
-  it('uses grounded imagegen region backgrounds for every post-prologue overworld', () => {
+  it('uses grounded imagegen region backgrounds for every beta-gated overworld', () => {
     const assetPaths = new Map(VISUAL_REVAMP_IMAGE_ASSETS.map((asset) => [asset.key, asset.path]));
 
-    expect(assetPaths.get(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe('assets/visual_revamp/regions/twin_rivers_living_v2.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.HASH_HIGHLANDS_BG)).toBe('assets/visual_revamp/regions/hash_highlands_grounded_v1.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.STACK_SPIRES_BG)).toBe('assets/visual_revamp/regions/stack_spires_grounded_v1.png');
     expect(assetPaths.get(VISUAL_REVAMP_KEYS.QUEUE_CANALS_BG)).toBe('assets/visual_revamp/regions/queue_canals_grounded_v1.png');
@@ -347,7 +357,6 @@ describe('visual revamp asset manifest', () => {
 
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.TITLE_BG)).toBe(true);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.PROLOGUE_BG)).toBe(false);
-    expect(bootKeys.has(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe(false);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.STACK_SPIRES_BG)).toBe(false);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_STACK_SCROLL_STACK_BG)).toBe(false);
     expect(bootKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_CORE_PROTOCOL_OMEGA_BG)).toBe(false);
@@ -378,7 +387,7 @@ describe('visual revamp asset manifest', () => {
     expect(arraySpriteKeys.has(VISUAL_REVAMP_KEYS.SORTING_FARMER)).toBe(true);
     expect(arraySpriteKeys.has(VISUAL_REVAMP_KEYS.PROP_CHICKEN)).toBe(true);
     expect(arrayKeys.has(VISUAL_REVAMP_KEYS.PUZZLE_SHUFFLER_DOMAIN_BG)).toBe(false);
-    expect(twinKeys.has(VISUAL_REVAMP_KEYS.TWIN_RIVERS_BG)).toBe(true);
+    expect(twinSpriteKeys.has(TWIN_RIVERS_TILEMAP_KEYS.TERRAIN)).toBe(true);
     expect(twinKeys.has(VISUAL_REVAMP_KEYS.MIRROR_WALKER)).toBe(false);
     expect(twinSpriteKeys.has(VISUAL_REVAMP_KEYS.MIRROR_WALKER)).toBe(true);
     expect(twinSpriteKeys.has(VISUAL_REVAMP_KEYS.PROP_DRAGONFLY)).toBe(true);
