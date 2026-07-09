@@ -35,8 +35,11 @@ import {
   TR_TILE_COLS,
   TR_TILE_ROWS,
   TR_TILE_SIZE,
-  buildTwinRiversTileGrid,
+  buildTwinRiversMaterialGrid,
+  pickTwinRiversTile,
+  type TrMaterial,
 } from "../data/regions/twinRiversTilemap";
+import { bakeTileLayer } from "../utils/tileBake";
 import { placeTwinRiversLandmarks } from "../data/regions/twinRiversLandmarks";
 import { DialogueSystem } from "../systems/DialogueSystem";
 import { OverworldAmbience } from "../ui/OverworldAmbience";
@@ -90,6 +93,9 @@ export class TwinRiversScene extends BaseOverworldScene {
   /** True once two-pointer mastery opened the stepping stones (flag-backed). */
   private stonesUnlocked = false;
   private stonesGate: InteractableObject | null = null;
+  /** Horizontal open-water runs from the tile plan — flow streaks ride
+   *  these instead of the retired painting's fixed bands. */
+  private waterRuns: Array<{ y: number; x0: number; x1: number }> = [];
 
   // Overworld sequence puzzle
   private sequenceTiles: Phaser.GameObjects.Rectangle[] = [];
@@ -489,23 +495,12 @@ export class TwinRiversScene extends BaseOverworldScene {
     // bakes into ONE RenderTexture, replacing the retired living-map
     // painting. 1:1 texel-to-world-pixel — no scaling anywhere.
     if (this.textures.exists(TWIN_RIVERS_TILEMAP_KEYS.TERRAIN)) {
-      const rt = this.add
-        .renderTexture(0, 0, TWIN_RIVERS_WORLD_WIDTH, TWIN_RIVERS_WORLD_HEIGHT)
-        .setOrigin(0, 0)
-        .setDepth(0);
-      const frames = buildTwinRiversTileGrid();
-      rt.beginDraw();
-      for (let ty = 0; ty < TR_TILE_ROWS; ty += 1) {
-        for (let tx = 0; tx < TR_TILE_COLS; tx += 1) {
-          rt.batchDrawFrame(
-            TWIN_RIVERS_TILEMAP_KEYS.TERRAIN,
-            frames[ty][tx],
-            tx * TR_TILE_SIZE,
-            ty * TR_TILE_SIZE,
-          );
-        }
-      }
-      rt.endDraw();
+      const materials = buildTwinRiversMaterialGrid();
+      const frames = materials.map((row, ty) =>
+        row.map((_, tx) => pickTwinRiversTile(tx, ty, materials)),
+      );
+      bakeTileLayer(this, TWIN_RIVERS_TILEMAP_KEYS.TERRAIN, frames, TR_TILE_SIZE);
+      this.waterRuns = this.collectWaterRuns(materials);
       placeTwinRiversLandmarks(this);
     } else {
       // Minimal test boots load no textures — flat valley keeps the scene alive.
@@ -577,7 +572,6 @@ export class TwinRiversScene extends BaseOverworldScene {
       name: "River Guide",
       type: NPCType.MENTOR,
       spriteKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
-      spriteScale: 1,
       defaultPosition: {
         x: TWIN_RIVERS_CONFIG.npcs[0].position.x,
         y: TWIN_RIVERS_CONFIG.npcs[0].position.y,
@@ -712,7 +706,6 @@ export class TwinRiversScene extends BaseOverworldScene {
         name: meta.name ?? meta.title,
         type: NPCType.VILLAGER,
         spriteKey: meta.spriteKey ?? VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
-        spriteScale: 1,
         defaultPosition: { x: puzzle.position.x, y: puzzle.position.y },
         dialogue: this.getDialogueTreeForPuzzle(puzzle.id) ?? {
           startNodeId: "",
@@ -864,18 +857,49 @@ export class TwinRiversScene extends BaseOverworldScene {
     this.interactionSystem.addObject(hut);
   }
 
+  /** Horizontal runs of open water at least 5 tiles long, widest first. */
+  private collectWaterRuns(
+    materials: TrMaterial[][],
+  ): Array<{ y: number; x0: number; x1: number }> {
+    const runs: Array<{ y: number; x0: number; x1: number }> = [];
+    for (let ty = 0; ty < TR_TILE_ROWS; ty += 1) {
+      let start = -1;
+      for (let tx = 0; tx <= TR_TILE_COLS; tx += 1) {
+        const isWater = tx < TR_TILE_COLS && materials[ty][tx] === "water";
+        if (isWater && start < 0) start = tx;
+        if (!isWater && start >= 0) {
+          if (tx - start >= 5) {
+            runs.push({
+              y: ty * TR_TILE_SIZE + TR_TILE_SIZE / 2,
+              x0: start * TR_TILE_SIZE,
+              x1: tx * TR_TILE_SIZE,
+            });
+          }
+          start = -1;
+        }
+      }
+    }
+    return runs.sort((a, b) => b.x1 - b.x0 - (a.x1 - a.x0));
+  }
+
   private createWaterFlow(): void {
     if (this.prefersReducedMotion()) return;
+    if (this.waterRuns.length === 0) return;
 
-    // Flow streaks ride the two rivers of the living map: the upper river
-    // band (~y 330) and the lower river band (~y 960).
-    for (const y of [330, 960]) {
-      for (let i = 0; i < 8; i++) {
+    // Flow streaks ride real water: one streak per broad river run from
+    // the tile plan (the painting-era fixed bands crossed dry land).
+    const lanes = this.waterRuns.slice(0, 16);
+    for (const lane of lanes) {
+      {
+        const streakWidth = 88;
+        const minX = lane.x0 + streakWidth / 2 + 8;
+        const maxX = lane.x1 - streakWidth / 2 - 8;
+        if (maxX <= minX) continue;
         const stream = this.add
           .rectangle(
-            280 + i * 180,
-            y + Phaser.Math.Between(-14, 14),
-            88,
+            Phaser.Math.Between(minX, maxX),
+            lane.y + Phaser.Math.Between(-10, 10),
+            streakWidth,
             3,
             COLORS.CYAN_GLOW,
             0.22,
@@ -883,13 +907,13 @@ export class TwinRiversScene extends BaseOverworldScene {
           .setDepth(2);
         this.tweens.add({
           targets: stream,
-          x: stream.x + 132,
+          x: Math.min(stream.x + 132, maxX),
           alpha: 0.06,
           duration: Phaser.Math.Between(1300, 2100),
           repeat: -1,
           yoyo: true,
           ease: "Sine.easeInOut",
-          delay: i * 95,
+          delay: Phaser.Math.Between(0, 900),
         });
       }
     }

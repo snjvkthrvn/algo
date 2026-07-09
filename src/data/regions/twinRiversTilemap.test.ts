@@ -7,6 +7,7 @@ import {
   TR_DIRT_ROUTE_IDS,
   TR_DOCK_RECTS,
   TR_FEATURE_MASK_ROWS,
+  TR_RAPIDS_PADS,
   TR_STONE_PADS,
   TR_TILE,
   TR_TILE_COLS,
@@ -110,6 +111,25 @@ describe('buildTwinRiversMaterialGrid', () => {
     }
   });
 
+  it('keeps the rapids crossing pads on open water inside the walk lanes', () => {
+    const lanes = TWIN_RIVERS_ROUTE_RECTS.filter(
+      (r) => r.id === 'rapids_walk' || r.id === 'boss_approach'
+    );
+    for (const pad of TR_RAPIDS_PADS) {
+      expect(grid[pad.ty][pad.tx], `pad @${pad.tx},${pad.ty}`).toBe('water');
+      const px = pad.tx * TR_TILE_SIZE + 16;
+      const py = pad.ty * TR_TILE_SIZE + 16;
+      const inLane = lanes.some(
+        (r) =>
+          px >= r.x - TR_TILE_SIZE &&
+          px <= r.x + r.width + TR_TILE_SIZE &&
+          py >= r.y - TR_TILE_SIZE &&
+          py <= r.y + r.height + TR_TILE_SIZE
+      );
+      expect(inLane, `pad @${pad.tx},${pad.ty} near the walk lanes`).toBe(true);
+    }
+  });
+
   it('keeps the west spawn approach walk-friendly', () => {
     // AP -> TR portal drops the player at (160, 624).
     expect(['path', 'grass']).toContain(cellAt(160, 624));
@@ -136,6 +156,7 @@ describe('pickTwinRiversTile / buildTwinRiversTileGrid', () => {
       for (let tx = 1; tx < TR_TILE_COLS - 1; tx += 1) {
         if (grid[ty][tx] !== 'water') continue;
         if (TR_STONE_PADS.some((p) => p.tx === tx && p.ty === ty)) continue;
+        if (TR_RAPIDS_PADS.some((p) => p.tx === tx && p.ty === ty)) continue;
         const pattern = [
           land(grid[ty - 1][tx]),
           land(grid[ty][tx + 1]),

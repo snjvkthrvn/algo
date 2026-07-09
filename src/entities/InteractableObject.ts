@@ -4,6 +4,7 @@
 
 import Phaser from 'phaser';
 import { COLORS } from '../config/constants';
+import { worldDepthForY } from '../utils/actorDepth';
 
 export interface InteractableConfig {
   id: string;
@@ -57,6 +58,14 @@ export class InteractableObject {
   private createVisual(
     config: InteractableConfig
   ): Phaser.GameObjects.Container | Phaser.GameObjects.Sprite | Phaser.GameObjects.Image {
+    // Interactables stand on the ground, so they y-sort with the player
+    // and NPCs through the shared 3..5 actor band (fixed depth 4 made the
+    // player vanish behind portals in the map's upper half and float over
+    // shrines in the lower half). +16 approximates the art's contact line.
+    const worldHeight =
+      this.scene.physics?.world?.bounds?.height || this.scene.scale?.height || 1440;
+    const depth = worldDepthForY(config.y + 16, worldHeight);
+
     if (config.spriteKey) {
       return this.scene.add
         .sprite(
@@ -65,7 +74,7 @@ export class InteractableObject {
           config.spriteKey,
           config.frameByState?.[config.initialState ?? 'locked'] ?? 0
         )
-        .setDepth(4)
+        .setDepth(depth)
         .setScale(config.spriteScale ?? 0.1);
     }
 
@@ -77,7 +86,7 @@ export class InteractableObject {
       if (frameCount > 1) {
         const sprite = this.scene.add
           .sprite(config.x, config.y, imageKey, 0)
-          .setDepth(4)
+          .setDepth(depth)
           .setScale(config.imageScale ?? 0.16)
           .setOrigin(0.5, originY);
         this.playIdleAnimation(sprite, imageKey, frameCount);
@@ -86,13 +95,13 @@ export class InteractableObject {
 
       const image = this.scene.add
         .image(config.x, config.y, imageKey)
-        .setDepth(4)
+        .setDepth(depth)
         .setScale(config.imageScale ?? 0.16);
       image.setOrigin?.(0.5, originY);
       return image;
     }
 
-    const container = this.scene.add.container(config.x, config.y);
+    const container = this.scene.add.container(config.x, config.y).setDepth(depth);
 
     switch (config.type) {
       case 'gate':

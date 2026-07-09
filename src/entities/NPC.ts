@@ -23,11 +23,10 @@ import { worldDepthForY } from '../utils/actorDepth';
 export type { NPCConfig };
 
 /**
- * Display scale per sprite key. Without an entry here a sprite NPC falls
- * back to ~0.08 (sized for the prologue-sheet imagegen art), which is far
- * too small for the new 192x192 art-direction keepers — leaving them as
- * a default would invert the visual hierarchy (farmers larger than the
- * cosmic Rune Keeper). Each new keeper that gets art must register here.
+ * Display scale per sprite key — the single source of truth for NPC art
+ * density (scenes no longer pass spriteScale). AP/TR keepers are 48px
+ * sheet-native (scale 1); the prologue cast still uses 256px art at 0.22.
+ * Each new keeper that gets art must register here.
  */
 const STATIC_NPC_SCALES: Record<string, number> = {
   // Prologue cast — kept at 0.22 so the prologue ensemble reads as one
@@ -82,6 +81,9 @@ export class NPC {
   /** True while a step tween is in flight. */
   private isStepping = false;
   private stepTween: Phaser.Tweens.Tween | null = null;
+  /** Last banded depth written — skip setDepth when unchanged (Phaser
+   *  re-sorts the display list on every write). */
+  private lastDepth = -1;
   /** Bound listener — must be removed in destroy() or the eventBus leaks refs. */
   private readonly onDialogueStart = (data: unknown): void => {
     const { npcId } = data as { npcId?: string };
@@ -327,7 +329,11 @@ export class NPC {
     // y-sort with the player + landmarks (shared 3..5 actor band). Runs
     // before the movement early-returns so stationary NPCs sort too.
     const worldHeight = this.scene.physics.world.bounds.height || 1440;
-    this.sprite.setDepth(worldDepthForY(this.sprite.y + 20, worldHeight));
+    const depth = worldDepthForY(this.sprite.y + 20, worldHeight);
+    if (depth !== this.lastDepth) {
+      this.lastDepth = depth;
+      this.sprite.setDepth(depth);
+    }
 
     const movement = this.config.movement;
     if (!movement || this.isStepping) return;

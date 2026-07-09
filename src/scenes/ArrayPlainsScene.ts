@@ -316,7 +316,6 @@ export class ArrayPlainsScene extends BaseOverworldScene {
         name: farmer.name,
         type: NPCType.VILLAGER,
         spriteKey: farmer.spriteKey,
-        spriteScale: 1,
         defaultPosition: { x, y },
         dialogue: this.getDialogueTreeForPuzzle(farmer.puzzleId) ?? { startNodeId: '', nodes: [] },
         movement: {
@@ -748,7 +747,6 @@ export class ArrayPlainsScene extends BaseOverworldScene {
       name: 'Village Elder',
       type: NPCType.MENTOR,
       spriteKey: VISUAL_REVAMP_KEYS.VILLAGE_ELDER,
-      spriteScale: 1,
       defaultPosition: { x: 300, y: 668 },
       dialogue: elderDialogue,
       movement: {

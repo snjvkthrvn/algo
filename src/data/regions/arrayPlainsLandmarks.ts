@@ -33,22 +33,22 @@ export const AP_LANDMARKS: ReadonlyArray<ApLandmarkPlacement> = [
   // Stone gateway arch straddling the west exit; the void portal sits in
   // its walkable gap. Grove shrine stones ring the hidden-clearing beat.
   { key: AP_LANDMARK_KEYS.ARCH, x: 88, baseY: 752 },
-  { key: AP_LANDMARK_KEYS.GROVE_STONE, x: 1492, baseY: 248 },
+  { key: AP_LANDMARK_KEYS.GROVE_STONE, x: 1488, baseY: 248 },
   // Trees + bushes on grass, echoing the painting's clusters.
   { key: AP_LANDMARK_KEYS.TREE_LARGE, x: 216, baseY: 592 },
   { key: AP_LANDMARK_KEYS.TREE_LARGE, x: 688, baseY: 560 },
   { key: AP_LANDMARK_KEYS.TREE_LARGE, x: 1240, baseY: 216 },
   { key: AP_LANDMARK_KEYS.TREE_LARGE, x: 1616, baseY: 784 },
-  { key: AP_LANDMARK_KEYS.TREE_LARGE, x: 872, baseY: 1348 },
+  { key: AP_LANDMARK_KEYS.TREE_LARGE, x: 872, baseY: 1344 },
   { key: AP_LANDMARK_KEYS.TREE_LARGE, x: 120, baseY: 448 },
   { key: AP_LANDMARK_KEYS.TREE_SMALL, x: 560, baseY: 528 },
   { key: AP_LANDMARK_KEYS.TREE_SMALL, x: 1320, baseY: 560 },
   { key: AP_LANDMARK_KEYS.TREE_SMALL, x: 1544, baseY: 352 },
   { key: AP_LANDMARK_KEYS.TREE_SMALL, x: 1608, baseY: 1288 },
   { key: AP_LANDMARK_KEYS.TREE_SMALL, x: 248, baseY: 168 },
-  { key: AP_LANDMARK_KEYS.BUSH, x: 356, baseY: 596 },
-  { key: AP_LANDMARK_KEYS.BUSH, x: 1092, baseY: 468 },
-  { key: AP_LANDMARK_KEYS.BUSH, x: 588, baseY: 1116 },
+  { key: AP_LANDMARK_KEYS.BUSH, x: 352, baseY: 592 },
+  { key: AP_LANDMARK_KEYS.BUSH, x: 1088, baseY: 464 },
+  { key: AP_LANDMARK_KEYS.BUSH, x: 584, baseY: 1112 },
   { key: AP_LANDMARK_KEYS.BUSH, x: 1360, baseY: 936 },
 ];
 

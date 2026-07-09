@@ -3,6 +3,11 @@ import {
   ARRAY_PLAINS_WORLD_HEIGHT,
   ARRAY_PLAINS_WORLD_WIDTH,
 } from './arrayPlains';
+import {
+  cellCoveredByRect,
+  tileHash,
+  transitionOrdinal12,
+} from './tilePlan';
 
 /**
  * arrayPlainsTilemap — pure 32px tile plan for the Array Plains overworld
@@ -70,6 +75,7 @@ export const AP_TILE = {
   WHEAT_INNER_NE: 35,
   WHEAT_INNER_SE: 36,
   WHEAT_INNER_SW: 37,
+  /** Reserved spare — drawn in the sheet, not yet picked (walked-through wheat). */
   WHEAT_TRAMPLED: 38,
   WHEAT_POPPY: 39,
   WATER_A: 40,
@@ -172,29 +178,6 @@ export const AP_DIRT_ROUTE_IDS: ReadonlySet<string> = new Set([
   'pairing_road',
 ]);
 
-/** Deterministic per-tile hash for variant sprinkling (no RNG). */
-function tileHash(tx: number, ty: number): number {
-  return (tx * 73856093 + ty * 19349663) % 97;
-}
-
-const cellCoveredByRect = (
-  tx: number,
-  ty: number,
-  rect: { x: number; y: number; width: number; height: number }
-): boolean => {
-  const x0 = tx * AP_TILE_SIZE;
-  const y0 = ty * AP_TILE_SIZE;
-  const overlapX = Math.max(
-    0,
-    Math.min(x0 + AP_TILE_SIZE, rect.x + rect.width) - Math.max(x0, rect.x)
-  );
-  const overlapY = Math.max(
-    0,
-    Math.min(y0 + AP_TILE_SIZE, rect.y + rect.height) - Math.max(y0, rect.y)
-  );
-  return overlapX * overlapY >= (AP_TILE_SIZE * AP_TILE_SIZE) / 2;
-};
-
 type Grid = ApMaterial[][];
 
 const materialAt = (grid: Grid, tx: number, ty: number, fallback: ApMaterial): ApMaterial => {
@@ -239,7 +222,7 @@ export const buildArrayPlainsMaterialGrid = (): Grid => {
     for (let ty = 0; ty < AP_TILE_ROWS; ty += 1) {
       for (let tx = 0; tx < AP_TILE_COLS; tx += 1) {
         if (grid[ty][tx] === 'soil') continue;
-        if (cellCoveredByRect(tx, ty, rect)) grid[ty][tx] = 'path';
+        if (cellCoveredByRect(tx, ty, AP_TILE_SIZE, rect)) grid[ty][tx] = 'path';
       }
     }
   }
@@ -291,20 +274,6 @@ export const buildArrayPlainsMaterialGrid = (): Grid => {
   return grid;
 };
 
-/** Transition ordinal shared by path/wheat/water frame families. */
-const EDGE_N = 0;
-const EDGE_E = 1;
-const EDGE_S = 2;
-const EDGE_W = 3;
-const CORNER_NW = 4;
-const CORNER_NE = 5;
-const CORNER_SE = 6;
-const CORNER_SW = 7;
-const INNER_NW = 8;
-const INNER_NE = 9;
-const INNER_SE = 10;
-const INNER_SW = 11;
-
 const TRANSITION_BASE: Record<'path' | 'wheat' | 'water', number> = {
   path: AP_TILE.PATH_EDGE_N,
   wheat: AP_TILE.WHEAT_EDGE_N,
@@ -315,39 +284,12 @@ const TRANSITION_BASE: Record<'path' | 'wheat' | 'water', number> = {
  * Transition ordinal for a path/wheat/water cell, or -1 for interior.
  * Boundary means a grass neighbor: soil beside dirt stays interior (earth
  * against earth), and the fringe rule keeps every other pairing apart.
+ * Opposite pairs / 3+ cannot occur in a built grid (erosion removes them).
  */
-const transitionOrdinal = (grid: Grid, tx: number, ty: number, m: ApMaterial): number => {
-  const grass = (dx: number, dy: number): boolean =>
-    materialAt(grid, tx + dx, ty + dy, m) === 'grass';
-  const gN = grass(0, -1);
-  const gE = grass(1, 0);
-  const gS = grass(0, 1);
-  const gW = grass(-1, 0);
-  const count = Number(gN) + Number(gE) + Number(gS) + Number(gW);
-
-  if (count === 0) {
-    if (grass(-1, -1)) return INNER_NW;
-    if (grass(1, -1)) return INNER_NE;
-    if (grass(1, 1)) return INNER_SE;
-    if (grass(-1, 1)) return INNER_SW;
-    return -1;
-  }
-  if (count === 1) {
-    if (gN) return EDGE_N;
-    if (gE) return EDGE_E;
-    if (gS) return EDGE_S;
-    return EDGE_W;
-  }
-  if (count === 2) {
-    if (gN && gW) return CORNER_NW;
-    if (gN && gE) return CORNER_NE;
-    if (gS && gE) return CORNER_SE;
-    if (gS && gW) return CORNER_SW;
-  }
-  // Opposite pairs / 3+ cannot occur in a built grid (erosion removes
-  // them); render interior rather than a wrong edge if data ever drifts.
-  return -1;
-};
+const transitionOrdinal = (grid: Grid, tx: number, ty: number, m: ApMaterial): number =>
+  transitionOrdinal12(
+    (dx, dy) => materialAt(grid, tx + dx, ty + dy, m) === 'grass'
+  );
 
 /** Frame index for the STATIC ground layer at (tx, ty). */
 export const pickArrayPlainsTile = (tx: number, ty: number, grid: Grid): number => {

@@ -1,9 +1,13 @@
 import {
   TWIN_RIVERS_ROUTE_RECTS,
-  TWIN_RIVERS_STONES_RECT,
   TWIN_RIVERS_WORLD_HEIGHT,
   TWIN_RIVERS_WORLD_WIDTH,
 } from './twinRivers';
+import {
+  cellCoveredByRect,
+  tileHash,
+  transitionOrdinal12,
+} from './tilePlan';
 
 /**
  * twinRiversTilemap — pure 32px tile plan for the Twin Rivers overworld
@@ -101,6 +105,7 @@ export const TR_TILE = {
   DECK_ARROW: 65,
   DECK_RAIL_W: 66,
   DECK_RAIL_E: 67,
+  /** Reserved spare — drawn in the sheet, not yet picked (landing stairs). */
   DECK_STEPS: 68,
   DOCK_A: 69,
   DOCK_B: 70,
@@ -112,6 +117,7 @@ export const TR_TILE = {
   DOCK_CORNER_NE: 76,
   DOCK_CORNER_SE: 77,
   DOCK_CORNER_SW: 78,
+  /** Reserved spare — drawn in the sheet, not yet picked (free-standing pier post). */
   DOCK_POST: 79,
 } as const;
 
@@ -223,31 +229,25 @@ export const TR_STONE_PADS: ReadonlyArray<{ tx: number; ty: number }> = [
   { tx: 36, ty: 6 },
 ];
 
+/**
+ * Rock pads through the rapids basin: the rapids_walk / boss_approach
+ * lanes are frozen walkable geography that crosses open whitewater, so
+ * these pads give the crossing a visual affordance (the eastern half of
+ * the approach rides the basin's natural land spine).
+ */
+export const TR_RAPIDS_PADS: ReadonlyArray<{ tx: number; ty: number }> = [
+  { tx: 44, ty: 21 },
+  { tx: 44, ty: 20 },
+  { tx: 44, ty: 19 },
+  { tx: 45, ty: 18 },
+  { tx: 46, ty: 17 },
+  { tx: 47, ty: 16 },
+  { tx: 47, ty: 15 },
+  { tx: 48, ty: 14 },
+];
+
 /** Rapids basin (world px, matches the mask's authored whitewater zone). */
 const RAPIDS_ELLIPSE = { cx: 1420, cy: 590, rx: 215, ry: 170 };
-
-/** Deterministic per-tile hash for variant sprinkling (no RNG). */
-function tileHash(tx: number, ty: number): number {
-  return (tx * 73856093 + ty * 19349663) % 97;
-}
-
-const cellCoveredByRect = (
-  tx: number,
-  ty: number,
-  rect: { x: number; y: number; width: number; height: number }
-): boolean => {
-  const x0 = tx * TR_TILE_SIZE;
-  const y0 = ty * TR_TILE_SIZE;
-  const overlapX = Math.max(
-    0,
-    Math.min(x0 + TR_TILE_SIZE, rect.x + rect.width) - Math.max(x0, rect.x)
-  );
-  const overlapY = Math.max(
-    0,
-    Math.min(y0 + TR_TILE_SIZE, rect.y + rect.height) - Math.max(y0, rect.y)
-  );
-  return overlapX * overlapY >= (TR_TILE_SIZE * TR_TILE_SIZE) / 2;
-};
 
 type Grid = TrMaterial[][];
 
@@ -272,7 +272,7 @@ export const buildTwinRiversMaterialGrid = (): Grid => {
       for (let tx = 0; tx < TR_TILE_COLS; tx += 1) {
         const m = grid[ty][tx];
         if (m === 'water' || m === 'stone') continue;
-        if (cellCoveredByRect(tx, ty, rect)) grid[ty][tx] = 'path';
+        if (cellCoveredByRect(tx, ty, TR_TILE_SIZE, rect)) grid[ty][tx] = 'path';
       }
     }
   }
@@ -282,7 +282,7 @@ export const buildTwinRiversMaterialGrid = (): Grid => {
   if (bridge) {
     for (let ty = 0; ty < TR_TILE_ROWS; ty += 1) {
       for (let tx = 0; tx < TR_TILE_COLS; tx += 1) {
-        if (cellCoveredByRect(tx, ty, bridge)) grid[ty][tx] = 'deck';
+        if (cellCoveredByRect(tx, ty, TR_TILE_SIZE, bridge)) grid[ty][tx] = 'deck';
       }
     }
   }
@@ -292,7 +292,7 @@ export const buildTwinRiversMaterialGrid = (): Grid => {
     for (let ty = 0; ty < TR_TILE_ROWS; ty += 1) {
       for (let tx = 0; tx < TR_TILE_COLS; tx += 1) {
         if (grid[ty][tx] === 'deck') continue;
-        if (cellCoveredByRect(tx, ty, rect)) grid[ty][tx] = 'dock';
+        if (cellCoveredByRect(tx, ty, TR_TILE_SIZE, rect)) grid[ty][tx] = 'dock';
       }
     }
   }
@@ -330,56 +330,14 @@ export const buildTwinRiversMaterialGrid = (): Grid => {
   return grid;
 };
 
-/** Transition ordinal shared by the 12-tile families. */
-const EDGE_N = 0;
-const EDGE_E = 1;
-const EDGE_S = 2;
-const EDGE_W = 3;
-const CORNER_NW = 4;
-const CORNER_NE = 5;
-const CORNER_SE = 6;
-const CORNER_SW = 7;
-const INNER_NW = 8;
-const INNER_NE = 9;
-const INNER_SE = 10;
-const INNER_SW = 11;
-
 const transitionOrdinal = (
   grid: Grid,
   tx: number,
   ty: number,
   self: TrMaterial,
   isBoundary: (m: TrMaterial) => boolean
-): number => {
-  const b = (dx: number, dy: number): boolean =>
-    isBoundary(materialAt(grid, tx + dx, ty + dy, self));
-  const gN = b(0, -1);
-  const gE = b(1, 0);
-  const gS = b(0, 1);
-  const gW = b(-1, 0);
-  const count = Number(gN) + Number(gE) + Number(gS) + Number(gW);
-
-  if (count === 0) {
-    if (b(-1, -1)) return INNER_NW;
-    if (b(1, -1)) return INNER_NE;
-    if (b(1, 1)) return INNER_SE;
-    if (b(-1, 1)) return INNER_SW;
-    return -1;
-  }
-  if (count === 1) {
-    if (gN) return EDGE_N;
-    if (gE) return EDGE_E;
-    if (gS) return EDGE_S;
-    return EDGE_W;
-  }
-  if (count === 2) {
-    if (gN && gW) return CORNER_NW;
-    if (gN && gE) return CORNER_NE;
-    if (gS && gE) return CORNER_SE;
-    if (gS && gW) return CORNER_SW;
-  }
-  return -1;
-};
+): number =>
+  transitionOrdinal12((dx, dy) => isBoundary(materialAt(grid, tx + dx, ty + dy, self)));
 
 const inRapids = (tx: number, ty: number): boolean => {
   const px = tx * TR_TILE_SIZE + TR_TILE_SIZE / 2;
@@ -390,7 +348,8 @@ const inRapids = (tx: number, ty: number): boolean => {
 };
 
 const isPad = (tx: number, ty: number): boolean =>
-  TR_STONE_PADS.some((p) => p.tx === tx && p.ty === ty);
+  TR_STONE_PADS.some((p) => p.tx === tx && p.ty === ty) ||
+  TR_RAPIDS_PADS.some((p) => p.tx === tx && p.ty === ty);
 
 /** Frame index for the STATIC ground layer at (tx, ty). */
 export const pickTwinRiversTile = (tx: number, ty: number, grid: Grid): number => {
@@ -456,7 +415,7 @@ export const pickTwinRiversTile = (tx: number, ty: number, grid: Grid): number =
   // dock — plank piers; edges & corners face open water only.
   const water = (n: TrMaterial): boolean => n === 'water';
   const ordinal = transitionOrdinal(grid, tx, ty, m, water);
-  if (ordinal >= 0 && ordinal <= CORNER_SW) return TR_TILE.DOCK_EDGE_N + ordinal;
+  if (ordinal >= 0 && ordinal <= 7) return TR_TILE.DOCK_EDGE_N + ordinal; // edges + outer corners only
   return (tx + ty) % 2 === 0 ? TR_TILE.DOCK_A : TR_TILE.DOCK_B;
 };
 
@@ -465,6 +424,3 @@ export const buildTwinRiversTileGrid = (): number[][] => {
   const materials = buildTwinRiversMaterialGrid();
   return materials.map((row, ty) => row.map((_, tx) => pickTwinRiversTile(tx, ty, materials)));
 };
-
-// Re-exported so scene code can gate the pads on the same rect as movement.
-export { TWIN_RIVERS_STONES_RECT };

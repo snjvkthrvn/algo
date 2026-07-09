@@ -51,6 +51,7 @@ export class Player {
   private autoWalkCallback: (() => void) | null = null;
   private nextMoveBuffer: FacingDirection | null = null; // buffers input during tween for responsive chaining
   private walkStepElapsedMs = 0;
+  private lastDepth = -1; // skip setDepth when unchanged — Phaser re-sorts on every write
   private activeStepDurationMs = PLAYER_STEP_DURATION_MS;
   private lastFootstepLift = 0; // tracks bob envelope so we can fire one audio tic per contact phase
   private stepCount = 0; // every other step landing emits a dust puff (avoids clutter)
@@ -111,8 +112,13 @@ export class Player {
     const worldHeight =
       this.scene.physics?.world?.bounds?.height || this.scene.scale?.height || 1440;
     const depth = worldDepthForY(this.sprite.y + 22, worldHeight);
-    this.sprite.setDepth(depth);
-    this.shadow.setDepth(depth - 0.01);
+    if (depth !== this.lastDepth) {
+      // Guarded: Phaser's depth setter queues a display-list sort on every
+      // assignment, even when the value is unchanged.
+      this.lastDepth = depth;
+      this.sprite.setDepth(depth);
+      this.shadow.setDepth(depth - 0.01);
+    }
 
     if (this.state === PlayerState.FROZEN || this.state === PlayerState.INTERACTING) {
       this.stopMovementTween();
