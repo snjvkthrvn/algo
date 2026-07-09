@@ -394,6 +394,9 @@ export class ArrayPlainsScene extends BaseOverworldScene {
       locked: true,
       onInteract: () => this.onBridgeInteract(bx, by),
     });
+    // The plank-pile sprite tells the whole story; the gate object is just
+    // the interaction anchor, so its procedural placeholder art stays hidden.
+    this.bridgeGate.setVisible(false);
     this.markerObjects.push(this.bridgeGate);
     this.interactionSystem.addObject(this.bridgeGate);
   }
