@@ -55,6 +55,7 @@ import { BasketRow, NetFrame } from "../../puzzleRooms/fishingDock/BasketRow";
 import { DockReplay } from "../../puzzleRooms/fishingDock/DockReplay";
 import { GlitchSplasher } from "../../puzzleRooms/mirrorCrossing/GlitchSplasher";
 import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
+import { createTwinRiversShell } from "../../puzzleRooms/chamber/twinRiversShell";
 import { ChamberCast } from "../../puzzleRooms/chamber/ChamberCast";
 import { CartDelivery } from "../../puzzleRooms/chamber/CartDelivery";
 
@@ -132,7 +133,7 @@ export class P2_3_FixedWindowDock extends BasePuzzleScene {
     this.walkYPx = this.rowYPx + 84;
     this.beamXPx = 128;
 
-    this.shell = new ChamberShell(this, dockPar());
+    this.shell = createTwinRiversShell(this, dockPar());
     this.row = new BasketRow(
       this,
       this.rowYPx,

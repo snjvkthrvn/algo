@@ -5,7 +5,14 @@
  */
 
 import { COLORS, COLOR_HEX, FONTS, SCENE_KEYS } from '../../config/constants';
-import { getImageAssetPath, PROLOGUE_REWORK_KEYS, VISUAL_REVAMP_KEYS } from '../../config/assets';
+import {
+  getImageAssetPath,
+  getSpriteAssetEntry,
+  GRAIN_CHAMBER_KEYS,
+  PROLOGUE_REWORK_KEYS,
+  TWIN_RIVERS_CHAMBER_KEYS,
+  VISUAL_REVAMP_KEYS,
+} from '../../config/assets';
 import { colorToHex } from '../../utils/colors';
 import { showStarRating } from '../../ui/StarRating';
 import { drawPanel } from '../../ui/panel';
@@ -106,11 +113,39 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       // so showLessonCard() can render the region-themed in-world card.
       VISUAL_REVAMP_KEYS.LESSON_CARD_AP,
       VISUAL_REVAMP_KEYS.LESSON_CARD_TR,
+      // ChamberShell dressing — every chamber room seals its doors and hangs
+      // a par plaque; without these queued here, rooms other than P1_1 fell
+      // back to blank navy rectangles (2026-07 audit P0).
+      GRAIN_CHAMBER_KEYS.DOOR_PLANKS,
+      GRAIN_CHAMBER_KEYS.PAR_PLAQUE,
+      TWIN_RIVERS_CHAMBER_KEYS.PAR_PLAQUE,
+      // CrateLane is shared beyond P1_1 (Boss_Shuffler's Bubble Storm) —
+      // without the sheet the lane texture-guards down to flat brown rects.
+      GRAIN_CHAMBER_KEYS.CRATE_SHEET,
     ].filter((key): key is string => Boolean(key));
 
     for (const key of imageKeys) {
       const path = getImageAssetPath(key);
       if (path && !this.textures.exists(key)) this.load.image(key, path);
+    }
+
+    // Shared chamber cast sheets. The Glitch putters in every chamber room
+    // and the hen flock is the chamber's living score display — but their
+    // sheets shipped in per-scene bundles, so every room that didn't load
+    // them texture-guarded down to flat rects / white ellipses (2026-07
+    // audit P0: "red rectangle villain", "white dots along the floor").
+    const sheetKeys = [
+      VISUAL_REVAMP_KEYS.GLITCH,
+      GRAIN_CHAMBER_KEYS.CHICKEN_SHEET,
+    ];
+    for (const key of sheetKeys) {
+      const entry = getSpriteAssetEntry(key);
+      if (entry && !this.textures.exists(entry.key)) {
+        this.load.spritesheet(entry.key, entry.path, {
+          frameWidth: entry.frameWidth ?? 128,
+          frameHeight: entry.frameHeight ?? 128,
+        });
+      }
     }
   }
 
@@ -320,8 +355,15 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       case 'prologue': return 'CHAMBER';
       case 'array-plains': return 'FARMSTEAD';
       case 'twin-rivers': return 'RIVERSIDE';
-      default: return 'TRIAL';
     }
+    // Chamber-kit rooms render their own painted backdrops (no procedural
+    // region layer), so infer the register from the puzzle id instead of
+    // falling straight through to the generic TRIAL wording.
+    const id = this.puzzleId.toLowerCase();
+    if (id.startsWith('ap_') || id === 'boss_shuffler') return 'FARMSTEAD';
+    if (id.startsWith('tr_') || id === 'boss_mirror_serpent') return 'RIVERSIDE';
+    if (id.startsWith('p0_') || id === 'boss_sentinel') return 'CHAMBER';
+    return 'TRIAL';
   }
 
   /** Status-dot label, shortened from "MODULE READY" — the dot itself is
@@ -442,6 +484,16 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       ease: 'Power3.easeOut',
     });
 
+    // ...and leaves with the banner — without this it lingered as a stray
+    // hairline across the arena after everything else faded.
+    this.tweens.add({
+      targets: lineRect,
+      alpha: 0,
+      duration: 700,
+      delay: 8200,
+      ease: 'Sine.easeIn',
+    });
+
     // Corner accents snap in after the frame settles
     this.time.delayedCall(200, () => this.addCornerAccents(width, height, padding));
 
@@ -550,7 +602,12 @@ export abstract class BasePuzzleScene extends Phaser.Scene {
       },
     ).setOrigin(1, 0).setAlpha(0);
 
-    this.uiContainer.add([titlePanel, moduleLabel, idLabel, this.titleText, this.instructionText]);
+    // Banner rides above the room (doors 60, plaque 62, boss figures ~18) so
+    // world objects can never slice through the title text — the 2026-07
+    // audit caught the Shuffler/Serpent figures and the Pairing Grounds
+    // scale all drawing over the banner. It fades out at 8.2s regardless.
+    const bannerLayer = this.add.container(0, 0).setDepth(75);
+    bannerLayer.add([titlePanel, moduleLabel, idLabel, this.titleText, this.instructionText]);
 
     // Glitch-reveal the title after the frame starts fading in.
     this.time.delayedCall(180, () => this.glitchReveal(this.titleText, theme.titleColor));

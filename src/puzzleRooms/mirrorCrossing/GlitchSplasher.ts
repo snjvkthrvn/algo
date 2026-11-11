@@ -22,7 +22,8 @@ export class GlitchSplasher {
   private scene: Phaser.Scene;
   private originX: number;
   private originY: number;
-  private minis: Phaser.GameObjects.Rectangle[] = [];
+  private minis: (Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image)[] =
+    [];
   private glitch: Phaser.GameObjects.GameObject &
     Phaser.GameObjects.Components.Transform;
   private timer: Phaser.Time.TimerEvent | null = null;
@@ -55,18 +56,20 @@ export class GlitchSplasher {
     this.minis.forEach((mini) => mini.destroy());
     this.minis = [];
     for (let i = 0; i < Math.min(count, 8); i++) {
+      const x = this.originX + i * (MINI_W + MINI_GAP);
+      // His pocket copy of the dock row — real driftwood crates when the
+      // room art is loaded, so his corner reads as theatre, not debris.
       this.minis.push(
-        this.scene.add
-          .rectangle(
-            this.originX + i * (MINI_W + MINI_GAP),
-            this.originY,
-            MINI_W,
-            MINI_W - 6,
-            0x6e5a3a,
-            0.9,
-          )
-          .setStrokeStyle(1, 0x46381e, 1)
-          .setDepth(20),
+        this.scene.textures.exists(VISUAL_REVAMP_KEYS.TR_DOCK_CRATE)
+          ? this.scene.add
+              .image(x, this.originY, VISUAL_REVAMP_KEYS.TR_DOCK_CRATE)
+              .setDisplaySize(MINI_W, MINI_W - 4)
+              .setAlpha(0.95)
+              .setDepth(20)
+          : this.scene.add
+              .rectangle(x, this.originY, MINI_W, MINI_W - 6, 0x6e5a3a, 0.9)
+              .setStrokeStyle(1, 0x46381e, 1)
+              .setDepth(20),
       );
     }
     this.timer?.remove();

@@ -60,6 +60,7 @@ import { FloatRun } from "../../puzzleRooms/currentRun/FloatRun";
 import { RunReplay } from "../../puzzleRooms/currentRun/RunReplay";
 import { GlitchSplasher } from "../../puzzleRooms/mirrorCrossing/GlitchSplasher";
 import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
+import { createTwinRiversShell } from "../../puzzleRooms/chamber/twinRiversShell";
 import { ChamberCast } from "../../puzzleRooms/chamber/ChamberCast";
 import { CartDelivery } from "../../puzzleRooms/chamber/CartDelivery";
 
@@ -139,7 +140,7 @@ export class P2_4_CurrentRider extends BasePuzzleScene {
     this.walkYPx = Math.round((height * 0.74) / 8) * 8;
     this.postXPx = width - 120;
 
-    this.shell = new ChamberShell(this, runPar());
+    this.shell = createTwinRiversShell(this, runPar());
     this.run = new FloatRun(
       this,
       this.laneYPx,

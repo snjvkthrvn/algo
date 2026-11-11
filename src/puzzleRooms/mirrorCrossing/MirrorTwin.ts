@@ -9,6 +9,7 @@
  */
 
 import Phaser from "phaser";
+import { PROLOGUE_SHEET_KEYS } from "../../config/assets";
 
 export class MirrorTwin {
   private scene: Phaser.Scene;
@@ -20,14 +21,24 @@ export class MirrorTwin {
     this.scene = scene;
     this.walkY = northWalkY;
     this.body = scene.add.container(0, northWalkY).setDepth(22).setAlpha(0.65);
-    // A tinted, simplified double: teal-washed silhouette, flipped.
-    const torso = scene.add
-      .rectangle(0, 0, 16, 22, 0x5ad8d8, 0.55)
-      .setStrokeStyle(1, 0x9ff7f7, 0.7);
-    const head = scene.add.ellipse(0, -16, 12, 10, 0x9ff7f7, 0.5);
-    this.body.add([torso, head]);
-    this.body.setScale(1, -1).setAngle(0);
-    this.body.setScale(1, 1);
+    if (scene.textures.exists(PROLOGUE_SHEET_KEYS.PLAYER)) {
+      // The player's own body, teal-washed and facing back at them — a true
+      // reflection instead of the flat silhouette the 2026-07 audit flagged
+      // as "unfinished translucent person-shape".
+      const double = scene.add
+        .sprite(0, 0, PROLOGUE_SHEET_KEYS.PLAYER, 0)
+        .setDisplaySize(38, 38)
+        .setFlipX(true)
+        .setTint(0x7ae8e8);
+      this.body.add(double);
+    } else {
+      // Fallback: tinted, simplified double.
+      const torso = scene.add
+        .rectangle(0, 0, 16, 22, 0x5ad8d8, 0.55)
+        .setStrokeStyle(1, 0x9ff7f7, 0.7);
+      const head = scene.add.ellipse(0, -16, 12, 10, 0x9ff7f7, 0.5);
+      this.body.add([torso, head]);
+    }
     // Gentle shimmer so it reads as water-born.
     scene.tweens.add({
       targets: this.body,

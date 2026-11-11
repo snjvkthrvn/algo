@@ -41,7 +41,9 @@ export class ShufflerBoss {
     this.body = scene.textures.exists(VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE)
       ? scene.add
           .image(x, y, VISUAL_REVAMP_KEYS.BOSS_SHUFFLER_FIGURE)
-          .setDisplaySize(120, 140)
+          // v2 art is a 240x280 (6:7) master — keep the aspect and give the
+          // boss a touch more looming presence than the old placeholder.
+          .setDisplaySize(132, 154)
           .setDepth(18)
       : (scene.add
           .ellipse(x, y, 84, 120, 0x2a2330, 0.95)
@@ -121,13 +123,16 @@ export class ShufflerBoss {
         wordWrap: { width: 200 },
       })
       .setOrigin(0.5, 1)
-      .setDepth(50);
+      .setDepth(66);
     const cam = this.scene.cameras.main;
     bark.x = Phaser.Math.Clamp(
       bark.x,
       bark.width / 2 + 8,
       cam.width - bark.width / 2 - 8,
     );
+    // Keep the whole bubble below the sealed north door (24px band) — the
+    // audit caught taunts clipped by the top screen edge and door planks.
+    bark.y = Math.max(bark.y, bark.height + 32);
     this.scene.tweens.add({
       targets: bark,
       alpha: 0,

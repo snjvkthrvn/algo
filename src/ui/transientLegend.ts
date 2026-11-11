@@ -24,7 +24,9 @@ export function mountTransientLegend(
       align: 'center',
     })
     .setOrigin(0.5)
-    .setDepth(20);
+    // Above the chamber doors (60) — the prologue action rooms slam their
+    // sealed south door across the legend band, which occluded mid-string.
+    .setDepth(70);
   scene.time.delayedCall(LEGEND_HOLD_MS, () => {
     if (!label.active) return;
     scene.tweens.add({

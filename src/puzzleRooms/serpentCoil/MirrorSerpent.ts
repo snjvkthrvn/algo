@@ -53,7 +53,9 @@ export class MirrorSerpent {
     )
       ? (scene.add
           .image(x, y, VISUAL_REVAMP_KEYS.BOSS_MIRROR_SERPENT_FIGURE)
-          .setDisplaySize(132, 132)
+          // Source art is ~1.9:1 (512x256, content 439x226); the old 132x132
+          // square crushed the dragon to half its width.
+          .setDisplaySize(232, 120)
           .setDepth(18) as unknown as Loomable)
       : this.buildCoilFallback(x, y);
 
@@ -184,13 +186,16 @@ export class MirrorSerpent {
         wordWrap: { width: 200 },
       })
       .setOrigin(0.5, 1)
-      .setDepth(50);
+      .setDepth(66);
     const cam = this.scene.cameras.main;
     bark.x = Phaser.Math.Clamp(
       bark.x,
       bark.width / 2 + 8,
       cam.width - bark.width / 2 - 8,
     );
+    // Keep the whole bubble below the sealed north door (24px band) — the
+    // audit caught taunts clipped by the top screen edge and door planks.
+    bark.y = Math.max(bark.y, bark.height + 32);
     this.scene.tweens.add({
       targets: bark,
       alpha: 0,

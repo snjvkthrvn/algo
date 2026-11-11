@@ -59,9 +59,11 @@ export class ChamberShell {
     if (!this.scene.textures.exists(this.textures.plaqueTexture)) return;
     const { width } = this.scene.cameras.main;
     const x = width / 2 + 96;
+    // Above the doors (60) but below the title banner (75): signage should
+    // never be sliced by the door planks or slice the banner text itself.
     this.scene.add
       .image(x, 40, this.textures.plaqueTexture)
-      .setDepth(12);
+      .setDepth(62);
     this.plaqueText = this.scene.add
       .text(x, 40, `BEST\n${fieldPar}`, {
         fontSize: "8px",
@@ -70,7 +72,7 @@ export class ChamberShell {
         align: "center",
       })
       .setOrigin(0.5)
-      .setDepth(13);
+      .setDepth(63);
   }
 
   /** Post-clear harvest tally — the plaque flips to your run's numbers. */

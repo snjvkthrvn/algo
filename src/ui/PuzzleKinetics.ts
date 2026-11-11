@@ -73,6 +73,7 @@ export class PuzzleKinetics {
   private readonly core: Phaser.GameObjects.Arc;
   private readonly rail: Phaser.GameObjects.Graphics;
   private readonly orbiters: Phaser.GameObjects.Rectangle[] = [];
+  private gridFade: Phaser.Tweens.Tween | null = null;
   private destroyed = false;
 
   constructor(scene: Phaser.Scene, options: PuzzleKineticsOptions) {
@@ -81,23 +82,18 @@ export class PuzzleKinetics {
     this.center = new Phaser.Math.Vector2(options.width / 2, options.height / 2 + 28);
     this.bounds = new Phaser.Geom.Rectangle(72, 150, options.width - 144, options.height - 246);
 
-    this.rail = scene.add.graphics().setDepth(DEPTH_BACKPLANE).setAlpha(0.72);
+    // Rest-invisible circuit (2026-07 audit): the rail, core, and runners
+    // only light while energy is actually moving — persistent primitives
+    // read as vector debris over the finished room art. surfaceGrid() wakes
+    // the whole layer on every pulse, then it dissolves back to nothing.
+    this.rail = scene.add.graphics().setDepth(DEPTH_BACKPLANE).setAlpha(0);
     this.drawRail();
 
     this.core = scene.add
       .circle(this.center.x, this.center.y, 9, this.palette.core, 0.28)
       .setStrokeStyle(2, this.palette.rail, 0.64)
-      .setDepth(DEPTH_BACKPLANE + 1);
-
-    scene.tweens.add({
-      targets: this.core,
-      alpha: 0.58,
-      scale: 1.16,
-      duration: 1300,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+      .setDepth(DEPTH_BACKPLANE + 1)
+      .setAlpha(0);
 
     this.spawnOrbiters();
 
@@ -112,6 +108,20 @@ export class PuzzleKinetics {
     this.spawnActionRing(x, y, color, kind);
     this.spawnSignalBolt(x, y, color, kind);
     this.pulseCore(color, kind);
+    this.surfaceGrid(kind);
+  }
+
+  /** Wake the rail/core/runner layer for one beat, then dissolve it. */
+  private surfaceGrid(kind: PuzzleActionKind): void {
+    const targets = [this.rail, this.core, ...this.orbiters];
+    this.gridFade?.stop();
+    for (const t of targets) t.setAlpha(kind === 'complete' ? 0.8 : 0.55);
+    this.gridFade = this.scene.tweens.add({
+      targets,
+      alpha: 0,
+      duration: kind === 'complete' ? 2000 : 1200,
+      ease: 'Sine.easeIn',
+    });
   }
 
   destroy(): void {
@@ -119,6 +129,7 @@ export class PuzzleKinetics {
     this.destroyed = true;
     this.scene.events.off(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
     this.scene.events.off(Phaser.Scenes.Events.DESTROY, this.destroy, this);
+    this.gridFade?.stop();
     this.scene.tweens.killTweensOf(this.core);
     this.rail.destroy();
     this.core.destroy();
@@ -161,7 +172,8 @@ export class PuzzleKinetics {
     for (let i = 0; i < 4; i += 1) {
       const orb = this.scene.add
         .rectangle(path[i].x, path[i].y, 10, 3, this.palette.rail, 0.28)
-        .setDepth(DEPTH_BACKPLANE + 1);
+        .setDepth(DEPTH_BACKPLANE + 1)
+        .setAlpha(0);
       this.orbiters.push(orb);
       this.loopOrbiter(orb, path, i, 0);
     }
@@ -181,7 +193,8 @@ export class PuzzleKinetics {
       targets: orb,
       x: to.x,
       y: to.y,
-      alpha: { from: 0.14, to: 0.42 },
+      // Position only — visibility belongs to surfaceGrid()'s fade so the
+      // runners are invisible at rest and glide while the circuit is lit.
       duration: 1400,
       ease: 'Sine.easeInOut',
       onComplete: () => this.loopOrbiter(orb, path, startIndex, segment + 1),

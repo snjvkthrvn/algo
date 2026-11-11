@@ -63,6 +63,7 @@ import { MirrorTwin } from "../../puzzleRooms/mirrorCrossing/MirrorTwin";
 import { GlitchSplasher } from "../../puzzleRooms/mirrorCrossing/GlitchSplasher";
 import { CrossingReplay } from "../../puzzleRooms/mirrorCrossing/CrossingReplay";
 import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
+import { createTwinRiversShell } from "../../puzzleRooms/chamber/twinRiversShell";
 import { ChamberCast } from "../../puzzleRooms/chamber/ChamberCast";
 import { CartDelivery } from "../../puzzleRooms/chamber/CartDelivery";
 
@@ -144,7 +145,7 @@ export class P2_1_MirrorWalk extends BasePuzzleScene {
     this.southWalkY = this.rackYPx + 96;
     const northWalkY = this.rackYPx - 88;
 
-    this.shell = new ChamberShell(this, crossingPar());
+    this.shell = createTwinRiversShell(this, crossingPar());
     this.rack = new CrateRack(
       this,
       this.rackYPx,

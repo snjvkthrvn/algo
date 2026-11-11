@@ -27,7 +27,8 @@ export interface TwinRiversCollisionBlocker {
 }
 
 /**
- * Walkable lanes traced over twin_rivers_living_v1.png (1920x1440). Two
+ * Walkable lanes traced over twin_rivers_living_v2.png (1920x1440,
+ * a layout-locked restyle of v1 — same geography). Two
  * rivers cross the valley; the grand Pointer Bridge stitches three bank
  * bands together. Real loops, a dock village, a reed-hidden fisher's
  * cove, and a stone-circle island reachable only by the stepping stones

@@ -10,7 +10,7 @@
 
 import Phaser from "phaser";
 import { FONTS } from "../../config/constants";
-import { VISUAL_REVAMP_KEYS } from "../../config/assets";
+import { PAIRING_GROUNDS_KEYS, VISUAL_REVAMP_KEYS } from "../../config/assets";
 import { GLITCH_FAILURE_TAUNTS } from "../../data/dialogue/glitch_dialogue";
 
 const PEBBLE_W = 16;
@@ -25,7 +25,10 @@ export class GlitchPairer {
   private scene: Phaser.Scene;
   private originX: number;
   private originY: number;
-  private pebbles: Phaser.GameObjects.Rectangle[] = [];
+  private pebbles: (
+    | Phaser.GameObjects.Rectangle
+    | Phaser.GameObjects.Image
+  )[] = [];
   private glitch: Phaser.GameObjects.GameObject &
     Phaser.GameObjects.Components.Transform;
   private grinding = false;
@@ -57,20 +60,36 @@ export class GlitchPairer {
   /** Lay out his pebble copies of the round's stones. */
   setRound(values: ReadonlyArray<number>): void {
     this.pebbles.forEach((pebble) => pebble.destroy());
-    this.pebbles = values.map((_, i) =>
-      this.scene.add
-        .rectangle(
-          this.originX + (i % 6) * (PEBBLE_W + PEBBLE_GAP),
-          this.originY + Math.floor(i / 6) * (PEBBLE_W + 4),
-          PEBBLE_W,
-          PEBBLE_W - 4,
-          0x8d8d96,
-          0.9,
-        )
-        .setStrokeStyle(1, 0x5a5a64, 1)
-        .setDepth(20),
-    );
+    this.pebbles = values.map((_, i) => {
+      const x = this.originX + (i % 6) * (PEBBLE_W + PEBBLE_GAP);
+      const y = this.originY + Math.floor(i / 6) * (PEBBLE_W + 4);
+      // His pebble copies of the field stones — real runestone art when loaded.
+      return this.scene.textures.exists(PAIRING_GROUNDS_KEYS.RUNESTONE)
+        ? this.scene.add
+            .image(x, y, PAIRING_GROUNDS_KEYS.RUNESTONE)
+            .setDisplaySize(PEBBLE_W, PEBBLE_W)
+            .setAlpha(0.95)
+            .setDepth(20)
+        : this.scene.add
+            .rectangle(x, y, PEBBLE_W, PEBBLE_W - 4, 0x8d8d96, 0.9)
+            .setStrokeStyle(1, 0x5a5a64, 1)
+            .setDepth(20);
+    });
     this.grindRound(values);
+  }
+
+  /** Check-flash that works for both textured and fallback pebbles. */
+  private flashPebble(
+    pebble: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
+    checking: boolean,
+  ): void {
+    if (pebble instanceof Phaser.GameObjects.Image) {
+      if (checking) pebble.setTint(0xf0c080);
+      else pebble.clearTint();
+      return;
+    }
+    if (checking) pebble.setFillStyle(0xd8a05a, 0.95);
+    else pebble.setFillStyle(0x8d8d96, 0.9);
   }
 
   /** Try pair (i,j) in sequence until the first valid pair; loop forever. */
@@ -96,11 +115,11 @@ export class GlitchPairer {
         this.grinding = false;
         return;
       }
-      a.setFillStyle(0xd8a05a, 0.95);
-      b.setFillStyle(0xd8a05a, 0.95);
+      this.flashPebble(a, true);
+      this.flashPebble(b, true);
       this.scene.time.delayedCall(CHECK_MS * 0.5, () => {
-        a.setFillStyle(0x8d8d96, 0.9);
-        b.setFillStyle(0x8d8d96, 0.9);
+        this.flashPebble(a, false);
+        this.flashPebble(b, false);
         this.scene.time.delayedCall(CHECK_MS * 0.5, () => tryPair(step + 1));
       });
     };

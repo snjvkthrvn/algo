@@ -28,6 +28,10 @@ const CODEX_PALETTE = {
   goldCss: '#8a5a12',
 };
 
+/** Entries per left-page spread — matches the 8 slot plates baked into the
+ *  codex artifact art. Longer codices flip pages (LEFT/RIGHT). */
+const SLOTS_PER_PAGE = 8;
+
 export class CodexScene extends Phaser.Scene {
   private contentContainer!: Phaser.GameObjects.Container;
   private sidebarEntries: Phaser.GameObjects.Container[] = [];
@@ -38,6 +42,12 @@ export class CodexScene extends Phaser.Scene {
   private contentScrollY: number = 0;
   private contentMaxScroll: number = 0;
   private scrollHintText?: Phaser.GameObjects.Text;
+  /** True when the artifact tome art is loaded — layout snaps to its pages. */
+  private bookMode = false;
+  private sidebarPage = 0;
+  private slotRects: Array<{ x: number; y: number; w: number; h: number }> = [];
+  private pageIndicator?: Phaser.GameObjects.Text;
+  private contentWrapW = 720;
 
   constructor() {
     super({ key: SCENE_KEYS.CODEX });
@@ -68,13 +78,24 @@ export class CodexScene extends Phaser.Scene {
     audioManager.setScene(this);
 
     // Background: in-world artifact first, dark fallback second. The generated
-    // tome has page regions reserved for Phaser text so the Codex reads like a
-    // physical object instead of a terminal overlay.
-    if (this.textures.exists(VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG)) {
+    // tome bakes real page regions — the left page carries 8 slot plates, the
+    // right page is open parchment — so in book mode ALL layout snaps to those
+    // regions instead of floating translucent panels over them (2026-07 audit:
+    // "misaligned glass rectangle", "text collides with the carved spine").
+    this.bookMode = this.textures.exists(VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG);
+    let toX = (fx: number): number => Math.round(width * fx);
+    let toY = (fy: number): number => Math.round(height * fy);
+    if (this.bookMode) {
       const bg = this.add.image(width / 2, height / 2, VISUAL_REVAMP_KEYS.CODEX_ARTIFACT_BG).setOrigin(0.5);
       const source = bg.texture.getSourceImage() as HTMLImageElement;
-      bg.setScale(Math.max(width / source.width, height / source.height));
+      const scale = Math.max(width / source.width, height / source.height);
+      bg.setScale(scale);
       this.add.rectangle(0, 0, width, height, 0x1a1208, 0.04).setOrigin(0);
+      // Art-space fractions → screen px, honoring the cover-scale crop.
+      toX = (fx: number): number =>
+        Math.round(width / 2 + (fx - 0.5) * source.width * scale);
+      toY = (fy: number): number =>
+        Math.round(height / 2 + (fy - 0.5) * source.height * scale);
     } else {
       this.add.rectangle(0, 0, width, height, COLORS.OVERLAY_BG, 1).setOrigin(0);
       if (this.textures.exists(VISUAL_REVAMP_KEYS.TITLE_BG)) {
@@ -85,30 +106,38 @@ export class CodexScene extends Phaser.Scene {
       this.add.rectangle(0, 0, width, height, 0x081820, 0.72).setOrigin(0);
     }
 
-    // Title
-    drawPanel(this, 26, 18, width - 52, 48, {
-      depth: 1,
-      fill: CODEX_PALETTE.pageAlt,
-      frame: CODEX_PALETTE.frame,
-      inner: 0xb7893a,
-      shadow: true,
-      shadowAlpha: 0.14,
-      accent: CODEX_PALETTE.rune,
-      accentSide: 'top',
-    });
-
-    this.add.text(width / 2, 28, 'CODEX', {
-      fontSize: '17px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.ink,
-    }).setOrigin(0.5, 0).setDepth(2);
-
-    this.add.text(width / 2, 51, 'ESC / C CLOSE', {
-      fontSize: '8px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.inkMuted,
-    }).setOrigin(0.5, 0).setDepth(2);
+    if (!this.bookMode) {
+      // Legacy chrome for the artless fallback only.
+      drawPanel(this, 26, 18, width - 52, 48, {
+        depth: 1,
+        fill: CODEX_PALETTE.pageAlt,
+        frame: CODEX_PALETTE.frame,
+        inner: 0xb7893a,
+        shadow: true,
+        shadowAlpha: 0.14,
+        accent: CODEX_PALETTE.rune,
+        accentSide: 'top',
+      });
+      this.add.text(width / 2, 28, 'CODEX', {
+        fontSize: '17px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.ink,
+      }).setOrigin(0.5, 0).setDepth(2);
+      this.add.text(width / 2, 51, 'ESC / C CLOSE', {
+        fontSize: '8px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.inkMuted,
+      }).setOrigin(0.5, 0).setDepth(2);
+    } else {
+      // The tome IS the chrome: title + hints live on the stone frame band.
+      this.add.text(width / 2, 6, 'CODEX', {
+        fontSize: '13px', fontFamily: FONTS.RETRO, color: '#d8c890',
+      }).setOrigin(0.5, 0).setDepth(2);
+      this.add.text(width / 2, height - 8, 'ESC / C CLOSE   ·   ◀ ▶ FLIP PAGE', {
+        fontSize: '8px', fontFamily: FONTS.RETRO, color: '#b7a06a',
+      }).setOrigin(0.5, 1).setDepth(2);
+    }
 
     // Close button
     const closeBtn = this.add.text(width - 54, 31, 'X', {
-      fontSize: '14px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.ink,
-      backgroundColor: '#d8c890',
+      fontSize: '14px', fontFamily: FONTS.RETRO, color: this.bookMode ? '#d8c890' : CODEX_PALETTE.ink,
+      backgroundColor: this.bookMode ? undefined : '#d8c890',
       padding: { x: 6, y: 4 },
     }).setOrigin(0.5).setDepth(3).setInteractive({ useHandCursor: true });
 
@@ -126,46 +155,90 @@ export class CodexScene extends Phaser.Scene {
       this.scrollContent(dy > 0 ? 96 : -96);
     });
 
-    // Sidebar (left 30%)
-    const sidebarWidth = width * 0.3;
-    drawPanel(this, 20, 84, sidebarWidth - 28, height - 112, {
-      depth: 1,
-      fill: CODEX_PALETTE.page,
-      frame: CODEX_PALETTE.frame,
-      inner: 0xb7893a,
-      alpha: 0.32,
-      shadow: true,
-      shadowAlpha: 0.10,
-      accent: CODEX_PALETTE.rune,
-    });
+    if (this.bookMode) {
+      // ── Left page: entries snap into the 8 slot plates baked into the art.
+      const slotX = toX(0.0925);
+      const slotW = toX(0.3005) - slotX;
+      const slotH = Math.max(30, toY(0.202) - toY(0.138));
+      this.slotRects = [];
+      for (let i = 0; i < SLOTS_PER_PAGE; i++) {
+        this.slotRects.push({
+          x: slotX,
+          y: toY(0.1698 + i * 0.0923),
+          w: slotW,
+          h: slotH,
+        });
+      }
+      this.renderSidebarPage();
+      this.pageIndicator = this.add.text(
+        toX(0.196), toY(0.937), '',
+        { fontSize: '9px', fontFamily: FONTS.RETRO, color: CODEX_PALETTE.inkMuted },
+      ).setOrigin(0.5, 1).setDepth(3);
+      this.updatePageIndicator();
+      this.input.keyboard?.on('keydown-LEFT', () => this.flipPage(-1));
+      this.input.keyboard?.on('keydown-RIGHT', () => this.flipPage(1));
 
-    // Sidebar entries
-    this.createSidebar(sidebarWidth);
+      // ── Right page: the open parchment. Text never crosses the spine.
+      const cx0 = toX(0.402);
+      const cx1 = toX(0.9);
+      const cy0 = toY(0.1);
+      const cy1 = toY(0.872);
+      this.contentBaseY = cy0;
+      this.contentViewportH = cy1 - cy0;
+      this.contentWrapW = cx1 - cx0;
+      this.contentContainer = this.add.container(cx0, this.contentBaseY).setDepth(2);
 
-    // Content panel (right 70%)
-    drawPanel(this, sidebarWidth + 12, 84, width - sidebarWidth - 32, height - 112, {
-      depth: 1,
-      fill: CODEX_PALETTE.page,
-      frame: CODEX_PALETTE.frame,
-      inner: 0xb7893a,
-      alpha: 0.24,
-      shadow: true,
-      shadowAlpha: 0.08,
-    });
-    this.contentBaseY = 100;
-    this.contentViewportH = height - 144;
-    this.contentContainer = this.add.container(sidebarWidth + 28, this.contentBaseY).setDepth(2);
+      const contentMask = this.add.graphics().setVisible(false);
+      contentMask.fillStyle(0xffffff, 1);
+      contentMask.fillRect(cx0, cy0, this.contentWrapW, this.contentViewportH);
+      this.contentContainer.setMask(contentMask.createGeometryMask());
 
-    const contentMask = this.add.graphics().setVisible(false);
-    contentMask.fillStyle(0xffffff, 1);
-    contentMask.fillRect(sidebarWidth + 28, this.contentBaseY, width - sidebarWidth - 68, this.contentViewportH);
-    this.contentContainer.setMask(contentMask.createGeometryMask());
+      this.scrollHintText = this.add.text(cx1, cy1 + 16, 'PGUP / PGDN', {
+        fontSize: '8px',
+        fontFamily: FONTS.RETRO,
+        color: CODEX_PALETTE.inkMuted,
+      }).setOrigin(1, 1).setDepth(3).setVisible(false);
+    } else {
+      // ── Legacy fallback panels (no artifact art loaded).
+      const sidebarWidth = width * 0.3;
+      drawPanel(this, 20, 84, sidebarWidth - 28, height - 112, {
+        depth: 1,
+        fill: CODEX_PALETTE.page,
+        frame: CODEX_PALETTE.frame,
+        inner: 0xb7893a,
+        alpha: 0.32,
+        shadow: true,
+        shadowAlpha: 0.10,
+        accent: CODEX_PALETTE.rune,
+      });
 
-    this.scrollHintText = this.add.text(width - 52, height - 46, 'PGUP / PGDN', {
-      fontSize: '8px',
-      fontFamily: FONTS.RETRO,
-      color: CODEX_PALETTE.inkMuted,
-    }).setOrigin(1, 1).setDepth(3).setVisible(false);
+      this.createSidebar(sidebarWidth);
+
+      drawPanel(this, sidebarWidth + 12, 84, width - sidebarWidth - 32, height - 112, {
+        depth: 1,
+        fill: CODEX_PALETTE.page,
+        frame: CODEX_PALETTE.frame,
+        inner: 0xb7893a,
+        alpha: 0.24,
+        shadow: true,
+        shadowAlpha: 0.08,
+      });
+      this.contentBaseY = 100;
+      this.contentViewportH = height - 144;
+      this.contentWrapW = width * 0.65;
+      this.contentContainer = this.add.container(sidebarWidth + 28, this.contentBaseY).setDepth(2);
+
+      const contentMask = this.add.graphics().setVisible(false);
+      contentMask.fillStyle(0xffffff, 1);
+      contentMask.fillRect(sidebarWidth + 28, this.contentBaseY, width - sidebarWidth - 68, this.contentViewportH);
+      this.contentContainer.setMask(contentMask.createGeometryMask());
+
+      this.scrollHintText = this.add.text(width - 52, height - 46, 'PGUP / PGDN', {
+        fontSize: '8px',
+        fontFamily: FONTS.RETRO,
+        color: CODEX_PALETTE.inkMuted,
+      }).setOrigin(1, 1).setDepth(3).setVisible(false);
+    }
 
     // Show first unlocked entry
     const firstUnlocked = CODEX_ENTRIES.findIndex((e) => gameState.isCodexUnlocked(e.id));
@@ -174,6 +247,80 @@ export class CodexScene extends Phaser.Scene {
     } else {
       this.showEmptyState();
     }
+  }
+
+  /** Book mode: lay the current page's entries into the art's slot plates. */
+  private renderSidebarPage(): void {
+    for (const c of this.sidebarEntries) c.destroy();
+    this.sidebarEntries = [];
+
+    const start = this.sidebarPage * SLOTS_PER_PAGE;
+    for (let s = 0; s < SLOTS_PER_PAGE; s++) {
+      const i = start + s;
+      if (i >= CODEX_ENTRIES.length) break;
+      const entry = CODEX_ENTRIES[i];
+      const unlocked = gameState.isCodexUnlocked(entry.id);
+      const slot = this.slotRects[s];
+
+      const container = this.add.container(slot.x, slot.y).setDepth(2);
+
+      // The slot plate is baked into the page art — we add only ink, a
+      // hover wash, and a gold-leaf frame for the selected entry.
+      const hover = this.add.rectangle(0, 0, slot.w, slot.h, 0x1a1208, 0)
+        .setOrigin(0, 0.5);
+      container.add(hover);
+
+      if (this.selectedIndex === i) {
+        const frame = this.add.rectangle(0, 0, slot.w, slot.h, 0x000000, 0)
+          .setOrigin(0, 0.5)
+          .setStrokeStyle(2, 0xb7893a, 0.95);
+        container.add(frame);
+      }
+
+      const label = unlocked
+        ? this.compactSidebarLabel(entry.algorithmName, slot.w + 100)
+        : '???';
+      const text = this.add.text(46, 0, label, {
+        fontSize: '9px', fontFamily: FONTS.RETRO,
+        color: unlocked ? CODEX_PALETTE.ink : CODEX_PALETTE.inkMuted,
+      }).setOrigin(0, 0.5);
+      container.add(text);
+
+      if (unlocked) {
+        hover.setInteractive({ useHandCursor: true });
+        hover.on('pointerover', () => hover.setFillStyle(0x1a1208, 0.08));
+        hover.on('pointerout', () => hover.setFillStyle(0x1a1208, 0));
+        hover.on('pointerdown', () => {
+          audioManager.playClickTone();
+          this.selectEntry(i);
+        });
+      }
+
+      this.sidebarEntries.push(container);
+    }
+  }
+
+  private pageCount(): number {
+    return Math.max(1, Math.ceil(CODEX_ENTRIES.length / SLOTS_PER_PAGE));
+  }
+
+  private flipPage(direction: -1 | 1): void {
+    const pages = this.pageCount();
+    if (pages <= 1) return;
+    const next = Phaser.Math.Clamp(this.sidebarPage + direction, 0, pages - 1);
+    if (next === this.sidebarPage) return;
+    this.sidebarPage = next;
+    audioManager.playTone(300, 60, 'triangle');
+    this.renderSidebarPage();
+    this.updatePageIndicator();
+  }
+
+  private updatePageIndicator(): void {
+    if (!this.pageIndicator) return;
+    const pages = this.pageCount();
+    this.pageIndicator.setText(
+      pages > 1 ? `❧ PAGE ${this.sidebarPage + 1} / ${pages}` : '',
+    );
   }
 
   private createSidebar(sidebarWidth: number): void {
@@ -249,6 +396,16 @@ export class CodexScene extends Phaser.Scene {
 
   /** Refresh sidebar visuals so the selected entry is visually distinguishable. */
   private refreshSidebarSelection(): void {
+    if (this.bookMode) {
+      // Keep the selection's page in view, then re-lay the slots (cheap: ≤8).
+      const page = Math.floor(this.selectedIndex / SLOTS_PER_PAGE);
+      if (page >= 0 && page !== this.sidebarPage) {
+        this.sidebarPage = page;
+        this.updatePageIndicator();
+      }
+      this.renderSidebarPage();
+      return;
+    }
     for (let i = 0; i < this.sidebarEntries.length; i++) {
       const container = this.sidebarEntries[i];
       const bg = container.list[0] as Phaser.GameObjects.Rectangle | undefined;
@@ -270,8 +427,7 @@ export class CodexScene extends Phaser.Scene {
     this.contentContainer.removeAll(true);
     this.setContentScroll(0);
 
-    const { width } = this.cameras.main;
-    const contentWidth = width * 0.65;
+    const contentWidth = this.contentWrapW;
 
     // Entry title
     const title = this.add.text(10, 10, entry.algorithmName, {
@@ -280,9 +436,9 @@ export class CodexScene extends Phaser.Scene {
     });
     this.contentContainer.add(title);
 
-    // Difficulty
+    // Difficulty — full ink; the muted brown sank into the parchment.
     const diffText = this.add.text(10, title.y + title.height + 10, `Difficulty: ${entry.difficulty}`, {
-      fontSize: '10px', fontFamily: FONTS.MONO, color: CODEX_PALETTE.inkMuted,
+      fontSize: '10px', fontFamily: FONTS.MONO, color: '#3a2812',
     });
     this.contentContainer.add(diffText);
 
@@ -461,14 +617,14 @@ export class CodexScene extends Phaser.Scene {
 
   private showEmptyState(): void {
     const { width, height } = this.cameras.main;
-    const sidebarWidth = width * 0.3;
-    const contentWidth = width - sidebarWidth - 64;
-    const text = this.add.text(contentWidth / 2, height / 2 - 120, 'No entries unlocked yet.\nComplete puzzles to fill the Codex.', {
+    const cw = this.bookMode ? this.contentWrapW : width - width * 0.3 - 64;
+    const ch = this.bookMode ? this.contentViewportH : height;
+    const text = this.add.text(cw / 2, ch / 2 - 40, 'No entries unlocked yet.\nComplete puzzles to fill the Codex.', {
       fontSize: '12px', fontFamily: FONTS.MONO, color: CODEX_PALETTE.ink,
       align: 'center',
     }).setOrigin(0.5);
     this.contentContainer.add(text);
-    this.updateContentScrollBounds(height / 2);
+    this.updateContentScrollBounds(ch / 2);
   }
 
   private updateContentScrollBounds(contentHeight: number): void {

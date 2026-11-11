@@ -72,6 +72,7 @@ import {
 import { frameStartAtX } from "../../puzzleRooms/fishingDock/dockRules";
 import { BasketRow, NetFrame } from "../../puzzleRooms/fishingDock/BasketRow";
 import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
+import { createTwinRiversShell } from "../../puzzleRooms/chamber/twinRiversShell";
 
 type SerpentPhase = "reverse" | "twoSum" | "fixedWindow" | "won";
 
@@ -162,7 +163,7 @@ export class Boss_MirrorSerpent extends BasePuzzleScene {
     this.boardY = Math.round((height * 0.46) / 8) * 8;
     this.southWalkY = this.boardY + 96;
 
-    this.shell = new ChamberShell(this, serpentPar(0, 0, 0));
+    this.shell = createTwinRiversShell(this, serpentPar(0, 0, 0));
     this.serpent = new MirrorSerpent(this, width / 2, 120);
     new BitCompanion(this, { stage: "byte", x: width - 92, y: 100, depth: 40 });
 

@@ -11,7 +11,7 @@
 
 import Phaser from "phaser";
 import { FONTS } from "../../config/constants";
-import { VISUAL_REVAMP_KEYS } from "../../config/assets";
+import { BASKET_CELLAR_KEYS, VISUAL_REVAMP_KEYS } from "../../config/assets";
 import { GLITCH_FAILURE_TAUNTS } from "../../data/dialogue/glitch_dialogue";
 
 const MINI_W = 26;
@@ -27,7 +27,10 @@ export class GlitchShelf {
   private scene: Phaser.Scene;
   private originX: number;
   private originY: number;
-  private baskets: Phaser.GameObjects.Rectangle[] = [];
+  private baskets: (
+    | Phaser.GameObjects.Rectangle
+    | Phaser.GameObjects.Image
+  )[] = [];
   private glitch: Phaser.GameObjects.GameObject &
     Phaser.GameObjects.Components.Transform;
   private mess: Phaser.GameObjects.Rectangle[] = [];
@@ -62,20 +65,35 @@ export class GlitchShelf {
     this.baskets.forEach((basket) => basket.destroy());
     this.baskets = [];
     for (let i = 0; i < count; i++) {
+      const x = this.originX + i * (MINI_W + MINI_GAP);
+      // His pocket copies of the cellar baskets — real wicker art when loaded.
       this.baskets.push(
-        this.scene.add
-          .rectangle(
-            this.originX + i * (MINI_W + MINI_GAP),
-            this.originY,
-            MINI_W,
-            MINI_H,
-            0xa9885a,
-            0.9,
-          )
-          .setStrokeStyle(1, 0x6e5635, 1)
-          .setDepth(20),
+        this.scene.textures.exists(BASKET_CELLAR_KEYS.BASKET)
+          ? this.scene.add
+              .image(x, this.originY, BASKET_CELLAR_KEYS.BASKET)
+              .setDisplaySize(MINI_W, MINI_H)
+              .setAlpha(0.95)
+              .setDepth(20)
+          : this.scene.add
+              .rectangle(x, this.originY, MINI_W, MINI_H, 0xa9885a, 0.9)
+              .setStrokeStyle(1, 0x6e5635, 1)
+              .setDepth(20),
       );
     }
+  }
+
+  /** Lid flash that works for both textured and fallback baskets. */
+  private flashBasket(
+    basket: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
+    open: boolean,
+  ): void {
+    if (basket instanceof Phaser.GameObjects.Image) {
+      if (open) basket.setTint(0xb99a68);
+      else basket.clearTint();
+      return;
+    }
+    if (open) basket.setFillStyle(0x82663e, 0.9);
+    else basket.setFillStyle(0xa9885a, 0.9);
   }
 
   /**
@@ -99,9 +117,9 @@ export class GlitchShelf {
         ease: "Sine.easeInOut",
         onComplete: () => {
           // Flip the mini lid: a quick tint flash + a mess crumb on misses.
-          basket.setFillStyle(0x82663e, 0.9);
+          this.flashBasket(basket, true);
           this.scene.time.delayedCall(SCAN_MS_PER_BASKET * 0.3, () => {
-            basket.setFillStyle(0xa9885a, 0.9);
+            this.flashBasket(basket, false);
             if (i < targetIndex) this.dropCrumb(basket.x);
             visit(i + 1);
           });

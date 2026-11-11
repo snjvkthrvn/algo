@@ -54,6 +54,7 @@ import { PostLine } from "../../puzzleRooms/pointerBridge/PostLine";
 import { BridgeReplay } from "../../puzzleRooms/pointerBridge/BridgeReplay";
 import { GlitchPairer } from "../../puzzleRooms/pairingGrounds/GlitchPairer";
 import { ChamberShell } from "../../puzzleRooms/chamber/ChamberShell";
+import { createTwinRiversShell } from "../../puzzleRooms/chamber/twinRiversShell";
 import { ChamberCast } from "../../puzzleRooms/chamber/ChamberCast";
 import { CartDelivery } from "../../puzzleRooms/chamber/CartDelivery";
 
@@ -136,7 +137,7 @@ export class P2_2_PointerBridge extends BasePuzzleScene {
     this.lineYPx = Math.round((height * 0.478) / 8) * 8;
     this.southWalkY = this.lineYPx + 96;
 
-    this.shell = new ChamberShell(this, bridgePar());
+    this.shell = createTwinRiversShell(this, bridgePar());
     this.line = new PostLine(
       this,
       this.lineYPx,

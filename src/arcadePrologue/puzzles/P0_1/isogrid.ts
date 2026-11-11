@@ -76,7 +76,7 @@ export function mountIsoGrid(
     const isOnPath = pathSet.has(key);
     const depth = BASE_DEPTH + pos.row + pos.col;
 
-    const { key: baseKey, frame: baseFrame, needsResize } = getTileKey(isOnPath ? 'on' : 'off', scene);
+    const { key: baseKey, frame: baseFrame, needsResize } = getTileKey(isOnPath ? 'on' : 'off', scene, pos.row, pos.col);
     const base = scene.add
       .image(x, y, baseKey, baseFrame)
       .setDepth(depth)
@@ -137,7 +137,7 @@ export function markCellDone(grid: IsoGrid, row: number, col: number, scene: Pha
   if (!cell) return;
   cell.glowTween?.stop();
   if (!grid.hideBase) {
-    const { key: doneKey, frame: doneFrame, needsResize } = getTileKey('done', scene);
+    const { key: doneKey, frame: doneFrame, needsResize } = getTileKey('done', scene, row, col);
     cell.base.setTexture(doneKey, doneFrame);
     if (needsResize) cell.base.setDisplaySize(TILE_W, TILE_H);
   }
@@ -170,7 +170,7 @@ export function dimPathTiles(grid: IsoGrid, scene: Phaser.Scene): void {
     cell.glowTween?.stop();
     cell.glowTween = undefined;
     if (!grid.hideBase) {
-      const { key: offKey, frame: offFrame, needsResize } = getTileKey('off', scene);
+      const { key: offKey, frame: offFrame, needsResize } = getTileKey('off', scene, cell.row, cell.col);
       cell.base.setTexture(offKey, offFrame);
       if (needsResize) cell.base.setDisplaySize(TILE_W, TILE_H);
     }
@@ -201,7 +201,7 @@ export function flashTileOn(
 
   cell.glowTween?.stop();
   if (!grid.hideBase) {
-    const { key: onKey, frame: onFrame, needsResize } = getTileKey('on', scene);
+    const { key: onKey, frame: onFrame, needsResize } = getTileKey('on', scene, row, col);
     cell.base.setTexture(onKey, onFrame);
     if (needsResize) cell.base.setDisplaySize(TILE_W, TILE_H);
   }
@@ -211,7 +211,7 @@ export function flashTileOn(
   scene.time.delayedCall(holdMs, () => {
     if (grid.doneKeys.has(key)) return;
     if (!grid.hideBase) {
-      const { key: offKey, frame: offFrame, needsResize: offResize } = getTileKey('off', scene);
+      const { key: offKey, frame: offFrame, needsResize: offResize } = getTileKey('off', scene, row, col);
       cell.base.setTexture(offKey, offFrame);
       if (offResize) cell.base.setDisplaySize(TILE_W, TILE_H);
     }

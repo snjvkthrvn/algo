@@ -63,6 +63,20 @@ export class HUDManager {
   };
   private readonly handleScaleResize = () => this.layoutHud();
 
+  // Dialogue owns the bottom band — the objective hint bled through the
+  // semi-transparent dialogue panel as text-over-text (2026-07 audit).
+  // Objective resurfaces on its next change; the strip has its own fade.
+  private readonly handleDialogueStart = () => {
+    if (this.objectiveHintText?.active) {
+      this.scene.tweens.killTweensOf(this.objectiveHintText);
+      this.objectiveHintText.setAlpha(0);
+    }
+    if (this.controlsStripText?.active) {
+      this.scene.tweens.killTweensOf(this.controlsStripText);
+      this.controlsStripText.setAlpha(0);
+    }
+  };
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.container = scene.add
@@ -98,6 +112,7 @@ export class HUDManager {
     eventBus.on(GameEvents.BIT_EVOLVE, this.handleBitEvolve);
     eventBus.on(GameEvents.SHARD_COLLECTED, this.handleShardCollected);
     eventBus.on(GameEvents.PUZZLE_COMPLETE, this.handlePuzzleComplete);
+    eventBus.on(GameEvents.DIALOGUE_START, this.handleDialogueStart);
     this.scene.scale.on(
       Phaser.Scale.Events.RESIZE,
       this.handleScaleResize,
@@ -557,6 +572,7 @@ export class HUDManager {
     eventBus.off(GameEvents.BIT_EVOLVE, this.handleBitEvolve);
     eventBus.off(GameEvents.SHARD_COLLECTED, this.handleShardCollected);
     eventBus.off(GameEvents.PUZZLE_COMPLETE, this.handlePuzzleComplete);
+    eventBus.off(GameEvents.DIALOGUE_START, this.handleDialogueStart);
     this.destroyCard();
     this.container.destroy();
   }
